@@ -3925,6 +3925,10 @@ func cmdServe(args []string) error {
 		return err
 	}
 
+	if err := applyPoolHealthConfigDefault(*configPath, fs, dlqBackoff); err != nil {
+		return err
+	}
+
 	deployment, err := resolveDeployment(*storeVal, *db, *readModel)
 	if err != nil {
 		return err

@@ -100,6 +100,14 @@ type Config struct {
 	// than its peer. Nil with ReadModelPath set fails Validate; with
 	// ReadModelPath empty the hand tailer runs regardless.
 	Pump ProjectionPump
+	// DLQBackoff, when > 0, turns on the poisoned-repo DLQ-backoff
+	// surface: each snapshot folds the journal per repo (the shared
+	// dlqbackoff derivation behind `tq pool-health`'s dlqBackoffUntil
+	// JSON field and `tq dlq`'s poisoned rows) and the dashboard renders
+	// the repos currently in backoff — a nowband chip plus the panel
+	// above the dead-letter queue. 0 keeps the surface off (no journal
+	// read, nothing rendered), mirroring pool-health's --dlq-backoff.
+	DLQBackoff time.Duration
 }
 
 // ProjectionPump is the live-projection surface the server consumes on

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/a-h/templ"
+	"github.com/larsartmann/go-taskqueue/internal/dlqbackoff"
 	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/harvest"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
@@ -330,6 +331,12 @@ type DashboardData struct {
 	// badge in the table and the result card on the detail page. Nil when
 	// the page shows no finished agent run.
 	AgentResults map[string]executor.AgentResult
+	// DLQBackoff holds each repo currently in poisoned-repo DLQ backoff
+	// (repo → backoff deadline): the dashboard's rendering of the same
+	// fold behind `tq pool-health`'s dlqBackoffUntil JSON field and `tq
+	// dlq`'s poisoned rows. Nil when the surface is off
+	// (Config.DLQBackoff == 0) or no repo is standing in backoff.
+	DLQBackoff map[string]time.Time
 }
 
 // parkedCount counts rate-limit-parked tasks (pending, not_before in the
@@ -344,6 +351,24 @@ func parkedCount(ctx context.Context, store queue.Store) int {
 }
 
 var parkedTrue = true
+
+// dlqBackoffDeadlines folds the journal into the repos currently in
+// poisoned-repo DLQ backoff (the dlqbackoff derivation shared with `tq
+// pool-health` and `tq dlq`). Opt-in via Config.DLQBackoff — 0 means
+// the surface is off and the journal is not read. Best effort: a failed
+// read dims the panel, never the dashboard.
+func (s *Server) dlqBackoffDeadlines(ctx context.Context, now time.Time) map[string]time.Time {
+	if s.cfg.DLQBackoff <= 0 {
+		return nil
+	}
+
+	deadlines, err := dlqbackoff.DeadlinesForStore(ctx, s.store, now, s.cfg.DLQBackoff)
+	if err != nil {
+		return nil
+	}
+
+	return deadlines
+}
 
 // budgetParkedWindow bounds the budget-parked derivation: requeue facts
 // older than a day no longer speak for the current park state (the
@@ -694,6 +719,7 @@ func (s *Server) loadSnapshot(ctx context.Context, filter FilterState) (Dashboar
 	data.LoopSuspects = loopSuspects(ctx, s.store)
 	data.Stranded = strandedCount(ctx, s.store)
 	data.SessionsOpened, data.SessionsClosed, data.SessionsOpen = sessionStats(ctx, s.store)
+	data.DLQBackoff = s.dlqBackoffDeadlines(ctx, now)
 
 	projectCounts, err := s.store.ProjectCounts(ctx)
 	if err != nil {
