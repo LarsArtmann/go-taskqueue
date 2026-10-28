@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/larsartmann/go-taskqueue/internal/retryx"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
@@ -583,11 +584,11 @@ func (e *DepBumpExecutor) quarantineGoWork(repoDir string) (func(), error) {
 		return noop, nil //nolint:nilerr // absent go.work: nothing to quarantine
 	}
 
-	if err := os.Rename(workFile, workFile+".bak"); err != nil {
+	if err := retryx.RenameTransient(workFile, workFile+".bak"); err != nil {
 		return noop, fmt.Errorf("rename go.work: %w", err)
 	}
 
-	return func() { _ = os.Rename(workFile+".bak", workFile) }, nil
+	return func() { _ = retryx.RenameTransient(workFile+".bak", workFile) }, nil
 }
 
 // pinnedVersion reads the currently pinned version of module from go.mod.
