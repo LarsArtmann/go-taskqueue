@@ -7,6 +7,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- **`tq serve` surfaces a demoted (fold-lock loser) dashboard's staleness**
+  (2026-10-28): a second serve that loses the projection fold-lock
+  election mounts read-only — the model never folds again, SSE never
+  fires, and reads stay frozen at mount. The demotion now announces
+  itself three ways: the startup banner carries a STALE FOLD marker, the
+  `/readyz` and `/health` projection check reports
+  `fold: follower` (WARN) with the trust-the-lock-holder ruling, and the
+  demotion flips the health snapshot on the next probe instead of riding
+  the 5s cache.
 - **Dashboard renders poisoned-repo DLQ backoff** (2026-10-28): `tq
   serve --dlq-backoff <dur>` folds the same shared dlqbackoff derivation
   as `tq pool-health`/`tq dlq` into every dashboard snapshot — repos
