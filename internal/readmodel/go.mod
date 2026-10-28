@@ -11,12 +11,12 @@ require (
 	github.com/larsartmann/go-cqrs-lite/projectionhost/v4 v4.7.1
 	github.com/larsartmann/go-cqrs-lite/record/v4 v4.6.2
 	github.com/larsartmann/go-error-family v0.12.0
-	github.com/larsartmann/go-retry v0.8.0
 	github.com/larsartmann/go-taskqueue/internal/config v0.3.4
 	github.com/larsartmann/go-taskqueue/internal/journal v0.4.0
 	github.com/larsartmann/go-taskqueue/internal/journal/cqrs v0.3.3
 	github.com/larsartmann/go-taskqueue/internal/queue v0.3.3
 	github.com/larsartmann/go-taskqueue/internal/queue/sqlite v0.3.3
+	github.com/larsartmann/go-taskqueue/internal/retryx v0.3.4
 	github.com/larsartmann/go-taskqueue/internal/task v0.3.3
 	github.com/oklog/ulid/v2 v2.1.2
 )
@@ -38,6 +38,7 @@ require (
 	github.com/larsartmann/go-cqrs-lite/queue/sqlite/v4 v4.0.3 // indirect
 	github.com/larsartmann/go-cqrs-lite/queue/v4 v4.0.3 // indirect
 	github.com/larsartmann/go-flightrecorder v0.2.1 // indirect
+	github.com/larsartmann/go-retry v0.8.0 // indirect
 	github.com/larsartmann/go-sse v0.6.2 // indirect
 	github.com/larsartmann/go-taskqueue/internal/queue/companion v0.4.0 // indirect
 	github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4 v0.3.4 // indirect
@@ -75,3 +76,5 @@ replace github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4 => ../queue/
 replace github.com/larsartmann/go-taskqueue/internal/queue/companion => ../queue/companion
 
 replace github.com/larsartmann/go-taskqueue/internal/journal/cqrs => ../journal/cqrs
+
+replace github.com/larsartmann/go-taskqueue/internal/retryx => ../retryx

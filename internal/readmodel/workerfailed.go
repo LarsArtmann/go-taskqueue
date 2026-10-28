@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/larsartmann/go-cqrs-lite/projectionhost/v4"
+	"github.com/larsartmann/go-taskqueue/internal/retryx"
 )
 
 // Durable worker-death marker (B9.3): a fold worker that exhausts its
@@ -78,7 +79,7 @@ func writeWorkerFailedMarkerAt(path string, marker WorkerFailedMarker) error {
 		return fmt.Errorf("readmodel: write worker-death marker: %w", err)
 	}
 
-	if err := renameWithTransientRetry(tmp, path); err != nil {
+	if err := retryx.RenameTransient(tmp, path); err != nil {
 		_ = os.Remove(tmp)
 
 		return fmt.Errorf("readmodel: publish worker-death marker: %w", err)
