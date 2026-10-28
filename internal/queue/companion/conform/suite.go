@@ -275,7 +275,7 @@ var conformanceTests = []struct {
 	{"TestRecordAnswerReplayIsNoop", TestRecordAnswerReplayIsNoop},
 	{"TestRecordAnswerSecondQuestionAppends", TestRecordAnswerSecondQuestionAppends},
 	{"TestRecordAnswerOnTerminalTaskNeverUnblocks", TestRecordAnswerOnTerminalTaskNeverUnblocks},
-		{"TestRecordAnswerOnRunningTaskFactOnly", TestRecordAnswerOnRunningTaskFactOnly},
+	{"TestRecordAnswerOnRunningTaskFactOnly", TestRecordAnswerOnRunningTaskFactOnly},
 	{"TestRecordAnswerRawPayloadFactOnly", TestRecordAnswerRawPayloadFactOnly},
 	{"TestRecordAnswerValidation", TestRecordAnswerValidation},
 	{"TestAppendFactRecordsNonTaskFact", TestAppendFactRecordsNonTaskFact},
