@@ -157,3 +157,5 @@ replace github.com/larsartmann/go-taskqueue/internal/queue/companion => ./intern
 replace github.com/larsartmann/go-taskqueue/internal/composition => ./internal/composition
 
 replace github.com/larsartmann/go-taskqueue/internal/config => ./internal/config
+
+replace github.com/larsartmann/go-taskqueue/internal/retryx => ./internal/retryx
