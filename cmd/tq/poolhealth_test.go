@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
@@ -342,6 +343,60 @@ func TestPoolHealthDLQBackoffExpiryAndOff(t *testing.T) {
 
 	if r := poolRepoByName(t, off, "expired"); r.DLQBackoffUntil != nil {
 		t.Fatalf("DLQBackoffUntil = %v, want nil with the flag off", r.DLQBackoffUntil)
+	}
+}
+
+// TestPoolHealthDLQBackoffBoundaryInstant pins the fold's expiry
+// boundary exactly, over the pure fold with a fixed clock: at
+// until == now the backoff has EXPIRED (nil, verdict OK) while 1ns
+// before the boundary it is still ACTIVE (set to exactly
+// lastDead+backoff, verdict WARN) — a future >= boundary refactor now
+// fails loudly instead of silently shifting the poisoned verdict by one
+// instant (closeout 2026-10-28 04-18 §f4).
+func TestPoolHealthDLQBackoffBoundaryInstant(t *testing.T) {
+	t.Parallel()
+
+	const deadTask = "t-boundary"
+
+	base := time.Date(2026, 10, 28, 4, 0, 0, 0, time.UTC)
+	backoff := time.Hour
+	until := base.Add(backoff)
+
+	facts := []journal.Fact{{TaskID: deadTask, Type: journal.DeadLettered, Time: base}}
+	meta := map[task.ID]poolTaskMeta{deadTask: {project: "poisoned"}}
+
+	for _, tc := range []struct {
+		name    string
+		now     time.Time
+		wantSet bool
+	}{
+		{"at the boundary instant the backoff has expired", until, false},
+		{"1ns before the boundary the backoff is active", until.Add(-time.Nanosecond), true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			report := poolHealthFrom(facts, meta, base.Add(-time.Minute), tc.now, backoff)
+
+			r := poolRepoByName(t, report, "poisoned")
+			if !tc.wantSet {
+				if r.DLQBackoffUntil != nil {
+					t.Fatalf("DLQBackoffUntil = %v, want nil at the boundary instant (expired)", r.DLQBackoffUntil)
+				}
+
+				if r.Verdict != poolVerdictOK {
+					t.Fatalf("Verdict = %q, want OK once expired", r.Verdict)
+				}
+
+				return
+			}
+
+			if r.DLQBackoffUntil == nil || !r.DLQBackoffUntil.Equal(until) {
+				t.Fatalf("DLQBackoffUntil = %v, want exactly %v (still active)", r.DLQBackoffUntil, until)
+			}
+
+			if r.Verdict != poolVerdictWarn {
+				t.Fatalf("Verdict = %q, want WARN while in backoff", r.Verdict)
+			}
+		})
 	}
 }
 
