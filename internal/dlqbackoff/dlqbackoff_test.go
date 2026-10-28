@@ -168,7 +168,7 @@ func TestDeadlinesLatestStandingDeadWins(t *testing.T) {
 
 	laterDismissed := append(facts, journal.Fact{TaskID: "t-late", Type: journal.Cancelled, Time: base.Add(6 * time.Minute)})
 
-	deadlines = Deadlines(dismissed, projects, now, window)
+	deadlines = Deadlines(laterDismissed, projects, now, window)
 
 	if got := deadlines["repo"]; !got.Equal(base.Add(window)) {
 		t.Fatalf("deadline = %v, want the earlier letter's %v once the later is dismissed", got, base.Add(window))

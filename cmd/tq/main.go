@@ -31,6 +31,7 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/composition"
 	"github.com/larsartmann/go-taskqueue/internal/config"
 	"github.com/larsartmann/go-taskqueue/internal/depsweep"
+	"github.com/larsartmann/go-taskqueue/internal/dlqbackoff"
 	"github.com/larsartmann/go-taskqueue/internal/dlqfix"
 	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/harvest"
@@ -3116,7 +3117,7 @@ func cmdDLQ(args []string) error {
 		tasks = filtered
 	}
 
-	deadlines, err := dlqBackoffDeadlinesForStore(context.Background(), store, time.Now(), *dlqBackoff)
+	deadlines, err := dlqbackoff.DeadlinesForStore(context.Background(), store, time.Now(), *dlqBackoff)
 	if err != nil {
 		return err
 	}
@@ -3172,8 +3173,8 @@ func printDLQ(tasks []task.Task, dlqBackoff map[string]time.Time) {
 			t.ID, t.Project+"/"+t.Type, t.Attempts, t.MaxAttempts, truncate(t.LastError, 80))
 
 		if until, ok := dlqBackoff[t.Project]; ok {
-			fmt.Printf("       ↳ poisoned: repo in DLQ backoff until %s (fix the repo or rescue dead tasks)\n",
-				until.Format(time.RFC3339))
+			fmt.Printf("       ↳ poisoned: repo in DLQ backoff until %s (%s)\n",
+				until.Format(time.RFC3339), dlqbackoff.PoisonedAdvice)
 		}
 	}
 }
@@ -3912,6 +3913,10 @@ func cmdServe(args []string) error {
 		fs,
 		"serve the aggregate reads and live notifications from the ADR-0019 S3 metaengine projection (<db>.readmodel.db); default ON — --read-model=false falls back to the hand journal tailer (row-rich views stay store-backed either way)",
 	)
+	dlqBackoff := fs.Duration("dlq-backoff", 0,
+		"surface repos in poisoned-repo DLQ backoff on the dashboard (nowband chip + panel above the dead-letter queue), mirroring `tq pool-health`; defaults to the pool config file's dlq-backoff (see --config), else 0 = off")
+	configPath := fs.String("config", os.Getenv("TQ_POOL_CONFIG"),
+		"pool config file whose dlq-backoff seeds the --dlq-backoff default (other keys are ignored; $TQ_POOL_CONFIG; falls back to the bootstrap default ~/.config/tq/pool.conf when it exists)")
 
 	db := dbFlag(fs)
 
@@ -3936,6 +3941,7 @@ func cmdServe(args []string) error {
 		RequestLog:  *verbose,
 		AuthToken:   *authToken,
 		AllowWrites: *allowWrites,
+		DLQBackoff:  *dlqBackoff,
 	}
 
 	if *readModel {
