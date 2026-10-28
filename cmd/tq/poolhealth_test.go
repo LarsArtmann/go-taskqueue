@@ -6,6 +6,9 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"flag"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -431,4 +434,151 @@ func TestPoolHealthDLQBackoffCompletionHeals(t *testing.T) {
 	if r.Verdict != poolVerdictOK {
 		t.Fatalf("Verdict = %q, want OK after a completion", r.Verdict)
 	}
+}
+
+// TestPoolHealthDLQBackoffFromPoolConfig pins the config-file reader:
+// same file, spelling, and duration syntax the harvest pool runs with,
+// quoting tolerated like every pool.conf value, malformed values loud
+// (a silently-zero default would under-report the exact state the
+// surface exists to surface), other keys ignored.
+func TestPoolHealthDLQBackoffFromPoolConfig(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	path := filepath.Join(dir, "pool.conf")
+
+	write := func(t *testing.T, body string) {
+		t.Helper()
+		if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
+			t.Fatalf("write config: %v", err)
+		}
+	}
+
+	t.Run("key seeds the default", func(t *testing.T) {
+		write(t, "projects-dir = /srv/repos\ndlq-backoff = 45m\n")
+
+		got, found, err := dlqBackoffFromPoolConfig(path)
+		if err != nil || !found || got != 45*time.Minute {
+			t.Fatalf("got (%v, %v, %v), want (45m, true, nil)", got, found, err)
+		}
+	})
+
+	t.Run("quoted value tolerated", func(t *testing.T) {
+		write(t, "dlq-backoff = \"1h30m\"\n")
+
+		got, found, err := dlqBackoffFromPoolConfig(path)
+		if err != nil || !found || got != 90*time.Minute {
+			t.Fatalf("got (%v, %v, %v), want (1h30m, true, nil)", got, found, err)
+		}
+	})
+
+	t.Run("absent key means off", func(t *testing.T) {
+		write(t, "projects-dir = /srv/repos\n")
+
+		got, found, err := dlqBackoffFromPoolConfig(path)
+		if err != nil || found || got != 0 {
+			t.Fatalf("got (%v, %v, %v), want (0, false, nil)", got, found, err)
+		}
+	})
+
+	t.Run("malformed value is loud", func(t *testing.T) {
+		write(t, "dlq-backoff = soon\n")
+
+		if _, _, err := dlqBackoffFromPoolConfig(path); err == nil {
+			t.Fatalf("malformed dlq-backoff accepted, want error")
+		}
+	})
+
+	t.Run("unreadable file is loud", func(t *testing.T) {
+		if _, _, err := dlqBackoffFromPoolConfig(filepath.Join(dir, "absent.conf")); err == nil {
+			t.Fatalf("unreadable config accepted, want error")
+		}
+	})
+}
+
+// TestApplyPoolHealthConfigDefault pins the precedence and resolution:
+// --dlq-backoff flag > pool config file > 0; an empty --config falls back
+// to the bootstrap default location ONLY when that file exists; an
+// explicitly given but unreadable config is an error. Not parallel: the
+// HOME-resolution subtests use t.Setenv.
+func TestApplyPoolHealthConfigDefault(t *testing.T) {
+	newFlagSet := func(t *testing.T) (*flag.FlagSet, *time.Duration) {
+		t.Helper()
+
+		fs := flag.NewFlagSet("pool-health", flag.ContinueOnError)
+		dlqBackoff := fs.Duration("dlq-backoff", 0, "")
+
+		return fs, dlqBackoff
+	}
+
+	writeConfig := func(t *testing.T, path, body string) {
+		t.Helper()
+		if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+			t.Fatalf("mkdir: %v", err)
+		}
+		if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
+			t.Fatalf("write config: %v", err)
+		}
+	}
+
+	t.Run("config seeds, CLI wins", func(t *testing.T) {
+		config := filepath.Join(t.TempDir(), "pool.conf")
+		writeConfig(t, config, "dlq-backoff = 45m\n")
+
+		fs, dlqBackoff := newFlagSet(t)
+		if err := applyPoolHealthConfigDefault(config, fs, dlqBackoff); err != nil {
+			t.Fatalf("apply: %v", err)
+		}
+		if *dlqBackoff != 45*time.Minute {
+			t.Fatalf("backoff = %v, want 45m from config", *dlqBackoff)
+		}
+
+		fs, dlqBackoff = newFlagSet(t)
+		if err := fs.Parse([]string{"-dlq-backoff=5m"}); err != nil {
+			t.Fatalf("parse: %v", err)
+		}
+		if err := applyPoolHealthConfigDefault(config, fs, dlqBackoff); err != nil {
+			t.Fatalf("apply: %v", err)
+		}
+		if *dlqBackoff != 5*time.Minute {
+			t.Fatalf("backoff = %v, want the explicit 5m to win over config", *dlqBackoff)
+		}
+	})
+
+	t.Run("no config anywhere stays off", func(t *testing.T) {
+		t.Setenv("HOME", t.TempDir())
+
+		fs, dlqBackoff := newFlagSet(t)
+		if err := applyPoolHealthConfigDefault("", fs, dlqBackoff); err != nil {
+			t.Fatalf("apply: %v", err)
+		}
+		if *dlqBackoff != 0 {
+			t.Fatalf("backoff = %v, want 0 without any config file", *dlqBackoff)
+		}
+	})
+
+	t.Run("bootstrap default used when it exists", func(t *testing.T) {
+		home := t.TempDir()
+		t.Setenv("HOME", home)
+		writeConfig(t, filepath.Join(home, ".config", "tq", "pool.conf"), "dlq-backoff = 2h\n")
+
+		fs, dlqBackoff := newFlagSet(t)
+		if err := applyPoolHealthConfigDefault("", fs, dlqBackoff); err != nil {
+			t.Fatalf("apply: %v", err)
+		}
+		if got := defaultPoolConfigPath(); got == "" {
+			t.Fatalf("defaultPoolConfigPath unresolved (no home dir) — cannot exercise the fallback here")
+		} else if *dlqBackoff != 2*time.Hour {
+			t.Fatalf("backoff = %v, want 2h from the bootstrap default file", *dlqBackoff)
+		}
+	})
+
+	t.Run("given-but-unreadable config is loud", func(t *testing.T) {
+		missing := filepath.Join(t.TempDir(), "absent.conf")
+
+		fs, dlqBackoff := newFlagSet(t)
+		if err := applyPoolHealthConfigDefault(missing, fs, dlqBackoff); err == nil {
+			t.Fatalf("unreadable config accepted, want error")
+		}
+	})
 }

@@ -12,6 +12,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -310,6 +311,86 @@ func poolHealth(ctx context.Context, store queue.Store, window time.Duration, no
 	return poolHealthFrom(facts, meta, now.Add(-window), now, dlqBackoff), nil
 }
 
+// defaultPoolConfigPath is the pool config location `tq bootstrap
+// --install` renders the systemd unit with; empty when the home directory
+// is unresolvable.
+func defaultPoolConfigPath() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+
+	return filepath.Join(home, ".config", "tq", "pool.conf")
+}
+
+// dlqBackoffFromPoolConfig reads the pool config file's dlq-backoff value
+// (the same file, spelling, and duration syntax the harvest pool runs
+// with — bootstrap writes "dlq-backoff = <dur>"). found reports whether
+// the key is present; a present-but-malformed value is an error, the same
+// death agent-pool dies applying the same file. Other keys are ignored:
+// pool-health reads one value, it does not re-validate the pool's file.
+func dlqBackoffFromPoolConfig(path string) (backoff time.Duration, found bool, err error) {
+	file, err := loadPoolConfigFile(path)
+	if err != nil {
+		return 0, false, err
+	}
+
+	raw, ok := file["dlq-backoff"]
+	if !ok {
+		return 0, false, nil
+	}
+
+	backoff, err = time.ParseDuration(raw)
+	if err != nil {
+		return 0, false, fmt.Errorf("pool config %s: key %q: %w", path, "dlq-backoff", err)
+	}
+
+	return backoff, true, nil
+}
+
+// applyPoolHealthConfigDefault seeds the --dlq-backoff default from the
+// pool config file, so the backoff surface reads the pool's actual value
+// instead of requiring it re-passed by hand. Precedence is
+// --dlq-backoff flag > config file > 0. configPath is the --config value
+// ($TQ_POOL_CONFIG-seeded); empty means fall back to the bootstrap
+// default location, used only when that file exists (no config is not an
+// error — the backoff surface just stays off). A path that WAS given but
+// cannot be read, or a malformed dlq-backoff value, is an error: a
+// silently-zero default would under-report the exact state the surface
+// exists to surface.
+func applyPoolHealthConfigDefault(configPath string, fs *flag.FlagSet, dlqBackoff *time.Duration) error {
+	path := configPath
+	if path == "" {
+		candidate := defaultPoolConfigPath()
+		if candidate == "" {
+			return nil
+		}
+
+		if _, err := os.Stat(candidate); err != nil {
+			return nil
+		}
+
+		path = candidate
+	}
+
+	fromConfig, found, err := dlqBackoffFromPoolConfig(path)
+	if err != nil || !found {
+		return err
+	}
+
+	explicit := false
+	fs.Visit(func(f *flag.Flag) {
+		if f.Name == "dlq-backoff" {
+			explicit = true
+		}
+	})
+	if !explicit {
+		*dlqBackoff = fromConfig
+	}
+
+	return nil
+}
+
 // cmdPoolHealth implements `tq pool-health`: advisory, exit 0 even on
 // WARN (like audit — the operator reads the verdict, scripts poll JSON).
 func cmdPoolHealth(args []string) error {
@@ -317,11 +398,17 @@ func cmdPoolHealth(args []string) error {
 	since := fs.Duration("since", 168*time.Hour,
 		"lookback window for outcome counts (skip streaks and DLQ backoff always scan the whole journal)")
 	dlqBackoff := fs.Duration("dlq-backoff", 0,
-		"surface each repo's poisoned-repo DLQ backoff, mirroring the harvest pool's --dlq-backoff; pass the same value the pool runs with (0 = off)")
+		"surface each repo's poisoned-repo DLQ backoff, mirroring the harvest pool's --dlq-backoff; defaults to the pool config file's dlq-backoff (see --config), else 0 = off")
 	asJSON := fs.Bool("json", false, "JSON output of the pool-health report")
+	configPath := fs.String("config", os.Getenv("TQ_POOL_CONFIG"),
+		"pool config file whose dlq-backoff seeds the --dlq-backoff default (other keys are ignored; $TQ_POOL_CONFIG; falls back to the bootstrap default ~/.config/tq/pool.conf when it exists)")
 	db := dbFlag(fs)
 
 	if err := fs.Parse(args); err != nil {
+		return err
+	}
+
+	if err := applyPoolHealthConfigDefault(*configPath, fs, dlqBackoff); err != nil {
 		return err
 	}
 
