@@ -59,6 +59,7 @@ require (
 	github.com/larsartmann/go-taskqueue/internal/journal/cqrs v0.3.3 // indirect
 	github.com/larsartmann/go-taskqueue/internal/queue/companion v0.4.0 // indirect
 	github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4 v0.3.4 // indirect
+	github.com/larsartmann/go-taskqueue/internal/retryx v0.3.4 // indirect
 	github.com/larsartmann/go-taskqueue/internal/task v0.3.3 // indirect
 	github.com/lithammer/shortuuid/v3 v3.0.7 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
@@ -107,3 +108,5 @@ replace github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4 => ../queue/
 replace github.com/larsartmann/go-taskqueue/internal/queue/companion => ../queue/companion
 
 replace github.com/larsartmann/go-taskqueue/internal/journal/cqrs => ../journal/cqrs
+
+replace github.com/larsartmann/go-taskqueue/internal/retryx => ../retryx
