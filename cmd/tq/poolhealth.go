@@ -1,8 +1,9 @@
 // Command pool-health answers "is the pool ALIVE", not "is the process
 // up": it folds the fact journal per repo into outcome counts, skip
-// streaks, and harvest recency. The 2026-10-11 outage class was a
-// projection dead for three days while process checks stayed green —
-// liveness is derived from WORK MOVING, not from serving.
+// streaks, poisoned-repo DLQ backoff, and harvest recency. The
+// 2026-10-11 outage class was a projection dead for three days while
+// process checks stayed green — liveness is derived from WORK MOVING,
+// not from serving.
 package main
 
 import (
@@ -69,6 +70,7 @@ type RepoHealth struct {
 	Dead            int            `json:"dead"`
 	RequeuesByClass map[string]int `json:"requeuesByClass,omitempty"`
 	SkipStreak      int            `json:"skipStreak"`
+	DLQBackoffUntil *time.Time     `json:"dlqBackoffUntil,omitempty"`
 	LastHarvest     *time.Time     `json:"lastHarvest,omitempty"`
 	LastActivity    *time.Time     `json:"lastActivity,omitempty"`
 	Verdict         string         `json:"verdict"`
@@ -100,13 +102,29 @@ func isHarvestEnqueue(meta poolTaskMeta) bool {
 
 // poolHealthFrom folds the journal into per-repo health. Pure: no I/O,
 // no clock — the since cutoff gates the window COUNTS while the skip
-// streak runs over the whole range (a streak that predates the window
-// is exactly the silent kind this command exists to catch). Terminal
-// facts (completed, failed, dead-lettered, cancelled) reset a repo's
-// streak — a turn that RAN proves the loop ended; Claimed deliberately
-// does not, because the pathological loop IS claim→requeue.
-func poolHealthFrom(facts []journal.Fact, meta map[task.ID]poolTaskMeta, since time.Time) PoolHealthReport {
+// streak and the DLQ backoff run over the whole range (a streak or
+// backoff that predates the window is exactly the silent kind this
+// command exists to catch). Terminal facts (completed, failed,
+// dead-lettered, cancelled) reset a repo's streak — a turn that RAN
+// proves the loop ended; Claimed deliberately does not, because the
+// pathological loop IS claim→requeue.
+//
+// With dlqBackoff > 0, a repo whose latest dead-letter fact is fresher
+// than the backoff window and that has no completion on record reports
+// poisoned-repo backoff until lastDead+dlqBackoff — the harvest pool's
+// Pacing verdict (surveyRepo) made queryable without journal digging.
+// Mirrors: any Completed fact heals (the harvester checks the repo's
+// completed tasks, ever), and dismissing the dead-lettered task heals
+// (DismissDead emits the Cancelled fact for that task).
+func poolHealthFrom(facts []journal.Fact, meta map[task.ID]poolTaskMeta, since, now time.Time, dlqBackoff time.Duration) PoolHealthReport {
 	repos := make(map[string]*RepoHealth)
+
+	// Backoff derivation state: dead-letter times per task, tasks whose
+	// dead letter was dismissed (Cancelled fact on the same task), and
+	// repos with any completion ever.
+	deadAt := make(map[task.ID]time.Time)
+	dismissed := make(map[task.ID]bool)
+	everCompleted := make(map[string]bool)
 
 	repoFor := func(id task.ID) *RepoHealth {
 		m, ok := meta[id]
@@ -124,7 +142,9 @@ func poolHealthFrom(facts []journal.Fact, meta map[task.ID]poolTaskMeta, since t
 	}
 
 	for _, fact := range facts {
-		r := repoFor(task.ID(fact.TaskID))
+		id := task.ID(fact.TaskID)
+
+		r := repoFor(id)
 		if r == nil {
 			continue
 		}
@@ -149,12 +169,20 @@ func poolHealthFrom(facts []journal.Fact, meta map[task.ID]poolTaskMeta, since t
 			}
 		case journal.Completed:
 			r.SkipStreak = 0
+			everCompleted[r.Repo] = true
 
 			if inWindow {
 				r.Completed++
 			}
 		case journal.Failed, journal.DeadLettered, journal.Cancelled:
 			r.SkipStreak = 0
+
+			switch fact.Type {
+			case journal.DeadLettered:
+				deadAt[id] = fact.Time
+			case journal.Cancelled:
+				dismissed[id] = true
+			}
 
 			if inWindow {
 				switch fact.Type {
@@ -191,6 +219,26 @@ func poolHealthFrom(facts []journal.Fact, meta map[task.ID]poolTaskMeta, since t
 		}
 	}
 
+	// Latest still-standing dead letter per repo: dismissal (a Cancelled
+	// fact on the dead-lettered task) takes a dead letter out of the
+	// backoff derivation, mirroring the harvester's table view where a
+	// dismissed task is no longer Dead.
+	lastLiveDead := make(map[string]time.Time)
+	for id, at := range deadAt {
+		if dismissed[id] {
+			continue
+		}
+
+		project := meta[id].project
+		if project == "" {
+			continue
+		}
+
+		if best, ok := lastLiveDead[project]; !ok || at.After(best) {
+			lastLiveDead[project] = at
+		}
+	}
+
 	report := PoolHealthReport{
 		Since:       since.Format(time.RFC3339),
 		FactsFolded: len(facts),
@@ -213,6 +261,19 @@ func poolHealthFrom(facts []journal.Fact, meta map[task.ID]poolTaskMeta, since t
 				"starved: %d enqueued in window with no completed/failed/dead outcome", r.Enqueued))
 		}
 
+		if dlqBackoff > 0 && !everCompleted[r.Repo] {
+			if lastDead, ok := lastLiveDead[r.Repo]; ok {
+				until := lastDead.Add(dlqBackoff)
+				if until.After(now) {
+					r.DLQBackoffUntil = &until
+					r.Verdict = poolVerdictWarn
+					r.Warnings = append(r.Warnings, fmt.Sprintf(
+						"poisoned: recent dead-letter, DLQ backoff until %s (fix the repo or rescue dead tasks)",
+						until.Format(time.RFC3339)))
+				}
+			}
+		}
+
 		if r.Verdict == "" {
 			r.Verdict = poolVerdictOK
 		}
@@ -228,7 +289,9 @@ func poolHealthFrom(facts []journal.Fact, meta map[task.ID]poolTaskMeta, since t
 }
 
 // poolHealth drains the journal, joins the task identities, and folds.
-func poolHealth(ctx context.Context, store queue.Store, since time.Time) (PoolHealthReport, error) {
+// window and now give the fold its clock (poolHealthFrom stays pure);
+// dlqBackoff > 0 turns on the poisoned-repo backoff surface.
+func poolHealth(ctx context.Context, store queue.Store, window time.Duration, now time.Time, dlqBackoff time.Duration) (PoolHealthReport, error) {
 	facts, err := drainAllFacts(ctx, store)
 	if err != nil {
 		return PoolHealthReport{}, err
@@ -244,7 +307,7 @@ func poolHealth(ctx context.Context, store queue.Store, since time.Time) (PoolHe
 		meta[t.ID] = poolTaskMeta{project: t.Project, dedup: t.DedupKey}
 	}
 
-	return poolHealthFrom(facts, meta, since), nil
+	return poolHealthFrom(facts, meta, now.Add(-window), now, dlqBackoff), nil
 }
 
 // cmdPoolHealth implements `tq pool-health`: advisory, exit 0 even on
@@ -252,7 +315,9 @@ func poolHealth(ctx context.Context, store queue.Store, since time.Time) (PoolHe
 func cmdPoolHealth(args []string) error {
 	fs := flag.NewFlagSet("pool-health", flag.ExitOnError)
 	since := fs.Duration("since", 168*time.Hour,
-		"lookback window for outcome counts (skip streaks always scan the whole journal)")
+		"lookback window for outcome counts (skip streaks and DLQ backoff always scan the whole journal)")
+	dlqBackoff := fs.Duration("dlq-backoff", 0,
+		"surface each repo's poisoned-repo DLQ backoff, mirroring the harvest pool's --dlq-backoff; pass the same value the pool runs with (0 = off)")
 	asJSON := fs.Bool("json", false, "JSON output of the pool-health report")
 	db := dbFlag(fs)
 
@@ -263,7 +328,7 @@ func cmdPoolHealth(args []string) error {
 	s := mustOpenStore(mustDeploymentFromDB(*db))
 	defer s.Close()
 
-	report, err := poolHealth(context.Background(), s, time.Now().Add(-*since))
+	report, err := poolHealth(context.Background(), s, *since, time.Now(), *dlqBackoff)
 	if err != nil {
 		return err
 	}

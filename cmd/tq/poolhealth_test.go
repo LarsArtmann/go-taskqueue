@@ -57,7 +57,7 @@ func TestPoolHealthSkipStreakWarns(t *testing.T) {
 		}
 	}
 
-	report, err := poolHealth(ctx, store, time.Now().Add(-24*time.Hour))
+	report, err := poolHealth(ctx, store, 24*time.Hour, time.Now(), 0)
 	if err != nil {
 		t.Fatalf("poolHealth: %v", err)
 	}
@@ -113,7 +113,7 @@ func TestPoolHealthTerminalResetsStreak(t *testing.T) {
 		t.Fatalf("Complete: %v", err)
 	}
 
-	report, err := poolHealth(ctx, store, time.Now().Add(-24*time.Hour))
+	report, err := poolHealth(ctx, store, 24*time.Hour, time.Now(), 0)
 	if err != nil {
 		t.Fatalf("poolHealth: %v", err)
 	}
@@ -159,7 +159,7 @@ func TestPoolHealthHarvestDetection(t *testing.T) {
 		t.Fatalf("Enqueue direct: %v", err)
 	}
 
-	report, err := poolHealth(ctx, store, time.Now().Add(-24*time.Hour))
+	report, err := poolHealth(ctx, store, 24*time.Hour, time.Now(), 0)
 	if err != nil {
 		t.Fatalf("poolHealth: %v", err)
 	}
@@ -187,7 +187,7 @@ func TestPoolHealthStarvedWarns(t *testing.T) {
 		t.Fatalf("Enqueue: %v", err)
 	}
 
-	report, err := poolHealth(ctx, store, time.Now().Add(-24*time.Hour))
+	report, err := poolHealth(ctx, store, 24*time.Hour, time.Now(), 0)
 	if err != nil {
 		t.Fatalf("poolHealth: %v", err)
 	}
@@ -223,7 +223,7 @@ func TestPoolHealthJSONShape(t *testing.T) {
 		t.Fatalf("Requeue: %v", err)
 	}
 
-	report, err := poolHealth(ctx, store, time.Now().Add(-24*time.Hour))
+	report, err := poolHealth(ctx, store, 24*time.Hour, time.Now(), 0)
 	if err != nil {
 		t.Fatalf("poolHealth: %v", err)
 	}
@@ -243,5 +243,192 @@ func TestPoolHealthJSONShape(t *testing.T) {
 		if !strings.Contains(string(raw), want) {
 			t.Fatalf("JSON %s lacks %q", raw, want)
 		}
+	}
+}
+
+// TestPoolHealthDLQBackoffWarns pins the poisoned-repo surface: a repo
+// whose latest dead-letter fact is fresher than the backoff window, with
+// no completion on record, reports "in DLQ backoff until" and warns —
+// the harvest pool's Pacing verdict made queryable.
+func TestPoolHealthDLQBackoffWarns(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	store := journalAuditStore(t)
+
+	if _, err := store.Enqueue(ctx, task.New{Project: "poisoned", Type: "sh", Payload: []byte(`"true"`)}); err != nil {
+		t.Fatalf("Enqueue: %v", err)
+	}
+
+	claimed, claim, err := store.ClaimDue(ctx, "w1", time.Minute)
+	if err != nil {
+		t.Fatalf("ClaimDue: %v", err)
+	}
+
+	if err := store.FailPermanent(ctx, claimed.ID, claim, "boom", nil); err != nil {
+		t.Fatalf("FailPermanent: %v", err)
+	}
+
+	report, err := poolHealth(ctx, store, 24*time.Hour, time.Now(), time.Hour)
+	if err != nil {
+		t.Fatalf("poolHealth: %v", err)
+	}
+
+	r := poolRepoByName(t, report, "poisoned")
+	if r.DLQBackoffUntil == nil {
+		t.Fatal("DLQBackoffUntil not set despite a fresh dead letter and no completion")
+	}
+
+	if !r.DLQBackoffUntil.After(time.Now()) || r.DLQBackoffUntil.After(time.Now().Add(2*time.Hour)) {
+		t.Fatalf("DLQBackoffUntil = %v, want ~1h past the dead letter", r.DLQBackoffUntil)
+	}
+
+	if r.Verdict != poolVerdictWarn {
+		t.Fatalf("Verdict = %q, want WARN", r.Verdict)
+	}
+
+	if warnings := strings.Join(r.Warnings, "; "); !strings.Contains(warnings, "poisoned") {
+		t.Fatalf("warnings %q lack the poisoned cause", warnings)
+	}
+
+	raw, err := json.Marshal(report)
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+
+	if !strings.Contains(string(raw), `"dlqBackoffUntil"`) {
+		t.Fatalf("JSON %s lacks dlqBackoffUntil", raw)
+	}
+}
+
+// TestPoolHealthDLQBackoffExpiryAndOff pins the backoff's off-ramps: an
+// expired window (now past lastDead+backoff) and the flag at 0 both
+// leave DLQBackoffUntil unset.
+func TestPoolHealthDLQBackoffExpiryAndOff(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	store := journalAuditStore(t)
+
+	if _, err := store.Enqueue(ctx, task.New{Project: "expired", Type: "sh", Payload: []byte(`"true"`)}); err != nil {
+		t.Fatalf("Enqueue: %v", err)
+	}
+
+	claimed, claim, err := store.ClaimDue(ctx, "w1", time.Minute)
+	if err != nil {
+		t.Fatalf("ClaimDue: %v", err)
+	}
+
+	if err := store.FailPermanent(ctx, claimed.ID, claim, "boom", nil); err != nil {
+		t.Fatalf("FailPermanent: %v", err)
+	}
+
+	expired, err := poolHealth(ctx, store, 24*time.Hour, time.Now().Add(2*time.Hour), time.Hour)
+	if err != nil {
+		t.Fatalf("poolHealth expired: %v", err)
+	}
+
+	if r := poolRepoByName(t, expired, "expired"); r.DLQBackoffUntil != nil {
+		t.Fatalf("DLQBackoffUntil = %v, want nil after the backoff window", r.DLQBackoffUntil)
+	}
+
+	off, err := poolHealth(ctx, store, 24*time.Hour, time.Now(), 0)
+	if err != nil {
+		t.Fatalf("poolHealth off: %v", err)
+	}
+
+	if r := poolRepoByName(t, off, "expired"); r.DLQBackoffUntil != nil {
+		t.Fatalf("DLQBackoffUntil = %v, want nil with the flag off", r.DLQBackoffUntil)
+	}
+}
+
+// TestPoolHealthDLQBackoffDismissalHeals pins the dismissal off-ramp:
+// dismissing the dead-lettered task (the DLQ-autopsy path) lifts the
+// backoff — the verdict returns to OK.
+func TestPoolHealthDLQBackoffDismissalHeals(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	store := journalAuditStore(t)
+
+	if _, err := store.Enqueue(ctx, task.New{Project: "healed", Type: "sh", Payload: []byte(`"true"`)}); err != nil {
+		t.Fatalf("Enqueue: %v", err)
+	}
+
+	claimed, claim, err := store.ClaimDue(ctx, "w1", time.Minute)
+	if err != nil {
+		t.Fatalf("ClaimDue: %v", err)
+	}
+
+	if err := store.FailPermanent(ctx, claimed.ID, claim, "boom", nil); err != nil {
+		t.Fatalf("FailPermanent: %v", err)
+	}
+
+	if err := store.DismissDead(ctx, claimed.ID, "autopsy: gate artifact", "tester"); err != nil {
+		t.Fatalf("DismissDead: %v", err)
+	}
+
+	report, err := poolHealth(ctx, store, 24*time.Hour, time.Now(), time.Hour)
+	if err != nil {
+		t.Fatalf("poolHealth: %v", err)
+	}
+
+	r := poolRepoByName(t, report, "healed")
+	if r.DLQBackoffUntil != nil {
+		t.Fatalf("DLQBackoffUntil = %v, want nil after dismissal", r.DLQBackoffUntil)
+	}
+
+	if r.Verdict != poolVerdictOK {
+		t.Fatalf("Verdict = %q, want OK after dismissal", r.Verdict)
+	}
+}
+
+// TestPoolHealthDLQBackoffCompletionHeals pins the completion off-ramp:
+// rescuing the dead task and completing it clears the backoff, exactly
+// like the harvester's ever-completed check.
+func TestPoolHealthDLQBackoffCompletionHeals(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	store := journalAuditStore(t)
+
+	if _, err := store.Enqueue(ctx, task.New{Project: "rescued", Type: "sh", Payload: []byte(`"true"`)}); err != nil {
+		t.Fatalf("Enqueue: %v", err)
+	}
+
+	claimed, claim, err := store.ClaimDue(ctx, "w1", time.Minute)
+	if err != nil {
+		t.Fatalf("ClaimDue: %v", err)
+	}
+
+	if err := store.FailPermanent(ctx, claimed.ID, claim, "boom", nil); err != nil {
+		t.Fatalf("FailPermanent: %v", err)
+	}
+
+	if err := store.RescueDead(ctx, claimed.ID, 2); err != nil {
+		t.Fatalf("RescueDead: %v", err)
+	}
+
+	rescued, claim2, err := store.ClaimDue(ctx, "w1", time.Minute)
+	if err != nil {
+		t.Fatalf("ClaimDue rescued: %v", err)
+	}
+
+	if err := store.Complete(ctx, rescued.ID, claim2, nil); err != nil {
+		t.Fatalf("Complete: %v", err)
+	}
+
+	report, err := poolHealth(ctx, store, 24*time.Hour, time.Now(), time.Hour)
+	if err != nil {
+		t.Fatalf("poolHealth: %v", err)
+	}
+
+	r := poolRepoByName(t, report, "rescued")
+	if r.DLQBackoffUntil != nil {
+		t.Fatalf("DLQBackoffUntil = %v, want nil after a completion", r.DLQBackoffUntil)
+	}
+
+	if r.Verdict != poolVerdictOK {
+		t.Fatalf("Verdict = %q, want OK after a completion", r.Verdict)
 	}
 }
