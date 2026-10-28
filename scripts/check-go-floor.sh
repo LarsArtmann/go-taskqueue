@@ -106,10 +106,15 @@ if [ "${1:-}" = "--self-test" ]; then
 		rc=1
 	fi
 
-	# FAIL shape: unmeasured tree (no tracked go.mod).
+	# FAIL shape: unmeasured tree (no tracked go.mod). Canary (expect-branch
+	# contract): rc!=0 must come from the MEASURE guard's own FAIL line, so a
+	# fixture drifting to another branch reds here instead of false-greening.
 	git -C "$tmp" rm -q --cached go.mod
-	if check_floors "$tmp" >/dev/null 2>&1; then
+	if out="$(check_floors "$tmp" 2>&1)"; then
 		echo "FAIL: self-test — an unmeasured tree must fail the measure guard"
+		rc=1
+	elif [[ "$out" != *"the gate must MEASURE"* ]]; then
+		echo "FAIL: self-test — unmeasured tree failed on the wrong branch: $out"
 		rc=1
 	fi
 

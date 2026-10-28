@@ -228,6 +228,7 @@ run_case "non-signature failure does not retry" 1 1 \
 	bash -c 'printf "GATE-RUN\nFAIL: undefined: atomic\n"; exit 1'
 must_not_mention "non-signature case" 'retrying ONCE'
 must_not_mention "non-signature case" 'FLAKE-RETRY'
+must_mention "non-signature case" 'FAIL: undefined: atomic'
 
 # Pin 5: run the SHIPPED scripts/verify.sh itself through a scripted
 # flake-heal. The battery is hardcoded, so the sandbox is PATH: a shimmed
@@ -296,6 +297,7 @@ if [ "$red_invocations" -ne 1 ]; then
 fi
 must_not_mention "in-situ genuine-red case" 'retrying ONCE'
 must_not_mention "in-situ genuine-red case" 'FLAKE-RETRY'
+must_mention "in-situ genuine-red case" 'FAIL: undefined: atomic.Lane'
 echo "ok: in-situ verify.sh genuine-red (rc=1, one go invocation, zero retry lines)"
 
 # Pin 7 variant (2026-10-13 01-54 closeout §f7): the same genuine-red path

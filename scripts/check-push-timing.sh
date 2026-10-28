@@ -104,8 +104,11 @@ Task-Queue-ID: 000001a175f4de403dc14ed9579100000000'
 		echo "FAIL: non-daemon commit should be allowed regardless of age"
 		rc=1
 	}
-	if check_commit "$fresh_sha" "$now" 2>/dev/null; then
-		echo "FAIL: fresh footer-less daemon commit should be refused"
+	# Canary (expect-branch contract): the refusal must print the REFUSAL
+	# branch's own line, so a silent rc!=0 from a wrong branch reds here.
+	fresh_out="$(check_commit "$fresh_sha" "$now" 2>&1)" && fresh_rc=0 || fresh_rc=$?
+	if [ "$fresh_rc" -eq 0 ] || [[ "$fresh_out" != *"PUSH-TIMING REFUSAL:"* ]]; then
+		echo "FAIL: fresh footer-less daemon commit should be refused with a REFUSAL line (rc=$fresh_rc): $fresh_out"
 		rc=1
 	fi
 	out="$(printf 'refs/heads/master %s refs/heads/master %s\n' "$fresh_sha" "$fresh_sha" | run_hook "$now" 2>&1)" && hook_rc=0 || hook_rc=$?
@@ -114,9 +117,10 @@ Task-Queue-ID: 000001a175f4de403dc14ed9579100000000'
 		rc=1
 	}
 	case "$out" in
-	*"push-timing summary: 1 commits checked, 1 refused"*) ;;
+	# refusal canary (expect-branch contract) then summary pin, print order
+	*"PUSH-TIMING REFUSAL:"*"push-timing summary: 1 commits checked, 1 refused"*) ;;
 	*)
-		echo "FAIL: summary pin mismatch:"
+		echo "FAIL: refusal canary or summary pin mismatch:"
 		printf '%s\n' "$out"
 		rc=1
 		;;

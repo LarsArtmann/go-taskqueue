@@ -116,7 +116,7 @@ cmdtq_cqrs_parity() {
 }
 
 self_test() {
-	local tmp rc h1 h2 blind
+	local tmp rc h1 h2 blind drift_out parity_out
 	tmp="$(mktemp -d)"
 	trap 'rm -rf "$tmp"' RETURN
 	git init -q "$tmp/repo"
@@ -142,21 +142,23 @@ self_test() {
 		return 1
 	fi
 
-	# Case 2: bump go.mod without re-vendoring (today's incident).
+	# Case 2: bump go.mod without re-vendoring (today's incident). Canary
+	# (expect-branch contract): the DRIFTED line must name THIS scope.
 	printf 'module test\n\ngo 1.27\n\nrequire x/y v1.2.3\n' >"$tmp/repo/go.mod"
 	rc=0
-	(cd "$tmp/repo" && detect_drift "root go.mod/go.sum" go.mod go.sum) || rc=1
-	if [ "$rc" -ne 1 ]; then
-		echo "SELF-TEST FAIL: drifted go.mod NOT detected" >&2
+	drift_out="$(cd "$tmp/repo" && detect_drift "root go.mod/go.sum" go.mod go.sum 2>&1)" || rc=$?
+	if [ "$rc" -ne 1 ] || [[ "$drift_out" != *"root go.mod/go.sum DRIFTED"* ]]; then
+		echo "SELF-TEST FAIL: drifted go.mod NOT detected (rc=$rc, out: $drift_out)" >&2
 		return 1
 	fi
 
-	# Case 3: sub-module go.sum drift without go.mod change.
+	# Case 3: sub-module go.sum drift without go.mod change. Canary
+	# (expect-branch contract): the DRIFTED line must name THIS scope.
 	printf 'x/y v1.2.3 h1:zzz=\nx/y v1.2.3/go.mod h1:zzz=\n' >"$tmp/repo/sub/go.sum"
 	rc=0
-	(cd "$tmp/repo" && detect_drift "sub tidy" sub/go.mod sub/go.sum) || rc=1
-	if [ "$rc" -ne 1 ]; then
-		echo "SELF-TEST FAIL: drifted sub go.sum NOT detected" >&2
+	drift_out="$(cd "$tmp/repo" && detect_drift "sub tidy" sub/go.mod sub/go.sum 2>&1)" || rc=$?
+	if [ "$rc" -ne 1 ] || [[ "$drift_out" != *"sub tidy DRIFTED"* ]]; then
+		echo "SELF-TEST FAIL: drifted sub go.sum NOT detected (rc=$rc, out: $drift_out)" >&2
 		return 1
 	fi
 
@@ -206,12 +208,14 @@ self_test() {
 	esac
 
 	# Case 7: cmd/tq cqrs parity — a lagging cmd/tq pin must FAIL, an
-	# at-parity pin must pass (2026-10-15 parity-sweep §e2 class).
+	# at-parity pin must pass (2026-10-15 parity-sweep §e2 class). Canary
+	# (expect-branch contract): the FAIL must name the lag, not rc-only.
 	mkdir -p "$tmp/repo/internal/dep" "$tmp/repo/cmd"
 	printf 'module example.com/root\n\ngo 1.27\n\nrequire (\n\tgithub.com/larsartmann/go-cqrs-lite/event/v4 v4.15.1\n\tgithub.com/larsartmann/go-cqrs-lite/id/v4 v4.7.2\n)\n' >"$tmp/repo/internal/dep/go.mod"
 	printf 'module example.com/cmdtq\n\ngo 1.27\n\nrequire github.com/larsartmann/go-cqrs-lite/event/v4 v4.13.1\n' >"$tmp/repo/cmd/tq-go.mod"
-	if cmdtq_cqrs_parity "$tmp/repo/cmd/tq-go.mod" "$tmp/repo/internal/dep" >/dev/null 2>&1; then
-		echo "SELF-TEST FAIL: lagging cmd/tq cqrs pin NOT detected" >&2
+	parity_out="$(cmdtq_cqrs_parity "$tmp/repo/cmd/tq-go.mod" "$tmp/repo/internal/dep" 2>&1)" && parity_rc=0 || parity_rc=$?
+	if [ "$parity_rc" -eq 0 ] || [[ "$parity_out" != *"LAGGING the root sub-module graph's max"* ]]; then
+		echo "SELF-TEST FAIL: lagging cmd/tq cqrs pin NOT detected (rc=$parity_rc, out: $parity_out)" >&2
 		return 1
 	fi
 	printf 'module example.com/cmdtq\n\ngo 1.27\n\nrequire github.com/larsartmann/go-cqrs-lite/event/v4 v4.15.1\n' >"$tmp/repo/cmd/tq-go.mod"

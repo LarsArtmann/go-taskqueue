@@ -76,8 +76,9 @@ if [ "${1:-}" = "--self-test" ]; then
 	# Mutation 1: drop the prose needle.
 	grep -vF "must never LOWER" "$tmp/SECURITY.md" >"$tmp/SECURITY.md.mut" &&
 		mv "$tmp/SECURITY.md.mut" "$tmp/SECURITY.md"
-	if TQ_SECURITY_ROOT="$tmp" run_gate; then
-		echo "self-test: gate missed the SECURITY.md prose drift"
+	m1_out="$(TQ_SECURITY_ROOT="$tmp" run_gate 2>&1)" && m1_rc=0 || m1_rc=$?
+	if [ "$m1_rc" -eq 0 ] || [[ "$m1_out" != *"no longer contains: must never LOWER"* ]]; then
+		echo "self-test: gate missed the SECURITY.md prose drift (rc=$m1_rc): $m1_out"
 		exit 1
 	fi
 	cp SECURITY.md "$tmp/SECURITY.md"
@@ -86,8 +87,9 @@ if [ "${1:-}" = "--self-test" ]; then
 	sed 's/func MergeFindings(/func MergeFindingsRenamed(/' "$tmp/internal/executor/finding.go" \
 		>"$tmp/internal/executor/finding.go.mut" &&
 		mv "$tmp/internal/executor/finding.go.mut" "$tmp/internal/executor/finding.go"
-	if TQ_SECURITY_ROOT="$tmp" run_gate; then
-		echo "self-test: gate missed the MergeFindings rename"
+	m2_out="$(TQ_SECURITY_ROOT="$tmp" run_gate 2>&1)" && m2_rc=0 || m2_rc=$?
+	if [ "$m2_rc" -eq 0 ] || [[ "$m2_out" != *"no longer contains: func MergeFindings("* ]]; then
+		echo "self-test: gate missed the MergeFindings rename (rc=$m2_rc): $m2_out"
 		exit 1
 	fi
 

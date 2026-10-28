@@ -110,10 +110,11 @@ max0_out="$(
 	with_transient_retry "pin max0" bash -c 'printf "GATE-RUN\n"; exit 1'
 )" || rc_max0=$?
 max0_runs="$(grep -c '^GATE-RUN$' <<<"$max0_out" || true)"
-if [ "$rc_max0" -eq 1 ] && [ "$max0_runs" -eq 1 ] && ! grep -q '^WARN:' <<<"$max0_out"; then
-	echo "ok: TRANSIENT_MAX_POLLS=0 escape hatch fails immediately (rc=1, runs=1, no polls)"
+if [ "$rc_max0" -eq 1 ] && [ "$max0_runs" -eq 1 ] && ! grep -q '^WARN:' <<<"$max0_out" &&
+	grep -q 'still failing after 0 retry polls' <<<"$max0_out"; then
+	echo "ok: TRANSIENT_MAX_POLLS=0 escape hatch fails immediately (rc=1, runs=1, no polls, exhaust canary names 0 polls)"
 else
-	echo "FAIL: TRANSIENT_MAX_POLLS=0 escape hatch — want rc=1, 1 run, 0 WARNs; got rc=$rc_max0 runs=$max0_runs"
+	echo "FAIL: TRANSIENT_MAX_POLLS=0 escape hatch — want rc=1, 1 run, 0 WARNs + 'still failing after 0 retry polls'; got rc=$rc_max0 runs=$max0_runs"
 	printf '%s\n' "$max0_out"
 	exit 1
 fi

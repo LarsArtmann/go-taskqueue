@@ -78,8 +78,11 @@ if $self_test; then
 	tmp="$(mktemp -d)"
 	trap 'rm -rf "$tmp"' EXIT
 
-	if ./scripts/check-consumer-tag.sh --bogus-flag >/dev/null 2>&1; then
-		echo "FAIL: --bogus-flag accepted" >&2
+	# Canary (expect-branch contract): rc!=0 must come from the unknown-flag
+	# rejection branch's own FAIL line.
+	bogus_out="$(./scripts/check-consumer-tag.sh --bogus-flag 2>&1)" && bogus_rc=0 || bogus_rc=$?
+	if [ "$bogus_rc" -eq 0 ] || [[ "$bogus_out" != *"FAIL: unknown flag: --bogus-flag"* ]]; then
+		echo "FAIL: --bogus-flag accepted or refused on the wrong branch (rc=$bogus_rc): $bogus_out" >&2
 		exit 1
 	fi
 

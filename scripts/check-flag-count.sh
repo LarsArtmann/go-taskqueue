@@ -18,7 +18,7 @@
 set -uo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-BASELINE="$REPO_ROOT/scripts/flag-count-baseline.txt"
+BASELINE="${FLAG_COUNT_BASELINE:-$REPO_ROOT/scripts/flag-count-baseline.txt}"
 WORK="$(mktemp -d)"
 TQ="${TQ_BIN:-$WORK/tq}"
 cleanup() { rm -rf "$WORK"; }
@@ -98,24 +98,18 @@ fi
 
 if [ "${FLAG_COUNT_SELF_TEST:-}" = "1" ]; then
 	echo "== self-test: tampered baseline must FAIL =="
-	sed 's/^agent-pool 55$/agent-pool 999/' "$BASELINE" >"$WORK/tampered"
-	sed -i "s|$BASELINE|$WORK/tampered|" /dev/null 2>/dev/null || true
-	# Re-run the comparison logic against the tampered file by pointing the
-	# loop at it: simplest is a subshell re-read with BASELINE overridden.
-	tampered_fail=0
-	while read -r cmd expected; do
-		case "$cmd" in
-		'#'*) continue ;;
-		esac
-		got="${actual[$cmd]:-MISSING-COMMAND}"
-		if [ "$got" != "$expected" ]; then
-			tampered_fail=1
-		fi
-	done <"$WORK/tampered"
-	if [ "$tampered_fail" = 1 ]; then
-		echo "self-test ok: tampered baseline (agent-pool 999) detected as drift"
+	# Canary (expect-branch contract): the tampered baseline must be caught
+	# by a REAL gate re-run printing its own drift FAIL line naming
+	# agent-pool. The previous inline re-implementation never executed the
+	# gate's FAIL branch, so the pin could green while the gate was broken.
+	sed 's/^agent-pool [0-9][0-9]*$/agent-pool 999/' "$BASELINE" >"$WORK/tampered"
+	st_rc=0
+	st_out="$(FLAG_COUNT_SELF_TEST= FLAG_COUNT_BASELINE="$WORK/tampered" TQ_BIN="$TQ" "$0" 2>&1)" || st_rc=$?
+	if [ "$st_rc" -eq 1 ] && grep -q 'FAIL: tq agent-pool registered flags:' <<<"$st_out"; then
+		echo "self-test ok: tampered baseline (agent-pool 999) hits the gate's drift FAIL line (rc=1)"
 	else
-		echo "FAIL: self-test did NOT detect the tampered baseline"
+		echo "FAIL: self-test — want rc=1 + agent-pool drift FAIL line; got rc=$st_rc"
+		printf '%s\n' "$st_out"
 		fail=1
 	fi
 fi

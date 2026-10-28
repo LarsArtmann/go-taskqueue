@@ -68,18 +68,20 @@ pass "negation-rule dest proceeds (! match is deliberate content, 03-47 b5)"
 r=$(new_repo dir-src)
 mkdir -p "$r/ev" "$r/docs/status/assets/arch"
 echo x >"$r/ev/a.txt"
-if run_in "$r" "$TARGET" ev docs/status/assets/arch 2>/dev/null; then
-	fail "directory source was not refused"
+if out=$(run_in "$r" "$TARGET" ev docs/status/assets/arch 2>&1); then
+	fail "directory source was not refused: $out"
 fi
+grep -q "not a regular file" <<<"$out" || fail "dir-source refusal lacks the branch's own line: $out"
 pass "dir-source refusal"
 
 # --- outside-repo dest refusal --------------------------------------------
 r=$(new_repo outside-dest)
 mkdir -p "$r/ev"
 echo x >"$r/ev/a.txt"
-if run_in "$r" "$TARGET" ev/a.txt "$WORK/outside" 2>/dev/null; then
-	fail "outside-repo destination was not refused"
+if out=$(run_in "$r" "$TARGET" ev/a.txt "$WORK/outside" 2>&1); then
+	fail "outside-repo destination was not refused: $out"
 fi
+grep -q "resolves outside the repository" <<<"$out" || fail "outside-dest refusal lacks the branch's own line: $out"
 [ ! -e "$WORK/outside" ] || fail "refused run created the outside dir"
 pass "outside-repo dest refusal"
 
@@ -88,9 +90,10 @@ r=$(new_repo dup-basename)
 mkdir -p "$r/ev1" "$r/ev2" "$r/docs/status/assets"
 echo x >"$r/ev1/a.txt"
 echo y >"$r/ev2/a.txt"
-if run_in "$r" "$TARGET" ev1/a.txt ev2/a.txt docs/status/assets 2>/dev/null; then
-	fail "duplicate basenames were not refused"
+if out=$(run_in "$r" "$TARGET" ev1/a.txt ev2/a.txt docs/status/assets 2>&1); then
+	fail "duplicate basenames were not refused: $out"
 fi
+grep -q "duplicate basename among sources" <<<"$out" || fail "dup-basename refusal lacks the branch's own line: $out"
 pass "dup-basename refusal"
 
 # --- PENDING (fresh archive, no daemon commit yet) -------------------------
