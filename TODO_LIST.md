@@ -1071,6 +1071,10 @@ not here.
 - [ ] scripts/smoke/proxy-wait.sh: give netns_is_empty a distinct diagnostic for `/proc/self/net/dev` UNREADABLE (hermetic sandbox) vs non-loopback-only, so a technical failure isn't reported as a real non-empty namespace; test the unreadable branch (closeout 2026-10-23 17-50 §e2)
 - [ ] Extend the report-body secret gate's scope beyond docs/status: docs/problems/, docs/planning/, and README.md are agent-authored prose too and redaction-shaped fakes plausibly land there; widen the walker in internal/executor/redact_reports_test.go and re-sweep (follow-up: report-body secret gate, 2026-10-28)
 - [ ] Let `tq pool-health` read the pool config file's `dlq-backoff` as the default for --dlq-backoff (poolconfig.go loader is already in-package), so the backoff surface doesn't require re-passing the pool's flag value by hand (follow-up: poisoned-repo DLQ backoff surface, 2026-10-28)
+- [ ] Boundary pin for the pool-health DLQ backoff fold: table-driven test at `until == now` (expired, nil) and 1ns before (active, set) — kills the `After` off-by-one class (follow-up: closeout 2026-10-28 04-18 §f4)
+- [ ] `tq pool-health` summary line counts repos currently in DLQ backoff (`N repos, M in DLQ backoff, …`), so scripts get the aggregate without folding the JSON (follow-up: closeout 2026-10-28 04-18 §f5)
+- [ ] `tq dlq` rows cross-link the repo's poisoned DLQ backoff state (same journal truth, DLQ-side surface; reuse the poolhealth fold derivation) (follow-up: closeout 2026-10-28 04-18 §f6)
+- [ ] Webui pool/dashboard panel renders `dlqBackoffUntil` when the pool-health JSON carries it — the field shipped with no consumer (follow-up: closeout 2026-10-28 04-18 §f7)
 
 ## Done-prompt ninth dispatch (2026-10-23; source: docs/status/2026-10-23_18-09_done-prompt-window-report-ninth-dispatch.md §f; deduped against rows 678, 661-664, 1006, 220, 603 — quiet ci-local, counter-key upstream, transition tests, stats read-only line, fold-lock wait, fixture v2, chromedp NOT re-listed)
 

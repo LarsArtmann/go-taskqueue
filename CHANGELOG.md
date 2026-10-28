@@ -7,6 +7,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- **`tq pool-health` surfaces poisoned-repo DLQ backoff** (2026-10-28):
+  `tq pool-health --dlq-backoff <dur>` folds dead-letter facts per repo
+  into the harvest pool's poisoned verdict — a repo whose latest
+  dead-letter is fresher than the window with no completion on record
+  reports a `poisoned: recent dead-letter, DLQ backoff until <ts>` WARN
+  and carries `dlqBackoffUntil` in the JSON output; completion of any
+  task or DLQ dismissal of the dead-lettered task lifts it (0 = off,
+  unchanged output).
 - **Dirty-tree preflights park instead of burning via the env-streak
   breaker** (2026-10-27): a dirty-working-tree preflight refusal no longer
   counts toward the 3-streak environmental-requeue breaker — after 3
