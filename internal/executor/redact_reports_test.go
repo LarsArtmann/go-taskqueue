@@ -12,17 +12,19 @@ import (
 
 // The report-body half of the secrets-in-logs pass (grid cell
 // closeout × security, GAP 2026-10-23): output tails pass redactOutput
-// before they reach journal facts, but a)-g) closeout reports and status
-// reports are agent-authored prose persisted straight into docs/status —
-// no equivalent check guarded them. The gate sweeps every report body
-// through the SAME secretPatterns (via RedactSecrets) and fails the
-// battery on any surviving secret-shaped string, so a token that leaks
-// into a report dies at the verify gate, not in the docs tree.
+// before they reach journal facts, but agent-authored prose persisted
+// into the docs tree — a)-g) closeout reports, status reports,
+// docs/problems, docs/planning, README.md — had no equivalent check.
+// The gate sweeps every report body through the SAME secretPatterns
+// (via RedactSecrets) and fails the battery on any surviving
+// secret-shaped string, so a token that leaks into a report dies at the
+// verify gate, not in the docs tree.
 //
-// Sweep 2026-10-28 (one grep pass per pattern class over
-// docs/status/**/*.md): zero live-shaped hits. Three benign classes
-// exist and are masked before the scan — all pinned in
-// reportBenignSecretShapes with their justification.
+// Sweep 2026-10-28 (one grep pass per pattern class over docs/status,
+// widened the same day to docs/problems, docs/planning, README.md):
+// zero live-shaped hits. Three benign classes exist and are masked
+// before the scan — all pinned in reportBenignSecretShapes with their
+// justification.
 
 // reportBenignSecretShapes are the report-body strings that match a
 // secret pattern without being secrets. The table is closed: a new entry
@@ -34,7 +36,7 @@ var reportBenignSecretShapes = []struct {
 }{
 	// "task-000001a0…" references: the classic sk- pattern has no left
 	// boundary, so every task-ID mention matches as "sk-…" — the sweep
-	// found this is the only sk-class shape docs/status carries.
+	// found this is the only sk-class shape the swept surfaces carry.
 	{"task-id reference", regexp.MustCompile(`(?i)task-[0-9a-f]{16,}`)},
 	// Self-labeled fake probes (fakeAuditProbe) quoted by the reports
 	// documenting the audit machinery; no real credential contains
@@ -79,52 +81,69 @@ func reportSecretOffenses(content string) (offenses []string, crossLine bool) {
 	return offenses, crossLine
 }
 
-// TestStatusReportBodiesCarryNoSecretShapedStrings is the report-body
-// gate: every docs/status markdown report must scan clean through the
-// same redaction table that guards output tails.
-func TestStatusReportBodiesCarryNoSecretShapedStrings(t *testing.T) {
+// TestReportBodiesCarryNoSecretShapedStrings is the report-body gate:
+// every agent-authored markdown surface — docs/status reports,
+// docs/problems, docs/planning, and README.md — must scan clean through
+// the same redaction table that guards output tails.
+func TestReportBodiesCarryNoSecretShapedStrings(t *testing.T) {
 	t.Parallel()
 
-	reportsRoot := filepath.Join("..", "..", "docs", "status")
-	if _, err := os.Stat(reportsRoot); err != nil {
-		t.Fatalf("report surface missing: %v", err)
+	surfaces := []struct {
+		name string
+		root string
+	}{
+		{"docs/status", filepath.Join("..", "..", "docs", "status")},
+		{"docs/problems", filepath.Join("..", "..", "docs", "problems")},
+		{"docs/planning", filepath.Join("..", "..", "docs", "planning")},
+		{"README.md", filepath.Join("..", "..", "README.md")},
 	}
 
-	checked := 0
+	for _, surface := range surfaces {
+		surface := surface
+		t.Run(surface.name, func(t *testing.T) {
+			t.Parallel()
 
-	walkErr := filepath.WalkDir(reportsRoot, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
+			if _, err := os.Stat(surface.root); err != nil {
+				t.Fatalf("report surface missing: %v", err)
+			}
 
-		if d.IsDir() || !strings.HasSuffix(path, ".md") {
-			return nil
-		}
+			checked := 0
 
-		content, err := os.ReadFile(path)
-		if err != nil {
-			return err
-		}
+			walkErr := filepath.WalkDir(surface.root, func(path string, d fs.DirEntry, err error) error {
+				if err != nil {
+					return err
+				}
 
-		checked++
+				if d.IsDir() || !strings.HasSuffix(path, ".md") {
+					return nil
+				}
 
-		offenses, crossLine := reportSecretOffenses(string(content))
-		for _, offense := range offenses {
-			t.Errorf("%s: secret-shaped string in report body: %s", path, offense)
-		}
+				content, err := os.ReadFile(path)
+				if err != nil {
+					return err
+				}
 
-		if crossLine {
-			t.Errorf("%s: secret-shaped match spans lines the line scan cannot attribute", path)
-		}
+				checked++
 
-		return nil
-	})
-	if walkErr != nil {
-		t.Fatalf("walk %s: %v", reportsRoot, walkErr)
-	}
+				offenses, crossLine := reportSecretOffenses(string(content))
+				for _, offense := range offenses {
+					t.Errorf("%s: secret-shaped string in report body: %s", path, offense)
+				}
 
-	if checked == 0 {
-		t.Fatalf("no reports under %s — the gate is scanning nothing", reportsRoot)
+				if crossLine {
+					t.Errorf("%s: secret-shaped match spans lines the line scan cannot attribute", path)
+				}
+
+				return nil
+			})
+			if walkErr != nil {
+				t.Fatalf("walk %s: %v", surface.root, walkErr)
+			}
+
+			if checked == 0 {
+				t.Fatalf("no reports under %s — the gate is scanning nothing", surface.root)
+			}
+		})
 	}
 }
 
