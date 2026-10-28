@@ -312,3 +312,38 @@ func TestHealthProjectionCheck(t *testing.T) {
 		t.Errorf("wedged projection = %+v, want warn", proj)
 	}
 }
+
+// TestHealthFoldFollowerCheck pins the demoted-serve staleness contract:
+// when the server lost the fold-lock election (MarkFoldFollower), the
+// projection check becomes the follower warning — the mounted model never
+// folds again, so an operator must see the frozen-at-mount surface before
+// trusting the dashboard (TODO row: eleventh dispatch §e/§f7).
+func TestHealthFoldFollowerCheck(t *testing.T) {
+	t.Parallel()
+
+	store := newTestStore(t)
+
+	s := New(store, Config{})
+
+	resp := s.prober.CachedResponse()
+	if _, mounted := resp.Checks["projection"]; mounted {
+		t.Fatalf("non-follower projection check emitted: %+v", resp.Checks["projection"])
+	}
+
+	s.MarkFoldFollower()
+
+	resp = s.prober.CachedResponse()
+
+	proj := resp.Checks["projection"]
+	if proj.Status != health.StatusWarn {
+		t.Errorf("follower projection = %+v, want warn", proj)
+	}
+
+	if !strings.Contains(proj.Error, "fold: follower") {
+		t.Errorf("follower detail = %q, want the fold: follower contract", proj.Error)
+	}
+
+	if resp.Status != health.StatusWarn {
+		t.Errorf("overall = %q, want warn while demoted", resp.Status)
+	}
+}

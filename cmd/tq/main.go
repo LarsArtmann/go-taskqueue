@@ -3938,6 +3938,8 @@ func cmdServe(args []string) error {
 
 	store := mustOpenStore(deployment)
 
+	var demoted bool
+
 	cfg := webui.Config{
 		Addr:        *addr,
 		Poll:        *poll,
@@ -4007,6 +4009,11 @@ func cmdServe(args []string) error {
 	})
 
 	server := webui.New(store, cfg)
+
+	if demoted {
+		server.MarkFoldFollower()
+		fmt.Fprintf(os.Stderr, "%s%s%s\n", webui.BannerPrefix, *addr, webui.BannerFoldFollowerSuffix)
+	}
 
 	g.Go("http", func(ctx context.Context) error { return server.Run(ctx) })
 

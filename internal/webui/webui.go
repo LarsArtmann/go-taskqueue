@@ -43,6 +43,10 @@ const (
 	BannerPrefix         = "tq: dashboard on http://"
 	BannerReadOnlySuffix = " (read-only)"
 	BannerWritesSuffix   = " (writes ENABLED: cancel/rescue from the UI)"
+	// BannerFoldFollowerSuffix marks the demoted serve: the projection
+	// fold lock went to another folder, so this dashboard's model is
+	// frozen at mount (see MarkFoldFollower).
+	BannerFoldFollowerSuffix = " (read-only; STALE FOLD: fold lock held by another serve — this dashboard will not update)"
 
 	readHeaderTimeout = 5 * time.Second
 	readTimeout       = 10 * time.Second
@@ -204,7 +208,15 @@ func New(store queue.Store, cfg Config) *Server {
 // fire and its reads stay frozen at mount. The health surface carries
 // the follower detail so an operator cannot silently trust a stale
 // dashboard.
-func (s *Server) MarkFoldFollower() { s.foldFollower.Store(true) }
+func (s *Server) MarkFoldFollower() {
+	s.foldFollower.Store(true)
+
+	// Demotion flips the health contract immediately — drop the cached
+	// evaluation so the next probe re-renders the follower check.
+	s.prober.mu.Lock()
+	s.prober.evaluated = false
+	s.prober.mu.Unlock()
+}
 
 // routeBindings is the complete route table as data, so the read-only
 // guardrail test can prove the dashboard registers no mutating handler

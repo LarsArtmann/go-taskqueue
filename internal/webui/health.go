@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/larsartmann/go-datastar/static"
@@ -66,11 +67,6 @@ type queueProber struct {
 	// the projection check is emitted only for mounted folds. Nil means
 	// the server runs store-backed reads (no check).
 	projectionCursor func(ctx context.Context) (cursor int64, mounted bool)
-
-	// foldFollower mirrors Server.foldFollower (a demoted, read-only
-	// mount): when set, the projection check becomes the follower
-	// staleness contract regardless of the cursor.
-	foldFollower *atomic.Bool
 
 	// foldFollower mirrors Server.foldFollower (a demoted, read-only
 	// mount): when set, the projection check becomes the follower
