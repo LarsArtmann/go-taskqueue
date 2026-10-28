@@ -14,7 +14,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   reports a `poisoned: recent dead-letter, DLQ backoff until <ts>` WARN
   and carries `dlqBackoffUntil` in the JSON output; completion of any
   task or DLQ dismissal of the dead-lettered task lifts it (0 = off,
-  unchanged output).
+  unchanged output). The `--dlq-backoff` default is seeded from the pool
+  config file's `dlq-backoff` (`--config`, `$TQ_POOL_CONFIG`, falling
+  back to the bootstrap-installed `~/.config/tq/pool.conf` when it
+  exists; precedence flag > config > off) (BEHAVIOR CHANGE for scripted
+  `tq pool-health` runs: in an environment where the pool config exists,
+  the backoff surface is now ON without an explicit flag).
 - **Dirty-tree preflights park instead of burning via the env-streak
   breaker** (2026-10-27): a dirty-working-tree preflight refusal no longer
   counts toward the 3-streak environmental-requeue breaker — after 3
@@ -330,6 +335,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 Repo-internal tooling and non-operator-facing changes (O14 audit
 2026-10-13: kept for the record, excluded from operator release notes).
+
+- **Proxy-wait smoke reports an unreadable netns dev file distinctly**
+  (2026-10-28): `netns_is_empty` in scripts/smoke/proxy-wait.sh is
+  tri-state (loopback-only / non-empty / UNREADABLE) — a hermetic
+  sandbox masking `/proc/self/net/dev` now fails with a technical-
+  failure diagnostic instead of being reported as a real non-empty
+  namespace; fixture-driven self-test legs exercise the real detector
+  via `TQ_NETNS_DEV_FILE`, mutation-verified.
+- **Report-body secret gate widened beyond docs/status** (2026-10-28):
+  the gate now sweeps docs/problems, docs/planning, and README.md
+  alongside docs/status (per-surface subtests with an emptiness guard);
+  the re-sweep came back clean; the test drops its Status-only name.
 
 - **Batch-aware done-preflight footer signal** (2026-10-28): for a
   MULTI-member batch, the claim-time footer signal completes only when
