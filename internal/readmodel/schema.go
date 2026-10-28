@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/larsartmann/go-retry"
+	"github.com/larsartmann/go-taskqueue/internal/retryx"
 )
 
 // tasksPlannedTable is the metaengine planned-table name for the tasks
@@ -167,28 +167,10 @@ func snapshotProjectionHome(path string) (string, error) {
 	snapshot := path + fmt.Sprintf(".legacy-schema-%s.bak", time.Now().UTC().Format("20060102-150405"))
 
 	for _, suffix := range []string{"", "-wal", "-shm"} {
-		if err := renameWithTransientRetry(path+suffix, snapshot+suffix); err != nil && !os.IsNotExist(err) {
+		if err := retryx.RenameTransient(path+suffix, snapshot+suffix); err != nil && !os.IsNotExist(err) {
 			return "", fmt.Errorf("readmodel: snapshot legacy projection home: %w", err)
 		}
 	}
 
 	return snapshot, nil
-}
-
-// renameWithTransientRetry renames src to dst with a short bounded
-// transient retry (50ms, then 100ms) — see snapshotProjectionHome.
-func renameWithTransientRetry(src, dst string) error {
-	return retry.Do(context.Background(), retry.Config{ //nolint:exhaustruct // optional hooks unset
-		MaxAttempts:  3,
-		InitialDelay: 50 * time.Millisecond,
-		MaxDelay:     100 * time.Millisecond,
-		Multiplier:   2.0,
-	}, func(_ context.Context, _ int) error {
-		err := os.Rename(src, dst)
-		if os.IsNotExist(err) {
-			return nil
-		}
-
-		return err
-	})
 }
