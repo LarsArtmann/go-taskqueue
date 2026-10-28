@@ -637,3 +637,44 @@ func TestApplyPoolHealthConfigDefault(t *testing.T) {
 		}
 	})
 }
+
+// TestPoolHealthSummaryCountsBackoff pins the summary aggregate: the
+// trailing line counts repos currently in DLQ backoff so scripts get
+// the aggregate without folding the JSON — including the explicit
+// zero when the backoff surface is off, so the line's shape is stable
+// for parsers (closeout 2026-10-28 04-18 §f5).
+func TestPoolHealthSummaryCountsBackoff(t *testing.T) {
+	t.Parallel()
+
+	now := time.Now()
+	active := now.Add(time.Hour)
+
+	report := PoolHealthReport{
+		Since:       now.Add(-24 * time.Hour).Format(time.RFC3339),
+		FactsFolded: 7,
+		Repos: []RepoHealth{
+			{Repo: "poisoned", Verdict: poolVerdictWarn, DLQBackoffUntil: &active},
+			{Repo: "stucky", Verdict: poolVerdictWarn},
+			{Repo: "healthy", Verdict: poolVerdictOK},
+		},
+	}
+
+	out := captureStdout(t, func() { printPoolHealth(report) })
+
+	for _, want := range []string{
+		"3 repos, 1 in DLQ backoff, 2 warn",
+		"7 facts folded",
+	} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("summary %q lacks %q", out, want)
+		}
+	}
+
+	report.Repos[0].DLQBackoffUntil = nil
+
+	out = captureStdout(t, func() { printPoolHealth(report) })
+
+	if !strings.Contains(out, "3 repos, 0 in DLQ backoff, 2 warn") {
+		t.Fatalf("summary %q lacks the explicit zero count", out)
+	}
+}

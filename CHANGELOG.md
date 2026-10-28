@@ -142,6 +142,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   the default `GOTOOLCHAIN=auto` bridge until bumped.
 
 ### Changed
+- **`tq pool-health` summary line counts repos in DLQ backoff** (2026-10-28):
+  the trailing summary now reads `N repos, M in DLQ backoff, W warn, F
+  facts folded, window since <ts>` with `M` always present (0 included
+  when the backoff surface is off) (BEHAVIOR CHANGE for scripts parsing
+  the summary line: a new field sits between the repo and warn counts).
 - **All `/health*` responses now carry the health security-header set** (2026-10-26)
   (BEHAVIOR CHANGE for clients parsing `/health*` response headers: the SDK
   bundle, favicon, and JSON probes gain the health CSP override and

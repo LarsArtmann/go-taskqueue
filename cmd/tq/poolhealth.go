@@ -444,6 +444,7 @@ func printPoolHealth(report PoolHealthReport) {
 	}
 
 	warned := 0
+	backingOff := 0
 
 	for _, r := range report.Repos {
 		requeues := 0
@@ -472,10 +473,14 @@ func printPoolHealth(report PoolHealthReport) {
 		if r.Verdict == poolVerdictWarn {
 			warned++
 		}
+
+		if r.DLQBackoffUntil != nil {
+			backingOff++
+		}
 	}
 
-	fmt.Printf("pool-health: %d repos, %d warn, %d facts folded, window since %s\n",
-		len(report.Repos), warned, report.FactsFolded, report.Since)
+	fmt.Printf("pool-health: %d repos, %d in DLQ backoff, %d warn, %d facts folded, window since %s\n",
+		len(report.Repos), backingOff, warned, report.FactsFolded, report.Since)
 }
 
 // ageOrNever renders a timestamp's age, or "never" when absent.
