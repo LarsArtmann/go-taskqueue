@@ -3956,6 +3956,8 @@ func cmdServe(args []string) error {
 			return rtErr
 		}
 
+		demoted = rt.Host == nil
+
 		cfg.ReadModelPath = readmodel.PathFor(dbPath)
 
 		cfg.Pump = &projectionPump{rt: rt}

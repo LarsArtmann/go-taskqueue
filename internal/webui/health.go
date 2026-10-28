@@ -67,6 +67,16 @@ type queueProber struct {
 	// the server runs store-backed reads (no check).
 	projectionCursor func(ctx context.Context) (cursor int64, mounted bool)
 
+	// foldFollower mirrors Server.foldFollower (a demoted, read-only
+	// mount): when set, the projection check becomes the follower
+	// staleness contract regardless of the cursor.
+	foldFollower *atomic.Bool
+
+	// foldFollower mirrors Server.foldFollower (a demoted, read-only
+	// mount): when set, the projection check becomes the follower
+	// staleness contract regardless of the cursor.
+	foldFollower *atomic.Bool
+
 	mu        sync.Mutex
 	resp      health.Response
 	evalAt    time.Time
@@ -209,6 +219,11 @@ func (p *queueProber) evaluate(now time.Time) {
 				checks["projection"] = mkCheck(health.StatusPass, fmt.Sprintf("at #%d (head #%d)", cursor, head))
 			}
 		}
+	}
+
+	if p.foldFollower != nil && p.foldFollower.Load() {
+		checks["projection"] = mkCheck(health.StatusWarn,
+			"fold: follower — read-only projection mount (the fold lock is held by another serve): this dashboard's model is frozen at mount and its SSE stream will not fire; trust the lock-holding dashboard, or restart this serve once the lock frees")
 	}
 
 	p.finishEval(now, checks)

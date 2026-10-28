@@ -156,6 +156,12 @@ type Server struct {
 	prober *queueProber
 	dash   *dashboard.Dashboard
 
+	// foldFollower marks a demoted serve: the projection runtime lost the
+	// fold-lock election and mounted read-only, so the model never folds
+	// again — SSE never fires and reads are frozen at mount. Shared with
+	// the prober so /readyz + /health can carry the staleness contract.
+	foldFollower atomic.Bool
+
 	// writes throttles CSRF brute force on the two write routes.
 	writes *writeRateLimiter
 
@@ -187,8 +193,18 @@ func New(store queue.Store, cfg Config) *Server {
 		return m.JournalCursor(), true
 	}
 
+	prober.foldFollower = &s.foldFollower
+
 	return s
 }
+
+// MarkFoldFollower demotes this serve's staleness contract: the
+// projection runtime lost the fold-lock election (Host nil), so the
+// mounted model never folds again — the dashboard's SSE stream will not
+// fire and its reads stay frozen at mount. The health surface carries
+// the follower detail so an operator cannot silently trust a stale
+// dashboard.
+func (s *Server) MarkFoldFollower() { s.foldFollower.Store(true) }
 
 // routeBindings is the complete route table as data, so the read-only
 // guardrail test can prove the dashboard registers no mutating handler
