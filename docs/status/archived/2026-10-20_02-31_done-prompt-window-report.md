@@ -1,5 +1,7 @@
 # Done-Prompt Window Report — 2026-10-20 02:31 CEST
 
+> **ARCHIVED 2026-10-28 (row-1044 chain sweep)** — per-item triage at HEAD 0d73e130: §a all 12 landed claims re-verified in-tree by the seven successor verify-only passes (03-14→14-48). §f1 done by this report itself (CHANGELOG [Unreleased]); §f2 tick-sweep DONE by the row-1044 consolidation pass (2026-10-27); §f3 statsPayload golden pins DONE row 1041 (residue rowed: 1014, 1287); §f4 heal-script foreign-footer PARENT clause SHIPPED in AGENTS.md Known Issues (span-terminator shape, 2026-10-20 02-27 window); §f5 closeout §b-partial sweep DONE row 1043. §g1 Every>1 done-guard routed rows 652/653; §g2 sentinel-as-control-flow routed row 1045 (BLOCKED); §g3 prune dlqfix visibility routed row 1046 (BLOCKED). §b partials routed (full ci-local battery, dupe-gate provenance/self-test cluster rows 974-region, lint regen 00-31 §f6). §c narrative-only pre-tracked rows. Seven verify-only re-dispatch layers archived in the same sweep.
+
 Window: 5 agent tasks completed 2026-10-20 00:31–02:03 (the docs-health
 fourth-sweep tail + the dupe-review follow-up batches). Parallel in the
 same wall-clock window but OUTSIDE this window's task set: the art-dupl

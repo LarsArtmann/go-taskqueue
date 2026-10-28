@@ -1,5 +1,7 @@
 # Done-Prompt Window Report (re-dispatch) — 2026-10-20 03:14 CEST
 
+> **DUPLICATE — ARCHIVED 2026-10-28 (row-1044 chain sweep)** — verify-only re-dispatch layer of the same 5-task window (2026-10-20 00:31–02:03, task 000001a156a3410fa257bc4a217c00000000); zero unique forward-looking items — every pass's row mints already live in TODO_LIST. The window's full a)–h) record is the canonical report `docs/status/archived/2026-10-20_02-31_done-prompt-window-report.md`.
+
 Task: `000001a156a3410fa257bc4a217c00000000` (second dispatch — the first
 landed its full report at `docs/status/2026-10-20_02-31_done-prompt-window-report.md`,
 commit `a7d19756`, but the verdict was never recorded, so the queue
