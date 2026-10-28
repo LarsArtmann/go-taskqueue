@@ -4,11 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"slices"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/a-h/templ"
+	"github.com/larsartmann/go-taskqueue/internal/dlqbackoff"
 	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
@@ -185,6 +187,19 @@ func nowbandMetaChips(data DashboardData) []metaChip {
 		)
 	}
 
+	if len(data.DLQBackoff) > 0 {
+		chips = append(
+			chips,
+			metaChip{
+				class: "card-dlqbackoff",
+				title: "repos in poisoned-repo DLQ backoff — work on them waits out the deadline; " +
+					dlqbackoff.PoisonedAdvice + " (the dead-letter queue panel lists the deadlines)",
+				label: "backoff",
+				count: len(data.DLQBackoff),
+			},
+		)
+	}
+
 	chips = append(
 		chips,
 		metaChip{
@@ -196,6 +211,32 @@ func nowbandMetaChips(data DashboardData) []metaChip {
 	)
 
 	return chips
+}
+
+// dlqBackoffRow is one poisoned-repo line of the dashboard's backoff
+// panel: the repo and the instant its backoff lifts.
+type dlqBackoffRow struct {
+	repo  string
+	until time.Time
+}
+
+// dlqBackoffRows renders data.DLQBackoff as repo-sorted rows — a fixed
+// order, since map iteration would reshuffle the panel on every SSE
+// refresh.
+func dlqBackoffRows(data DashboardData) []dlqBackoffRow {
+	repos := make([]string, 0, len(data.DLQBackoff))
+	for repo := range data.DLQBackoff {
+		repos = append(repos, repo)
+	}
+
+	sort.Strings(repos)
+
+	rows := make([]dlqBackoffRow, 0, len(repos))
+	for _, repo := range repos {
+		rows = append(rows, dlqBackoffRow{repo: repo, until: data.DLQBackoff[repo]})
+	}
+
+	return rows
 }
 
 // taskBadgeExtras assembles a task's conditional badges — review verdict,

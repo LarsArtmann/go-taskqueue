@@ -2,6 +2,7 @@ package webui
 
 import (
 	"fmt"
+	"github.com/larsartmann/go-taskqueue/internal/dlqbackoff"
 	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
@@ -313,6 +314,10 @@ templ rescueAction(id task.ID) {
 // DeadLetterTable renders the dead-letter queue (inner content of
 // #frag-dlq).
 templ DeadLetterTable(data DashboardData) {
+	if len(data.DLQBackoff) > 0 {
+		@dlqBackoffPanel(data)
+	}
+
 	if len(data.Dead) == 0 {
 		@display.EmptyState(display.EmptyStateProps{
 			Title:       "dead-letter queue is empty",
@@ -331,6 +336,25 @@ templ DeadLetterTable(data DashboardData) {
 			})
 		</div>
 	}
+}
+
+// dlqBackoffPanel is the poisoned-repo lamp above the dead-letter
+// queue: one line per repo currently in DLQ backoff — the dashboard's
+// rendering of the dlqBackoffUntil field `tq pool-health --json` carries
+// and `tq dlq` rows cross-link. The advice tail is the shared dlqbackoff
+// prose, so all three surfaces read identically. Rendered ahead of the
+// table's empty state: a repo can poison while its dead letters sit past
+// the table's window, and that state is exactly the silent kind.
+templ dlqBackoffPanel(data DashboardData) {
+	<div class="tq-dlqbackoff rounded-lg border border-red-200 bg-red-50 px-4 py-3 dark:border-red-900 dark:bg-red-950/40">
+		for _, row := range dlqBackoffRows(data) {
+			<p class="font-mono text-xs text-red-700 dark:text-red-300">
+				<span class="font-semibold">{ row.repo }</span>
+				— in DLQ backoff until { row.until.Format(timeFormat) }
+				(in { durationUntil(row.until.Sub(data.Now)) }) — { dlqbackoff.PoisonedAdvice }
+			</p>
+		}
+	</div>
 }
 
 // errorCell is the expandable last-error table cell shared by the queue
