@@ -4,3 +4,11 @@ permissions allow view ls grep glob edit multiedit write bash fetch download tod
 option metrics false
 model large zai/glm-5.3-flash --reasoning-effort xhigh
 # <<< tq bootstrap (managed) <<<
+
+# PreToolUse hook fleet (scripts/hooks/, --self-test pins both): converts
+# this repo's recurring session-shell/gate-death classes into instant
+# denies-with-fix or one-line advisories. $CRUSH_PROJECT_DIR expands at
+# hook-fire time so the path works from any bash working_dir.
+hook add PreToolUse --matcher '^bash$' --command 'bash "$CRUSH_PROJECT_DIR/scripts/hooks/tq-bash-guard.sh"' --name tq-bash-guard --timeout 10
+hook add PreToolUse --matcher '^(edit|write|multiedit)$' --command 'bash "$CRUSH_PROJECT_DIR/scripts/hooks/tq-edit-advice.sh"' --name tq-edit-advice --timeout 5
+

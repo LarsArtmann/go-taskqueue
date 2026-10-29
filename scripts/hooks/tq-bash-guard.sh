@@ -46,6 +46,125 @@
 # --self-test runs the pinned fixture battery (fleet convention).
 set -euo pipefail
 
+if [ "${1:-}" = "--self-test" ]; then
+	self_abs="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
+	# tmp is deliberately global: the EXIT trap fires after this block's
+	# function calls returned, and set -u would kill it on a local name.
+	tmp="$(mktemp -d)"
+	trap 'rm -rf "$tmp"' EXIT
+
+	# cleanrepo: no dirty module dirs, no untracked files (advisories A6/A9 off);
+	# a vendor/ dir so the gofmt dir-walk rule has its target
+	mkdir -p "$tmp/cleanrepo/internal" "$tmp/cleanrepo/vendor"
+	touch "$tmp/cleanrepo/internal/keep"
+	git -C "$tmp/cleanrepo" init -q
+	git -C "$tmp/cleanrepo" add -A
+	git -C "$tmp/cleanrepo" -c user.email=t@t -c user.name=t commit -qm init
+	# dirtyrepo: uncommitted internal-module change + untracked file (A6/A9 on)
+	mkdir -p "$tmp/dirtyrepo/internal/queue"
+	touch "$tmp/dirtyrepo/internal/queue/x.go" "$tmp/dirtyrepo/untracked.txt"
+	git -C "$tmp/dirtyrepo" init -q
+	git -C "$tmp/dirtyrepo" add internal/queue/x.go
+	git -C "$tmp/dirtyrepo" -c user.email=t@t -c user.name=t commit -qm base
+	echo changed >>"$tmp/dirtyrepo/internal/queue/x.go"
+	# nested module fixture (A8): go.mod with a parent go.mod
+	mkdir -p "$tmp/nest/internal/queue"
+	: >"$tmp/nest/go.mod"
+	: >"$tmp/nest/internal/queue/go.mod"
+	# healthy + poisoned GOCACHE fixtures (A7)
+	mkdir -p "$tmp/okcache"
+	ln -s /nix/store/deadbeef "$tmp/poisoncache"
+
+	export CRUSH_CWD="$tmp/cleanrepo" CRUSH_PROJECT_DIR="$tmp/cleanrepo" GOCACHE="$tmp/okcache"
+	unset TQ_DB || true
+
+	st_pass=0 st_fail=0 n_deny=0 n_adv=0 n_sil=0
+	rcase() {
+		# $1 expect: deny | ctx:SUBSTR | silent; $2 desc; $3 command
+		local expect="$1" desc="$2" out rc=0
+		shift 2
+		out="$(CRUSH_TOOL_INPUT_COMMAND="$1" "$self_abs" 2>&1)" || rc=$?
+		case "$expect" in
+			deny)
+				n_deny=$((n_deny + 1))
+				if [ "$rc" = 2 ] && printf '%s' "$out" | grep -q 'BLOCKED'; then
+					st_pass=$((st_pass + 1))
+				else
+					st_fail=$((st_fail + 1))
+					echo "FAIL: $desc (want deny, rc=$rc)"
+					printf '%s\n' "$out"
+				fi
+				;;
+			ctx:*)
+				n_adv=$((n_adv + 1))
+				local want="${expect#ctx:}"
+				if [ "$rc" = 0 ] && printf '%s' "$out" | grep -qF -- "$want"; then
+					st_pass=$((st_pass + 1))
+				else
+					st_fail=$((st_fail + 1))
+					echo "FAIL: $desc (want advisory containing '$want'; rc=$rc)"
+					printf '%s\n' "$out"
+				fi
+				;;
+			silent)
+				n_sil=$((n_sil + 1))
+				if [ "$rc" = 0 ] && [ -z "$out" ]; then
+					st_pass=$((st_pass + 1))
+				else
+					st_fail=$((st_fail + 1))
+				echo "FAIL: $desc (want silence, rc=$rc)"
+					printf '%s\n' "$out"
+				fi
+				;;
+		esac
+	}
+
+	rcase deny 'PIPESTATUS read' 'echo ${PIPESTATUS[0]}'
+	rcase deny 'printf %.0s empty' "printf '%.0s' x"
+	rcase deny 'ERE bracket class \t (cqrs incident shape)' "grep -E '[^ \t]' f"
+	rcase deny 'ERE bracket class \t in sed' "sed -E 's/[^\t]/x/g' f"
+	rcase deny 'unscoped gofmt over .' 'gofmt -l .'
+	rcase deny 'unscoped gofmt over ./' 'gofmt -w ./'
+	rcase deny 'gofmt over dir containing vendor/' "gofmt -l $tmp/cleanrepo"
+	rcase deny 'smoke without TQ_DB' 'scripts/smoke/api.sh'
+	rcase deny 'git push -f' 'git push -f origin master'
+	rcase deny 'git push +refspec' 'git push origin +main'
+	rcase deny 'git -C push --force-with-lease' 'git -C /tmp/x push --force-with-lease origin main'
+	rcase deny 'git filter-branch' "git filter-branch --tree-filter 'rm x' HEAD"
+	rcase deny 'heredoc writing .go' "cat > internal/foo.go <<'EOF'"
+	rcase deny 'tee writing .go' 'echo x | tee out.go'
+
+	rcase silent 'blessed scoped gofmt pipeline' "gofmt -l . | git check-ignore --stdin -v --non-matching | grep '^::'"
+	rcase silent 'gofmt on specific files' 'gofmt -l main.go'
+	rcase silent 'gofmt hatch prefix' 'ALLOW_UNSCOPED_GOFMT=1 gofmt -l .'
+	rcase silent 'smoke with explicit TQ_DB' 'TQ_DB=/tmp/x.db scripts/smoke/api.sh'
+	rcase silent 'plain git push' 'git push origin main'
+	rcase silent 'grep -P carries real escapes' "grep -P '\\t' f"
+	rcase silent 'grep -F literal search' "grep -F '\\t' f"
+	rcase silent 'word PIPESTATUS without shell read' 'grep -rn PIPESTATUS scripts/'
+	rcase silent 'single-file tail' 'tail -n 3 one.log'
+	rcase silent 'doubled-backslash literal search' "grep -E '[\\\\d]' f"
+	rcase silent 'printf plain' "printf '%s\n' hi"
+	rcase silent 'go test in clean repo' 'go test ./...'
+
+	TQ_DB=/prod/journal.db rcase ctx:'THAT journal' 'inherited TQ_DB advisory' 'tq tasks'
+	rcase ctx:'env -u' 'bare unset advisory' 'unset TQ_DB'
+	rcase ctx:'one tail per file' 'multi-file tail advisory' 'tail -n 5 a.log b.log'
+	rcase ctx:'run_in_background' 'chained single & advisory' 'sleep 1 & sleep 2 & wait'
+	rcase ctx:'[[:digit:]]' 'bare \d advisory' "grep -E '\\d+' f"
+	CRUSH_CWD="$tmp/dirtyrepo" CRUSH_PROJECT_DIR="$tmp/dirtyrepo" rcase ctx:'go mod vendor' 'stale vendor advisory' 'go test ./...'
+	GOCACHE="$tmp/poisoncache" rcase ctx:'/tmp/go-build-cache' 'poisoned GOCACHE advisory' 'go build ./...'
+	CRUSH_CWD="$tmp/nest/internal/queue" rcase ctx:'GOWORK=off' 'nested-module advisory' 'go test ./...'
+	CRUSH_CWD="$tmp/dirtyrepo" CRUSH_PROJECT_DIR="$tmp/dirtyrepo" rcase ctx:'git add' 'nix untracked-files advisory' 'nix build .#test'
+
+	if [ "$st_fail" -ne 0 ]; then
+		echo "tq-bash-guard self-test FAILED ($st_fail of $((st_pass + st_fail)) cases)"
+		exit 1
+	fi
+	echo "tq-bash-guard self-test ok ($st_pass cases: deny=$n_deny advise=$n_adv silent=$n_sil)"
+	exit 0
+fi
+
 cmd="${CRUSH_TOOL_INPUT_COMMAND:-}"
 [ -n "$cmd" ] || exit 0
 
@@ -119,20 +238,26 @@ if has_word gofmt && ! printf '%s' "$cmd" | grep -q 'check-ignore' && ! hatched 
 			[ "$tok" = "gofmt" ] && seen=1
 			continue
 		fi
-		case "$tok" in
-			*'&'* | *';'* | *'|'*) break ;;
-			-*) skipval=1 ;;
-			*) ;;
-		esac
 		if [ "$skipval" = 1 ]; then
 			skipval=0
 			continue
 		fi
 		case "$tok" in
-			. | ./ | ./... | ../) gofmt_unscoped=1 break ;;
+			*'&'* | *';'* | *'|'*) break ;;
+			-r) skipval=1 ;;
+			-*) ;;
+			. | ./ | ./... | ../)
+				gofmt_unscoped=1
+				break
+				;;
 			*.go) ;;
 			*)
-				if [ -n "${CRUSH_CWD:-}" ] && [ -d "$CRUSH_CWD/$tok/vendor" ]; then
+				dir="$tok"
+				case "$tok" in
+					/*) ;;
+					*) dir="${CRUSH_CWD:-.}/$tok" ;;
+				esac
+				if [ -d "$dir/vendor" ]; then
 					gofmt_unscoped=1
 					break
 				fi
@@ -213,7 +338,7 @@ EOF
 	exit 2
 fi
 
-if printf '%s' "$cmd" | grep -Eq '(>>?|[[:space:]]tee[[:space:]]+)[^|;&[:space:]]*\.go([[:space:];|&]|$)'; then
+if printf '%s' "$cmd" | grep -Eq '(>>?|[[:space:]]tee[[:space:]]+)[[:space:]]*[^|;&[:space:]]*\.go([[:space:];|&]|$)'; then
 	cat >&2 <<'EOF'
 BLOCKED: shell redirect/tee writing a *.go file — free-text heredocs glue
 tabs in as literal \t (2026-10-13) and daemon sweeps eat unstaged
@@ -228,7 +353,7 @@ fi
 notes=()
 
 if [ -n "${TQ_DB:-}" ] \
-	&& printf '%s' "$cmd" | grep -Eq '(^|[[:space:];&])(tq|build-tq\.sh)([[:space:]]|$)|cmd/tq' \
+	&& printf '%s' "$cmd" | grep -Eq '(^|[[:space:];&])tq([[:space:]]|$)|build-tq\.sh|cmd/tq' \
 	&& ! printf '%s' "$cmd" | grep -q 'TQ_DB='; then
 	notes+=("inherited TQ_DB=$TQ_DB: tq in this call hits THAT journal (production?). Scratch/verify work needs an explicit TQ_DB=<scratch>; smokes without one are denied outright.")
 fi
@@ -244,22 +369,22 @@ if has_word tail; then
 			[ "$tok" = "tail" ] && tail_seen=1
 			continue
 		fi
+		if [ "$tail_skip" = 1 ]; then
+			tail_skip=0
+			continue
+		fi
 		case "$tok" in
 			*'&'* | *';'* | *'|'*) break ;;
 			-n | -c | --lines | --bytes) tail_skip=1 ;;
 			-*) ;;
 			*) tail_files=$((tail_files + 1)) ;;
 		esac
-		if [ "$tail_skip" = 1 ]; then
-			tail_skip=0
-			continue
-		fi
 		[ "$tail_files" -ge 2 ] && break
 	done
 	[ "$tail_files" -ge 2 ] && notes+=("multi-file tail fails in session shells — one tail per file (or awk).")
 fi
 
-chain_count="$(printf '%s' "$cmd" | grep -o '[^&]&[^&]' | wc -l)"
+chain_count="$( { printf '%s' "$cmd" | grep -o '[^&]&[^&]' || true; } | wc -l)"
 if [ "$chain_count" -ge 2 ]; then
 	notes+=("chained single & backgrounds the wrong span in session shells — use the bash tool's run_in_background instead.")
 fi
@@ -285,8 +410,22 @@ if has_go_tool_cmd && go_cache_hazard; then
 	notes+=("host GOCACHE resolves into /nix/store (ENOSPC death class): prefix GOCACHE=/tmp/go-build-cache (AGENTS.md §Host GOCACHE hazards).")
 fi
 
-if [ -n "${CRUSH_CWD:-}" ] && [ -f "$CRUSH_CWD/go.mod" ] && [ -f "$CRUSH_CWD/../go.mod" ] \
-	&& has_go_tool_cmd && ! printf '%s' "$cmd" | grep -q 'GOWORK=off'; then
+is_nested_module_dir() {
+	# nested iff $1 has its own go.mod AND some strict ancestor up to the
+	# filesystem root has one too (covers internal/queue under the root two
+	# levels up, not just direct children)
+	[ -f "$1/go.mod" ] || return 1
+	local d p="$1"
+	while :; do
+		d="$(dirname "$p")"
+		[ "$d" = "$p" ] && return 1
+		[ -f "$d/go.mod" ] && return 0
+		p="$d"
+	done
+}
+
+if has_go_tool_cmd && [ -n "${CRUSH_CWD:-}" ] && is_nested_module_dir "$CRUSH_CWD" \
+	&& ! printf '%s' "$cmd" | grep -q 'GOWORK=off'; then
 	notes+=("nested module: run gates as GOEXPERIMENT=jsonv2 GOWORK=off go ... (AGENTS.md §Commands, per-module gate).")
 fi
 
