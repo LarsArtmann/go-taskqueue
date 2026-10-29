@@ -217,18 +217,14 @@ docs/DOMAIN_LANGUAGE.md.
   check-guard-wiring; gosec already had it) carries `--self-test` pinning
   its summary format + a negative-path counter battery via an env hook;
   wired into ci-local. New countable gates: same contract.
-- **Crush PreToolUse hook fleet** (project `.crushrc` → `scripts/hooks/`,
-  `--self-test` pins both): `tq-bash-guard` (^bash$) DENIES the paid-trap
-  classes — `${PIPESTATUS}`, `printf %.0s`, ERE bracket `\t/\d` classes
-  (cqrs silent-skip shape), unscoped `gofmt` over dirs (vendor-gofmt
-  death), `scripts/smoke` w/o `TQ_DB=`, `git push` force forms, `git
-  filter-branch` (script files only), redirects writing `*.go` — and
-  ADVISES inherited TQ_DB, bare `unset`, multi-file `tail`, chained `&`,
-  bare `\d`, stale-vendor root builds, GOCACHE→/nix/store, nested-module
-  GOWORK=off, nix-untracked; `tq-edit-advice` (edit/write/multiedit)
-  injects templ/TODO_LIST/AGENTS-size/CHANGELOG-O14/go.mod-floor/
-  docs-status-creation notes. Hatches `ALLOW_UNSCOPED_GOFMT=1`,
-  `ALLOW_PROD_TQ=1`; force-push hatchless (human-only).
+- **Crush PreToolUse hooks** (`.crushrc` → `scripts/hooks/`,
+  `--self-test`): `tq-bash-guard` (^bash$) denies the paid-trap classes
+  (PIPESTATUS, `printf %.0s`, ERE bracket `\t/\d`, unscoped `gofmt`,
+  smokes w/o `TQ_DB=`, force-push, `filter-branch`, redirect→`*.go`)
+  and advises TQ_DB/unset/multi-tail/chained-`&`/stale vendor/GOCACHE/
+  GOWORK/nix rows; `tq-edit-advice`: per-path notes (templ, TODO_LIST,
+  AGENTS size, CHANGELOG O14, go.mod floor, docs/status creation).
+  Hatches in deny messages; force-push hatchless.
 - docs/status reports follow the a)-g) skeleton; indexed on creation
   (`check-status-index.sh`; daemon bypasses hooks — AMEND MANEUVER for
   daemon-folded reports); ONE index-row write point (top chronological
@@ -316,9 +312,8 @@ docs/DOMAIN_LANGUAGE.md.
   leaks to children (`env -u VAR`); multi-file `tail` fails; `printf
   %.0s` yields empty; chained `&` backgrounds the wrong span. POSIX ERE:
   `\t` inside a grep bracket class is a literal `t` (not tab) — use
-  `[[:space:]]`/`[[:alnum:]]` classes, never `\t`/`\d` (2026-10-27: a
-  `[^ \t]` class silently skipped the cqrs `event` module and the
-  fixture "passed" wrong).
+  `[[:space:]]`/`[[:alnum:]]` classes, never `\t`/`\d` (cqrs `event`-
+  module silent skip, 2026-10-27; hook-denied now).
 - **Root builds auto-use `vendor/`** — internal/ changes need `go mod
   vendor` first; dep bumps also per-module tidy
   (`check-gomod-vendor-sync.sh` gates both).
@@ -378,10 +373,9 @@ docs/DOMAIN_LANGUAGE.md.
   kill consumer graph loads (Nix FOD) — `grep -r 00010101` the dep
   before blaming the flake/vendorHash.
 - **gofmt gates are SCOPED to non-gitignored files**
-  (`executor.ScopedGofmtStage`, doctor `gofmt:<repo>`):
-  `gofmt -l . | git check-ignore --stdin -v --non-matching | grep '^::'`;
-  unscoped re-plants the vendor-gofmt death class (94% of the DLQ) —
-  grep the FULL verify log before attributing.
+  (`executor.ScopedGofmtStage`, doctor `gofmt:<repo>`; scoped recipe in
+  the tq-bash-guard deny): unscoped re-plants the vendor-gofmt death
+  class (94% of the DLQ) — grep the FULL verify log before attributing.
 - **Flakes see only git-tracked files** — `git add` before `nix build`.
 
 ## Relation to other projects

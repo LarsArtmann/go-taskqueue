@@ -84,7 +84,13 @@ import (
 // cmd/tq go command) plus external doc growth already committed at HEAD
 // landed the file 2.4 kB over. Prune candidates should be reviewed and the
 // budget re-tightened after; twin scripts/check-agents-size.sh re-synced.
-const agentsDocMaxBytes = 23_600
+// 2026-10-29 conscious reset 23,600 → 23,900: the Crush PreToolUse hook
+// fleet bullet is net-new load-bearing (a new enforcement layer every
+// agent session hits), compacted in place and paid for by moving
+// hook-owned detail out of the doc (the scoped-gofmt recipe and the ERE
+// incident walkthrough now ship in the tq-bash-guard deny messages at
+// point-of-use); twin scripts/check-agents-size.sh re-synced.
+const agentsDocMaxBytes = 23_900
 
 // TestAgentsDocSizeGuard keeps AGENTS.md from silently growing past its
 // byte budget (plan M89 residue); the failure names the top sections so a
