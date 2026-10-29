@@ -368,6 +368,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Repo-internal tooling and non-operator-facing changes (O14 audit
 2026-10-13: kept for the record, excluded from operator release notes).
 
+- **Crush PreToolUse hook fleet** (2026-10-29): project `.crushrc` wires
+  `scripts/hooks/tq-bash-guard.sh` — denies `${PIPESTATUS}`, `printf
+  %.0s`, ERE bracket `\t`/`\d` classes, unscoped `gofmt` over dirs,
+  `scripts/smoke` without `TQ_DB=`, force-push forms, `filter-branch`,
+  redirects writing `*.go`; advises inherited TQ_DB, bare `unset`,
+  multi-file `tail`, chained `&`, bare `\d`, stale vendor, GOCACHE into
+  `/nix/store`, missing `GOWORK=off`, nix-untracked — plus
+  `tq-edit-advice.sh` (per-path convention notes); both carry
+  `--self-test` fixture pins.
 - **Canary-accuracy layer for negative fixtures, adopted fleet-wide**
   (2026-10-28): `scripts/lib/expect-branch.sh` (`expect_branch_fail`
   requires rc!=0 AND a branch-canary grep before accepting, countable

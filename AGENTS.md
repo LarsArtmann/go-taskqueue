@@ -217,6 +217,18 @@ docs/DOMAIN_LANGUAGE.md.
   check-guard-wiring; gosec already had it) carries `--self-test` pinning
   its summary format + a negative-path counter battery via an env hook;
   wired into ci-local. New countable gates: same contract.
+- **Crush PreToolUse hook fleet** (project `.crushrc` → `scripts/hooks/`,
+  `--self-test` pins both): `tq-bash-guard` (^bash$) DENIES the paid-trap
+  classes — `${PIPESTATUS}`, `printf %.0s`, ERE bracket `\t/\d` classes
+  (cqrs silent-skip shape), unscoped `gofmt` over dirs (vendor-gofmt
+  death), `scripts/smoke` w/o `TQ_DB=`, `git push` force forms, `git
+  filter-branch` (script files only), redirects writing `*.go` — and
+  ADVISES inherited TQ_DB, bare `unset`, multi-file `tail`, chained `&`,
+  bare `\d`, stale-vendor root builds, GOCACHE→/nix/store, nested-module
+  GOWORK=off, nix-untracked; `tq-edit-advice` (edit/write/multiedit)
+  injects templ/TODO_LIST/AGENTS-size/CHANGELOG-O14/go.mod-floor/
+  docs-status-creation notes. Hatches `ALLOW_UNSCOPED_GOFMT=1`,
+  `ALLOW_PROD_TQ=1`; force-push hatchless (human-only).
 - docs/status reports follow the a)-g) skeleton; indexed on creation
   (`check-status-index.sh`; daemon bypasses hooks — AMEND MANEUVER for
   daemon-folded reports); ONE index-row write point (top chronological
