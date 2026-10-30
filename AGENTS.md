@@ -168,9 +168,9 @@ docs/DOMAIN_LANGUAGE.md.
   (`TestSecretHitsAndRedactionCompileIdenticalTable`), windows-gated
   (00-55 §f9). Counts = distinct secret LOCATIONS (span-merge `4ba81d8`;
   before it, raw pattern matches). Known limitation: ZERO-separator
-  back-to-back tokens merge into ONE location — the greedy
-  `[A-Za-z0-9_-]{16,}` charsets absorb token contact at the boundary, so
-  distinct counts need a non-token separator between secrets.
+  back-to-back tokens merge into ONE location (greedy `[A-Za-z0-9_-]{16,}`
+  charsets absorb the boundary) — distinct counts need a non-token
+  separator.
 - **Enqueued-fact snapshots are THIN** (`{project,type}`;
   `Caps.EnqueuedSnapshot=false` pinned in conform suites).
 
@@ -185,12 +185,13 @@ docs/DOMAIN_LANGUAGE.md.
   cap 10); stored value never mutates. Markers `— P[1-4]` stripped
   before the dedup hash. ONE ladder everywhere (marker > AI > keyword).
   Probes enter `--priority ≥90`.
-- **Failure-evidence surface**: `tq dlq --evidence-stage <class>` filters
+- **Failure-evidence surface**: `tq dlq --evidence-stage <spec>` filters
   the DLQ by the failed fact's Stage/VerifyStage/Class plus the
-  gate-env/gate-dead/gate-slow aliases; `tq show` renders a `failure`
-  JSON section; `tq dlq` rows + webui timeline lines carry an
-  `evidence=` suffix; the webui DLQ filter shares the semantics.
-  Matcher: `executor.MatchesEvidenceStage` (ONE copy, no second).
+  gate-env/gate-dead/gate-slow aliases — comma-separated terms with
+  `!`-negation; `tq show` renders a `failure` JSON section; `tq dlq`
+  rows + webui timeline lines carry an `evidence=` suffix; the webui
+  DLQ filter shares the semantics.
+  Matcher: `executor.MatchesEvidenceStageSet` (ONE copy, no second).
 - **prune-stale**: cancels PENDING tasks whose item is `[x]` or gone;
   pools sweep once at start.
 - **Claim-time budget gate**: paid turns block once the daily
@@ -214,16 +215,16 @@ docs/DOMAIN_LANGUAGE.md.
   **Observe-first for pinning work**: before writing header/status/value
   assertions, CAPTURE the live output (temp observation test or smoke run)
   and pin what was observed — assertion-first pinning paid an assertion-
-  driven red in three consecutive windows (00-35 §d, 01-01 §d, 01-12 §d1).
+  driven red in three consecutive windows.
 - **Gate receipts**: a report's "N ok / M fail" count is
   `grep -c '^ok:'` over a CAPTURED gate-output file — never counted in
   context or taken from a summary line (17-vs-16 class).
 - **Fleet convention — countable gate summaries are PINNED, not advisory**
-  (2026-10-24, TODO 01-12 §e7/§g2): every countable sibling gate
-  (check-script-syntax, check-go-mods, check-dead-exports,
-  check-guard-wiring; gosec already had it) carries `--self-test` pinning
-  its summary format + a negative-path counter battery via an env hook;
-  wired into ci-local. New countable gates: same contract.
+  (2026-10-24): every countable sibling gate (check-script-syntax,
+  check-go-mods, check-dead-exports, check-guard-wiring; gosec already
+  had it) carries `--self-test` pinning its summary format + a
+  negative-path counter battery via an env hook; wired into ci-local.
+  New countable gates: same contract.
 - **Crush PreToolUse hooks** (`.crushrc` → `scripts/hooks/`,
   `--self-test`): `tq-bash-guard` (^bash$) denies the paid-trap classes
   (PIPESTATUS, `printf %.0s`, ERE bracket `\t/\d`, unscoped `gofmt`,
@@ -232,21 +233,18 @@ docs/DOMAIN_LANGUAGE.md.
   GOWORK/nix rows; `tq-edit-advice`: per-path notes (templ, TODO_LIST,
   AGENTS size, CHANGELOG O14, go.mod floor, docs/status creation).
   Hatches in deny messages; force-push hatchless. Smoke rule is
-  command-position (git add/grep of smoke paths passes). Client/server
-  relations map: docs/planning/2026-10-30_04-43_crush-client-server-relations.md.
+  command-position (git add/grep of smoke paths passes).
 - docs/status reports follow the a)-g) skeleton; indexed on creation
   (`check-status-index.sh`; daemon bypasses hooks — AMEND MANEUVER for
   daemon-folded reports); ONE index-row write point (top chronological
   cluster); CHANGELOG append-only; close exit: record `tq verdict`
   before session end (report without verdict = half-closeout).
-- **Closeout TICK-AUDIT**: before the FINAL commit of any batch/fix
-  dispatch, grep TODO_LIST.md for each verbatim batch anchor; every
-  finished row must read `- [x]` (landed + unchecked = paid round-trip
-  — 000001a1699ba37fc704570b24d800000000).
+- **Closeout TICK-AUDIT**: before the FINAL commit of any batch, grep
+  TODO_LIST.md for each verbatim batch anchor; finished rows must read
+  `- [x]` (landed + unchecked = paid round-trip — 000001a1699ba37fc7045).
 - **Tick-claims cite the tick commit**: "rows N-M ticked/`[x]`" claims
   in index rows + closeout reports cite the tick commit when the ticks
-  are not in the report's own commit (bare = authorship-tree);
-  WARN gate `scripts/check-tick-claims.sh`.
+  are not in the report's own commit; WARN gate `check-tick-claims.sh`.
 - **O14 CHANGELOG policy**: `[Unreleased]` carries OPERATOR-VISIBLE
   changes only — repo-internal tooling and non-operator rows go in the
   `### Internal` subsection at the bottom of the release section, never
@@ -261,8 +259,7 @@ docs/DOMAIN_LANGUAGE.md.
   <id> <subject> <file>…`). During MULTI-STEP git surgery modified-
   unstaged AND untracked files are daemon-food — a mid-sequence sweep
   makes the span non-contiguous and the heal refuses; between steps the
-  tree must be CLEAN, not merely "nothing left to stage" (2026-10-13
-  01-54 §e).
+  tree must be CLEAN, not merely "nothing left to stage".
 - Tab-bearing insertions go through python-heredoc replace — free-text
   edit glues tabs into comments as literal `\t`.
 - Pure-Go deps only (`CGO_ENABLED=0`); Go 1.26+ idioms deliberate
@@ -275,11 +272,8 @@ docs/DOMAIN_LANGUAGE.md.
   `internal/queue/companion`); art-dupl residuals accepted ONLY where
   named here; don't add new ones. Templ markup cannot carry Go-comment
   accepts — the HTML-comment directive form suppresses but SHIPS IN PAGE
-  OUTPUT (upstream ask LarsArtmann/art-dupl#9, still open 2026-10-28);
-  the old `fragments.templ` conditional-span residual dissolved from the
-  canonical report (2026-10-28 HEAD run: zero fragments.templ groups;
-  sole templ twin left is the layout.templ mobile/desktop branch pair,
-  intentional — no directive needed or wanted).
+  OUTPUT (upstream ask LarsArtmann/art-dupl#9, still open); the sole
+  templ twin (layout.templ mobile/desktop branch pair) is intentional.
   `art-dupl:accept` suppresses only within a few lines ABOVE the clone's
   first line (func-top doc position; inline comment for deeper ones).
 - POSIX-only suites carry `//go:build unix`; tests hermetic (nix checkPhase
@@ -307,22 +301,21 @@ docs/DOMAIN_LANGUAGE.md.
   (unpushed only; backup on failure; `--self-test` pins rails). REFUSES
   non-contiguous spans. A refusal naming the span's PARENT (a foreign
   footer BELOW an otherwise-exactly-mine span) is the span-terminator
-  shape: run the script's printed `--from <oldest-blocker>` invocation —
-  proven to heal cleanly (2026-10-20 02-27 window); residue fallback:
+  shape: run the script's printed `--from <oldest-blocker>` invocation
+  (proven, 2026-10-20); residue fallback:
   verify exactly-mine via `git show --stat`, then `git commit --amend`
   the unpushed HEAD (2026-10-11 §d4; 02-03 §f11).
-- **`TestExactlyOnceUnderConcurrency` is load-flaky (worker);
-  `TestSelfManagingLoop` is load-flaky (harvest)**: build storms drop them
+- **`TestExactlyOnceUnderConcurrency` (worker) and
+  `TestSelfManagingLoop` (harvest) are load-flaky**: build storms drop them
   at clean parents — re-run before attributing; both ride `KNOWN_FLAKY` in
   `scripts/lib/verify-retry.sh`.
-- **Agent shells inherit `TQ_DB`** (PRODUCTION journal) — scratch
-  smokes MUST export `TQ_DB=<scratch>`.
+- **Agent shells inherit `TQ_DB`** (PRODUCTION journal) — scratch smokes
+  MUST export `TQ_DB=<scratch>`.
 - **Session shell hazards**: no usable `PIPESTATUS`; bare `unset VAR`
   leaks to children (`env -u VAR`); multi-file `tail` fails; `printf
   %.0s` yields empty; chained `&` backgrounds the wrong span. POSIX ERE:
   `\t` inside a grep bracket class is a literal `t` (not tab) — use
-  `[[:space:]]`/`[[:alnum:]]` classes, never `\t`/`\d` (cqrs `event`-
-  module silent skip, 2026-10-27; hook-denied now).
+  `[[:space:]]`/`[[:alnum:]]` classes, never `\t`/`\d` (hook-denied).
 - **Root builds auto-use `vendor/`** — internal/ changes need `go mod
   vendor` first; dep bumps also per-module tidy
   (`check-gomod-vendor-sync.sh` gates both).
@@ -337,8 +330,8 @@ docs/DOMAIN_LANGUAGE.md.
 - **golangci-lint is advisory** (~1.4k baseline, growth gated by
   `scripts/lint-baseline.sh --check`); hard gates: vet+gofmt+tests;
   regen only green after `golangci-lint cache clean`.
-- **gosec**: all findings triaged via `scripts/check-gosec.sh`; a new
-  finding is a new class needing fresh triage.
+- **gosec**: all findings triaged via `check-gosec.sh`; a new finding is
+  a new class needing fresh triage.
 - **`tq serve`/`tq api` security**: loopback + read-only default;
   writes CSRF+lockout-guarded; non-loopback needs `--auth-token`
   (SECURITY.md); no new write endpoints without it.
@@ -350,8 +343,8 @@ docs/DOMAIN_LANGUAGE.md.
   wrong for `lint`). `legacy_as` = migrate to `errors.AsType` (zero since
   2026-10-27); `legacy_is` sentinel sites KEEP `errors.Is` +
   `//nolint:legacyerrors // <reason>` on the call line (default lint honors
-  it; `--max` implies `--no-suppress`, hence the disable; never run
-  `nolint-audit --fix` — it deletes honored tokens). `generic_return`
+  it; `--max` implies `--no-suppress`; never run `nolint-audit --fix` —
+  it deletes honored tokens). `generic_return`
   (~197 sites / 24 modules under `--max`): OWNER-RULED ADOPT 2026-10-27 —
   per-function error types are a dedicated migration project, NOT lint
   debt to suppress away; the gate keeps `--disable generic_return` only
@@ -359,14 +352,12 @@ docs/DOMAIN_LANGUAGE.md.
   `scripts/check-erraudit.sh` + ci-local, HARD gate. Tool bugs (hint/flag
   rejections, rc shape) file at github.com/larsartmann/erraudit.
 - **VendorHash drift**: after go.mod changes run
-  `nix build .#checks.x86_64-linux.vendor-hash`, copy `got:` to
-  flake.nix.
-- **readmodel schema drift crash-loops the fold** (planned tables get
-  no column migration): `ConvergeProjectionHome` snapshots divergent
-  homes aside (`.legacy-schema-*.bak`); crash remedy: quarantine
-  `<db>.readmodel.db*` + restart.
-- **History policy**: NEVER reword/amend/rebase PUSHED commits; no
-  force push; scripted edits via script files.
+  `nix build .#checks.x86_64-linux.vendor-hash`, copy `got:` to flake.nix.
+- **readmodel schema drift crash-loops the fold** (planned tables get no
+  column migration): `ConvergeProjectionHome` snapshots divergent homes
+  aside; crash remedy: quarantine `<db>.readmodel.db*` + restart.
+- **History policy**: NEVER reword/amend/rebase PUSHED commits; no force
+  push.
 - **Kernel ETXTBSY**: fresh-binary execve intermittently fails — route
   exec sites through `execWithTransientRetry`.
 - **Nix 2.34 flake gotcha**: `outputs = let … in <lambda>` reads as a
