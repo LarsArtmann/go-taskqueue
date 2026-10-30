@@ -226,6 +226,28 @@ func TestSecretPatternsOverlapCensus(t *testing.T) {
 	}
 }
 
+// TestSecretPatternSamplesRawCountExactlyOne pins the RAW count property for
+// the canonical samples themselves (2026-10-26 closeout §f3): every
+// secretPatternSamples entry must count exactly ONE secret location through
+// SecretHits on the raw input. The count property previously rode only the
+// injected-token test and the >=1 compile-identical table; the canonical
+// samples had no exact raw-count assertion, so a sample that grew a second
+// match (shape drift) would pass silently.
+func TestSecretPatternSamplesRawCountExactlyOne(t *testing.T) {
+	t.Parallel()
+
+	if len(secretPatternSamples) != len(secretPatterns) {
+		t.Fatalf("raw-count pin covers %d of %d secretPatterns — extend samples together with the table",
+			len(secretPatternSamples), len(secretPatterns))
+	}
+
+	for i, sample := range secretPatternSamples {
+		if hits := SecretHits(sample); hits != 1 {
+			t.Errorf("pattern %d: raw canonical sample counts %d secret locations, want exactly 1: %q", i, hits, sample)
+		}
+	}
+}
+
 // TestSecretHitsAndRedactionCompileIdenticalTable pins the shared-table
 // contract (00-55 §f8): the audit half (SecretHits) and the redaction half
 // (RedactSecrets) must walk the SAME secretPatterns table — a fork would
