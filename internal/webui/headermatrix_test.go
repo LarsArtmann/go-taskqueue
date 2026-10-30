@@ -222,186 +222,187 @@ var serveHealthRow = matrixHeaders{
 	"cache-control":          eq("no-cache"),
 }
 
-// TestServeHeaderMatrix pins the `tq serve` column: task pages, the 401
-// realm, and the /health* override all match their matrix rows exactly.
-func TestServeHeaderMatrix(t *testing.T) {
+// newServeServer boots a `tq serve` test instance for the matrix family:
+// one server per surface test, handler under the given config.
+func newServeServer(t *testing.T, cfg Config) (*Server, *httptest.Server) {
+	t.Helper()
+
+	s := New(newTestStore(t), cfg)
+	server := httptest.NewServer(s.Handler())
+	t.Cleanup(server.Close)
+
+	return s, server
+}
+
+// The TestServeHeaderMatrix* functions pin the `tq serve` column of the
+// SECURITY.md "Response headers, per surface" matrix — one surface per
+// function (split from a single TestServeHeaderMatrix to keep gocognit
+// down): task pages, the 401 realm, the CSRF-lockout 429, the /health
+// override, the remaining /health* probes, and the SDK bundle all match
+// their matrix rows exactly.
+
+func TestServeHeaderMatrixTaskPage(t *testing.T) {
 	t.Parallel()
 
-	t.Run("task page", func(t *testing.T) {
-		t.Parallel()
+	_, server := newServeServer(t, Config{})
 
-		s := New(newTestStore(t), Config{})
-		server := httptest.NewServer(s.Handler())
-		t.Cleanup(server.Close)
+	resp, err := http.Get(server.URL + "/")
+	if err != nil {
+		t.Fatalf("GET /: %v", err)
+	}
+	defer resp.Body.Close()
 
-		resp, err := http.Get(server.URL + "/")
+	serveDashboardRow.surface().check(t, resp.Header, "GET /")
+
+	if got := resp.Header.Get("X-Robots-Tag"); got != "" {
+		t.Errorf("task page X-Robots-Tag = %q, want unset (robots meta instead)", got)
+	}
+}
+
+func TestServeHeaderMatrix401(t *testing.T) {
+	t.Parallel()
+
+	_, server := newServeServer(t, Config{AuthToken: "secret"})
+
+	resp, err := http.Get(server.URL + "/")
+	if err != nil {
+		t.Fatalf("GET /: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want 401", resp.StatusCode)
+	}
+
+	serve401Row.surface().check(t, resp.Header, "GET / (401)")
+}
+
+func TestServeHeaderMatrix429Lockout(t *testing.T) {
+	t.Parallel()
+
+	_, server := newServeServer(t, Config{AllowWrites: true})
+
+	// A page GET issues the CSRF cookie; the lockout limiter counts
+	// 403 CSRF failures and locks the write routes on the third.
+	first, err := http.Get(server.URL + "/")
+	if err != nil {
+		t.Fatalf("GET /: %v", err)
+	}
+	first.Body.Close()
+
+	var csrf string
+	for _, c := range first.Cookies() {
+		if c.Name == tqCSRFCookie {
+			csrf = c.Value
+		}
+	}
+	if csrf == "" {
+		t.Fatal("no CSRF cookie issued on page GET")
+	}
+
+	post := func() *http.Response {
+		t.Helper()
+
+		req, err := http.NewRequest(http.MethodPost, server.URL+"/task/x/cancel", strings.NewReader("csrf=bad"))
 		if err != nil {
-			t.Fatalf("GET /: %v", err)
+			t.Fatalf("new request: %v", err)
 		}
-		defer resp.Body.Close()
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req.AddCookie(&http.Cookie{Name: tqCSRFCookie, Value: csrf})
 
-		serveDashboardRow.surface().check(t, resp.Header, "GET /")
-
-		if got := resp.Header.Get("X-Robots-Tag"); got != "" {
-			t.Errorf("task page X-Robots-Tag = %q, want unset (robots meta instead)", got)
-		}
-	})
-
-	t.Run("401 carries realm and full set", func(t *testing.T) {
-		t.Parallel()
-
-		s := New(newTestStore(t), Config{AuthToken: "secret"})
-		server := httptest.NewServer(s.Handler())
-		t.Cleanup(server.Close)
-
-		resp, err := http.Get(server.URL + "/")
+		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
-			t.Fatalf("GET /: %v", err)
-		}
-		defer resp.Body.Close()
-
-		if resp.StatusCode != http.StatusUnauthorized {
-			t.Fatalf("status = %d, want 401", resp.StatusCode)
+			t.Fatalf("POST /task/x/cancel: %v", err)
 		}
 
-		serve401Row.surface().check(t, resp.Header, "GET / (401)")
-	})
+		return resp
+	}
 
-	t.Run("write-route CSRF lockout 429 carries Retry-After and the full set", func(t *testing.T) {
-		t.Parallel()
-
-		s := New(newTestStore(t), Config{AllowWrites: true})
-		server := httptest.NewServer(s.Handler())
-		t.Cleanup(server.Close)
-
-		// A page GET issues the CSRF cookie; the lockout limiter counts
-		// 403 CSRF failures and locks the write routes on the third.
-		first, err := http.Get(server.URL + "/")
-		if err != nil {
-			t.Fatalf("GET /: %v", err)
-		}
-		first.Body.Close()
-
-		var csrf string
-		for _, c := range first.Cookies() {
-			if c.Name == tqCSRFCookie {
-				csrf = c.Value
-			}
-		}
-		if csrf == "" {
-			t.Fatal("no CSRF cookie issued on page GET")
-		}
-
-		post := func() *http.Response {
-			t.Helper()
-
-			req, err := http.NewRequest(http.MethodPost, server.URL+"/task/x/cancel", strings.NewReader("csrf=bad"))
-			if err != nil {
-				t.Fatalf("new request: %v", err)
-			}
-			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-			req.AddCookie(&http.Cookie{Name: tqCSRFCookie, Value: csrf})
-
-			resp, err := http.DefaultClient.Do(req)
-			if err != nil {
-				t.Fatalf("POST /task/x/cancel: %v", err)
-			}
-
-			return resp
-		}
-
-		for i := range 3 {
-			resp := post()
-			resp.Body.Close()
-
-			if resp.StatusCode != http.StatusForbidden {
-				t.Fatalf("bad CSRF %d = %d, want 403", i+1, resp.StatusCode)
-			}
-		}
-
+	for i := range 3 {
 		resp := post()
-		defer resp.Body.Close()
+		resp.Body.Close()
 
-		if resp.StatusCode != http.StatusTooManyRequests {
-			t.Fatalf("status = %d, want 429 after CSRF lockout", resp.StatusCode)
+		if resp.StatusCode != http.StatusForbidden {
+			t.Fatalf("bad CSRF %d = %d, want 403", i+1, resp.StatusCode)
 		}
+	}
 
-		serve429Row.surface().check(t, resp.Header, "POST /task/x/cancel (429)")
-	})
+	resp := post()
+	defer resp.Body.Close()
 
-	t.Run("health page overrides CSP and adds noindex", func(t *testing.T) {
-		t.Parallel()
+	if resp.StatusCode != http.StatusTooManyRequests {
+		t.Fatalf("status = %d, want 429 after CSRF lockout", resp.StatusCode)
+	}
 
-		s := New(newTestStore(t), Config{})
-		server := httptest.NewServer(s.Handler())
-		t.Cleanup(server.Close)
+	serve429Row.surface().check(t, resp.Header, "POST /task/x/cancel (429)")
+}
 
-		resp, err := http.Get(server.URL + "/health")
+func TestServeHeaderMatrixHealthPage(t *testing.T) {
+	t.Parallel()
+
+	_, server := newServeServer(t, Config{})
+
+	resp, err := http.Get(server.URL + "/health")
+	if err != nil {
+		t.Fatalf("GET /health: %v", err)
+	}
+	defer resp.Body.Close()
+
+	serveHealthRow.surface().check(t, resp.Header, "GET /health")
+}
+
+func TestServeHeaderMatrixHealthProbes(t *testing.T) {
+	t.Parallel()
+
+	s, server := newServeServer(t, Config{})
+
+	for _, binding := range s.healthBindings() {
+		path := binding.pattern
+		if path == HealthDashboardPath || path == HealthSDKPath {
+			continue // pinned by their own TestServeHeaderMatrix* functions
+		}
+		if path == HealthSSEPath {
+			// The SSE stream 503s without a live hub; its headers are
+			// pinned by the SSE subtest, not the plain-GET matrix.
+			continue
+		}
+		resp, err := http.Get(server.URL + path)
 		if err != nil {
-			t.Fatalf("GET /health: %v", err)
+			t.Fatalf("GET %s: %v", path, err)
 		}
-		defer resp.Body.Close()
+		resp.Body.Close()
 
-		serveHealthRow.surface().check(t, resp.Header, "GET /health")
-	})
-
-	t.Run("remaining /health* routes match the health row", func(t *testing.T) {
-		t.Parallel()
-
-		s := New(newTestStore(t), Config{})
-		server := httptest.NewServer(s.Handler())
-		t.Cleanup(server.Close)
-
-		for _, binding := range s.healthBindings() {
-			path := binding.pattern
-			if path == HealthDashboardPath || path == HealthSDKPath {
-				continue // pinned by their own subtests above/below
-			}
-			if path == HealthSSEPath {
-				// The SSE stream 503s without a live hub; its headers are
-				// pinned by the SSE subtest, not the plain-GET matrix.
-				continue
-			}
-			resp, err := http.Get(server.URL + path)
-			if err != nil {
-				t.Fatalf("GET %s: %v", path, err)
-			}
-			resp.Body.Close()
-
-			if resp.StatusCode != http.StatusOK {
-				t.Errorf("GET %s: status = %d, want 200", path, resp.StatusCode)
-			}
-
-			// The bare probes (healthz/readyz/startupz) carry no
-			// Cache-Control — only /health HTML and the SDK assets do;
-			// the favicon row below pins its own cacheable value.
-			row := serveHealthRow.surface("cache-control")
-			if path == "/health/favicon.svg" {
-				row = serveFaviconRow.surface()
-			}
-
-			row.check(t, resp.Header, "GET "+path)
+		if resp.StatusCode != http.StatusOK {
+			t.Errorf("GET %s: status = %d, want 200", path, resp.StatusCode)
 		}
-	})
 
-	t.Run("health SDK bundle is the only cacheable response", func(t *testing.T) {
-		t.Parallel()
-
-		s := New(newTestStore(t), Config{})
-		server := httptest.NewServer(s.Handler())
-		t.Cleanup(server.Close)
-
-		resp, err := http.Get(server.URL + "/health/datastar.js")
-		if err != nil {
-			t.Fatalf("GET /health/datastar.js: %v", err)
+		// The bare probes (healthz/readyz/startupz) carry no
+		// Cache-Control — only /health HTML and the SDK assets do;
+		// the favicon pins its own cacheable value.
+		row := serveHealthRow.surface("cache-control")
+		if path == "/health/favicon.svg" {
+			row = serveFaviconRow.surface()
 		}
-		defer resp.Body.Close()
 
-		withCache := matrixHeaders{}
-		maps.Copy(withCache, serveHealthRow)
-		withCache["cache-control"] = eq("public, max-age=86400")
-		withCache.surface().check(t, resp.Header, "GET /health/datastar.js")
-	})
+		row.check(t, resp.Header, "GET "+path)
+	}
+}
+
+func TestServeHeaderMatrixSDKBundle(t *testing.T) {
+	t.Parallel()
+
+	_, server := newServeServer(t, Config{})
+
+	resp, err := http.Get(server.URL + "/health/datastar.js")
+	if err != nil {
+		t.Fatalf("GET /health/datastar.js: %v", err)
+	}
+	defer resp.Body.Close()
+
+	withCache := matrixHeaders{}
+	maps.Copy(withCache, serveHealthRow)
+	withCache["cache-control"] = eq("public, max-age=86400")
+	withCache.surface().check(t, resp.Header, "GET /health/datastar.js")
 }
 
 // TestAPIHeaderMatrix pins the `tq api` column: JSON responses carry
