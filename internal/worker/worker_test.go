@@ -345,7 +345,11 @@ func TestExactlyOnceUnderConcurrency(t *testing.T) {
 	}
 
 	pool := New(store, Config{
-		Concurrency: 4, PollInterval: 5 * time.Millisecond, TaskTimeout: 5 * time.Second, Executors: reg,
+		// TaskTimeout scales with load (2026-10-30 flake-tax root cause): a
+		// 5s timeout let build storms starve the 2ms executor past its lease,
+		// requeue-racing the drain deadline — 19/20 at clean parents. The
+		// property under test is exactly-once correctness, not speed.
+		Concurrency: 4, PollInterval: 5 * time.Millisecond, TaskTimeout: 30 * time.Second, Executors: reg,
 	}, quietLog())
 	go func() { _ = pool.Start(ctx) }()
 

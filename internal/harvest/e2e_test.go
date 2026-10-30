@@ -45,7 +45,11 @@ echo "agent: closed one item in $PWD"
 // item and marks it done in TODO_LIST.md, the next harvest tick moves on to
 // the next item, and nothing is ever enqueued twice.
 func TestSelfManagingLoop(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	// 120s scales with host load (2026-10-30 flake-tax root cause): three
+	// harvest ticks + two fake-agent execs inside a 30s budget starved under
+	// build storms (the 2026-10-27 class); the loop semantics under test are
+	// correctness, not speed — the binary -timeout stays the hard backstop.
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
 
 	projects := t.TempDir()
