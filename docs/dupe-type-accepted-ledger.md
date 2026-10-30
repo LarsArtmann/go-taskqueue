@@ -10,14 +10,15 @@ How to use: when a dupe run surfaces a group below, cite the row and move on.
 A group NOT in this ledger and not machine-classified `intentional` /
 `false_positive` by the tool is a fresh finding — review it at source.
 
-Re-run expectation (verified 2026-10-20, `branching-flow dupe .`): 11 group
-keys total. Nine `actionable` groups are exactly ledger rows 1-9 below; the
-remaining keys come back machine-classified `intentional` or
-`false_positive` (factPayload/foldPayload DTO pair; single-field executor
-structs; empty context-key/marker structs; distinct `Cause: error` sentinel
-types). Any OTHER actionable group = new finding.
+Re-run expectation (verified 2026-10-30, `branching-flow dupe .`): 14 group
+keys total. Ten `actionable` keys are exactly ledger rows 1-9 and 11 below
+(row 10 is the machine-classified bucket); the remaining four keys come back
+machine-classified `intentional` or `false_positive` (factPayload/foldPayload
+DTO pair; single-field executor structs; empty context-key/marker structs;
+distinct `Cause: error` sentinel types). Any OTHER actionable key = new
+finding.
 
-## The ten accepted groups
+## The eleven accepted groups
 
 1. **evt\* fold structs** — `internal/readmodel/events.go`. Required:
    go-cqrs-lite metaengine's OnRecordTyped dispatches on distinct Go types,
@@ -59,6 +60,14 @@ types). Any OTHER actionable group = new finding.
     (`*AgentExecutor`), empty context-key/marker structs, distinct
     `Cause: error` error types. The tool now self-classifies these
     `false_positive`; nothing to consolidate.
+11. **FailureEvidence vs failureEvidenceView** — `internal/executor/result.go`
+    vs `cmd/tq/evidence.go`. Differs only in wire struct tags (the view
+    renders `stage,omitempty`; the domain fact pins `stage` because Stage is
+    the taxonomic key). cmd/tq owns its JSON presentation types
+    (ADR-0016/ADR-0017 boundary, same accepted class as rows 5-6); show wire
+    keys pinned by `TestShowJSONCarriesFailureEvidence`. The matcher
+    knowledge itself is already shared
+    (`executor.MatchesEvidenceStageSet`, 2026-10-26 01-40 §b1).
 
 ## Policy
 
