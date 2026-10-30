@@ -501,6 +501,9 @@ func serveRouteExpectations() map[string]serveRouteExpectation {
 		// omits it, so its absence is conditional there).
 		"/api/events":       {with(serveDashboardRow, matrixHeaders{"cache-control": eq("no-cache")}).surface().withContentType("text/event-stream"), 0},
 		"/task/{id}/events": {serveDashboardRow.surface("cache-control").withContentType("text/html; charset=utf-8"), 0},
+		// The L2 agent pane 503s without a configured crush server (the
+		// feed is opt-in): plain http.Error response, no SSE headers.
+		"/agents/live": {serveDashboardRow.surface("cache-control").withContentType("text/plain; charset=utf-8"), http.StatusServiceUnavailable},
 		// Health surface routes carry the health override set.
 		HealthDashboardPath: {serveHealthRow.surface().withContentType("text/html; charset=utf-8"), http.StatusOK},
 		HealthSSEPath:       {probes.withContentType("text/plain; charset=utf-8"), 0},

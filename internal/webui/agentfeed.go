@@ -115,14 +115,23 @@ func discoverWorkspaces(ctx context.Context, client *http.Client) ([]crushWorksp
 		return nil, fmt.Errorf("list workspaces: status %d", resp.StatusCode)
 	}
 
-	var list struct {
-		Workspaces []crushWorkspace `json:"workspaces"`
-	}
-
-	// The response may be a bare array; decode both shapes.
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	body, err := io.ReadAll(io.LimitReader(resp.Body, workspaceBodyLimit))
 	if err != nil {
 		return nil, fmt.Errorf("read workspaces body: %w", err)
+	}
+
+	return decodeWorkspacesBody(body)
+}
+
+// workspaceBodyLimit caps the workspace-list read: a pathological or
+// hostile response must not balloon serve memory.
+const workspaceBodyLimit = 1 << 20
+
+// decodeWorkspacesBody accepts both list shapes the crush API has carried:
+// {"workspaces":[...]} and a bare [...].
+func decodeWorkspacesBody(body []byte) ([]crushWorkspace, error) {
+	var list struct {
+		Workspaces []crushWorkspace `json:"workspaces"`
 	}
 
 	if err := json.Unmarshal(body, &list); err != nil {
@@ -131,7 +140,7 @@ func discoverWorkspaces(ctx context.Context, client *http.Client) ([]crushWorksp
 			return nil, fmt.Errorf("decode workspaces: %w", err)
 		}
 
-		list.Workspaces = bare
+		return bare, nil
 	}
 
 	return list.Workspaces, nil
@@ -144,21 +153,25 @@ func discoverWorkspaces(ctx context.Context, client *http.Client) ([]crushWorksp
 func distillFrame(frame string) (kind, line string) {
 	switch {
 	case strings.Contains(frame, `"tool_call"`):
-		var part struct {
-			Type     string `json:"type"`
-			ToolCall struct {
-				Name    string          `json:"name"`
-				Input   json.RawMessage `json:"input"`
-				Command string          `json:"command"`
-			} `json:"tool_call"`
+		// The crush envelope nests the part under "part" (E3 captures:
+		// {"type":"message.updated","part":{"type":"tool_call",
+		// "tool_call":{"name":...,"command":...}}}).
+		var envelope struct {
+			Part struct {
+				ToolCall struct {
+					Name    string          `json:"name"`
+					Input   json.RawMessage `json:"input"`
+					Command string          `json:"command"`
+				} `json:"tool_call"`
+			} `json:"part"`
 		}
-		if err := json.Unmarshal([]byte(frame), &part); err != nil {
+		if err := json.Unmarshal([]byte(frame), &envelope); err != nil || envelope.Part.ToolCall.Name == "" {
 			return "tool", excerpt(frame)
 		}
-		if part.ToolCall.Command != "" {
-			return "tool", part.ToolCall.Name + " " + excerpt(part.ToolCall.Command)
+		if envelope.Part.ToolCall.Command != "" {
+			return "tool", envelope.Part.ToolCall.Name + " " + excerpt(envelope.Part.ToolCall.Command)
 		}
-		return "tool", part.ToolCall.Name + " " + excerpt(string(part.ToolCall.Input))
+		return "tool", envelope.Part.ToolCall.Name + " " + excerpt(string(envelope.Part.ToolCall.Input))
 	case strings.Contains(frame, `"tool_result"`):
 		return "result", excerpt(frame)
 	case strings.Contains(frame, "session.created"):
@@ -170,11 +183,12 @@ func distillFrame(frame string) (kind, line string) {
 	}
 }
 
-// excerpt caps a line to pane-friendly length.
+// excerpt caps a line to pane-friendly length. Byte-exact: the cut
+// plus the three-byte ellipsis stays within the 220-byte pane budget.
 func excerpt(s string) string {
 	s = strings.TrimSpace(s)
-	if len(s) > 220 {
-		return s[:219] + "…"
+	if len(s) > 217 {
+		return s[:216] + "…"
 	}
 
 	return s

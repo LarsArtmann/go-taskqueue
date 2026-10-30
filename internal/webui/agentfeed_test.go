@@ -3,6 +3,8 @@ package webui
 import (
 	"bufio"
 	"context"
+	"io"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -162,79 +164,55 @@ func TestHandleAgentLiveDisabledServes503(t *testing.T) {
 }
 
 func TestHandleAgentLiveStreamsEvents(t *testing.T) {
+	// A real server: httptest.Recorder is not concurrency-safe for reads
+	// racing the streaming handler's writes, and SSE needs a Flusher.
 	s := New(nil, Config{CrushServer: "unix:///tmp/never-used.sock"})
-	sub := s.agentFeed.Subscribe()
+	srv := httptest.NewServer(http.HandlerFunc(s.handleAgentLive))
+	t.Cleanup(srv.Close)
 
 	go func() {
 		time.Sleep(50 * time.Millisecond)
 		s.agentFeed.broadcast(AgentEvent{Workspace: "/repos/demo", Kind: "tool", Line: "bash go test ./..."})
 	}()
 
-	req := httptest.NewRequest(http.MethodGet, "/agents/live", nil)
-	rec := httptest.NewRecorder()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-		s.handleAgentLive(rec, req)
-	}()
-
-	deadline := time.After(5 * time.Second)
-	for {
-		select {
-		case <-deadline:
-			t.Fatal("no agent event streamed before timeout")
-		case <-time.After(20 * time.Millisecond):
-			body := rec.Body.String()
-			if strings.Contains(body, `"kind":"tool"`) && strings.Contains(body, "go test") {
-				return // event landed; teardown via test end
-			}
-		case <-done:
-			t.Fatal("stream closed before the event")
-		}
-	}
-}
-
-func TestDiscoverWorkspacesBareArrayShape(t *testing.T) {
-	t.Parallel()
-
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte(`[{"id":"a"},{"path":"/p/b"}]`))
-	}))
-	t.Cleanup(srv.Close)
-
-	req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, srv.URL, nil)
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, srv.URL+"/agents/live", nil)
 	resp, err := srv.Client().Do(req)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("GET /agents/live: %v", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	// Reuse the decoder path indirectly: the endpoint under test is the
-	// unix client, so drive it through the same handler logic here.
-	ws, err := decodeWorkspaces(resp.Body)
-	if err != nil {
-		t.Fatal(err)
+	scanner := bufio.NewScanner(resp.Body)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.Contains(line, `"kind":"tool"`) && strings.Contains(line, "go test") {
+			return // event streamed live; ctx cancel tears down
+		}
 	}
-	if len(ws) != 2 || ws[0].key() != "a" || ws[1].key() != "/p/b" {
-		t.Fatalf("workspaces = %+v", ws)
+	t.Fatal("no agent event streamed before timeout")
+}
+
+func TestDecodeWorkspacesBodyBothShapes(t *testing.T) {
+	t.Parallel()
+
+	wrapped, err := decodeWorkspacesBody([]byte(`{"workspaces":[{"id":"a","path":"/p/a"},{"path":"/p/b"}]}`))
+	if err != nil || len(wrapped) != 2 || wrapped[0].key() != "a" || wrapped[1].key() != "/p/b" {
+		t.Fatalf("wrapped shape: %v %v", wrapped, err)
+	}
+
+	bare, err := decodeWorkspacesBody([]byte(`[{"id":"a"},{"path":"/p/b"}]`))
+	if err != nil || len(bare) != 2 || bare[0].key() != "a" || bare[1].key() != "/p/b" {
+		t.Fatalf("bare shape: %v %v", bare, err)
+	}
+
+	if _, err := decodeWorkspacesBody([]byte(`{nope`)); err == nil {
+		t.Fatal("malformed body must error")
 	}
 }
 
-// decodeWorkspaces mirrors discoverWorkspaces' body decode for the bare
-// array test (shared shape contract).
-func decodeWorkspaces(r *bufio.Reader) ([]crushWorkspace, error) {
-	return decodeWorkspacesBytes(func(b []byte) ([]crushWorkspace, error) {
-		var list struct {
-			Workspaces []crushWorkspace `json:"workspaces"`
-		}
-		if err := jsonUnmarshal(b, &list); err != nil {
-			var bare []crushWorkspace
-			if err2 := jsonUnmarshal(b, &bare); err2 != nil {
-				return nil, err
-			}
-			return bare, nil
-		}
-		return list.Workspaces, nil
-	})(r)
+func discardLogger() *slog.Logger {
+	return slog.New(slog.NewTextHandler(io.Discard, nil))
 }
