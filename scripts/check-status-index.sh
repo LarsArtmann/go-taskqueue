@@ -47,6 +47,14 @@ count_live_rows() {
 # persisted for days because the gate checked root-reports-have-rows, never
 # rows-point-at-real-files. Archived rows are exempt (their tree is swept by
 # check-ghost-archives); digest rows carry no paths.
+# tasks/-row convention ruling (TODO row 1210, 2026-10-26 closeout §b2/§g1):
+# INDEXED-AS-CONVENTION WINS. The two historical behaviors (52 correct-path
+# live tasks/ rows vs 6+9 drift deletions) were contradictory; the one
+# truth encoded here: a per-task closeout row is LIVE and its path must
+# resolve — deleting a stale report requires repointing or removing its row
+# in the SAME change. The gate below enforces both directions mechanically
+# (live row without file = PATH MISSING); the --self-test pins a tasks/ row
+# counting as live-and-checked.
 row_path_violations() {
 	local index="$1" base="$2" p
 	while IFS= read -r p; do
@@ -99,6 +107,8 @@ EOF
 	: >"$tmp/docs/status/c.md"
 	mkdir -p "$tmp/docs/status/archived"
 	: >"$tmp/docs/status/archived/d.md"
+	mkdir -p "$tmp/docs/status/tasks"
+	: >"$tmp/docs/status/tasks/t.md"
 	cat >"$tmp/index.md" <<'EOF'
 | DATE | REPORT | NOTES |
 |---|---|---|
@@ -106,6 +116,7 @@ EOF
 | 2026-09-14_11-00 | [b](b.md) | live row, path resolves |
 | 2026-09-14_12-00 | [gone](gone.md) | live row, path MISSING — negative path |
 | 2026-09-13_09-00 | [d](`archived/d.md`) | archived row — exempt |
+| 2026-09-15_09-00 | [t](tasks/t.md) | per-task closeout row — LIVE, must resolve |
 EOF
 	TQ_STATUS_INDEX_BASE="$tmp/docs/status" TQ_STATUS_INDEX_PATH="$tmp/index.md" bash "$0" --self-test-paths 2>/dev/null
 	path_rc=$?
@@ -124,7 +135,7 @@ EOF
 		echo "status-index self-test FAIL: clean path-branch summary wrong (rc=$path_rc)"
 		exit 1
 	fi
-	echo "status-index self-test ok (live=$got; digest excluded, unbackticked-archive counts live, malformed skipped; row-paths 3 ok / 1 missing caught)"
+	echo "status-index self-test ok (live=$got; digest excluded, unbackticked-archive counts live, malformed skipped; row-paths 4 ok / 1 missing caught, tasks/ row live)"
 	exit 0
 fi
 
