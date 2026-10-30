@@ -43,8 +43,14 @@ tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
 # Shipped budget stays 45s x 3 (the 15-39 f9/e2 numbers) — the defaults are
-# part of the contract, not an implementation detail.
-defaults="$(eval "$extracted" && printf '%s/%s' "$TRANSIENT_POLL_SECS" "$TRANSIENT_MAX_POLLS")"
+# part of the contract, not an implementation detail. unset first: a caller
+# legitimately riding the TRANSIENT_MAX_POLLS=0 escape hatch must not
+# poison the shipped-defaults probe (env-leak false-FAIL, 2026-10-30).
+defaults="$(
+	unset TRANSIENT_MAX_POLLS TRANSIENT_POLL_SECS
+	eval "$extracted"
+	printf '%s/%s' "$TRANSIENT_POLL_SECS" "$TRANSIENT_MAX_POLLS"
+)"
 if [ "$defaults" = "45/3" ]; then
 	echo "ok: shipped defaults are 45s x 3 polls"
 else
