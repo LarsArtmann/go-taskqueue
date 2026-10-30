@@ -167,7 +167,10 @@ docs/DOMAIN_LANGUAGE.md.
   in `redact_test.go` (gosec note if tripped); ONE shared table
   (`TestSecretHitsAndRedactionCompileIdenticalTable`), windows-gated
   (00-55 §f9). Counts = distinct secret LOCATIONS (span-merge `4ba81d8`;
-  before it, raw pattern matches).
+  before it, raw pattern matches). Known limitation: ZERO-separator
+  back-to-back tokens merge into ONE location — the greedy
+  `[A-Za-z0-9_-]{16,}` charsets absorb token contact at the boundary, so
+  distinct counts need a non-token separator between secrets.
 - **Enqueued-fact snapshots are THIN** (`{project,type}`;
   `Caps.EnqueuedSnapshot=false` pinned in conform suites).
 
