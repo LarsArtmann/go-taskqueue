@@ -11,7 +11,7 @@ require (
 	github.com/larsartmann/go-cqrs-lite/queue/v4 v4.0.3 // indirect
 	github.com/larsartmann/go-error-family v0.11.0 // indirect
 	github.com/larsartmann/go-retry v0.8.0 // indirect
-	github.com/larsartmann/go-taskqueue/internal/executor v0.4.0 // indirect
+	github.com/larsartmann/go-taskqueue/internal/executor v0.4.1 // indirect
 	github.com/larsartmann/go-taskqueue/internal/journal v0.4.1 // indirect
 	github.com/larsartmann/go-taskqueue/internal/queue v0.4.0 // indirect
 	github.com/larsartmann/go-taskqueue/internal/retryx v0.3.4 // indirect
