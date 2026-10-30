@@ -294,10 +294,10 @@ smoke_invoked() {
 			for (s = 1; s <= n; s++) {
 				m = split(segs[s], w, /[[:space:]]+/)
 				i = 1
-				while (i <= m && w[i] ~ /^[A-Za-z_][A-Za-z0-9_]*=/) i++
+				while (i <= m && (w[i] == "" || w[i] ~ /^[A-Za-z_][A-Za-z0-9_]*=/)) i++
 				if (i > m) continue
 				t = w[i]
-				if (t == "bash" || t == "sh") { i++; if (i > m) continue; t = w[i] }
+				if (t == "bash" || t == "sh") { i++; while (i <= m && w[i] == "") i++; if (i > m) continue; t = w[i] }
 				if (t ~ /^(\.\/)?(scripts\/)?smoke\/[A-Za-z0-9_.-]+\.sh$/) { print "hit"; exit }
 			}
 		}'
@@ -409,7 +409,11 @@ if has_word tail; then
 	[ "$tail_files" -ge 2 ] && notes+=("multi-file tail fails in session shells — one tail per file (or awk).")
 fi
 
-chain_count="$({ printf '%s' "$cmd" | grep -o '[^&]&[^&]' || true; } | wc -l)"
+# Count single-& background operators, ignoring redirect forms (2>&1, >&x,
+# &>file) — the 2026-10-30 session FP advised on two plain `2>&1` redirects.
+amp_sanitized="${cmd//>&/xx}"
+amp_sanitized="${amp_sanitized//&>/xx}"
+chain_count="$({ printf '%s' "$amp_sanitized" | grep -o '[^&]&[^&]' || true; } | wc -l)"
 if [ "$chain_count" -ge 2 ]; then
 	notes+=("chained single & backgrounds the wrong span in session shells — use the bash tool's run_in_background instead.")
 fi

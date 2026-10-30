@@ -224,7 +224,9 @@ docs/DOMAIN_LANGUAGE.md.
   and advises TQ_DB/unset/multi-tail/chained-`&`/stale vendor/GOCACHE/
   GOWORK/nix rows; `tq-edit-advice`: per-path notes (templ, TODO_LIST,
   AGENTS size, CHANGELOG O14, go.mod floor, docs/status creation).
-  Hatches in deny messages; force-push hatchless.
+  Hatches in deny messages; force-push hatchless. Smoke rule is
+  command-position (git add/grep of smoke paths passes). Client/server
+  relations map: docs/planning/2026-10-30_04-43_crush-client-server-relations.md.
 - docs/status reports follow the a)-g) skeleton; indexed on creation
   (`check-status-index.sh`; daemon bypasses hooks — AMEND MANEUVER for
   daemon-folded reports); ONE index-row write point (top chronological
