@@ -200,6 +200,15 @@ step "tracked-ignored path guard self-test (fold-lock class pin)"
 step "tracked-ignored path guard (daemon-sweep class)"
 ./scripts/check-tracked-ignored.sh
 
+# erraudit HARD gate (owner ruling 2026-10-27; wiring ruled 2026-10-28):
+# per-module lint under the ruled disable set; self-test first (fleet
+# countable-gate contract).
+step "erraudit gate self-test (summary + negative-path pins)"
+./scripts/check-erraudit.sh --self-test
+
+step "erraudit gate (per-module, ruled disable set)"
+./scripts/check-erraudit.sh
+
 # --- CI test job (exact ci.yml order; lint advisory exactly like CI) -------
 
 step "vet"
