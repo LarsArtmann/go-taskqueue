@@ -395,8 +395,8 @@ Repo-internal tooling and non-operator-facing changes (O14 audit
 
 - **S3 tag wave unblocks the replace-free consumer graph** (2026-10-30):
   `internal/dlqbackoff` extracted to its own module (import path
-  unchanged) and tagged `internal/dlqbackoff/v0.3.4` alongside the
-  missing `internal/retryx/v0.3.4` — the cmd/tq proxy graph and the
+  unchanged) and tagged at v0.3.4 alongside the missing
+  `internal/retryx` v0.3.4 tag — the cmd/tq proxy graph and the
   examples/embed on-ramp resolve again. Same wave: vendorHash resync,
   per-module go.sum heals (dep-bump drift), `cmd/tq/go.work` back in
   sync with the root replace set (retryx use-line had drifted).

@@ -100,6 +100,18 @@ jobs:
         # dep-bump drift gate generates vendor/ earlier in this job, and
         # vendored upstream code predates the current gofmt.
         run: test -z "$(gofmt -l . | grep -v '^vendor/')" || (gofmt -l . | grep -v '^vendor/' && exit 1)
+      - name: erraudit gate (per-module, ruled disable set)
+        # HARD gate (owner ruling 2026-10-27, wiring ruled 2026-10-28):
+        # scripts/check-erraudit.sh runs the ruled lint shape from every
+        # module root; self-test first (fleet countable-gate contract).
+        # Version derived from the ONE pin source (the GOSEC_VERSION
+        # pattern): bump in scripts/lib/tool-pins.sh, never here.
+        run: |
+          erraudit_version="$(sed -n 's/^ERRAUDIT_VERSION=//p' scripts/lib/tool-pins.sh)"
+          go install "github.com/larsartmann/erraudit@${erraudit_version}"
+          export PATH="$(go env GOPATH)/bin:$PATH"
+          ./scripts/check-erraudit.sh --self-test
+          ./scripts/check-erraudit.sh
       - name: Lint (golangci-lint, config in .golangci.yml)
         # Advisory, not a gate: the ~400-finding repo baseline (wrapcheck,
         # varnamelen, paralleltest, ...) is documented in AGENTS.md; a red
