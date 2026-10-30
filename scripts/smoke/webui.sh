@@ -271,6 +271,15 @@ assert code == 401, f"wrong-token stats: {code}, want 401"
 
 code, _, body = status(f"{base}/api/stats", {"Authorization": "Bearer smoke-secret"})
 assert code == 200, f"bearer stats: {code}, want 200"
+# Demoted-serve correctness pin (TODO row 1177): the auth serve shares the
+# live smoke db, so its /api/stats must see the SAME final state as the
+# primary serve — a 200 with an empty/divergent body must fail the smoke.
+import json as _json
+_stats = _json.loads(body)
+assert _stats.get("completed") == 2 and _stats.get("dead") == 1, (
+    f"demoted-serve stats diverged: {_stats}"
+)
+print(f"bearer stats body OK: completed=2 dead=1")
 
 code, _, body = status(f"{base}/?token=smoke-secret")
 assert code == 200 and b"frag-stats" in body, f"token-query page: {code}, want 200 with fragments"
