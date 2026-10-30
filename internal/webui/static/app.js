@@ -506,6 +506,47 @@
     }
   });
 
+  /* L2 live agent pane: an append-only EventSource consumer for
+     /agents/live. The pane stays hidden until the first routed-run event
+     (the endpoint 503s when serve runs without --crush-server, and the
+     error handler keeps the pane hidden). Lines are capped so a long
+     fleet day cannot grow the DOM unbounded. */
+  function startAgentPane(ES) {
+    var pane = document.getElementById("agent-pane");
+    var feed = document.getElementById("agent-feed");
+    if (!pane || !feed || typeof ES !== "function") return null;
+
+    var cap = 200;
+    var src = new ES("/agents/live");
+
+    src.addEventListener("agent", function (e) {
+      try {
+        var evt = JSON.parse(e.data);
+        var li = document.createElement("li");
+        li.className = "agent-line agent-" + (evt.kind || "tool");
+        var ws = document.createElement("span");
+        ws.className = "text-gray-500 dark:text-gray-400";
+        ws.textContent = (evt.workspace || "?") + " ";
+        var line = document.createElement("span");
+        line.textContent = evt.line || "";
+        li.appendChild(ws);
+        li.appendChild(line);
+        feed.appendChild(li);
+        while (feed.children.length > cap) feed.removeChild(feed.firstChild);
+        pane.classList.remove("hidden");
+      } catch (err) {
+        /* malformed frame: skip, the feed is best-effort */
+      }
+    });
+
+    src.onerror = function () {
+      /* 503 (feed off) or transport drop: hide, let the browser retry */
+      pane.classList.add("hidden");
+    };
+
+    return src;
+  }
+
   /* Node unit-harness hook (internal/webui/jstest); undefined in browsers. */
   if (typeof module !== "undefined" && module.exports) {
     module.exports = {
@@ -514,6 +555,8 @@
       fragmentBusy: fragmentBusy,
       flushPendingSwap: flushPendingSwap,
       flushGraceMs: FLUSH_GRACE_MS,
+      startAgentPane: startAgentPane,
     };
   }
+  if (typeof module === "undefined") startAgentPane(EventSource);
 })();

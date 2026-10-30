@@ -112,6 +112,13 @@ type Config struct {
 	// above the dead-letter queue. 0 keeps the surface off (no journal
 	// read, nothing rendered), mirroring pool-health's --dlq-backoff.
 	DLQBackoff time.Duration
+	// CrushServer, when set, enables the L2 live agent pane: Run starts
+	// the workspace-event collector against the pool's shared crush
+	// server (unix socket; the same flag agent-pool takes), and
+	// /agents/live streams distilled tool events to the pane. Empty =
+	// the pane is off and /agents/live serves 503 (routed runs are an
+	// L1 opt-in; local runs produce no workspace events).
+	CrushServer string
 }
 
 // ProjectionPump is the live-projection surface the server consumes on
@@ -169,6 +176,10 @@ type Server struct {
 	// writes throttles CSRF brute force on the two write routes.
 	writes *writeRateLimiter
 
+	// agentFeed is the L2 live-agent pane feed (nil-safe: always built;
+	// the collector only runs when cfg.CrushServer is set).
+	agentFeed *AgentFeed
+
 	httpServer *http.Server
 }
 
@@ -180,12 +191,13 @@ func New(store queue.Store, cfg Config) *Server {
 	prober := newQueueProber(store, cfg.Version)
 
 	s := &Server{
-		store:  store,
-		hub:    NewHub(),
-		cfg:    cfg,
-		prober: prober,
-		dash:   newHealthDashboard(prober),
-		writes: newWriteRateLimiter(),
+		store:     store,
+		hub:       NewHub(),
+		cfg:       cfg,
+		prober:    prober,
+		dash:      newHealthDashboard(prober),
+		writes:    newWriteRateLimiter(),
+		agentFeed: NewAgentFeed(),
 	}
 
 	prober.projectionCursor = func(_ context.Context) (int64, bool) {
@@ -240,6 +252,7 @@ func (s *Server) routeBindings() []struct {
 		{"GET", "/api/events", s.handleEvents},
 		{"GET", "/api/stats", s.handleStats},
 		{"GET", "/api/facts", s.handleFacts},
+		{"GET", "/agents/live", s.handleAgentLive},
 		{"GET", "/static/", nil}, // staticHandler, wired in Handler
 	}
 }
@@ -435,6 +448,16 @@ func (s *Server) Run(ctx context.Context) error {
 		slog.Error("webui: health dashboard pusher failed to start", "err", err)
 	}
 
+	// L2 live agent pane: the collector only runs when a crush server was
+	// configured (routed runs); it exits with ctx.
+	if s.cfg.CrushServer != "" {
+		go func() {
+			if err := RunAgentFeed(ctx, s.cfg.CrushServer, s.agentFeed, slog.Default()); err != nil {
+				slog.Error("webui: agent feed collector failed", "err", err)
+			}
+		}()
+	}
+
 	tailerDone := make(chan struct{})
 
 	go func() {
@@ -495,6 +518,10 @@ func (s *Server) Run(ctx context.Context) error {
 
 	if err := s.hub.Shutdown(shutdownCtx); err != nil {
 		slog.Error("webui: hub shutdown", "err", err)
+	}
+
+	if err := s.agentFeed.Shutdown(shutdownCtx); err != nil {
+		slog.Error("webui: agent feed shutdown", "err", err)
 	}
 
 	return runErr

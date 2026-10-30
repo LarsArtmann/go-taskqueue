@@ -83,6 +83,14 @@ templ Page(data DashboardData) {
 				</div>
 			}
 		</div>
+		<!-- L2 live agent pane: hidden until app.js receives the first routed-run
+		     event on /agents/live (the feed needs the serve crush-server flag
+		     and routed runs); pure observability, never part of the task
+		     projection, so it renders in no snapshot. -->
+		<details id="agent-pane" class="mx-auto hidden w-full max-w-7xl px-4 pb-8 sm:px-6 lg:px-8" open>
+			<summary class="tq-label cursor-pointer select-none">live agents</summary>
+			<ul id="agent-feed" class="mt-3 space-y-1 font-mono text-xs" aria-live="polite"></ul>
+		</details>
 		<!-- The SSE client: the page renders fully without it, then app.js
 		     swaps fragments in live (ADR-0003). Last in body so it never
 		     blocks first paint; defer keeps execution after parsing. -->

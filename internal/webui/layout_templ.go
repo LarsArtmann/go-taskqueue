@@ -220,7 +220,7 @@ func Page(data DashboardData) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "</div><!-- The SSE client: the page renders fully without it, then app.js\n\t\t     swaps fragments in live (ADR-0003). Last in body so it never\n\t\t     blocks first paint; defer keeps execution after parsing. --> <script src=\"/static/app.js\" defer></script>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "</div><!-- L2 live agent pane: hidden until app.js receives the first routed-run\n\t\t     event on /agents/live (the feed needs the serve crush-server flag\n\t\t     and routed runs); pure observability, never part of the task\n\t\t     projection, so it renders in no snapshot. --> <details id=\"agent-pane\" class=\"mx-auto hidden w-full max-w-7xl px-4 pb-8 sm:px-6 lg:px-8\" open><summary class=\"tq-label cursor-pointer select-none\">live agents</summary><ul id=\"agent-feed\" class=\"mt-3 space-y-1 font-mono text-xs\" aria-live=\"polite\"></ul></details><!-- The SSE client: the page renders fully without it, then app.js\n\t\t     swaps fragments in live (ADR-0003). Last in body so it never\n\t\t     blocks first paint; defer keeps execution after parsing. --> <script src=\"/static/app.js\" defer></script>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -336,7 +336,7 @@ func TaskNotFoundPage(id string) templ.Component {
 			var templ_7745c5c3_Var7 string
 			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(id)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/layout.templ`, Line: 110, Col: 84}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/layout.templ`, Line: 118, Col: 84}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 			if templ_7745c5c3_Err != nil {
@@ -452,7 +452,7 @@ func pageHeading(text, accent string) templ.Component {
 		var templ_7745c5c3_Var12 string
 		templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(text)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/layout.templ`, Line: 147, Col: 43}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/layout.templ`, Line: 155, Col: 43}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 		if templ_7745c5c3_Err != nil {
@@ -560,7 +560,7 @@ func viewToggleLink(f FilterState, view, label string, active bool) templ.Compon
 			var templ_7745c5c3_Var17 templ.SafeURL
 			templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinURLErrs(templ.URL(viewToggleHref(f, view)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/layout.templ`, Line: 166, Col: 78}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/layout.templ`, Line: 174, Col: 78}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 			if templ_7745c5c3_Err != nil {
@@ -573,7 +573,7 @@ func viewToggleLink(f FilterState, view, label string, active bool) templ.Compon
 			var templ_7745c5c3_Var18 string
 			templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(label)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/layout.templ`, Line: 166, Col: 108}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/layout.templ`, Line: 174, Col: 108}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 			if templ_7745c5c3_Err != nil {
@@ -609,7 +609,7 @@ func viewToggleLink(f FilterState, view, label string, active bool) templ.Compon
 			var templ_7745c5c3_Var21 templ.SafeURL
 			templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinURLErrs(templ.URL(viewToggleHref(f, view)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/layout.templ`, Line: 168, Col: 79}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/layout.templ`, Line: 176, Col: 79}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
 			if templ_7745c5c3_Err != nil {
@@ -622,7 +622,7 @@ func viewToggleLink(f FilterState, view, label string, active bool) templ.Compon
 			var templ_7745c5c3_Var22 string
 			templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(label)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/layout.templ`, Line: 168, Col: 89}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/layout.templ`, Line: 176, Col: 89}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
 			if templ_7745c5c3_Err != nil {

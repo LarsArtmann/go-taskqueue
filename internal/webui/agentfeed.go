@@ -145,7 +145,7 @@ func distillFrame(frame string) (kind, line string) {
 	switch {
 	case strings.Contains(frame, `"tool_call"`):
 		var part struct {
-			Type    string `json:"type"`
+			Type     string `json:"type"`
 			ToolCall struct {
 				Name    string          `json:"name"`
 				Input   json.RawMessage `json:"input"`

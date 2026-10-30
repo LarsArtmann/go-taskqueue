@@ -265,6 +265,50 @@ func (s *Server) handleTaskDetail(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// handleAgentLive is the L2 pane's SSE endpoint: an append-only stream of
+// distilled agent events (no snapshot — replay is impossible by design,
+// a reconnect just continues from the live edge). Serves 503 when the
+// feed is off (serve without --crush-server).
+func (s *Server) handleAgentLive(w http.ResponseWriter, r *http.Request) {
+	if s.cfg.CrushServer == "" {
+		http.Error(w, errAgentFeedDisabled.Error(), http.StatusServiceUnavailable)
+		return
+	}
+
+	if _, ok := w.(http.Flusher); !ok {
+		http.Error(w, "streaming not supported", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("X-Accel-Buffering", "no")
+
+	stream := sse.NewStream(w, r)
+	defer func() { _ = stream.Close() }()
+
+	ctx := r.Context()
+
+	events := s.agentFeed.Subscribe()
+	defer s.agentFeed.Unsubscribe(events)
+
+	stopHeartbeat := s.startHeartbeat(ctx, stream)
+	defer stopHeartbeat()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case evt, ok := <-events:
+			if !ok {
+				return
+			}
+
+			if err := stream.SendJSON("agent", evt); err != nil {
+				return
+			}
+		}
+	}
+}
+
 // handleEvents is the SSE endpoint: the shared subscribe → snapshot →
 // tick-pump protocol (runEventStream) over the dashboard fragments,
 // rendered under this request's filter.
