@@ -104,7 +104,7 @@ if [ "${FLAG_COUNT_SELF_TEST:-}" = "1" ]; then
 	# gate's FAIL branch, so the pin could green while the gate was broken.
 	sed 's/^agent-pool [0-9][0-9]*$/agent-pool 999/' "$BASELINE" >"$WORK/tampered"
 	st_rc=0
-	st_out="$(FLAG_COUNT_SELF_TEST= FLAG_COUNT_BASELINE="$WORK/tampered" TQ_BIN="$TQ" "$0" 2>&1)" || st_rc=$?
+	st_out="$(FLAG_COUNT_SELF_TEST='' FLAG_COUNT_BASELINE="$WORK/tampered" TQ_BIN="$TQ" "$0" 2>&1)" || st_rc=$?
 	if [ "$st_rc" -eq 1 ] && grep -q 'FAIL: tq agent-pool registered flags:' <<<"$st_out"; then
 		echo "self-test ok: tampered baseline (agent-pool 999) hits the gate's drift FAIL line (rc=1)"
 	else

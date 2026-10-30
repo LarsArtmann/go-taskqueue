@@ -128,7 +128,9 @@ if [ "${TQ_SMOKE_NETNS:-}" != "1" ]; then
 	fi
 fi
 
-netns_marker_gate
+# "$@" keeps the invocation's own args across the unshare -n re-exec inside
+# the gate (SC2120-class fix: a bare call silently dropped them).
+netns_marker_gate "$@"
 
 # shellcheck source=scripts/lib/proxy-wait.sh
 source scripts/lib/proxy-wait.sh

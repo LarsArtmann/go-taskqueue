@@ -421,3 +421,13 @@ ffb29a06
 # — baselined, no reliable positional twin.
 5281772d→f33df6dd
 aeff1489
+# 2026-10-30 morning-orphan wave (task: v0.4.0 release train, g2 close):
+# e1273b28/1d8520cc/554cb39b are pre-fold daemon-sweep / TICK-LOST
+# intermediates cited by that morning's task reports (dead-side
+# forensics prose, no patch-id twin — class LOST); 5281772d rides its
+# verified fork record above (f33df6dd reachable) but the citations
+# describe the dead side, so the bare row silences them per convention.
+e1273b28
+1d8520cc
+554cb39b
+5281772d
