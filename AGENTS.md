@@ -211,6 +211,10 @@ docs/DOMAIN_LANGUAGE.md.
   ROOT build+vet+test -race rc. Re-dispatch: `scripts/redispatch-brief.sh`;
   battery rc TO A FILE (no PIPESTATUS); dated DONE re-verified note;
   `-v` + PASS COUNT for conform `-run`.
+  **Observe-first for pinning work**: before writing header/status/value
+  assertions, CAPTURE the live output (temp observation test or smoke run)
+  and pin what was observed — assertion-first pinning paid an assertion-
+  driven red in three consecutive windows (00-35 §d, 01-01 §d, 01-12 §d1).
 - **Gate receipts**: a report's "N ok / M fail" count is
   `grep -c '^ok:'` over a CAPTURED gate-output file — never counted in
   context or taken from a summary line (17-vs-16 class).
