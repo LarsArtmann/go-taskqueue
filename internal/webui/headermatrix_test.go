@@ -163,6 +163,12 @@ var serve429Row = mergeRow(serveDashboardRow, matrixHeaders{
 	"retry-after": positiveSeconds,
 })
 
+// serveFaviconRow is the `/health/favicon.svg` row: the health set with a
+// cacheable Cache-Control (static asset like the SDK bundle, not no-cache).
+var serveFaviconRow = mergeRow(serveHealthRow, matrixHeaders{
+	"cache-control": eq("public, max-age=86400"),
+})
+
 // apiAuthedRow / apiUnauthedRow / apiLockedRow are the `tq api` column:
 // nosniff everywhere, no-store when authenticated, the API realm on 401,
 // Retry-After on the bearer lockout.
@@ -320,10 +326,7 @@ func TestServeHeaderMatrix(t *testing.T) {
 			t.Fatalf("status = %d, want 429 after CSRF lockout", resp.StatusCode)
 		}
 
-		with429 := mergeRow(serveDashboardRow, matrixHeaders{
-			"retry-after": positiveSeconds,
-		})
-		with429.surface().check(t, resp.Header, "POST /task/x/cancel (429)")
+		serve429Row.surface().check(t, resp.Header, "POST /task/x/cancel (429)")
 	})
 
 	t.Run("health page overrides CSP and adds noindex", func(t *testing.T) {
@@ -374,12 +377,7 @@ func TestServeHeaderMatrix(t *testing.T) {
 			// the favicon row below pins its own cacheable value.
 			row := serveHealthRow.surface("cache-control")
 			if path == "/health/favicon.svg" {
-				// The favicon is a static asset like the SDK bundle: the
-				// matrix pins it cacheable, not no-cache.
-				favicon := matrixHeaders{}
-				maps.Copy(favicon, serveHealthRow)
-				favicon["cache-control"] = eq("public, max-age=86400")
-				row = favicon.surface()
+				row = serveFaviconRow.surface()
 			}
 
 			row.check(t, resp.Header, "GET "+path)
