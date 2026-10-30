@@ -414,3 +414,10 @@ f704d6d0
 fcd7282a
 fdbba7fe
 ffb29a06
+# 2026-10-30 fork wave (task: foreign-red quad heal): the 08-21 task report's
+# cites rode the sanctioned 10-27 rebase; 5281772d re-landed verbatim-subject
+# as f33df6dd (fork record below, verified by subject + content superset);
+# aeff1489 is a footerless daemon auto-commit (ambiguous subject, many twins)
+# — baselined, no reliable positional twin.
+5281772d→f33df6dd
+aeff1489
