@@ -8,7 +8,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
-- Nothing yet.
+- **`tq agent-pool --crush-server <socket>` (L1 client-server seam)**:
+  when set, the pool runs a shared `crush server` on the socket as a
+  lifecycle actor and every dispatched agent run becomes a thin client
+  (argv adds `-H <socket>`, env adds `CRUSH_CLIENT_SERVER=1`); absent =
+  today's in-process runs, rollback = unset the flag. Executors pin the
+  seam via internal/executor v0.4.1.
+- **Live agent pane (L2 observability)**: the dashboard gained an
+  append-only live-agents pane streaming distilled tool events from
+  routed runs (`GET /agents/live`; 503 when no crush server is
+  configured). The `tq serve --crush-server` wiring ships with the next
+  root tag.
 
 ### Fixed
 
