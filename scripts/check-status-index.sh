@@ -53,8 +53,8 @@ count_live_rows() {
 # truth encoded here: a per-task closeout row is LIVE and its path must
 # resolve — deleting a stale report requires repointing or removing its row
 # in the SAME change. The gate below enforces both directions mechanically
-# (live row without file = PATH MISSING); the --self-test pins a tasks/ row
-# counting as live-and-checked.
+# (live row without file = PATH MISSING); the path battery pins a tasks/ row
+# as live-and-resolving (the '3 ok' summary leg).
 row_path_violations() {
 	local index="$1" base="$2" p
 	while IFS= read -r p; do
@@ -63,6 +63,7 @@ row_path_violations() {
 		# archived/ rows) OR repo-root-relative (cross-tree citations like
 		# docs/planning/…). Prose backticks (`[^`]+\.md` with spaces) are
 		# not paths and never match the extraction regex.
+		ROW_PATH_CHECKED=$((ROW_PATH_CHECKED + 1))
 		if [ ! -f "$base/$p" ] && [ ! -f "$p" ]; then
 			echo "PATH MISSING: live row cites \`$p\` — no file at docs/status/$p or $p (re-routed or deleted report; repoint or archive the row)"
 			ROW_PATH_FAILS=$((ROW_PATH_FAILS + 1))
@@ -74,6 +75,7 @@ row_path_violations() {
 		| sort -u)
 }
 ROW_PATH_FAILS=0
+ROW_PATH_CHECKED=0
 
 # --self-test: pin the live-row counter against a fixture index (live,
 # archived with and without backticks, digest, malformed) instead of the real
@@ -114,31 +116,44 @@ EOF
 	cat >"$tmp/index.md" <<'EOF'
 | DATE | REPORT | NOTES |
 |---|---|---|
-| 2026-09-14_10-00 | [a](a.md) | live row, path resolves |
-| 2026-09-14_11-00 | [b](b.md) | live row, path resolves |
-| 2026-09-14_12-00 | [gone](gone.md) | live row, path MISSING — negative path |
+| 2026-09-14_10-00 | [a](`a.md`) | live row, path resolves |
+| 2026-09-14_11-00 | [b](`b.md`) | live row, path resolves |
+| 2026-09-14_12-00 | [gone](`gone.md`) | live row, path MISSING — negative path |
 | 2026-09-13_09-00 | [d](`archived/d.md`) | archived row — exempt |
-| 2026-09-15_09-00 | [t](tasks/t.md) | per-task closeout row — LIVE, must resolve |
+| 2026-09-15_09-00 | [t](`tasks/t.md`) | per-task closeout row — LIVE, must resolve |
 EOF
-	TQ_STATUS_INDEX_BASE="$tmp/docs/status" TQ_STATUS_INDEX_PATH="$tmp/index.md" bash "$0" --self-test-paths 2>/dev/null
+	path_out="$(TQ_STATUS_INDEX_BASE="$tmp/docs/status" TQ_STATUS_INDEX_PATH="$tmp/index.md" bash "$0" --self-test-paths 2>&1)"
 	path_rc=$?
-	if [ "$path_rc" != "0" ]; then
-		echo "status-index self-test FAIL: negative path-branch rc=$path_rc, want 0 (missing path must be caught)"
+	if [ "$path_rc" != "1" ]; then
+		echo "status-index self-test FAIL: negative path-branch rc=$path_rc, want 1 (missing path must be caught)"
+		echo "$path_out"
+		exit 1
+	fi
+	if ! grep -q 'PATH MISSING: live row cites `gone.md`' <<<"$path_out" \
+		|| ! grep -q 'row-paths 3 ok / 1 missing' <<<"$path_out"; then
+		echo "status-index self-test FAIL: negative path-branch output lacks the pinned PATH MISSING line or summary:"
+		echo "$path_out"
 		exit 1
 	fi
 	# pins: clean-path-branch — all-resolving index renders the count summary
 	cat >"$tmp/index.md" <<'EOF'
 | DATE | REPORT | NOTES |
 |---|---|---|
-| 2026-09-14_10-00 | [a](a.md) | live row, path resolves |
+| 2026-09-14_10-00 | [a](`a.md`) | live row, path resolves |
 EOF
-	TQ_STATUS_INDEX_BASE="$tmp/docs/status" TQ_STATUS_INDEX_PATH="$tmp/index.md" bash "$0" --self-test-paths 2>/dev/null | grep -q 'row-paths 1 ok / 0 missing'
+	path_out="$(TQ_STATUS_INDEX_BASE="$tmp/docs/status" TQ_STATUS_INDEX_PATH="$tmp/index.md" bash "$0" --self-test-paths 2>&1)"
 	path_rc=$?
 	if [ "$path_rc" != "0" ]; then
-		echo "status-index self-test FAIL: clean path-branch summary wrong (rc=$path_rc)"
+		echo "status-index self-test FAIL: clean path-branch rc=$path_rc, want 0"
+		echo "$path_out"
 		exit 1
 	fi
-	echo "status-index self-test ok (live=$got; digest excluded, unbackticked-archive counts live, malformed skipped; row-paths 4 ok / 1 missing caught, tasks/ row live)"
+	if ! grep -q 'row-paths 1 ok / 0 missing' <<<"$path_out"; then
+		echo "status-index self-test FAIL: clean path-branch summary wrong:"
+		echo "$path_out"
+		exit 1
+	fi
+	echo "status-index self-test ok (live=$got; digest excluded, unbackticked-archive counts live, malformed skipped; row-paths 3 ok / 1 missing caught, tasks/ row live)"
 	exit 0
 fi
 
@@ -148,8 +163,9 @@ if [ "${1:-}" = "--self-test-paths" ]; then
 	index="${TQ_STATUS_INDEX_PATH:?TQ_STATUS_INDEX_PATH required}"
 	base="${TQ_STATUS_INDEX_BASE:?TQ_STATUS_INDEX_BASE required}"
 	ROW_PATH_FAILS=0
+	ROW_PATH_CHECKED=0
 	row_path_violations "$index" "$base"
-	summary="row-paths $((ROW_PATH_FAILS + 1)) ok / $ROW_PATH_FAILS missing"
+	summary="row-paths $((ROW_PATH_CHECKED - ROW_PATH_FAILS)) ok / $ROW_PATH_FAILS missing"
 	if [ "$ROW_PATH_FAILS" -gt 0 ]; then
 		echo "PATH CHECK FAIL: $summary"
 		exit 1

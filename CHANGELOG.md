@@ -403,6 +403,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Repo-internal tooling and non-operator-facing changes (O14 audit
 2026-10-13: kept for the record, excluded from operator release notes).
 
+- **check-status-index path battery made non-vacuous** (2026-10-31):
+  the negative-path self-test wrote its fixture rows unbackticked, so
+  the gate's backtick-only extraction matched zero paths, and the
+  assertion wanted exit 0 on a fixture containing a missing path.
+  Fixtures now carry backticked paths; the missing-path run must exit 1
+  printing the pinned `PATH MISSING` line and `row-paths 3 ok / 1
+  missing` summary, the clean run pins exit 0 with its summary, and the
+  summary counts real resolving paths (new `ROW_PATH_CHECKED` counter,
+  was a fabricated fails+1). Non-vacuity mutation-proven: broken
+  extraction and a neutered fail-branch both FAIL the self-test.
 - **S3 tag wave unblocks the replace-free consumer graph** (2026-10-30):
   `internal/dlqbackoff` extracted to its own module (import path
   unchanged) and tagged at v0.3.4 alongside the missing
