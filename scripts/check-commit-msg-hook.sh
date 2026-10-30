@@ -53,6 +53,7 @@ chmod +x "$hook"
 id="00000000000000000000000000000000deadbeef"
 
 # run_case <name> <want_rc> <message-file>
+cases=0
 run_case() {
 	local name="$1" want_rc="$2" file="$3"
 	local rc=0
@@ -62,6 +63,7 @@ run_case() {
 		"$hook" "$file" >&2 || true
 		return 1
 	fi
+	cases=$((cases + 1))
 	echo "ok: $name (rc=$rc)"
 }
 
@@ -93,4 +95,4 @@ if [ "$rc" -ne 0 ]; then
 	echo "commit-msg hook pin FAILED"
 	exit 1
 fi
-echo "commit-msg hook pin ok (extraction guarded, 10 cases: placement, last-line, count, format, comment-tail, trailing-prose)"
+echo "commit-msg hook pin ok (extraction guarded, $cases cases: placement, last-line, count, format, comment-tail, trailing-prose)"
