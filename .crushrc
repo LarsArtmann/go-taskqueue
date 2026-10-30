@@ -6,6 +6,9 @@ permissions allow view ls grep glob edit write bash
 # hook-fire time so the path works from any bash working_dir.
 hook add PreToolUse --matcher '^bash$' --command 'bash "$CRUSH_PROJECT_DIR/scripts/hooks/tq-bash-guard.sh"' --name tq-bash-guard --timeout 10
 hook add PreToolUse --matcher '^(edit|write|multiedit)$' --command 'bash "$CRUSH_PROJECT_DIR/scripts/hooks/tq-edit-advice.sh"' --name tq-edit-advice --timeout 5
+# Deny-log side-channel (T6/H4): tq-bash-guard appends `ts|rule|cmd` rows
+# here on every deny; weekly FP triage reads it (scripts/check-hook-fp-triage.sh).
+export TQ_HOOK_DENY_LOG="$HOME/.cache/tq-hook-deny.log"
 # >>> tq bootstrap (managed) >>>
 permissions allow view ls grep glob edit multiedit write bash fetch download todos
 option metrics false
