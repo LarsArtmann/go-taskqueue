@@ -85,37 +85,37 @@ if [ "${1:-}" = "--self-test" ]; then
 		shift 2
 		out="$(CRUSH_TOOL_INPUT_COMMAND="$1" "$self_abs" 2>&1)" || rc=$?
 		case "$expect" in
-			deny)
-				n_deny=$((n_deny + 1))
-				if [ "$rc" = 2 ] && printf '%s' "$out" | grep -q 'BLOCKED'; then
-					st_pass=$((st_pass + 1))
-				else
-					st_fail=$((st_fail + 1))
-					echo "FAIL: $desc (want deny, rc=$rc)"
-					printf '%s\n' "$out"
-				fi
-				;;
-			ctx:*)
-				n_adv=$((n_adv + 1))
-				local want="${expect#ctx:}"
-				if [ "$rc" = 0 ] && printf '%s' "$out" | grep -qF -- "$want"; then
-					st_pass=$((st_pass + 1))
-				else
-					st_fail=$((st_fail + 1))
-					echo "FAIL: $desc (want advisory containing '$want'; rc=$rc)"
-					printf '%s\n' "$out"
-				fi
-				;;
-			silent)
-				n_sil=$((n_sil + 1))
-				if [ "$rc" = 0 ] && [ -z "$out" ]; then
-					st_pass=$((st_pass + 1))
-				else
-					st_fail=$((st_fail + 1))
+		deny)
+			n_deny=$((n_deny + 1))
+			if [ "$rc" = 2 ] && printf '%s' "$out" | grep -q 'BLOCKED'; then
+				st_pass=$((st_pass + 1))
+			else
+				st_fail=$((st_fail + 1))
+				echo "FAIL: $desc (want deny, rc=$rc)"
+				printf '%s\n' "$out"
+			fi
+			;;
+		ctx:*)
+			n_adv=$((n_adv + 1))
+			local want="${expect#ctx:}"
+			if [ "$rc" = 0 ] && printf '%s' "$out" | grep -qF -- "$want"; then
+				st_pass=$((st_pass + 1))
+			else
+				st_fail=$((st_fail + 1))
+				echo "FAIL: $desc (want advisory containing '$want'; rc=$rc)"
+				printf '%s\n' "$out"
+			fi
+			;;
+		silent)
+			n_sil=$((n_sil + 1))
+			if [ "$rc" = 0 ] && [ -z "$out" ]; then
+				st_pass=$((st_pass + 1))
+			else
+				st_fail=$((st_fail + 1))
 				echo "FAIL: $desc (want silence, rc=$rc)"
-					printf '%s\n' "$out"
-				fi
-				;;
+				printf '%s\n' "$out"
+			fi
+			;;
 		esac
 	}
 
@@ -218,8 +218,8 @@ EOF
 	exit 2
 fi
 
-if uses_posix_regex && ! has_pcre_or_fixed_grep \
-	&& printf '%s' "$sanitized" | grep -Eq '\[[^]]*\\[bdstw]'; then
+if uses_posix_regex && ! has_pcre_or_fixed_grep &&
+	printf '%s' "$sanitized" | grep -Eq '\[[^]]*\\[bdstw]'; then
 	cat >&2 <<'EOF'
 BLOCKED: POSIX ERE bracket class written with \t/\d/\s/\w — inside [...]
 those are the LITERAL letters t/d/s/w. 2026-10-27: a `[^ \t]` class
@@ -243,25 +243,25 @@ if has_word gofmt && ! printf '%s' "$cmd" | grep -q 'check-ignore' && ! hatched 
 			continue
 		fi
 		case "$tok" in
-			*'&'* | *';'* | *'|'*) break ;;
-			-r) skipval=1 ;;
-			-*) ;;
-			. | ./ | ./... | ../)
+		*'&'* | *';'* | *'|'*) break ;;
+		-r) skipval=1 ;;
+		-*) ;;
+		. | ./ | ./... | ../)
+			gofmt_unscoped=1
+			break
+			;;
+		*.go) ;;
+		*)
+			dir="$tok"
+			case "$tok" in
+			/*) ;;
+			*) dir="${CRUSH_CWD:-.}/$tok" ;;
+			esac
+			if [ -d "$dir/vendor" ]; then
 				gofmt_unscoped=1
 				break
-				;;
-			*.go) ;;
-			*)
-				dir="$tok"
-				case "$tok" in
-					/*) ;;
-					*) dir="${CRUSH_CWD:-.}/$tok" ;;
-				esac
-				if [ -d "$dir/vendor" ]; then
-					gofmt_unscoped=1
-					break
-				fi
-				;;
+			fi
+			;;
 		esac
 	done
 	if [ "$gofmt_unscoped" = 1 ]; then
@@ -278,8 +278,8 @@ EOF
 	fi
 fi
 
-if printf '%s' "$cmd" | grep -Eq '(^|[[:space:];&])(\./)?(scripts/)?smoke/[A-Za-z0-9_.-]+' \
-	&& ! printf '%s' "$cmd" | grep -q 'TQ_DB=' && ! hatched ALLOW_PROD_TQ; then
+if printf '%s' "$cmd" | grep -Eq '(^|[[:space:];&])(\./)?(scripts/)?smoke/[A-Za-z0-9_.-]+' &&
+	! printf '%s' "$cmd" | grep -q 'TQ_DB=' && ! hatched ALLOW_PROD_TQ; then
 	cat >&2 <<'EOF'
 BLOCKED: scripts/smoke/* without an explicit TQ_DB — agent shells inherit
 the PRODUCTION journal (AGENTS.md §Known Issues).
@@ -352,9 +352,9 @@ fi
 
 notes=()
 
-if [ -n "${TQ_DB:-}" ] \
-	&& printf '%s' "$cmd" | grep -Eq '(^|[[:space:];&])tq([[:space:]]|$)|build-tq\.sh|cmd/tq' \
-	&& ! printf '%s' "$cmd" | grep -q 'TQ_DB='; then
+if [ -n "${TQ_DB:-}" ] &&
+	printf '%s' "$cmd" | grep -Eq '(^|[[:space:];&])tq([[:space:]]|$)|build-tq\.sh|cmd/tq' &&
+	! printf '%s' "$cmd" | grep -q 'TQ_DB='; then
 	notes+=("inherited TQ_DB=$TQ_DB: tq in this call hits THAT journal (production?). Scratch/verify work needs an explicit TQ_DB=<scratch>; smokes without one are denied outright.")
 fi
 
@@ -374,17 +374,17 @@ if has_word tail; then
 			continue
 		fi
 		case "$tok" in
-			*'&'* | *';'* | *'|'*) break ;;
-			-n | -c | --lines | --bytes) tail_skip=1 ;;
-			-*) ;;
-			*) tail_files=$((tail_files + 1)) ;;
+		*'&'* | *';'* | *'|'*) break ;;
+		-n | -c | --lines | --bytes) tail_skip=1 ;;
+		-*) ;;
+		*) tail_files=$((tail_files + 1)) ;;
 		esac
 		[ "$tail_files" -ge 2 ] && break
 	done
 	[ "$tail_files" -ge 2 ] && notes+=("multi-file tail fails in session shells — one tail per file (or awk).")
 fi
 
-chain_count="$( { printf '%s' "$cmd" | grep -o '[^&]&[^&]' || true; } | wc -l)"
+chain_count="$({ printf '%s' "$cmd" | grep -o '[^&]&[^&]' || true; } | wc -l)"
 if [ "$chain_count" -ge 2 ]; then
 	notes+=("chained single & backgrounds the wrong span in session shells — use the bash tool's run_in_background instead.")
 fi
@@ -393,9 +393,9 @@ if uses_posix_regex && ! has_pcre_or_fixed_grep && printf '%s' "$sanitized" | gr
 	notes+=("POSIX ERE: \\d and \\t match literal 'd'/'t' — use [[:digit:]]/[[:space:]] classes or grep -P (2026-10-27 silent-skip incident).")
 fi
 
-if has_go_tool_cmd && [ -n "${CRUSH_PROJECT_DIR:-}" ] && [ "${CRUSH_CWD:-}" = "$CRUSH_PROJECT_DIR" ] \
-	&& ! printf '%s' "$cmd" | grep -q 'go mod vendor' \
-	&& [ -n "$(git -C "$CRUSH_PROJECT_DIR" status --porcelain -- internal task journal queue executor worker cmd 2>/dev/null | head -1)" ]; then
+if has_go_tool_cmd && [ -n "${CRUSH_PROJECT_DIR:-}" ] && [ "${CRUSH_CWD:-}" = "$CRUSH_PROJECT_DIR" ] &&
+	! printf '%s' "$cmd" | grep -q 'go mod vendor' &&
+	[ -n "$(git -C "$CRUSH_PROJECT_DIR" status --porcelain -- internal task journal queue executor worker cmd 2>/dev/null | head -1)" ]; then
 	notes+=("root go build/test reads vendor/ and internal-module dirs have uncommitted changes — run 'go mod vendor' first (check-gomod-vendor-sync.sh gates this).")
 fi
 
@@ -424,14 +424,14 @@ is_nested_module_dir() {
 	done
 }
 
-if has_go_tool_cmd && [ -n "${CRUSH_CWD:-}" ] && is_nested_module_dir "$CRUSH_CWD" \
-	&& ! printf '%s' "$cmd" | grep -q 'GOWORK=off'; then
+if has_go_tool_cmd && [ -n "${CRUSH_CWD:-}" ] && is_nested_module_dir "$CRUSH_CWD" &&
+	! printf '%s' "$cmd" | grep -q 'GOWORK=off'; then
 	notes+=("nested module: run gates as GOEXPERIMENT=jsonv2 GOWORK=off go ... (AGENTS.md §Commands, per-module gate).")
 fi
 
-if printf '%s' "$cmd" | grep -Eq '(^|[[:space:];&])nix[[:space:]]+(build|run|flake)([[:space:]]|$)' \
-	&& [ -n "${CRUSH_PROJECT_DIR:-}" ] \
-	&& git -C "$CRUSH_PROJECT_DIR" status --porcelain 2>/dev/null | grep -q '^??'; then
+if printf '%s' "$cmd" | grep -Eq '(^|[[:space:];&])nix[[:space:]]+(build|run|flake)([[:space:]]|$)' &&
+	[ -n "${CRUSH_PROJECT_DIR:-}" ] &&
+	git -C "$CRUSH_PROJECT_DIR" status --porcelain 2>/dev/null | grep -q '^??'; then
 	notes+=("flakes see only git-tracked files and untracked files exist — 'git add' them before nix build (AGENTS.md §Known Issues).")
 fi
 

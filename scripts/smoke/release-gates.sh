@@ -113,7 +113,7 @@ EOF
 # points UP into the tree (../internal/…) — repo-contained, must pass.
 mkdir -p "$fixture/task"
 # pins: accept-facade-module — facade go.mod with UP replace must pass
-	cat >"$fixture/task/go.mod" <<'EOF'
+cat >"$fixture/task/go.mod" <<'EOF'
 module github.com/larsartmann/go-taskqueue/task
 
 go 1.26.7
@@ -146,7 +146,7 @@ sed 's|=> ../internal/task|=> ../../outside/task|' "$fixture/task/go.mod" >"$fix
 git -C "$fixture" -c user.email=t@t -c user.name=t tag -a v0.2.0 -m fixture
 mkdir -p "$fixture/cmd/tq"
 # pins: accept-cmd-tq-module — replace-free cmd/tq go.mod with tagged requires must pass
-	cat >"$fixture/cmd/tq/go.mod" <<'GOMOD'
+cat >"$fixture/cmd/tq/go.mod" <<'GOMOD'
 module github.com/larsartmann/go-taskqueue/cmd/tq
 
 go 1.26.7

@@ -29,27 +29,27 @@ if [ "${1:-}" = "--self-test" ]; then
 		shift 2
 		out="$(CRUSH_TOOL_INPUT_FILE_PATH="$1" "$self_abs" 2>&1)" || rc=$?
 		case "$expect" in
-			ctx:*)
-				n_adv=$((n_adv + 1))
-				local want="${expect#ctx:}"
-				if [ "$rc" = 0 ] && printf '%s' "$out" | grep -qF -- "$want"; then
-					st_pass=$((st_pass + 1))
-				else
-					st_fail=$((st_fail + 1))
-					echo "FAIL: $desc (want advisory containing '$want'; rc=$rc)"
-					printf '%s\n' "$out"
-				fi
-				;;
-			silent)
-				n_sil=$((n_sil + 1))
-				if [ "$rc" = 0 ] && [ -z "$out" ]; then
-					st_pass=$((st_pass + 1))
-				else
-					st_fail=$((st_fail + 1))
-					echo "FAIL: $desc (want silence, rc=$rc)"
-					printf '%s\n' "$out"
-				fi
-				;;
+		ctx:*)
+			n_adv=$((n_adv + 1))
+			local want="${expect#ctx:}"
+			if [ "$rc" = 0 ] && printf '%s' "$out" | grep -qF -- "$want"; then
+				st_pass=$((st_pass + 1))
+			else
+				st_fail=$((st_fail + 1))
+				echo "FAIL: $desc (want advisory containing '$want'; rc=$rc)"
+				printf '%s\n' "$out"
+			fi
+			;;
+		silent)
+			n_sil=$((n_sil + 1))
+			if [ "$rc" = 0 ] && [ -z "$out" ]; then
+				st_pass=$((st_pass + 1))
+			else
+				st_fail=$((st_fail + 1))
+				echo "FAIL: $desc (want silence, rc=$rc)"
+				printf '%s\n' "$out"
+			fi
+			;;
 		esac
 	}
 
@@ -78,30 +78,30 @@ base="$(basename "$fp")"
 note=""
 
 case "$base" in
-	*.templ)
-		note="after saving: run 'templ generate' from the REPO ROOT and 'nix run .#webui-css', then COMMIT the generated *_templ.go and minified app.css (both are committed artifacts; AGENTS.md §Conventions)."
-		;;
-	TODO_LIST.md)
-		note="TODO_LIST.md is machine-consumed: '- [ ]' one per line, never tables; blocked items use '— BLOCKED: <reason>'; items must be agent-executable (check-todo-list.sh gates this)."
-		;;
-	AGENTS.md)
-		note="AGENTS.md is size-guarded (TestAgentsDocSizeGuard) and dense by design: prefer replacing stale bullets over appending; keep the reader-route lanes intact."
-		;;
-	CHANGELOG.md)
-		note="CHANGELOG is append-only; [Unreleased] carries OPERATOR-VISIBLE changes only — repo-internal rows go under '### Internal'; behavior changes get an explicit '(BEHAVIOR CHANGE ...)' flag (O14, check-release-docs.sh)."
-		;;
-	go.mod)
-		note="go.mod: NEVER lower the 'go' directive (check-go-mods.sh); a bumped directive requires 'go work edit -go=<ver>' on cmd/tq/go.work in the same change; per-module tidy + vendor sync follow (check-gomod-vendor-sync.sh)."
-		;;
+*.templ)
+	note="after saving: run 'templ generate' from the REPO ROOT and 'nix run .#webui-css', then COMMIT the generated *_templ.go and minified app.css (both are committed artifacts; AGENTS.md §Conventions)."
+	;;
+TODO_LIST.md)
+	note="TODO_LIST.md is machine-consumed: '- [ ]' one per line, never tables; blocked items use '— BLOCKED: <reason>'; items must be agent-executable (check-todo-list.sh gates this)."
+	;;
+AGENTS.md)
+	note="AGENTS.md is size-guarded (TestAgentsDocSizeGuard) and dense by design: prefer replacing stale bullets over appending; keep the reader-route lanes intact."
+	;;
+CHANGELOG.md)
+	note="CHANGELOG is append-only; [Unreleased] carries OPERATOR-VISIBLE changes only — repo-internal rows go under '### Internal'; behavior changes get an explicit '(BEHAVIOR CHANGE ...)' flag (O14, check-release-docs.sh)."
+	;;
+go.mod)
+	note="go.mod: NEVER lower the 'go' directive (check-go-mods.sh); a bumped directive requires 'go work edit -go=<ver>' on cmd/tq/go.work in the same change; per-module tidy + vendor sync follow (check-gomod-vendor-sync.sh)."
+	;;
 esac
 
 if [ -z "$note" ]; then
 	case "$fp" in
-		*/docs/status/*)
-			if [ ! -f "$fp" ]; then
-				note="new docs/status report: run 'date +%Y-%m-%d_%H-%M' BEFORE composing the filename (a guessed <ts> lies); follow the a)-g) skeleton; index on creation (check-status-index.sh); daemon-folded reports need the AMEND MANEUVER."
-			fi
-			;;
+	*/docs/status/*)
+		if [ ! -f "$fp" ]; then
+			note="new docs/status report: run 'date +%Y-%m-%d_%H-%M' BEFORE composing the filename (a guessed <ts> lies); follow the a)-g) skeleton; index on creation (check-status-index.sh); daemon-folded reports need the AMEND MANEUVER."
+		fi
+		;;
 	esac
 fi
 
