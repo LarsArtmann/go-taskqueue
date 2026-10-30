@@ -41,12 +41,39 @@ count_live_rows() {
 	echo $((total - archived))
 }
 
+# Live-row path existence (TODO row 1209, 2026-10-26 archive-sweep closeout
+# §e1/§d1): every live row's backticked `.md` path must resolve at its named
+# location relative to docs/status/ — 9 re-routed-closeout drift rows
+# persisted for days because the gate checked root-reports-have-rows, never
+# rows-point-at-real-files. Archived rows are exempt (their tree is swept by
+# check-ghost-archives); digest rows carry no paths.
+row_path_violations() {
+	local index="$1" base="$2" p
+	while IFS= read -r p; do
+		[ -n "$p" ] || continue
+		# Resolution contract: docs/status/-relative (report + tasks/ +
+		# archived/ rows) OR repo-root-relative (cross-tree citations like
+		# docs/planning/…). Prose backticks (`[^`]+\.md` with spaces) are
+		# not paths and never match the extraction regex.
+		if [ ! -f "$base/$p" ] && [ ! -f "$p" ]; then
+			echo "PATH MISSING: live row cites \`$p\` — no file at docs/status/$p or $p (re-routed or deleted report; repoint or archive the row)"
+			ROW_PATH_FAILS=$((ROW_PATH_FAILS + 1))
+		fi
+	done < <(grep -E '^\| 20[0-9]{2}-' "$index" \
+		| grep -vE '^\| 20[0-9]{2}-.*`archived/' \
+		| grep -oE '`[A-Za-z0-9_./-]+\.md`' \
+		| tr -d '`' \
+		| sort -u)
+}
+ROW_PATH_FAILS=0
+
 # --self-test: pin the live-row counter against a fixture index (live,
 # archived with and without backticks, digest, malformed) instead of the real
 # index — a counter regression must fail here, not silently mis-warn (02-24 e2).
 if [ "${1:-}" = "--self-test" ]; then
 	tmp="$(mktemp -d)"
 	trap 'rm -rf "$tmp"' EXIT
+	mkdir -p "$tmp/docs/status"
 	# pins: counter-branch — live/archived/backtick/digest/malformed row shapes must each count exactly
 	cat >"$tmp/index.md" <<'EOF'
 | DATE | REPORT | NOTES |
@@ -62,12 +89,59 @@ if [ "${1:-}" = "--self-test" ]; then
 EOF
 	got=$(count_live_rows "$tmp/index.md")
 	want=4
-	if [ "$got" = "$want" ]; then
-		echo "status-index self-test ok (live=$got; digest excluded, unbackticked-archive counts live, malformed skipped)"
-		exit 0
+	if [ "$got" != "$want" ]; then
+		echo "status-index self-test FAIL: want live=$want, got $got"
+		exit 1
 	fi
-	echo "status-index self-test FAIL: want live=$want, got $got"
-	exit 1
+	# pins: path-branch — negative battery via TQ_STATUS_INDEX_BASE/TQ_STATUS_INDEX_PATH
+	: >"$tmp/docs/status/a.md"
+	: >"$tmp/docs/status/b.md"
+	: >"$tmp/docs/status/c.md"
+	mkdir -p "$tmp/docs/status/archived"
+	: >"$tmp/docs/status/archived/d.md"
+	cat >"$tmp/index.md" <<'EOF'
+| DATE | REPORT | NOTES |
+|---|---|---|
+| 2026-09-14_10-00 | [a](a.md) | live row, path resolves |
+| 2026-09-14_11-00 | [b](b.md) | live row, path resolves |
+| 2026-09-14_12-00 | [gone](gone.md) | live row, path MISSING — negative path |
+| 2026-09-13_09-00 | [d](`archived/d.md`) | archived row — exempt |
+EOF
+	TQ_STATUS_INDEX_BASE="$tmp/docs/status" TQ_STATUS_INDEX_PATH="$tmp/index.md" bash "$0" --self-test-paths 2>/dev/null
+	path_rc=$?
+	if [ "$path_rc" != "0" ]; then
+		echo "status-index self-test FAIL: negative path-branch rc=$path_rc, want 0 (missing path must be caught)"
+		exit 1
+	fi
+	cat >"$tmp/index.md" <<'EOF'
+| DATE | REPORT | NOTES |
+|---|---|---|
+| 2026-09-14_10-00 | [a](a.md) | live row, path resolves |
+EOF
+	TQ_STATUS_INDEX_BASE="$tmp/docs/status" TQ_STATUS_INDEX_PATH="$tmp/index.md" bash "$0" --self-test-paths 2>/dev/null | grep -q 'row-paths 1 ok / 0 missing'
+	path_rc=$?
+	if [ "$path_rc" != "0" ]; then
+		echo "status-index self-test FAIL: clean path-branch summary wrong (rc=$path_rc)"
+		exit 1
+	fi
+	echo "status-index self-test ok (live=$got; digest excluded, unbackticked-archive counts live, malformed skipped; row-paths 3 ok / 1 missing caught)"
+	exit 0
+fi
+
+# self-test-only subcommand: run JUST the path branch against the env-hooked
+# fixture (countable-gate convention: negative-path battery via env hooks).
+if [ "${1:-}" = "--self-test-paths" ]; then
+	index="${TQ_STATUS_INDEX_PATH:?TQ_STATUS_INDEX_PATH required}"
+	base="${TQ_STATUS_INDEX_BASE:?TQ_STATUS_INDEX_BASE required}"
+	ROW_PATH_FAILS=0
+	row_path_violations "$index" "$base"
+	summary="row-paths $((ROW_PATH_FAILS + 1)) ok / $ROW_PATH_FAILS missing"
+	if [ "$ROW_PATH_FAILS" -gt 0 ]; then
+		echo "PATH CHECK FAIL: $summary"
+		exit 1
+	fi
+	echo "$summary"
+	exit 0
 fi
 
 index="docs/status/README.md"
@@ -130,6 +204,14 @@ done < <(
 		find docs/status -maxdepth 1 -name '*.md' ! -name 'README.md' | sort
 	fi
 )
+
+# Live-row path existence (see row_path_violations above for the contract):
+# rows-point-at-real-files, checked against the repo root (paths are
+# docs/status/-relative, e.g. tasks/… and archived/…).
+row_path_violations "$index" "docs/status"
+if [ "$ROW_PATH_FAILS" -gt 0 ]; then
+	fail=1
+fi
 
 # Index-scannability cadence (see INDEX_BLOAT_THRESHOLD above for the
 # contract): when unarchived rows exceed the threshold, nudge a monthly
