@@ -156,6 +156,7 @@ if [ "${1:-}" = "--self-test" ]; then
 	rcase ctx:'env -u' 'bare unset advisory' 'unset TQ_DB'
 	rcase ctx:'one tail per file' 'multi-file tail advisory' 'tail -n 5 a.log b.log'
 	rcase ctx:'run_in_background' 'chained single & advisory' 'sleep 1 & sleep 2 & wait'
+	rcase silent 'redirect forms are not background operators' 'go test ./... 2>&1 | tee /tmp/a.log 2>&1 | tail -1'
 	rcase ctx:'[[:digit:]]' 'bare \d advisory' "grep -E '\\d+' f"
 	CRUSH_CWD="$tmp/dirtyrepo" CRUSH_PROJECT_DIR="$tmp/dirtyrepo" rcase ctx:'go mod vendor' 'stale vendor advisory' 'go test ./...'
 	GOCACHE="$tmp/poisoncache" rcase ctx:'/tmp/go-build-cache' 'poisoned GOCACHE advisory' 'go build ./...'
