@@ -35,6 +35,18 @@ type matrixHeaders map[string]func(t testing.TB, got string)
 type surface struct {
 	row         matrixHeaders
 	conditional map[string]bool
+	contentType func(testing.TB, string)
+}
+
+// withContentType pins the Content-Type the surface's responses must carry
+// (full media type incl. charset, as observed live 2026-10-30). Content-Type
+// stays in transportHeaders — rows are shared across surfaces whose media
+// types diverge (the task-page row rides JSON and SSE routes too) — so the
+// pin lives on the surface, not the row.
+func (s surface) withContentType(mediaType string) surface {
+	s.contentType = eq(mediaType)
+
+	return s
 }
 
 func (m matrixHeaders) surface(conditional ...string) surface {
@@ -60,6 +72,10 @@ var transportHeaders = map[string]bool{
 
 func (s surface) check(t testing.TB, header http.Header, where string) {
 	t.Helper()
+
+	if s.contentType != nil {
+		s.contentType(t, header.Get("Content-Type"))
+	}
 
 	for name, vals := range header {
 		lower := strings.ToLower(name)
@@ -268,7 +284,7 @@ func TestServeHeaderMatrixTaskPage(t *testing.T) {
 	resp := getContextGET(t, server.URL+"/")
 	defer resp.Body.Close()
 
-	serveDashboardRow.surface().check(t, resp.Header, "GET /")
+	serveDashboardRow.surface().withContentType("text/html; charset=utf-8").check(t, resp.Header, "GET /")
 
 	if got := resp.Header.Get("X-Robots-Tag"); got != "" {
 		t.Errorf("task page X-Robots-Tag = %q, want unset (robots meta instead)", got)
@@ -287,7 +303,7 @@ func TestServeHeaderMatrix401(t *testing.T) {
 		t.Fatalf("status = %d, want 401", resp.StatusCode)
 	}
 
-	serve401Row.surface().check(t, resp.Header, "GET / (401)")
+	serve401Row.surface().withContentType("text/plain; charset=utf-8").check(t, resp.Header, "GET / (401)")
 }
 
 func TestServeHeaderMatrix429Lockout(t *testing.T) {
@@ -344,7 +360,7 @@ func TestServeHeaderMatrix429Lockout(t *testing.T) {
 		t.Fatalf("status = %d, want 429 after CSRF lockout", resp.StatusCode)
 	}
 
-	serve429Row.surface().check(t, resp.Header, "POST /task/x/cancel (429)")
+	serve429Row.surface().withContentType("text/plain; charset=utf-8").check(t, resp.Header, "POST /task/x/cancel (429)")
 }
 
 func TestServeHeaderMatrixHealthPage(t *testing.T) {
@@ -355,7 +371,7 @@ func TestServeHeaderMatrixHealthPage(t *testing.T) {
 	resp := getContextGET(t, server.URL+"/health")
 	defer resp.Body.Close()
 
-	serveHealthRow.surface().check(t, resp.Header, "GET /health")
+	serveHealthRow.surface().withContentType("text/html; charset=utf-8").check(t, resp.Header, "GET /health")
 }
 
 func TestServeHeaderMatrixHealthProbes(t *testing.T) {
@@ -383,9 +399,9 @@ func TestServeHeaderMatrixHealthProbes(t *testing.T) {
 		// The bare probes (healthz/readyz/startupz) carry no
 		// Cache-Control — only /health HTML and the SDK assets do;
 		// the favicon pins its own cacheable value.
-		row := serveHealthRow.surface("cache-control")
+		row := serveHealthRow.surface("cache-control").withContentType("application/json")
 		if path == "/health/favicon.svg" {
-			row = serveFaviconRow.surface()
+			row = serveFaviconRow.surface().withContentType("image/svg+xml")
 		}
 
 		row.check(t, resp.Header, "GET "+path)
@@ -400,10 +416,10 @@ func TestServeHeaderMatrixSDKBundle(t *testing.T) {
 	resp := getContextGET(t, server.URL+"/health/datastar.js")
 	defer resp.Body.Close()
 
-	withCache := matrixHeaders{}
-	maps.Copy(withCache, serveHealthRow)
-	withCache["cache-control"] = eq("public, max-age=86400")
-	withCache.surface().check(t, resp.Header, "GET /health/datastar.js")
+	withCache := mergeRow(serveHealthRow, matrixHeaders{
+		"cache-control": eq("public, max-age=86400"),
+	})
+	withCache.surface().withContentType("text/javascript; charset=utf-8").check(t, resp.Header, "GET /health/datastar.js")
 }
 
 // TestServeHeaderMatrixRouteCoverage is the meta-guard over the route
@@ -462,26 +478,26 @@ type serveRouteExpectation struct {
 // pattern to its expectation. A binding path without an entry fails the
 // guard; every entry is asserted on every run.
 func serveRouteExpectations() map[string]serveRouteExpectation {
-	probes := serveHealthRow.surface("cache-control")
+	probes := serveHealthRow.surface("cache-control").withContentType("application/json")
 
 	return map[string]serveRouteExpectation{
 		// Dashboard read routes carry the full task-page set.
-		"/{$}":            {serveDashboardRow.surface(), http.StatusOK},
-		"/project/{name}": {serveDashboardRow.surface(), 0},
-		"/task/{id}":      {serveDashboardRow.surface(), 0},
-		"/api/stats":      {serveDashboardRow.surface(), 0},
-		"/api/facts":      {serveDashboardRow.surface(), 0},
-		"/static/":        {serveDashboardRow.surface(), 0},
+		"/{$}":            {serveDashboardRow.surface().withContentType("text/html; charset=utf-8"), http.StatusOK},
+		"/project/{name}": {serveDashboardRow.surface().withContentType("text/html; charset=utf-8"), 0},
+		"/task/{id}":      {serveDashboardRow.surface().withContentType("text/html; charset=utf-8"), 0},
+		"/api/stats":      {serveDashboardRow.surface().withContentType("application/json"), 0},
+		"/api/facts":      {serveDashboardRow.surface().withContentType("application/json"), 0},
+		"/static/":        {serveDashboardRow.surface().withContentType("text/html; charset=utf-8"), 0},
 		// SSE endpoints stream (Cache-Control no-cache from the SSE
 		// writer; the per-task stream 503s without a live hub and
 		// omits it, so its absence is conditional there).
-		"/api/events":       {mergeRow(serveDashboardRow, matrixHeaders{"cache-control": eq("no-cache")}).surface(), 0},
-		"/task/{id}/events": {serveDashboardRow.surface("cache-control"), 0},
+		"/api/events":       {mergeRow(serveDashboardRow, matrixHeaders{"cache-control": eq("no-cache")}).surface().withContentType("text/event-stream"), 0},
+		"/task/{id}/events": {serveDashboardRow.surface("cache-control").withContentType("text/html; charset=utf-8"), 0},
 		// Health surface routes carry the health override set.
-		HealthDashboardPath: {serveHealthRow.surface(), http.StatusOK},
-		HealthSSEPath:       {probes, 0},
-		HealthSDKPath:       {serveFaviconRow.surface(), http.StatusOK},
-		HealthFaviconPath:   {serveFaviconRow.surface(), http.StatusOK},
+		HealthDashboardPath: {serveHealthRow.surface().withContentType("text/html; charset=utf-8"), http.StatusOK},
+		HealthSSEPath:       {probes.withContentType("text/plain; charset=utf-8"), 0},
+		HealthSDKPath:       {serveFaviconRow.surface().withContentType("text/javascript; charset=utf-8"), http.StatusOK},
+		HealthFaviconPath:   {serveFaviconRow.surface().withContentType("image/svg+xml"), http.StatusOK},
 		HealthLivenessPath:  {probes, http.StatusOK},
 		HealthReadinessPath: {probes, http.StatusOK},
 		HealthStartupPath:   {probes, http.StatusOK},
@@ -549,7 +565,7 @@ func TestAPIHeaderMatrix(t *testing.T) {
 		if rec.Code != http.StatusOK {
 			t.Fatalf("status = %d, want 200", rec.Code)
 		}
-		authed.surface().check(t, rec.Header(), "GET /api/v1/stats")
+		authed.surface().withContentType("application/json").check(t, rec.Header(), "GET /api/v1/stats")
 	})
 
 	t.Run("401 carries the API realm and no dashboard headers", func(t *testing.T) {
@@ -561,7 +577,7 @@ func TestAPIHeaderMatrix(t *testing.T) {
 		if rec.Code != http.StatusUnauthorized {
 			t.Fatalf("status = %d, want 401", rec.Code)
 		}
-		unauthed.surface().check(t, rec.Header(), "GET /api/v1/healthz (401)")
+		unauthed.surface().withContentType("application/json").check(t, rec.Header(), "GET /api/v1/healthz (401)")
 
 		for _, name := range apiHeaders {
 			if got := rec.Header().Get(name); got != "" {
@@ -592,7 +608,7 @@ func TestAPIHeaderMatrix(t *testing.T) {
 		if rec.Code != http.StatusTooManyRequests {
 			t.Fatalf("status = %d, want 429 after lockout", rec.Code)
 		}
-		locked.surface().check(t, rec.Header(), "GET /api/v1/healthz (429)")
+		locked.surface().withContentType("application/json").check(t, rec.Header(), "GET /api/v1/healthz (429)")
 	})
 }
 
