@@ -31,7 +31,7 @@ nix build # nix run .#test; .#webui-css
 
 - **Multi-module repo (ADR-0011)**: `internal/{task,journal,queue,
   executor,worker}` + `queue/{sqlite,postgres}` + `internal/journal/
-  cqrs` sub-modules; `internal/{readmodel,composition,retryx}` own
+  cqrs` sub-modules; `internal/{readmodel,composition,retryx,dlqbackoff}` own
   modules (S4 root; cmd/tq pins the release floor); root = app layer. `cmd/tq`
   replace-free (ADR-0017), built via `scripts/build-tq.sh` (devmod
   shim). `./...` skips nested modules; per-module gate:
@@ -81,7 +81,7 @@ docs/DOMAIN_LANGUAGE.md.
 | `internal/harvest` | TODO_LIST.md → tasks; drift audit; prune-stale |
 | `internal/budget` | Daily-cap + session-usage projections per tick |
 | `internal/{dlqfix,review,status}` | DLQ autopsies (`--dlq-fix`, auto-dismiss); review sweeper (`--review-autofix`); done-prompt sweeper (`--status-every`) |
-| `internal/dlqbackoff` | Poisoned-repo DLQ-backoff fold shared by `pool-health`, `tq dlq`, webui |
+| `internal/dlqbackoff` | Own module: poisoned-repo DLQ-backoff fold shared by `pool-health`, `tq dlq`, webui |
 | `internal/prioritize` | AI batch scorer (`--prioritize`), priority_scores cache |
 | `internal/depsweep` | Dependency-upgrade sweeper `--dep-sweep` |
 | `internal/watermark` | Durable journal cursor shared by the sweepers |
