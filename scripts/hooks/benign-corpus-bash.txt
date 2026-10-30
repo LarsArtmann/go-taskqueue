@@ -1,0 +1,52 @@
+# benign-corpus-bash.txt — fleet command-history shapes that MUST stay
+# silent under tq-bash-guard (T6/H1: replayed line-by-line by
+# `scripts/hooks/tq-bash-guard.sh --benign-corpus`; every line asserts
+# rc=0 AND empty stdout — advisories count as noise, not just denies).
+# One command per line; `#` lines are comments. Grouped by the deny rule
+# whose FP boundary they pin. A line here going loud (deny OR advisory)
+# is a fleet FP regression: fix the rule or retire the shape.
+
+# pipestatus (word mentions, not shell reads)
+grep -rn PIPESTATUS scripts/lib/verify-retry.sh
+echo "avoid PIPESTATUS reads in session shells"
+
+# printf-dot0s (other printf verbs are fine)
+printf '%s\n' "ok"
+printf '%d %s' 1 hi
+
+# ere-bracket (POSIX classes, -P/-F carries, doubled backslash)
+grep -E '[[:space:]]+foo' file.txt
+sed -E 's/[[:digit:]]+/N/g' file.txt
+grep -P '\t' file.tsv
+grep -F '\t' literals.txt
+grep -E '[\\d]' escaped.txt
+
+# gofmt-unscoped (files, blessed pipeline, hatch)
+gofmt -l scripts/hooks/tq-bash-guard.sh
+gofmt -l internal/task/task.go internal/queue/queue.go
+ALLOW_UNSCOPED_GOFMT=1 gofmt -l .
+gofmt -l . | git check-ignore --stdin -v --non-matching | grep '^::'
+
+# smoke-no-tqdb (explicit TQ_DB, path mentions only)
+TQ_DB=/tmp/scratch.db scripts/smoke/api.sh
+git add scripts/smoke/webui.sh
+grep -n 'TQ_DB=' scripts/smoke/api.sh
+tail -n 5 scripts/smoke/api.sh
+cat scripts/smoke/COVERAGE.md
+
+# filter-branch (prose mention only)
+grep -n filter-branch scripts/heal-daemon-sweep.sh
+
+# force-push (plain pushes)
+git push origin master
+git push origin master v0.4.0
+git push --tags origin
+
+# gofile-redirect (non-.go targets)
+echo done > /tmp/out.log
+cat gate.log | tee /tmp/summary.txt
+
+# advisory near-misses (redirect forms are not background operators)
+env -u TQ_DB script.sh
+go test ./... 2>&1 | tee /tmp/gotest.log
+tail -n 3 /tmp/gotest.log

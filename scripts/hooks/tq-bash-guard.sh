@@ -44,7 +44,48 @@
 # Hook contract: CRUSH_TOOL_INPUT_COMMAND carries the command; exit 2 =
 # deny (stderr is the reason); exit 0 + JSON stdout = advisory context.
 # --self-test runs the pinned fixture battery (fleet convention).
+# --benign-corpus replays scripts/hooks/benign-corpus-bash.txt (or
+# $TQ_BENIGN_CORPUS_FILE) line-by-line against a sandboxed clean repo,
+# asserting rc=0 AND empty stdout for every command (T6/H2: fleet FP
+# boundary pin; a corpus line going loud — deny OR advisory — is a
+# regression). Denies append `ts|rule|cmd` to $TQ_HOOK_DENY_LOG when set
+# (T6/H4 side-channel; weekly triage: scripts/check-hook-fp-triage.sh).
 set -euo pipefail
+
+if [ "${1:-}" = "--benign-corpus" ]; then
+	self_abs="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
+	corpus="${TQ_BENIGN_CORPUS_FILE:-$(dirname "$self_abs")/benign-corpus-bash.txt}"
+	[ -f "$corpus" ] || { echo "FAIL: corpus $corpus missing" >&2; exit 1; }
+	tmp="$(mktemp -d)"
+	trap 'rm -rf "$tmp"' EXIT
+	# Same sandbox recipe as --self-test: clean repo (advisories A6/A9 off),
+	# a vendor/ dir for the gofmt rule's dir-walk target, healthy GOCACHE,
+	# no inherited TQ_DB. The corpus replays against the RULES, not the
+	# host state — host dirt must never flip a corpus verdict.
+	mkdir -p "$tmp/repo/internal" "$tmp/repo/vendor" "$tmp/okcache"
+	touch "$tmp/repo/internal/keep"
+	git -C "$tmp/repo" init -q
+	git -C "$tmp/repo" add -A
+	git -C "$tmp/repo" -c user.email=t@t -c user.name=t commit -qm init
+	total=0 bad=0
+	while IFS= read -r line || [ -n "$line" ]; do
+		case "$line" in ''|'#'*) continue ;; esac
+		total=$((total + 1))
+		rc=0
+		out="$(env -u TQ_DB CRUSH_CWD="$tmp/repo" CRUSH_PROJECT_DIR="$tmp/repo" GOCACHE="$tmp/okcache" CRUSH_TOOL_INPUT_COMMAND="$line" bash "$self_abs" 2>&1)" || rc=$?
+		if [ "$rc" -ne 0 ] || [ -n "$out" ]; then
+			bad=$((bad + 1))
+			echo "FAIL: corpus line went loud (rc=$rc): $line" >&2
+			printf '%s\n' "$out" >&2
+		fi
+	done <"$corpus"
+	if [ "$bad" -ne 0 ]; then
+		echo "tq-bash-guard benign corpus FAILED ($bad of $total commands went loud)" >&2
+		exit 1
+	fi
+	echo "tq-bash-guard benign corpus ok ($total commands silent)"
+	exit 0
+fi
 
 if [ "${1:-}" = "--self-test" ]; then
 	self_abs="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
@@ -163,6 +204,49 @@ if [ "${1:-}" = "--self-test" ]; then
 	CRUSH_CWD="$tmp/nest/internal/queue" rcase ctx:'GOWORK=off' 'nested-module advisory' 'go test ./...'
 	CRUSH_CWD="$tmp/dirtyrepo" CRUSH_PROJECT_DIR="$tmp/dirtyrepo" rcase ctx:'git add' 'nix untracked-files advisory' 'nix build .#test'
 
+	# Deny-log side-channel (T6/H4): a deny appends ts|rule|cmd naming the
+	# rule; a silent run appends nothing.
+	dlog="$tmp/deny.log"
+	: >"$dlog"
+	TQ_HOOK_DENY_LOG="$dlog" rcase deny 'deny-log smoke case' 'git push -f origin main'
+	if grep -qE '^[^|]+\|force-push\|git push -f origin main$' "$dlog"; then
+		st_pass=$((st_pass + 1))
+	else
+		st_fail=$((st_fail + 1))
+		echo "FAIL: deny-log row not appended in ts|rule|cmd shape"
+		cat "$dlog"
+	fi
+	TQ_HOOK_DENY_LOG="$dlog" rcase silent 'silent run appends no deny-log row' 'echo fine'
+	if [ ! -s "$dlog" ] || [ "$(wc -l <"$dlog")" = 1 ]; then
+		st_pass=$((st_pass + 1))
+	else
+		st_fail=$((st_fail + 1))
+		echo "FAIL: silent run grew the deny log"
+		cat "$dlog"
+	fi
+
+	# Benign-corpus runner (T6/H2): positive corpus pins the ok summary;
+	# negative corpus (one loud line via the env hook) must FAIL naming it.
+	pos="$tmp/corpus-ok.txt"
+	printf '%s\n' 'echo fine' 'git push origin main' >"$pos"
+	pos_out="$(TQ_BENIGN_CORPUS_FILE="$pos" "$self_abs" --benign-corpus 2>&1)" || st_fail=$((st_fail + 1))
+	if printf '%s' "$pos_out" | grep -qF 'benign corpus ok (2 commands silent)'; then
+		st_pass=$((st_pass + 1))
+	else
+		st_fail=$((st_fail + 1))
+		echo "FAIL: corpus ok summary not pinned: $pos_out"
+	fi
+	neg="$tmp/corpus-bad.txt"
+	printf '%s\n' 'echo fine' 'git push -f origin main' >"$neg"
+	neg_rc=0
+	neg_out="$(TQ_BENIGN_CORPUS_FILE="$neg" "$self_abs" --benign-corpus 2>&1)" || neg_rc=$?
+	if [ "$neg_rc" = 1 ] && printf '%s' "$neg_out" | grep -qF 'git push -f origin main'; then
+		st_pass=$((st_pass + 1))
+	else
+		st_fail=$((st_fail + 1))
+		echo "FAIL: negative corpus not caught naming the loud line (rc=$neg_rc): $neg_out"
+	fi
+
 	if [ "$st_fail" -ne 0 ]; then
 		echo "tq-bash-guard self-test FAILED ($st_fail of $((st_pass + st_fail)) cases)"
 		exit 1
@@ -202,6 +286,15 @@ hatched() {
 	[ "${!1:-0}" = "1" ] || [ "${cmd#"$1=1"}" != "$cmd" ]
 }
 
+log_deny() {
+	# $1 = rule id; best-effort append to the FP-triage side-channel
+	# (T6/H4). Never let a logging failure change the deny verdict.
+	if [ -n "${TQ_HOOK_DENY_LOG:-}" ]; then
+		printf '%s|%s|%s\n' "$(date -u +%FT%TZ)" "$1" \
+			"$(printf '%s' "$cmd" | tr '\n\r' '  ')" >>"$TQ_HOOK_DENY_LOG" 2>/dev/null || true
+	fi
+}
+
 # ---------------------------------------------------------------- denies
 
 if printf '%s' "$cmd" | grep -Eq '[$][{]?PIPESTATUS'; then
@@ -212,6 +305,7 @@ Issues) — reads return garbage and gates get verified on fiction.
 - battery convention: write each gate's rc to a FILE, then grep the file
   ("battery rc TO A FILE (no PIPESTATUS)")
 EOF
+	log_deny pipestatus
 	exit 2
 fi
 
@@ -221,6 +315,7 @@ BLOCKED: printf %.0s yields an EMPTY string in these session shells
 (AGENTS.md §Session shell hazards). Use `printf -v` repeated char via a
 loop, head -c, or the bash tool's run_in_background instead.
 EOF
+	log_deny printf-dot0s
 	exit 2
 fi
 
@@ -234,6 +329,7 @@ silently skipped the cqrs event module and the fixture "passed" wrong.
 - whitespace/digit classes: [[:space:]] [[:alnum:]] [[:digit:]] etc.
 - real PCRE escapes: grep -P '\t' (but never inside a bracket class)
 EOF
+	log_deny ere-bracket-class
 	exit 2
 fi
 
@@ -280,6 +376,7 @@ vendor-gofmt death class (94% of this repo's DLQ).
 - repo doctor (already scoped): tq doctor gofmt:<repo>
 - deliberate unscoped run: prefix ALLOW_UNSCOPED_GOFMT=1
 EOF
+		log_deny gofmt-unscoped
 		exit 2
 	fi
 fi
@@ -314,6 +411,7 @@ the PRODUCTION journal (AGENTS.md §Known Issues).
     TQ_DB=/tmp/tq-scratch-$(date +%s).db scripts/smoke/<suite>.sh
 - genuinely operating on production: prefix ALLOW_PROD_TQ=1
 EOF
+	log_deny smoke-no-tqdb
 	exit 2
 fi
 
@@ -352,6 +450,7 @@ dead-cite explosion came from exactly this. History policy: scripted
 edits go through script files (see scripts/heal-daemon-sweep.sh and its
 --from/--self-test rails), never an inline filter-branch.
 EOF
+	log_deny filter-branch
 	exit 2
 fi
 if [ "$git_bad" = "force-push" ]; then
@@ -361,6 +460,7 @@ force push, no rewriting pushed commits — an agent cannot supply the
 required human approval). If it is genuinely necessary, the HUMAN runs
 it outside Crush. Unpushed-span heals: scripts/heal-daemon-sweep.sh.
 EOF
+	log_deny force-push
 	exit 2
 fi
 
@@ -371,6 +471,7 @@ tabs in as literal \t (2026-10-13) and daemon sweeps eat unstaged
 fixtures. Generate Go source through the write tool (or a committed
 generator), never echo/cat/tee redirects.
 EOF
+	log_deny gofile-redirect
 	exit 2
 fi
 

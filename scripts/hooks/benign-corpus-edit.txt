@@ -1,0 +1,29 @@
+# benign-corpus-edit.txt — file-path shapes that MUST stay silent under
+# tq-edit-advice (T6/H3: replayed path-by-path by
+# `scripts/hooks/tq-edit-advice.sh --benign-corpus`; every line asserts
+# rc=0 AND empty stdout). One path per line; `#` lines are comments.
+# Advising paths (templ/TODO_LIST/AGENTS/CHANGELOG/go.mod/new
+# docs/status) do NOT belong here — they are pinned in --self-test.
+
+# everyday edits
+README.md
+internal/task/task.go
+internal/queue/queue.go
+cmd/tq/main.go
+scripts/lib/proxy-wait.sh
+scripts/check-flag-count.sh
+flake.nix
+go.sum
+Makefile
+
+# docs that carry no rule
+docs/planning/2026-10-30_13-53_SUPERB-PARETO-PLAN-ALL-TODOS-V2.md
+docs/DOMAIN_LANGUAGE.md
+docs/release/2026-10-05_CUTOVER-RUNBOOK.md
+
+# existing status report (creation advice fires only on NEW files)
+docs/status/2026-09-08_04-19_agent-pool-e2e-self-review.md
+
+# generated artifacts
+internal/webui/layout_templ.go
+internal/webui/app.css

@@ -10,8 +10,34 @@
 #
 # Hook contract: CRUSH_TOOL_INPUT_FILE_PATH carries the target path; exit
 # 0 + JSON stdout = advisory context. --self-test runs the pinned fixture
-# battery (fleet convention).
+# battery (fleet convention). --benign-corpus replays
+# scripts/hooks/benign-corpus-edit.txt (or $TQ_BENIGN_CORPUS_FILE)
+# path-by-path asserting rc=0 AND empty stdout (T6/H3).
 set -euo pipefail
+
+if [ "${1:-}" = "--benign-corpus" ]; then
+	self_abs="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
+	corpus="${TQ_BENIGN_CORPUS_FILE:-$(dirname "$self_abs")/benign-corpus-edit.txt}"
+	[ -f "$corpus" ] || { echo "FAIL: corpus $corpus missing" >&2; exit 1; }
+	total=0 bad=0
+	while IFS= read -r line || [ -n "$line" ]; do
+		case "$line" in ''|'#'*) continue ;; esac
+		total=$((total + 1))
+		rc=0
+		out="$(cd "$(dirname "$self_abs")/../.." && CRUSH_TOOL_INPUT_FILE_PATH="$line" bash "$self_abs" 2>&1)" || rc=$?
+		if [ "$rc" -ne 0 ] || [ -n "$out" ]; then
+			bad=$((bad + 1))
+			echo "FAIL: corpus path went loud (rc=$rc): $line" >&2
+			printf '%s\n' "$out" >&2
+		fi
+	done <"$corpus"
+	if [ "$bad" -ne 0 ]; then
+		echo "tq-edit-advice benign corpus FAILED ($bad of $total paths went loud)" >&2
+		exit 1
+	fi
+	echo "tq-edit-advice benign corpus ok ($total paths silent)"
+	exit 0
+fi
 
 if [ "${1:-}" = "--self-test" ]; then
 	self_abs="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
@@ -62,6 +88,28 @@ if [ "${1:-}" = "--self-test" ]; then
 	rcase silent 'existing docs/status edit stays silent' "$tmp/docs/status/2026-10-01_00-00_exists.md"
 	rcase silent 'README edit stays silent' "$tmp/README.md"
 	rcase silent 'Go file edit stays silent' "$tmp/internal/foo.go"
+
+	# Benign-corpus runner (T6/H3): positive pins the ok summary; negative
+	# (a loud path via the env hook) must FAIL naming it.
+	pos="$(mktemp)"
+	printf '%s\n' 'README.md' 'src/main.go' >"$pos"
+	pos_out="$(TQ_BENIGN_CORPUS_FILE="$pos" "$self_abs" --benign-corpus 2>&1)" || st_fail=$((st_fail + 1))
+	if printf '%s' "$pos_out" | grep -qF 'benign corpus ok (2 paths silent)'; then
+		st_pass=$((st_pass + 1))
+	else
+		st_fail=$((st_fail + 1))
+		echo "FAIL: corpus ok summary not pinned: $pos_out"
+	fi
+	neg="$(mktemp)"
+	printf '%s\n' 'README.md' 'TODO_LIST.md' >"$neg"
+	neg_rc=0
+	neg_out="$(TQ_BENIGN_CORPUS_FILE="$neg" "$self_abs" --benign-corpus 2>&1)" || neg_rc=$?
+	if [ "$neg_rc" = 1 ] && printf '%s' "$neg_out" | grep -qF 'TODO_LIST.md'; then
+		st_pass=$((st_pass + 1))
+	else
+		st_fail=$((st_fail + 1))
+		echo "FAIL: negative corpus not caught naming the loud path (rc=$neg_rc): $neg_out"
+	fi
 
 	if [ "$st_fail" -ne 0 ]; then
 		echo "tq-edit-advice self-test FAILED ($st_fail of $((st_pass + st_fail)) cases)"
