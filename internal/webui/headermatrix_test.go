@@ -55,6 +55,7 @@ var transportHeaders = map[string]bool{
 	"set-cookie":        true,
 	"trailer":           true,
 	"x-accel-buffering": true,
+	"connection":        true,
 }
 
 func (s surface) check(t testing.TB, header http.Header, where string) {
@@ -403,6 +404,105 @@ func TestServeHeaderMatrixSDKBundle(t *testing.T) {
 	maps.Copy(withCache, serveHealthRow)
 	withCache["cache-control"] = eq("public, max-age=86400")
 	withCache.surface().check(t, resp.Header, "GET /health/datastar.js")
+}
+
+// TestServeHeaderMatrixRouteCoverage is the meta-guard over the route
+// tables: every `routeBindings()`/`healthBindings()` entry must be
+// exercised by an asserting subtest here, or the guard fails — a new
+// binding (or a renamed pattern) can never join the server silently
+// unpinned, and no skip-list entry can quietly drop a route's assertion.
+// The expected row/status per route is spelled out in
+// serveRouteExpectations; a binding path without an expectation entry is
+// a failure, and every expectation entry is asserted on every run.
+func TestServeHeaderMatrixRouteCoverage(t *testing.T) {
+	t.Parallel()
+
+	s, server := newServeServer(t, Config{})
+	expectations := serveRouteExpectations()
+
+	var boundPaths []string
+	for _, binding := range s.routeBindings() {
+		boundPaths = append(boundPaths, binding.pattern)
+	}
+	for _, binding := range s.healthBindings() {
+		boundPaths = append(boundPaths, binding.pattern)
+	}
+	slices.Sort(boundPaths)
+
+	for _, pattern := range boundPaths {
+		t.Run(pattern, func(t *testing.T) {
+			t.Parallel()
+
+			want, ok := expectations[pattern]
+			if !ok {
+				t.Fatalf("route %q has no TestServeHeaderMatrixRouteCoverage expectation — pin its matrix row in serveRouteExpectations before shipping the binding", pattern)
+			}
+
+			resp := getContextGET(t, server.URL+serveRouteURL(pattern))
+			defer resp.Body.Close()
+
+			if want.status != 0 && resp.StatusCode != want.status {
+				t.Errorf("GET %s: status = %d, want %d", pattern, resp.StatusCode, want.status)
+			}
+
+			want.row.check(t, resp.Header, "GET "+pattern)
+		})
+	}
+}
+
+// serveRouteExpectation is one guard entry: the matrix row a route's
+// plain GET must match and the status that GET must return (0 = don't
+// pin; the empty-store 404/503 shape is owned by the handler tests).
+type serveRouteExpectation struct {
+	row    surface
+	status int
+}
+
+// serveRouteExpectations maps every routeBindings()/healthBindings()
+// pattern to its expectation. A binding path without an entry fails the
+// guard; every entry is asserted on every run.
+func serveRouteExpectations() map[string]serveRouteExpectation {
+	probes := serveHealthRow.surface("cache-control")
+
+	return map[string]serveRouteExpectation{
+		// Dashboard read routes carry the full task-page set.
+		"/{$}":            {serveDashboardRow.surface(), http.StatusOK},
+		"/project/{name}": {serveDashboardRow.surface(), 0},
+		"/task/{id}":      {serveDashboardRow.surface(), 0},
+		"/api/stats":      {serveDashboardRow.surface(), 0},
+		"/api/facts":      {serveDashboardRow.surface(), 0},
+		"/static/":        {serveDashboardRow.surface(), 0},
+		// SSE endpoints stream (Cache-Control no-cache from the SSE
+		// writer; the per-task stream 503s without a live hub and
+		// omits it, so its absence is conditional there).
+		"/api/events":       {mergeRow(serveDashboardRow, matrixHeaders{"cache-control": eq("no-cache")}).surface(), 0},
+		"/task/{id}/events": {serveDashboardRow.surface("cache-control"), 0},
+		// Health surface routes carry the health override set.
+		HealthDashboardPath: {serveHealthRow.surface(), http.StatusOK},
+		HealthSSEPath:       {probes, 0},
+		HealthSDKPath:       {serveFaviconRow.surface(), http.StatusOK},
+		HealthFaviconPath:   {serveFaviconRow.surface(), http.StatusOK},
+		HealthLivenessPath:  {probes, http.StatusOK},
+		HealthReadinessPath: {probes, http.StatusOK},
+		HealthStartupPath:   {probes, http.StatusOK},
+	}
+}
+
+// serveRouteURL turns a route pattern into a concrete GET URL for the
+// header guard: wildcard segments get filler values that exercise the
+// handler without depending on store contents.
+func serveRouteURL(pattern string) string {
+	replacements := map[string]string{
+		"/{$}":              "/",
+		"/project/{name}":   "/project/x",
+		"/task/{id}":        "/task/x",
+		"/task/{id}/events": "/task/x/events",
+	}
+	if url, ok := replacements[pattern]; ok {
+		return url
+	}
+
+	return pattern
 }
 
 // TestAPIHeaderMatrix pins the `tq api` column: JSON responses carry
