@@ -133,13 +133,21 @@ func notContains(sub string) func(testing.TB, string) {
 	}
 }
 
+// with merges rows into ONE fresh row (later rows win) — the file's
+// single merge mechanism; maps.Copy into a matrixHeaders{} may appear
+// nowhere else.
+func with(rows ...matrixHeaders) matrixHeaders {
+	merged := matrixHeaders{}
+	for _, row := range rows {
+		maps.Copy(merged, row)
+	}
+
+	return merged
+}
+
 // mergeRow overlays additions onto a base row (shared matrix idiom).
 func mergeRow(base, additions matrixHeaders) matrixHeaders {
-	row := matrixHeaders{}
-	maps.Copy(row, base)
-	maps.Copy(row, additions)
-
-	return row
+	return with(base, additions)
 }
 
 // getContextGET issues a GET via NewRequestWithContext + client.Do (the
@@ -491,7 +499,7 @@ func serveRouteExpectations() map[string]serveRouteExpectation {
 		// SSE endpoints stream (Cache-Control no-cache from the SSE
 		// writer; the per-task stream 503s without a live hub and
 		// omits it, so its absence is conditional there).
-		"/api/events":       {mergeRow(serveDashboardRow, matrixHeaders{"cache-control": eq("no-cache")}).surface().withContentType("text/event-stream"), 0},
+		"/api/events":       {with(serveDashboardRow, matrixHeaders{"cache-control": eq("no-cache")}).surface().withContentType("text/event-stream"), 0},
 		"/task/{id}/events": {serveDashboardRow.surface("cache-control").withContentType("text/html; charset=utf-8"), 0},
 		// Health surface routes carry the health override set.
 		HealthDashboardPath: {serveHealthRow.surface().withContentType("text/html; charset=utf-8"), http.StatusOK},
@@ -538,14 +546,9 @@ func TestAPIHeaderMatrix(t *testing.T) {
 	// Dashboard-only headers: everything in the matrix's `tq serve`
 	// column minus the headers the API's own rows carry — a new dashboard
 	// header joins this absence check automatically.
-	serveColumn := matrixHeaders{}
-	maps.Copy(serveColumn, serveDashboardRow)
-	maps.Copy(serveColumn, serveHealthRow)
+	serveColumn := with(serveDashboardRow, serveHealthRow)
 
-	apiRows := matrixHeaders{}
-	maps.Copy(apiRows, authed)
-	maps.Copy(apiRows, unauthed)
-	maps.Copy(apiRows, locked)
+	apiRows := with(authed, unauthed, locked)
 
 	apiHeaders := []string{}
 	for name := range serveColumn {
