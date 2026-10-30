@@ -332,6 +332,21 @@ func TestRedactSecretsEmitsTwoMarkersForSameLineAdjacentSecrets(t *testing.T) {
 	}
 }
 
+// TestSecretHitsKeepsTouchingDistinctSpans pins the merge loop's strict
+// `<` (task 000001a173ce0af0 §f3): spans that TOUCH without overlapping
+// (candidate.start == mergedEnd) are two locations, not one — an
+// equality-merge regression must fail loudly. The AWS pattern matches
+// exactly 16 chars, so AWS + Google back-to-back produce spans meeting at
+// the boundary with zero gap and zero overlap.
+func TestSecretHitsKeepsTouchingDistinctSpans(t *testing.T) {
+	t.Parallel()
+
+	touching := fakeAWS + fakeGoogle
+	if got := SecretHits(touching); got != 2 {
+		t.Errorf("SecretHits = %d, want 2 (touching-but-distinct spans must NOT merge): %s", got, touching)
+	}
+}
+
 // TestRedactSecretsMasksAuthHeaderToExactlyOneMarker is the output-side
 // mirror of the span-merge count fix (02-37 §f11): the overlapping
 // bearer × authorization-header patterns must mask one
