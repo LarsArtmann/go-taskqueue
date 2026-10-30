@@ -47,9 +47,10 @@ func buildFailureEvidenceView(ctx context.Context, store *sqlite.Store, id task.
 	}
 }
 
-// evidenceStageMatches delegates to the shared executor matcher — ONE copy
-// of the death-class alias knowledge, shared with the webui evidence
-// filter (2026-10-26 01-40 §b1).
+// evidenceStageMatches delegates to the shared executor set matcher
+// (comma-separated terms with `!`-negation) — ONE copy of the death-class
+// alias knowledge, shared with the webui evidence filter (2026-10-26
+// 01-40 §b1).
 func evidenceStageMatches(evidence executor.FailureEvidence, lastError, want string) bool {
-	return executor.MatchesEvidenceStage(evidence, lastError, want)
+	return executor.MatchesEvidenceStageSet(evidence, lastError, want)
 }

@@ -58,8 +58,9 @@ func parseFilter(r *http.Request) FilterState {
 	}
 
 	// Free-text like the CLI's --evidence-stage: matched by
-	// executor.MatchesEvidenceStage against evidence fields + error-text
-	// aliases, so any unrecognizable value just yields an empty DLQ list.
+	// executor.MatchesEvidenceStageSet (comma-separated terms with
+	// !-negation) against evidence fields + error-text aliases, so any
+	// unrecognizable positive value just yields an empty DLQ list.
 	evidence := strings.ToLower(strings.TrimSpace(query.Get("evidence")))
 
 	filter := FilterState{

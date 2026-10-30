@@ -141,8 +141,9 @@ type FilterState struct {
 	// machine); empty means all bands.
 	Band string
 	// Evidence filters the DLQ listing to dead tasks whose failure evidence
-	// names this stage class — the same semantics as `tq dlq
-	// --evidence-stage` (executor.MatchesEvidenceStage, including the
+	// matches this comma-separated term spec with !-negation — the same
+	// semantics as `tq dlq --evidence-stage`
+	// (executor.MatchesEvidenceStageSet, including the
 	// gate-env/gate-dead/gate-slow error-text aliases); empty means all
 	// dead tasks.
 	Evidence string
@@ -833,7 +834,7 @@ func (s *Server) loadSnapshot(ctx context.Context, filter FilterState) (Dashboar
 		filtered := make([]task.Task, 0, len(deadTasks))
 
 		for _, dead := range deadTasks {
-			if executor.MatchesEvidenceStage(
+			if executor.MatchesEvidenceStageSet(
 				executor.LastFailureEvidence(ctx, s.store, dead.ID),
 				dead.LastError,
 				filter.Evidence,

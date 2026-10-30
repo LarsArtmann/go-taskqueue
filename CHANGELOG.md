@@ -7,6 +7,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- **`tq dlq --evidence-stage` accepts a comma-separated term spec with
+  `!`-negation** (2026-10-30): e.g. `gate-env,!gate-slow` narrows to
+  environmental-gate deaths that are NOT slow-gate; negation-only specs
+  (`!gate-slow`) match every non-hit. The dashboard `evidence:` filter
+  shares the semantics (`executor.MatchesEvidenceStageSet`).
 - **`tq dlq` rows carry their failure evidence inline** (2026-10-30): each
   dead-task row appends an `evidence=stage/class exit=N` suffix — the same
   `FailureEvidence.Summary` shape the webui detail timeline uses — so

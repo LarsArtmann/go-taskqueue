@@ -72,6 +72,58 @@ func (e FailureEvidence) Summary() string {
 	return stage
 }
 
+// MatchesEvidenceStageSet matches a comma-separated evidence-stage spec
+// with `!`-negation (e.g. `gate-env,!gate-slow`): a task survives when it
+// matches at least one positive term and matches NO negated term; a spec
+// carrying ONLY negations matches every task whose evidence hits none of
+// the negated terms. Each term keeps the MatchesEvidenceStage semantics;
+// the single-term matcher stays the primitive, this the set layer both
+// `tq dlq --evidence-stage` and the webui evidence filter ride. A spec
+// without any usable term matches nothing, like the single-term matcher.
+func MatchesEvidenceStageSet(evidence FailureEvidence, lastError, spec string) bool {
+	hasPositive, anyPositiveMatch, sawNegation := false, false, false
+
+	for term := range strings.SplitSeq(spec, ",") {
+		term = strings.ToLower(strings.TrimSpace(term))
+
+		if term == "" {
+			continue
+		}
+
+		negated := strings.HasPrefix(term, "!")
+
+		if negated {
+			term = strings.TrimSpace(strings.TrimPrefix(term, "!"))
+		}
+
+		if term == "" {
+			continue
+		}
+
+		if negated {
+			sawNegation = true
+
+			if MatchesEvidenceStage(evidence, lastError, term) {
+				return false
+			}
+
+			continue
+		}
+
+		hasPositive = true
+
+		if MatchesEvidenceStage(evidence, lastError, term) {
+			anyPositiveMatch = true
+		}
+	}
+
+	if hasPositive {
+		return anyPositiveMatch
+	}
+
+	return sawNegation
+}
+
 // MatchesEvidenceStage reports whether failure evidence names the
 // requested stage class — matched case-insensitively against the evidence
 // Stage, VerifyStage and retry-taxonomy Class fields, plus the verify-gate

@@ -3050,7 +3050,7 @@ func cmdDLQ(args []string) error {
 	evidenceStage := fs.String(
 		"evidence-stage",
 		"",
-		"list only dead tasks whose failure evidence names this stage class: the evidence stage (agent, verify, command), the verify-gate stage (gofmt, test, e2e-timeout, run), the retry-taxonomy class, or the gate aliases (gate-env, gate-dead, gate-slow)",
+		"list only dead tasks whose failure evidence names this stage class: comma-separated terms with !-negation (e.g. gate-env,!gate-slow); each term is the evidence stage (agent, verify, command), the verify-gate stage (gofmt, test, e2e-timeout, run), the retry-taxonomy class, or the gate aliases (gate-env, gate-dead, gate-slow)",
 	)
 	dlqBackoff := fs.Duration("dlq-backoff", 0,
 		"cross-link rows whose repo is in poisoned-repo DLQ backoff, mirroring `tq pool-health`; defaults to the pool config file's dlq-backoff (see --config), else 0 = off")

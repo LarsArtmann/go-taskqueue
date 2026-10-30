@@ -86,6 +86,94 @@ func TestEvidenceStageMatches(t *testing.T) {
 	}
 }
 
+// TestEvidenceStageSetMatches pins the comma-separated term spec with
+// `!`-negation on top of the single-term matcher: a task survives when it
+// hits at least one positive term and no negated term; negation-only
+// specs match every non-hit; blank specs match nothing.
+func TestEvidenceStageSetMatches(t *testing.T) {
+	t.Parallel()
+
+	gateEnv := executor.FailureEvidence{Stage: "verify"}
+	gateEnvError := `agent verify gate environmental signature [vendor-gofmt] ("gofmt"): boom`
+
+	tests := []struct {
+		name  string
+		spec  string
+		match bool
+		setup func(evidence *executor.FailureEvidence, lastError *string)
+	}{
+		{
+			name:  "positive and negative, positive hit survives",
+			spec:  "gate-env,!gate-slow",
+			match: true,
+			setup: func(evidence *executor.FailureEvidence, lastError *string) {
+				*evidence, *lastError = gateEnv, gateEnvError
+			},
+		},
+		{
+			name:  "negated hit excludes",
+			spec:  "verify,!gate-env",
+			match: false,
+			setup: func(evidence *executor.FailureEvidence, lastError *string) {
+				*evidence, *lastError = gateEnv, gateEnvError
+			},
+		},
+		{
+			name:  "negation-only spec passes non-hits",
+			spec:  "!gate-slow",
+			match: true,
+		},
+		{
+			name:  "negation-only spec excludes its hit",
+			spec:  "!gate-env",
+			match: false,
+			setup: func(evidence *executor.FailureEvidence, lastError *string) {
+				*evidence, *lastError = gateEnv, gateEnvError
+			},
+		},
+		{
+			name:  "two positives, second hits",
+			spec:  "gate-dead, e2e-timeout",
+			match: true,
+			setup: func(evidence *executor.FailureEvidence, lastError *string) {
+				evidence.Stage, evidence.VerifyStage = "verify", executor.VerifyStageE2ETimeout
+			},
+		},
+		{
+			name:  "no positive hits",
+			spec:  "gate-dead,gate-slow",
+			match: false,
+			setup: func(evidence *executor.FailureEvidence, lastError *string) {
+				*evidence, *lastError = gateEnv, gateEnvError
+			},
+		},
+		{
+			name:  "blank spec matches nothing",
+			spec:  " , ! ,",
+			match: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var (
+				evidence  executor.FailureEvidence
+				lastError string
+			)
+
+			if tt.setup != nil {
+				tt.setup(&evidence, &lastError)
+			}
+
+			if got := executor.MatchesEvidenceStageSet(evidence, lastError, tt.spec); got != tt.match {
+				t.Fatalf("MatchesEvidenceStageSet(%+v, %q, %q) = %v, want %v", evidence, lastError, tt.spec, got, tt.match)
+			}
+		})
+	}
+}
+
 // TestCmdDLQEvidenceStageFilter runs the filter end-to-end against a
 // scratch store: only dead tasks whose failure evidence names the class
 // survive, matched through either the structured verify_stage stamp or the
@@ -164,6 +252,18 @@ func TestCmdDLQEvidenceStageFilter(t *testing.T) {
 
 	if !strings.Contains(out, gateDeadID.String()) || strings.Contains(out, timeoutID.String()) || strings.Contains(out, plainID.String()) {
 		t.Fatalf("--evidence-stage gate-dead picked wrong tasks:\n%s", out)
+	}
+
+	// Set spec with negation (2026-10-26 01-40 §f4): the e2e-timeout task
+	// survives `verify,!gate-dead` while the gate-dead task is excluded.
+	out = captureStdout(t, func() {
+		if err := cmdDLQ([]string{"--db", dbPath, "--evidence-stage", "verify,!gate-dead"}); err != nil {
+			t.Errorf("cmdDLQ: %v", err)
+		}
+	})
+
+	if !strings.Contains(out, timeoutID.String()) || strings.Contains(out, gateDeadID.String()) || strings.Contains(out, plainID.String()) {
+		t.Fatalf("--evidence-stage verify,!gate-dead picked wrong tasks:\n%s", out)
 	}
 }
 
