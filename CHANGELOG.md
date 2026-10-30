@@ -383,6 +383,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Repo-internal tooling and non-operator-facing changes (O14 audit
 2026-10-13: kept for the record, excluded from operator release notes).
 
+- **Crush client/server relations researched + fleet hook FPs fixed**
+  (2026-10-30): mechanics proven live on installed crush v0.98.2 (SSE
+  tool-call telemetry, server-side hooks, `--session` resume, env carry,
+  idle-server self-termination) and mapped with a migration ladder in
+  `docs/planning/2026-10-30_04-43_crush-client-server-relations.md`;
+  L1/L2 TODO rows added BLOCKED on owner GO. Same day: `tq-bash-guard`
+  smoke rule narrowed to command-position (first fleet FP blocked
+  `git add` of a smoke file; 04-40 closeout §d1) and the chained-`&`
+  advisory taught `2>&1`/`&>` redirect forms (self-inflicted FP);
+  self-test battery 35→41 cases.
+
 - **Evidence triage pins + smoke** (2026-10-30): requeues (429 / budget /
   env) pinned evidence-free (`TestRequeuesCarryNoFailureEvidence`) so
   `--evidence-stage` triage is dead-only BY DESIGN; new
