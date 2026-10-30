@@ -168,6 +168,12 @@ DAEMON_DOC_GATE_SELF_TEST=1 ./scripts/check-daemon-sweep-docs.sh
 step "daemon-sweep doc gate (footer-less doc-gated sweeps)"
 ./scripts/check-daemon-sweep-docs.sh
 
+step "prompt-const fold gate self-test (selection pin)"
+PROMPT_CONST_GATE_SELF_TEST=1 ./scripts/check-prompt-const-folds.sh
+
+step "prompt-const fold gate (footer-less prompt-const sweeps)"
+./scripts/check-prompt-const-folds.sh
+
 # Fleet countable-gate batch (self-test ALWAYS ahead of its real gate —
 # check-gate-ordering.sh enforces the ordering property mechanically).
 step "fleet gate-ordering guard self-test (ORDERING property pin)"
