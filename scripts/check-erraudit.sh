@@ -67,6 +67,7 @@ self_test() {
 	trap "rm -rf '$tmp'" RETURN
 
 	# Fake erraudit: rc 1 with a violation line (the negative path).
+	# pins: rc-1-fail-branch — a violating module must FAIL naming the module
 	cat >"$tmp/erraudit-fail" <<'SCRIPT'
 #!/usr/bin/env bash
 echo "main.go:10:5: [legacy_as] use errors.AsType instead of errors.As"
@@ -85,6 +86,7 @@ SCRIPT
 
 	# rc 0 WITH findings is also a fail (the silent-drift path) — both
 	# finding-line vintages must be caught.
+	# pins: rc-0-findings-branch — dev-build bracket shape must FAIL the gate
 	cat >"$tmp/erraudit-quiet" <<'SCRIPT'
 #!/usr/bin/env bash
 echo "main.go:12:3: [generic_return] returned error type is not named"
@@ -98,6 +100,7 @@ SCRIPT
 		return 1
 	fi
 
+	# pins: rc-0-findings-v070-branch — v0.7.0 bracketless shape must FAIL too
 	cat >"$tmp/erraudit-quiet-v070" <<'SCRIPT'
 #!/usr/bin/env bash
 echo "main.go:15:5: use errors.AsType instead of errors.As for type-safe, cleaner error matching"
@@ -112,6 +115,7 @@ SCRIPT
 	fi
 
 	# A clean fake must pass with the pinned summary line.
+	# pins: clean-branch — clean module passes, summary line pinned
 	cat >"$tmp/erraudit-ok" <<'SCRIPT'
 #!/usr/bin/env bash
 exit 0

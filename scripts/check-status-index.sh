@@ -109,6 +109,8 @@ EOF
 	: >"$tmp/docs/status/archived/d.md"
 	mkdir -p "$tmp/docs/status/tasks"
 	: >"$tmp/docs/status/tasks/t.md"
+	# pins: negative-path-branch — a missing live row path (gone.md) must be
+	# caught by the nested --self-test-paths run; archived + tasks rows stay live
 	cat >"$tmp/index.md" <<'EOF'
 | DATE | REPORT | NOTES |
 |---|---|---|
@@ -124,6 +126,7 @@ EOF
 		echo "status-index self-test FAIL: negative path-branch rc=$path_rc, want 0 (missing path must be caught)"
 		exit 1
 	fi
+	# pins: clean-path-branch — all-resolving index renders the count summary
 	cat >"$tmp/index.md" <<'EOF'
 | DATE | REPORT | NOTES |
 |---|---|---|

@@ -31,6 +31,8 @@ if [ "${1:-}" = "--self-test" ]; then
 
 	# Fixture: well-formed rows across two rules + one foreign junk line
 	# is NOT tolerated (malformed = rc 1 naming the row).
+	# pins: summary+breakdown-branch — well-formed rows render the count
+	# summary and per-rule breakdown; the junk-row negative path is below.
 	cat >"$tmp/deny.log" <<'LOG'
 2026-10-30T15:04:05Z|force-push|git push -f origin main
 2026-10-30T15:05:06Z|force-push|git push --force origin x
