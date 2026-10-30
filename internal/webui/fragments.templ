@@ -317,7 +317,6 @@ templ DeadLetterTable(data DashboardData) {
 	if len(data.DLQBackoff) > 0 {
 		@dlqBackoffPanel(data)
 	}
-
 	if len(data.Dead) == 0 {
 		@display.EmptyState(display.EmptyStateProps{
 			Title:       "dead-letter queue is empty",
