@@ -1409,3 +1409,10 @@ not here.
 - [ ] Document the `--evidence-stage` set-spec grammar (comma separation, `!` negation, per-term whitespace tolerance) beyond the flag one-liner — `tq help dlq` long help or docs page (2026-10-30 07-31 task closeout §f14)
 - [ ] Verify + pin that the webui evidence active-filter chip renders the raw spec verbatim (negations included) when a set spec is round-tripped through `?evidence=` (2026-10-30 07-31 task closeout §f13)
 - [ ] Re-run the full root-gate.sh battery at HEAD — the 07-31 window verified targeted module suites + the new smoke only, not the whole battery (2026-10-30 07-31 task closeout §f10)
+
+## Reviewer-finding fix follow-ups (2026-10-30; source: docs/status/tasks/2026-10-30_07-37_task-000001a18b6d0061a98c568aa35800000000.md §f; deduped vs rows 1397-1411)
+
+- [ ] Templ drift gate: run `templ generate` in check mode (temp output + diff) inside ci-local so a `.templ`/`*_templ.go` desync fails the gate instead of surfacing as a reviewer finding (2026-10-30 07-37 report §f1)
+- [ ] Pin templ CLI/go.mod version alignment (generator v0.3.1020 vs v0.3.1070 today): assert the generator matches go.mod's templ version, or rule the CLI upgrade through the dep-sweep flow (2026-10-30 07-37 report §f2)
+- [ ] Comment-fragment lint: flag a lone continuation-style comment line directly above a `templ`/`func` declaration whose previous line is not a comment — mechanical catch for the orphaned-doc-fragment class (2026-10-30 07-37 report §f3)
+- [ ] heal-daemon-sweep.sh: when the span-terminator `--from` invocation also refuses, print the verify-stat + `git commit --amend` fallback recipe in the same output instead of suggesting a third `--from` (2026-10-30 07-37 report §f4)
