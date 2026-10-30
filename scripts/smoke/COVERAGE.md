@@ -33,6 +33,7 @@ signal (`exec.ExitError`, code −1).
 | `bootstrap-install.sh`    | `tq bootstrap` install path                   |
 | `consumer-install.sh`     | journal consumer wiring                       |
 | `dep-sweep.sh`            | `--dep-sweep` sweeper turn                    |
+| `dlq-evidence-stage.sh`   | `tq dlq --evidence-stage` filter vs real DLQ  |
 | `doctor-hygiene.sh`       | `tq doctor` hygiene probes                    |
 | `dogfood-once.sh`         | one self-hosted pool tick                     |
 | `fullcore.sh`             | core enqueue → claim → execute → done loop    |
