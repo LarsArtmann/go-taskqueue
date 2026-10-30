@@ -57,14 +57,20 @@ func parseFilter(r *http.Request) FilterState {
 		band = ""
 	}
 
+	// Free-text like the CLI's --evidence-stage: matched by
+	// executor.MatchesEvidenceStage against evidence fields + error-text
+	// aliases, so any unrecognizable value just yields an empty DLQ list.
+	evidence := strings.ToLower(strings.TrimSpace(query.Get("evidence")))
+
 	filter := FilterState{
-		Project: query.Get("project"),
-		Status:  task.Status(query.Get("status")),
-		Query:   clampQuery(query.Get("q")),
-		Page:    page,
-		Sort:    sort,
-		View:    view,
-		Band:    band,
+		Project:  query.Get("project"),
+		Status:   task.Status(query.Get("status")),
+		Query:    clampQuery(query.Get("q")),
+		Page:     page,
+		Sort:     sort,
+		View:     view,
+		Band:     band,
+		Evidence: evidence,
 	}
 
 	// The board's columns ARE the statuses: a status filter would empty four

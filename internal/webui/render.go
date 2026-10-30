@@ -140,11 +140,17 @@ type FilterState struct {
 	// Band bounds the listing to one ADR-0015 band (backlog | hot |
 	// machine); empty means all bands.
 	Band string
+	// Evidence filters the DLQ listing to dead tasks whose failure evidence
+	// names this stage class — the same semantics as `tq dlq
+	// --evidence-stage` (executor.MatchesEvidenceStage, including the
+	// gate-env/gate-dead/gate-slow error-text aliases); empty means all
+	// dead tasks.
+	Evidence string
 }
 
 // Empty reports whether no filter is active.
 func (f FilterState) Empty() bool {
-	return f.Project == "" && f.Status == "" && f.Query == "" && f.Band == ""
+	return f.Project == "" && f.Status == "" && f.Query == "" && f.Band == "" && f.Evidence == ""
 }
 
 // QueryString renders the filter as URL query parameters. Values are
@@ -171,6 +177,10 @@ func (f FilterState) QueryString() string {
 
 	if f.Band != "" {
 		fmt.Fprintf(&b, "band=%s&", f.Band)
+	}
+
+	if f.Evidence != "" {
+		fmt.Fprintf(&b, "evidence=%s&", url.QueryEscape(f.Evidence))
 	}
 
 	if f.View != "" && f.View != viewTable {
@@ -652,6 +662,31 @@ func clearSort(f FilterState) string {
 	return filterHref(f)
 }
 
+func clearEvidence(f FilterState) string {
+	f.Evidence = ""
+
+	return filterHref(f)
+}
+
+// evidenceStageChoices is the DLQ evidence filter's dropdown vocabulary:
+// the failure stages, verify-gate classes and gate aliases the shared
+// executor.MatchesEvidenceStage matcher understands — the same semantics
+// as `tq dlq --evidence-stage` (2026-10-26 01-40 §b1).
+func evidenceStageChoices() []string {
+	return []string{
+		"agent",
+		"verify",
+		"command",
+		executor.VerifyStageGofmt,
+		executor.VerifyStageTest,
+		executor.VerifyStageE2ETimeout,
+		executor.VerifyStageRun,
+		string(executor.VerifyGateEnvironmental),
+		string(executor.VerifyGateDead),
+		string(executor.VerifyGateSlow),
+	}
+}
+
 func filterURL(f FilterState, reset func(FilterState) string) string {
 	return reset(f)
 }
@@ -793,6 +828,22 @@ func (s *Server) loadSnapshot(ctx context.Context, filter FilterState) (Dashboar
 	}
 
 	data.Dead = deadTasks
+
+	if filter.Evidence != "" {
+		filtered := make([]task.Task, 0, len(deadTasks))
+
+		for _, dead := range deadTasks {
+			if executor.MatchesEvidenceStage(
+				executor.LastFailureEvidence(ctx, s.store, dead.ID),
+				dead.LastError,
+				filter.Evidence,
+			) {
+				filtered = append(filtered, dead)
+			}
+		}
+
+		data.Dead = filtered
+	}
 
 	facts, err := s.store.LastFacts(ctx, factFeedLen)
 	if err != nil {

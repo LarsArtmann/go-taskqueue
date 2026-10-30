@@ -1035,6 +1035,94 @@ func TestDLQMirrorsDeadTasks(t *testing.T) {
 	}
 }
 
+// TestEvidenceFilterNarrowsDLQ pins the DLQ evidence-stage filter control:
+// ?evidence=<stage> narrows the DLQ fragment to dead tasks whose failure
+// evidence names the stage (the tq dlq --evidence-stage semantics,
+// including gate aliases via executor.MatchesEvidenceStage) and leaves the
+// unfiltered view untouched (2026-10-26 01-40 §b1).
+func TestEvidenceFilterNarrowsDLQ(t *testing.T) {
+	srv, s := newTestServer(t)
+	ctx := context.Background()
+
+	seedDead := func(t *testing.T, owner, failReason string, evidence any) task.Task {
+		t.Helper()
+
+		var detail []byte
+
+		if evidence != nil {
+			raw, err := json.Marshal(evidence)
+			if err != nil {
+				t.Fatalf("marshal evidence: %v", err)
+			}
+
+			detail = raw
+		}
+
+		tk, err := s.Enqueue(ctx, task.New{
+			Type:        "agent",
+			Project:     "demo",
+			Payload:     json.RawMessage(`"echo hi"`),
+			MaxAttempts: 1,
+		})
+		if err != nil {
+			t.Fatalf("Enqueue: %v", err)
+		}
+
+		_, claim, err := s.ClaimDue(ctx, owner, time.Minute)
+		if err != nil {
+			t.Fatalf("ClaimDue: %v", err)
+		}
+
+		if err := s.Fail(ctx, tk.ID, claim, failReason, 0, detail); err != nil {
+			t.Fatalf("Fail: %v", err)
+		}
+
+		return tk
+	}
+
+	timeout := seedDead(t, "evidence-filter-a", "verify failed", executor.FailureEvidence{
+		Stage:       "verify",
+		VerifyStage: executor.VerifyStageE2ETimeout,
+		ExitCode:    2,
+	})
+	plain := seedDead(t, "evidence-filter-b", "boom", nil)
+
+	dlqOf := func(body string) string {
+		start := strings.Index(body, `id="frag-dlq"`)
+		end := start + strings.Index(body[start:], `id="frag-feed"`)
+
+		return body[start:end]
+	}
+
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/?evidence=e2e-timeout", nil))
+
+	dlq := dlqOf(rec.Body.String())
+	if !strings.Contains(dlq, timeout.ID.String()) || strings.Contains(dlq, plain.ID.String()) {
+		t.Errorf("evidence filter did not narrow the DLQ; got: %s", dlq)
+	}
+
+	if !strings.Contains(rec.Body.String(), `value="e2e-timeout" selected`) {
+		t.Errorf("evidence select did not render the active stage; got: %.400s", rec.Body.String())
+	}
+
+	rec = httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/?evidence=gate-dead", nil))
+
+	dlq = dlqOf(rec.Body.String())
+	if strings.Contains(dlq, timeout.ID.String()) || strings.Contains(dlq, plain.ID.String()) {
+		t.Errorf("gate alias filter matched evidence-less rows; got: %s", dlq)
+	}
+
+	rec = httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+
+	dlq = dlqOf(rec.Body.String())
+	if !strings.Contains(dlq, timeout.ID.String()) || !strings.Contains(dlq, plain.ID.String()) {
+		t.Errorf("unfiltered view lost a dead row; got: %s", dlq)
+	}
+}
+
 // TestGoldenFragments pins the skeleton of each fragment for a fixed seed.
 func TestGoldenFragments(t *testing.T) {
 	srv, s := newTestServer(t)

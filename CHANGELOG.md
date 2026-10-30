@@ -7,6 +7,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- **`tq dlq` rows carry their failure evidence inline** (2026-10-30): each
+  dead-task row appends an `evidence=stage/class exit=N` suffix — the same
+  `FailureEvidence.Summary` shape the webui detail timeline uses — so
+  `--evidence-stage` output is self-describing instead of looking
+  identical to an unfiltered list.
+- **Dashboard DLQ evidence-stage filter** (2026-10-30): the web filter bar
+  gains an `evidence:` select narrowing the dead-letter queue to rows
+  whose failure evidence names the chosen stage class — the same semantics
+  as `tq dlq --evidence-stage`, including the gate-env/gate-dead/gate-slow
+  error-text aliases (shared `executor.MatchesEvidenceStage` matcher).
 - **`tq serve` surfaces a demoted (fold-lock loser) dashboard's staleness**
   (2026-10-28): a second serve that loses the projection fold-lock
   election mounts read-only — the model never folds again, SSE never
