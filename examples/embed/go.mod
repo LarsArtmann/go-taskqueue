@@ -39,6 +39,7 @@ require (
 	github.com/larsartmann/go-taskqueue/internal/queue/postgresv4 v0.3.3 // indirect
 	github.com/larsartmann/go-taskqueue/internal/queue/sqlite v0.3.3 // indirect
 	github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4 v0.3.4 // indirect
+	github.com/larsartmann/go-taskqueue/internal/retryx v0.3.4 // indirect
 	github.com/larsartmann/go-taskqueue/internal/task v0.3.3 // indirect
 	github.com/larsartmann/go-taskqueue/internal/worker v0.3.3 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
@@ -68,6 +69,7 @@ replace (
 	github.com/larsartmann/go-taskqueue/internal/queue/postgresv4 => ../../internal/queue/postgresv4
 	github.com/larsartmann/go-taskqueue/internal/queue/sqlite => ../../internal/queue/sqlite
 	github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4 => ../../internal/queue/sqlitev4
+	github.com/larsartmann/go-taskqueue/internal/retryx => ../../internal/retryx
 	github.com/larsartmann/go-taskqueue/internal/task => ../../internal/task
 	github.com/larsartmann/go-taskqueue/internal/worker => ../../internal/worker
 	github.com/larsartmann/go-taskqueue/queue => ../../queue
