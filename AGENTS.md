@@ -188,9 +188,9 @@ docs/DOMAIN_LANGUAGE.md.
 - **Failure-evidence surface**: `tq dlq --evidence-stage <class>` filters
   the DLQ by the failed fact's Stage/VerifyStage/Class plus the
   gate-env/gate-dead/gate-slow aliases; `tq show` renders a `failure`
-  JSON section; webui detail trail lines carry an `evidence=` suffix.
-  Matcher: `cmd/tq/evidence.go` — the alias list is a THIRD copy of the
-  death-class knowledge; a fourth must not appear.
+  JSON section; `tq dlq` rows + webui timeline lines carry an
+  `evidence=` suffix; the webui DLQ filter shares the semantics.
+  Matcher: `executor.MatchesEvidenceStage` (ONE copy, no second).
 - **prune-stale**: cancels PENDING tasks whose item is `[x]` or gone;
   pools sweep once at start.
 - **Claim-time budget gate**: paid turns block once the daily
