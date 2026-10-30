@@ -343,14 +343,12 @@ docs/DOMAIN_LANGUAGE.md.
   (SECURITY.md); no new write endpoints without it.
 - **templ + cmd/tq LSP diagnostics are false positives** — trust the CLI
   gates, never "fix" them.
-- **erraudit** gates as `erraudit lint ./... --type-aware --no-suppress
-  --disable-extensions --disable generic_return --disable legacy_is
-  --enforce-*` (explicit decomposition of the ruled `--max` form:
-  `--max` is dev-build-only, CI pin v0.7.0 rejects it; retargeted
-  2026-10-30, exact flags live in `scripts/check-erraudit.sh`,
-  negative-control verified) run from EACH module root (`lint` REJECTS
-  `--modules`/`--violations-only`; the root hint naming `--modules=all` is
-  wrong for `lint`). `legacy_as` = migrate to `errors.AsType` (zero since
+- **erraudit**: HARD gate `scripts/check-erraudit.sh` — exact ruled
+  flags live there (`--max` is dev-build-only; CI pin v0.7.0 rejects it,
+  so the gate passes the explicit decomposition; retargeted 2026-10-30),
+  run from EACH module root (`lint` REJECTS `--modules`/
+  `--violations-only`; the root hint naming `--modules=all` is wrong for
+  `lint`). `legacy_as` = migrate to `errors.AsType` (zero since
   2026-10-27); `legacy_is` sentinel sites KEEP `errors.Is` +
   `//nolint:legacyerrors // <reason>` on the call line (default lint honors
   it; the gate passes `--no-suppress` explicitly; never run
