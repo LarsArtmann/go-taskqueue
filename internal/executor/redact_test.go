@@ -313,6 +313,25 @@ func TestSecretHitsCountsSameLineAdjacentSecrets(t *testing.T) {
 	}
 }
 
+// TestRedactSecretsEmitsTwoMarkersForSameLineAdjacentSecrets mirrors the
+// same-line count pin to the OUTPUT side (task 000001a173ce0af0 §e5/§f2):
+// two distinct, non-overlapping secrets sharing ONE line must redact to
+// exactly TWO markers — the count contract and the output contract agree.
+func TestRedactSecretsEmitsTwoMarkersForSameLineAdjacentSecrets(t *testing.T) {
+	t.Parallel()
+
+	sameLine := fakeAnthropic + " next to " + fakeGitHub
+	got := RedactSecrets(sameLine)
+
+	if count := strings.Count(got, RedactMarker); count != 2 {
+		t.Errorf("RedactSecrets emitted %d markers for two same-line secrets, want 2: %s", count, got)
+	}
+
+	if strings.Contains(got, fakeAnthropic) || strings.Contains(got, fakeGitHub) {
+		t.Error("a same-line secret survived redaction")
+	}
+}
+
 // TestRedactSecretsMasksAuthHeaderToExactlyOneMarker is the output-side
 // mirror of the span-merge count fix (02-37 §f11): the overlapping
 // bearer × authorization-header patterns must mask one
