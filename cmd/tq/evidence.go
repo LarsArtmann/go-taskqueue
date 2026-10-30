@@ -2,12 +2,8 @@ package main
 
 import (
 	"context"
-	"encoding/json"
-	"slices"
-	"strings"
 
 	"github.com/larsartmann/go-taskqueue/internal/executor"
-	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
@@ -25,31 +21,11 @@ type failureEvidenceView struct {
 	Tail        string `json:"tail,omitempty"`
 }
 
-// failureEvidenceFor pulls the FailureEvidence off the task's LAST
-// task.failed fact (the why lives there, not on the terminal fact) —
-// the ONE decode in cmd/tq; best-effort, an absent or unparsable detail
-// leaves the evidence zero.
+// failureEvidenceFor delegates to the shared executor reader (ONE
+// backward-scan decode, 2026-10-26 01-40 §b3) — best-effort, an absent
+// or unparsable detail leaves the evidence zero.
 func failureEvidenceFor(ctx context.Context, store *sqlite.Store, id task.ID) executor.FailureEvidence {
-	trail, err := store.FactsForTask(ctx, id.String(), 0)
-	if err != nil {
-		return executor.FailureEvidence{}
-	}
-
-	for _, fact := range slices.Backward(trail) {
-		if fact.Type != journal.Failed {
-			continue
-		}
-
-		var evidence executor.FailureEvidence
-
-		if json.Unmarshal(fact.Detail, &evidence) == nil {
-			return evidence
-		}
-
-		break
-	}
-
-	return executor.FailureEvidence{}
+	return executor.LastFailureEvidence(ctx, store, id)
 }
 
 // buildFailureEvidenceView decodes the task's last task.failed fact into
@@ -71,33 +47,9 @@ func buildFailureEvidenceView(ctx context.Context, store *sqlite.Store, id task.
 	}
 }
 
-// evidenceStageMatches reports whether a dead task's failure evidence
-// names the requested stage class — matched case-insensitively against
-// the evidence Stage, VerifyStage and retry-taxonomy Class fields, plus
-// the verify-gate aliases (gate-env / gate-dead / gate-slow) that live
-// only in the recorded error text, never in a structured field.
+// evidenceStageMatches delegates to the shared executor matcher — ONE copy
+// of the death-class alias knowledge, shared with the webui evidence
+// filter (2026-10-26 01-40 §b1).
 func evidenceStageMatches(evidence executor.FailureEvidence, lastError, want string) bool {
-	want = strings.ToLower(strings.TrimSpace(want))
-
-	if want == "" {
-		return false
-	}
-
-	for _, have := range []string{evidence.Stage, evidence.VerifyStage, evidence.Class} {
-		if strings.EqualFold(have, want) {
-			return true
-		}
-	}
-
-	switch want {
-	case string(executor.VerifyGateEnvironmental):
-		return strings.Contains(lastError, executor.VerifyGateEnvCode) ||
-			strings.Contains(lastError, "agent verify gate environmental")
-	case string(executor.VerifyGateDead):
-		return strings.Contains(lastError, "agent verify gate dead")
-	case string(executor.VerifyGateSlow):
-		return strings.Contains(lastError, "agent verify gate slow")
-	}
-
-	return false
+	return executor.MatchesEvidenceStage(evidence, lastError, want)
 }

@@ -18,7 +18,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"slices"
 	"strings"
 
 	"github.com/larsartmann/go-taskqueue/internal/executor"
@@ -381,31 +380,12 @@ func todoShipment(t task.Task, repo string) (string, bool) {
 	return "absent", true
 }
 
-// lastFailureEvidence pulls the FailureEvidence off the dead task's LAST
-// task.failed fact (the why lives there, not on the dead-lettered fact).
-// Best-effort: an absent or unparsable detail leaves the evidence zero and
-// the autopsy still runs on the prompt + last error.
+// lastFailureEvidence delegates to the shared executor reader (ONE
+// backward-scan decode; 2026-10-26 01-40 §b3) — best-effort: an absent
+// or unparsable detail leaves the evidence zero and the autopsy still
+// runs on the prompt + last error.
 func (s *Sweeper) lastFailureEvidence(ctx context.Context, id task.ID) executor.FailureEvidence {
-	trail, err := s.store.FactsForTask(ctx, id.String(), 0)
-	if err != nil {
-		return executor.FailureEvidence{}
-	}
-
-	for _, trailFact := range slices.Backward(trail) {
-		if trailFact.Type != journal.Failed {
-			continue
-		}
-
-		var evidence executor.FailureEvidence
-
-		if json.Unmarshal(trailFact.Detail, &evidence) == nil {
-			return evidence
-		}
-
-		break
-	}
-
-	return executor.FailureEvidence{}
+	return executor.LastFailureEvidence(ctx, s.store, id)
 }
 
 // reclaimsWithUnknownEffect counts the dead task's task.released facts whose
