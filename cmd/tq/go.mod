@@ -78,6 +78,7 @@ require (
 	github.com/larsartmann/go-health-dashboard v0.10.2 // indirect
 	github.com/larsartmann/go-retry v0.8.0 // indirect
 	github.com/larsartmann/go-sse v0.6.2 // indirect
+	github.com/larsartmann/go-taskqueue/internal/dlqbackoff v0.3.4
 	github.com/larsartmann/go-taskqueue/internal/queue/companion v0.4.0 // indirect
 	github.com/larsartmann/go-taskqueue/internal/queue/postgresv4 v0.3.4 // indirect
 	github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4 v0.3.4 // indirect

@@ -113,6 +113,7 @@ require (
 	github.com/larsartmann/go-sse/ssetest v0.5.0
 	github.com/larsartmann/go-taskqueue/internal/composition v0.4.0
 	github.com/larsartmann/go-taskqueue/internal/config v0.3.4
+	github.com/larsartmann/go-taskqueue/internal/dlqbackoff v0.3.4
 	github.com/larsartmann/go-taskqueue/internal/executor v0.3.4
 	github.com/larsartmann/go-taskqueue/internal/journal v0.4.0
 	github.com/larsartmann/go-taskqueue/internal/queue v0.3.4
@@ -160,3 +161,5 @@ replace github.com/larsartmann/go-taskqueue/internal/composition => ./internal/c
 replace github.com/larsartmann/go-taskqueue/internal/config => ./internal/config
 
 replace github.com/larsartmann/go-taskqueue/internal/retryx => ./internal/retryx
+
+replace github.com/larsartmann/go-taskqueue/internal/dlqbackoff => ./internal/dlqbackoff

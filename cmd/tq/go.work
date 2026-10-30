@@ -18,6 +18,7 @@ use (
 
 	../../internal/composition
 	../../internal/config
+	../../internal/dlqbackoff
 	../../internal/executor
 	../../internal/journal
 	../../internal/journal/cqrs
@@ -28,6 +29,7 @@ use (
 	../../internal/queue/sqlite
 	../../internal/queue/sqlitev4
 	../../internal/readmodel
+	../../internal/retryx
 	../../internal/task
 	../../internal/worker
 )
