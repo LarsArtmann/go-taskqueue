@@ -383,6 +383,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Repo-internal tooling and non-operator-facing changes (O14 audit
 2026-10-13: kept for the record, excluded from operator release notes).
 
+- **Evidence triage pins + smoke** (2026-10-30): requeues (429 / budget /
+  env) pinned evidence-free (`TestRequeuesCarryNoFailureEvidence`) so
+  `--evidence-stage` triage is dead-only BY DESIGN; new
+  `scripts/smoke/dlq-evidence-stage.sh` drives the real binary against a
+  seeded scratch store through the full filter surface.
+
 - **Crush PreToolUse hook fleet** (2026-10-29): project `.crushrc` wires
   `scripts/hooks/tq-bash-guard.sh` — denies `${PIPESTATUS}`, `printf
   %.0s`, ERE bracket `\t`/`\d` classes, unscoped `gofmt` over dirs,
