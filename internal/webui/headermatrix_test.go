@@ -125,6 +125,24 @@ func mergeRow(base, additions matrixHeaders) matrixHeaders {
 	return row
 }
 
+// getContextGET issues a GET via NewRequestWithContext + client.Do (the
+// noctx-clean form) for the matrix family.
+func getContextGET(t testing.TB, url string) *http.Response {
+	t.Helper()
+
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, url, nil)
+	if err != nil {
+		t.Fatalf("new request %s: %v", url, err)
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("GET %s: %v", url, err)
+	}
+
+	return resp
+}
+
 func positiveSeconds(t testing.TB, got string) {
 	t.Helper()
 
@@ -246,10 +264,7 @@ func TestServeHeaderMatrixTaskPage(t *testing.T) {
 
 	_, server := newServeServer(t, Config{})
 
-	resp, err := http.Get(server.URL + "/")
-	if err != nil {
-		t.Fatalf("GET /: %v", err)
-	}
+	resp := getContextGET(t, server.URL+"/")
 	defer resp.Body.Close()
 
 	serveDashboardRow.surface().check(t, resp.Header, "GET /")
@@ -264,10 +279,7 @@ func TestServeHeaderMatrix401(t *testing.T) {
 
 	_, server := newServeServer(t, Config{AuthToken: "secret"})
 
-	resp, err := http.Get(server.URL + "/")
-	if err != nil {
-		t.Fatalf("GET /: %v", err)
-	}
+	resp := getContextGET(t, server.URL+"/")
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusUnauthorized {
@@ -284,10 +296,7 @@ func TestServeHeaderMatrix429Lockout(t *testing.T) {
 
 	// A page GET issues the CSRF cookie; the lockout limiter counts
 	// 403 CSRF failures and locks the write routes on the third.
-	first, err := http.Get(server.URL + "/")
-	if err != nil {
-		t.Fatalf("GET /: %v", err)
-	}
+	first := getContextGET(t, server.URL+"/")
 	first.Body.Close()
 
 	var csrf string
@@ -342,10 +351,7 @@ func TestServeHeaderMatrixHealthPage(t *testing.T) {
 
 	_, server := newServeServer(t, Config{})
 
-	resp, err := http.Get(server.URL + "/health")
-	if err != nil {
-		t.Fatalf("GET /health: %v", err)
-	}
+	resp := getContextGET(t, server.URL+"/health")
 	defer resp.Body.Close()
 
 	serveHealthRow.surface().check(t, resp.Header, "GET /health")
@@ -366,10 +372,7 @@ func TestServeHeaderMatrixHealthProbes(t *testing.T) {
 			// pinned by the SSE subtest, not the plain-GET matrix.
 			continue
 		}
-		resp, err := http.Get(server.URL + path)
-		if err != nil {
-			t.Fatalf("GET %s: %v", path, err)
-		}
+		resp := getContextGET(t, server.URL+path)
 		resp.Body.Close()
 
 		if resp.StatusCode != http.StatusOK {
@@ -393,10 +396,7 @@ func TestServeHeaderMatrixSDKBundle(t *testing.T) {
 
 	_, server := newServeServer(t, Config{})
 
-	resp, err := http.Get(server.URL + "/health/datastar.js")
-	if err != nil {
-		t.Fatalf("GET /health/datastar.js: %v", err)
-	}
+	resp := getContextGET(t, server.URL+"/health/datastar.js")
 	defer resp.Body.Close()
 
 	withCache := matrixHeaders{}
@@ -555,10 +555,7 @@ func TestMatrixCheckNegativePath(t *testing.T) {
 			server := httptest.NewServer(handler)
 			t.Cleanup(server.Close)
 
-			resp, err := http.Get(server.URL)
-			if err != nil {
-				t.Fatalf("GET fixture: %v", err)
-			}
+			resp := getContextGET(t, server.URL)
 			resp.Body.Close()
 
 			tb := &failingTB{TB: t}
