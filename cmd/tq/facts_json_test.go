@@ -90,7 +90,8 @@ import (
 // hook-owned detail out of the doc (the scoped-gofmt recipe and the ERE
 // incident walkthrough now ship in the tq-bash-guard deny messages at
 // point-of-use); twin scripts/check-agents-size.sh re-synced.
-const agentsDocMaxBytes = 23_900
+// 23_900 → 24_400 (2026-10-30): dry-run-first doc-sweep convention bullet.
+const agentsDocMaxBytes = 24_400
 
 // TestAgentsDocSizeGuard keeps AGENTS.md from silently growing past its
 // byte budget (plan M89 residue); the failure names the top sections so a

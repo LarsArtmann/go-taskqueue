@@ -20,7 +20,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 file="${1:-AGENTS.md}"
-budget="${AGENTS_BUDGET_BYTES:-23900}"
+budget="${AGENTS_BUDGET_BYTES:-24400}"
 
 if [ ! -f "$file" ]; then
 	echo "FAIL: $file not found (cwd: $(pwd))" >&2

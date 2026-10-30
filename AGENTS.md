@@ -239,6 +239,12 @@ docs/DOMAIN_LANGUAGE.md.
   daemon-folded reports); ONE index-row write point (top chronological
   cluster); CHANGELOG append-only; close exit: record `tq verdict`
   before session end (report without verdict = half-closeout).
+- **Dry-run-first for doc/index mutation scripts**: one-off sweeps that
+  touch AGENTS/TODO_LIST/status-index rows ALWAYS print the computed
+  rows (dry-run) before the first real write, and the FIRST filter runs
+  against a copy of the real file shape — a wrong filter is free to
+  print, fatal to run (2026-10-26: first filter deleted all 334 live
+  rows).
 - **Closeout TICK-AUDIT**: before the FINAL commit of any batch, grep
   TODO_LIST.md for each verbatim batch anchor; finished rows must read
   `- [x]` (landed + unchecked = paid round-trip — 000001a1699ba37fc7045).
