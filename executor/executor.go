@@ -52,6 +52,17 @@ type (
 	FailureEvidence   = internalexecutor.FailureEvidence
 )
 
+// Failure-evidence surfaces (evidence.go): the trail seam the evidence
+// functions read, and the matchers behind `tq dlq --evidence-stage`.
+type FactTrailReader = internalexecutor.FactTrailReader
+
+var (
+	LastFailureEvidence          = internalexecutor.LastFailureEvidence
+	LastFailureEvidenceFromTrail = internalexecutor.LastFailureEvidenceFromTrail
+	MatchesEvidenceStageSet      = internalexecutor.MatchesEvidenceStageSet
+	MatchesEvidenceStage         = internalexecutor.MatchesEvidenceStage
+)
+
 // Typed errors.
 type (
 	LeaseLostError       = internalexecutor.LeaseLostError
