@@ -1112,6 +1112,7 @@ func cmdAgentPool(args []string) error {
 		MaxConcurrent:   poolOpts.maxAgents,
 		ReresolveVerify: poolOpts.reresolveVerify,
 		Worktrees:       poolOpts.worktrees,
+		CrushServer:     poolOpts.crushServer,
 	}
 	if poolOpts.closeout {
 		agentExec.CloseoutPrompt = executor.DefaultCloseoutPrompt
@@ -1142,6 +1143,16 @@ func cmdAgentPool(args []string) error {
 	g.OnShutdown(func() error { return store.Close() })
 
 	ctx := g.Ctx()
+
+	// L1 seam (--crush-server): one shared `crush server` per pool, torn
+	// down with the run.Group. Started BEFORE any run can claim, so a thin
+	// client never races a missing socket; the flag's rollback is unset.
+	if poolOpts.crushServer != "" {
+		serverBin := agentExec.Binary()
+		g.Go("crush-server", func(ctx context.Context) error {
+			return runCrushServerActor(ctx, serverBin, poolOpts.crushServer)
+		})
+	}
 
 	var alertBridge *papdashboard.Bridge
 

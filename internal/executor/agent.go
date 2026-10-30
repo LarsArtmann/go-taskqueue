@@ -137,6 +137,12 @@ type AgentExecutor struct {
 	// Second-opinion clones (review/status/dlqfix/prioritize) never inherit
 	// it: they read the repo at HEAD and run close-out-free.
 	Worktrees bool
+	// CrushServer routes every agent run through a shared `crush server`
+	// (L1 client-server seam, docs/planning/2026-10-30_04-43 §L1): runs
+	// add `-H <socket>` and the agent env gains CRUSH_CLIENT_SERVER=1, so
+	// crush becomes a thin client whose agents execute inside the server
+	// process. Empty = today's in-process path; rollback = unset the flag.
+	CrushServer string
 
 	// rateLimitUntil is the UnixNano instant the provider is next expected
 	// to accept requests (0 = clear). Set when a run's output reports
@@ -192,6 +198,7 @@ func (e *AgentExecutor) WithoutCloseout() *AgentExecutor {
 		Yolo:            e.Yolo,
 		MaxConcurrent:   e.MaxConcurrent,
 		ReresolveVerify: e.ReresolveVerify,
+		CrushServer:     e.CrushServer,
 		secondOpinion:   true,
 	}
 }
@@ -200,7 +207,6 @@ func (e *AgentExecutor) binary() string {
 	if e.Bin != "" {
 		return e.Bin
 	}
-
 	if b := os.Getenv("TQ_AGENT_BIN"); b != "" {
 		return b
 	}
@@ -211,6 +217,12 @@ func (e *AgentExecutor) binary() string {
 
 	return DefaultAgentBinary
 }
+
+// Binary resolves the agent executable exactly like the run paths do
+// (Bin > $TQ_AGENT_BIN > $TQ_CRUSH_BIN > "crush"). Exported for pool-side
+// actors that must spawn the SAME binary the runs use — the L1
+// crush-server actor (--crush-server) is the first consumer.
+func (e *AgentExecutor) Binary() string { return e.binary() }
 
 // AgentVersion probes the agent binary's --version line (first stdout
 // line, trimmed). Pools call it at startup so a missing/stale binary is a
@@ -540,6 +552,11 @@ func assertCleanTree(ctx context.Context, repo string) error {
 // TQ_RESULT line is the legacy fallback for in-flight tasks.
 const verdictFileEnv = "TQ_RESULT_FILE"
 
+// crushClientServerEnv turns `crush run` into a thin client whose agent
+// executes inside the shared `crush server` (L1 seam; see AgentExecutor.
+// CrushServer). Set ONLY alongside the matching -H <socket> run arg.
+const crushClientServerEnv = "CRUSH_CLIENT_SERVER"
+
 // envDenylistForAgents is the operational environment the agent process
 // must NOT inherit (secret-injection seam, M24 — first rung):
 //   - TQ_DB: the queue's own journal path (in the pool process, the
@@ -680,6 +697,10 @@ func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPa
 	}
 
 	args := []string{"run", runVerb, "--cwd", repoDir}
+	if e.CrushServer != "" {
+		// L1 seam: thin-client mode against the pool's shared crush server.
+		args = append(args, "-H", e.CrushServer)
+	}
 	if p.Model != "" {
 		args = append(args, "--model", p.Model)
 	}
@@ -699,6 +720,9 @@ func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPa
 		// The full secret-injection successor (minted per-run env) is
 		// designed in docs/planning/2026-10-05_secret-injection-seam-design.md.
 		env := agentEnv(os.Environ())
+		if e.CrushServer != "" {
+			env = append(env, crushClientServerEnv+"=1")
+		}
 
 		if verdictPath != "" {
 			cmd.Env = append(env, verdictFileEnv+"="+verdictPath)
@@ -905,14 +929,22 @@ func (e *AgentExecutor) runCloseoutTurn(
 	questionPath string,
 ) error {
 	closeout := strings.ReplaceAll(e.CloseoutPrompt, "{{TASK_ID}}", id.String())
-	closeoutArgs := []string{"run", "--quiet", "--cwd", repoDir, "--session", session, "--", closeout}
+	closeoutArgs := []string{"run", "--quiet", "--cwd", repoDir}
+	if e.CrushServer != "" {
+		closeoutArgs = append(closeoutArgs, "-H", e.CrushServer)
+	}
+	closeoutArgs = append(closeoutArgs, "--session", session, "--", closeout)
 
 	closeoutOnce := func() (*bytes.Buffer, error) {
 		cmd := exec.CommandContext(ctx, e.binary(), closeoutArgs...)
 		cmd.Dir = repoDir
 
+		closeoutEnv := agentEnv(os.Environ())
+		if e.CrushServer != "" {
+			closeoutEnv = append(closeoutEnv, crushClientServerEnv+"=1")
+		}
 		if verdictPath != "" {
-			cmd.Env = append(agentEnv(os.Environ()), verdictFileEnv+"="+verdictPath)
+			cmd.Env = append(closeoutEnv, verdictFileEnv+"="+verdictPath)
 		}
 
 		// Second-opinion clones never get the question channel (same gate

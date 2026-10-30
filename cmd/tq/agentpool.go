@@ -5,7 +5,9 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -80,6 +82,7 @@ type agentPoolOptions struct {
 	ownerSessPark   bool
 	ownerSessHold   time.Duration
 	worktrees       bool
+	crushServer     string
 }
 
 // parseAgentPoolOptions owns the agent-pool flag block: define, parse,
@@ -221,6 +224,11 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 		"worktrees",
 		false,
 		"worktree-per-agent delivery (default OFF): every agent task runs in a linked checkout on branch tq/<task-id> forked from HEAD — the human's WIP never parks the pool and N tasks of one repo can coexist; committed rails required (.crushrc/.tq-verify uncommitted = permanent refusal); the branch is the delivery until auto-merge lands (worktree-per-agent design, docs/planning/archived/2026-09-12_worktree-per-agent-design.md)",
+	)
+	crushServer := fs.String(
+		"crush-server",
+		"",
+		"route every agent run through a shared crush server on this unix socket (L1 client-server seam, default OFF): the pool starts `crush server --host unix://<socket>` as a lifecycle actor and every run becomes a thin client (args add -H <socket>, env adds CRUSH_CLIENT_SERVER=1); empty = today's in-process runs; rollback = unset the flag (docs/planning/2026-10-30_04-43_crush-client-server-relations.md §L1)",
 	)
 	prioritize := fs.Bool(
 		"prioritize",
@@ -455,6 +463,7 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 		ownerSessPark:   *ownerSessPark,
 		ownerSessHold:   *ownerSessHold,
 		worktrees:       *worktrees,
+		crushServer:     *crushServer,
 	}, nil
 }
 
@@ -940,4 +949,35 @@ func worktreeInFlight(ctx context.Context, store *sqlite.Store, agentExec *execu
 
 		return agentExec != nil && agentExec.WorktreeInUse(id)
 	}
+}
+
+// runCrushServerActor is the L1 seam's server half (--crush-server): one
+// shared `crush server` per pool, bound to the flag's unix socket and torn
+// down with the run.Group. The socket's parent directory is created so a
+// data-dir path need not pre-exist; server output lands in the pool log
+// (it is the fleet-wide crash domain's console). Started before any run
+// can claim, so a thin client never races a missing socket.
+func runCrushServerActor(ctx context.Context, bin, socket string) error {
+	host := socket
+	if !strings.Contains(host, "://") {
+		host = "unix://" + host
+	}
+	if dir := filepath.Dir(socket); dir != "" && dir != "." && !strings.Contains(dir, "://") {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return fmt.Errorf("crush-server: create socket dir %s: %w", dir, err)
+		}
+	}
+	cmd := exec.CommandContext(ctx, bin, "server", "--host", host)
+	// No process-group kill here (windows-cross-compile stays portable):
+	// SIGTERM goes to the server itself, which owns its workspaces'
+	// teardown; WaitDelay keeps a wedged shutdown from hanging the actor.
+	cmd.Stdout = io.Discard
+	cmd.Stderr = os.Stderr
+	cmd.WaitDelay = 10 * time.Second
+	fmt.Fprintf(os.Stderr, "tq: agent-pool: crush server (L1 seam) listening on %s\n", host)
+	err := cmd.Run()
+	if ctx.Err() != nil {
+		return nil // pool shutdown: the server dying with us is the design
+	}
+	return fmt.Errorf("crush-server: %s exited: %w", host, err)
 }
