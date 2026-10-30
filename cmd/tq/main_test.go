@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -248,6 +249,13 @@ var captureMu sync.Mutex
 func captureStdout(t *testing.T, fn func()) string {
 	t.Helper()
 
+	return captureStdoutFn(fn)
+}
+
+// captureStdoutFn is the t-less capture core: callable from non-test
+// goroutines (the enqueue --wait test), where t.Fatalf would Goexit the
+// wrong goroutine — pipe failures panic loudly instead.
+func captureStdoutFn(fn func()) string {
 	captureMu.Lock()
 	defer captureMu.Unlock()
 
@@ -255,7 +263,7 @@ func captureStdout(t *testing.T, fn func()) string {
 
 	r, w, err := os.Pipe()
 	if err != nil {
-		t.Fatalf("pipe: %v", err)
+		panic(fmt.Sprintf("captureStdoutFn: pipe: %v", err))
 	}
 
 	os.Stdout = w
@@ -265,12 +273,12 @@ func captureStdout(t *testing.T, fn func()) string {
 	os.Stdout = old
 
 	if err := w.Close(); err != nil {
-		t.Fatalf("close: %v", err)
+		panic(fmt.Sprintf("captureStdoutFn: close: %v", err))
 	}
 
 	var buf bytes.Buffer
 	if _, err := io.Copy(&buf, r); err != nil {
-		t.Fatalf("copy: %v", err)
+		panic(fmt.Sprintf("captureStdoutFn: copy: %v", err))
 	}
 
 	return buf.String()

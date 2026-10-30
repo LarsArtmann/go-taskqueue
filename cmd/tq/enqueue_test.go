@@ -17,6 +17,17 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
+// enqueueQuietly runs cmdEnqueue with stdout captured: enqueue prints the
+// minted task ID (main.go), and an uncaptured print from a parallel test
+// pollutes any concurrent captureStdout pipe (the TestShowJSON order
+// flake, root-caused 2026-10-30: decode died on a trailing bare ID).
+func enqueueQuietly(t *testing.T, args []string) error {
+	t.Helper()
+	var err error
+	captureStdout(t, func() { err = cmdEnqueue(args) })
+	return err
+}
+
 // TestCmdEnqueueDedupKeyIdempotent pins the fan-out contract: a re-enqueue
 // with the same --dedup-key returns the stored task unchanged (one row),
 // a different key mints a new task.
@@ -39,7 +50,7 @@ func TestCmdEnqueueDedupKeyIdempotent(t *testing.T) {
 	}
 
 	for range 2 {
-		if err := cmdEnqueue(append(base, "--dedup-key", "libdive:demo@v1.17.0")); err != nil {
+		if err := enqueueQuietly(t, append(base, "--dedup-key", "libdive:demo@v1.17.0")); err != nil {
 			t.Fatalf("enqueue with dedup key: %v", err)
 		}
 	}
@@ -67,7 +78,7 @@ func TestCmdEnqueueDedupKeyIdempotent(t *testing.T) {
 
 	assertCount(1, "same-key re-enqueue must not mint a second task")
 
-	if err := cmdEnqueue(append(base, "--dedup-key", "libdive:demo@v1.18.0")); err != nil {
+	if err := enqueueQuietly(t, append(base, "--dedup-key", "libdive:demo@v1.18.0")); err != nil {
 		t.Fatalf("enqueue with new dedup key: %v", err)
 	}
 
@@ -97,13 +108,17 @@ func TestCmdEnqueueWaitStreamsFacts(t *testing.T) {
 		done := make(chan error, 1)
 
 		go func() {
-			done <- cmdEnqueue([]string{
-				"--type", "sh",
-				"--payload", `echo hi`,
-				"--db", dbPath,
-				"--wait",
-				"--timeout", "15s",
+			var enqErr error
+			captureStdoutFn(func() {
+				enqErr = cmdEnqueue([]string{
+					"--type", "sh",
+					"--payload", `echo hi`,
+					"--db", dbPath,
+					"--wait",
+					"--timeout", "15s",
+				})
 			})
+			done <- enqErr
 		}()
 
 		// The command prints the task ID then blocks; find the task through
@@ -190,7 +205,7 @@ func TestCmdEnqueueWaitStreamsFacts(t *testing.T) {
 		dir := t.TempDir()
 		dbPath := filepath.Join(dir, "timeout.db")
 
-		err := cmdEnqueue([]string{
+		err := enqueueQuietly(t, []string{
 			"--type", "sh",
 			"--payload", `echo hi`,
 			"--db", dbPath,
@@ -220,7 +235,7 @@ func TestCmdEnqueueAgentConveniences(t *testing.T) {
 		t.Fatalf("write prompt: %v", err)
 	}
 
-	if err := cmdEnqueue([]string{
+	if err := enqueueQuietly(t, []string{
 		"--repo", "demo",
 		"--prompt-file", prompt,
 		"--verify", "go build ./...",
@@ -392,7 +407,7 @@ func TestCmdEnqueueRedispatchRefused(t *testing.T) {
 		}
 	}
 
-	if err := cmdEnqueue(append(slices.Clone(base), "--force-redispatch")); err != nil {
+	if err := enqueueQuietly(t, append(slices.Clone(base), "--force-redispatch")); err != nil {
 		t.Fatalf("forced re-dispatch must mint: %v", err)
 	}
 
