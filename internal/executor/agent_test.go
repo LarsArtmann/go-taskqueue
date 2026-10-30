@@ -322,6 +322,69 @@ func TestAgentPromptTaskIDSubstitution(t *testing.T) {
 	}
 }
 
+// TestAgentCrushServerSeam pins the L1 client-server seam
+// (AgentExecutor.CrushServer): when set, the work-run argv gains
+// `-H <socket>` and the agent env gains CRUSH_CLIENT_SERVER=1; when
+// empty, neither appears (today's in-process path — the rollback
+// contract). Pinned via a stub that dumps argv AND its environment.
+func TestAgentCrushServerSeam(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		server  string
+		wantArg bool
+	}{
+		{name: "seam off keeps today's argv", server: "", wantArg: false},
+		{name: "seam on routes via -H", server: "/tmp/crush-pool.sock", wantArg: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			argsLog := filepath.Join(dir, "argv.log")
+			envLog := filepath.Join(dir, "env.log")
+			bin := filepath.Join(dir, "argv-env-agent")
+
+			script := "#!/bin/sh\nprintf '%s\\n' \"$@\" > \"" + argsLog + "\"\nenv > \"" + envLog + "\"\n"
+			if err := os.WriteFile(bin, []byte(script), 0o755); err != nil {
+				t.Fatalf("write stub: %v", err)
+			}
+
+			repo := t.TempDir()
+			if err := os.WriteFile(filepath.Join(repo, ".crushrc"), []byte("permissions allow view\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+
+			e := &AgentExecutor{Bin: bin, CrushServer: tc.server}
+			if err := e.Execute(context.Background(), agentTaskT(t, AgentPayload{Repo: repo, Prompt: "hi"})); err != nil {
+				t.Fatalf("Execute: %v", err)
+			}
+
+			raw, err := os.ReadFile(argsLog)
+			if err != nil {
+				t.Fatal(err)
+			}
+			argv := strings.Split(strings.TrimRight(string(raw), "\n"), "\n")
+			hasHost := false
+			for i, a := range argv {
+				if a == "-H" && i+1 < len(argv) && argv[i+1] == tc.server {
+					hasHost = true
+				}
+			}
+			if hasHost != tc.wantArg {
+				t.Fatalf("argv %v: -H %s presence = %v, want %v", argv, tc.server, hasHost, tc.wantArg)
+			}
+
+			envRaw, err := os.ReadFile(envLog)
+			if err != nil {
+				t.Fatal(err)
+			}
+			wantEnv := "CRUSH_CLIENT_SERVER=1"
+			hasEnv := strings.Contains(string(envRaw), wantEnv)
+			if hasEnv != tc.wantArg {
+				t.Fatalf("env has %q = %v, want %v", wantEnv, hasEnv, tc.wantArg)
+			}
+		})
+	}
+}
+
 // TestAgentExecutorYoloWithoutRepoAutonomyFailsFast verifies the guard that
 // keeps unattended pools from burning their attempt budget on runs that can
 // never act: yolo requested, but the repo has no project-local crush config
