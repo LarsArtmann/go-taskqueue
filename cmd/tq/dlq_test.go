@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -217,4 +218,85 @@ func TestCmdDLQCrossLinksPoisonedBackoff(t *testing.T) {
 			t.Fatalf("output %q cross-links backoff with the flag off", out)
 		}
 	})
+}
+
+// TestCmdDLQRowsCarryEvidenceSuffix pins the self-describing DLQ listing:
+// rows whose last task.failed fact carries FailureEvidence render the
+// evidence inline ("evidence=verify/e2e-timeout exit=…", the same Summary
+// shape the webui detail line uses) whether or not --evidence-stage
+// filtered the list (2026-10-26 01-40 §e3).
+func TestCmdDLQRowsCarryEvidenceSuffix(t *testing.T) {
+	t.Parallel()
+
+	dbPath := filepath.Join(t.TempDir(), "dlq-suffix.db")
+
+	store, err := sqlite.Open(dbPath)
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+
+	ctx := context.Background()
+
+	seedDead := func(failReason string, evidence any) task.ID {
+		t.Helper()
+
+		var raw []byte
+
+		if evidence != nil {
+			raw, err = json.Marshal(evidence)
+			if err != nil {
+				t.Fatalf("marshal evidence: %v", err)
+			}
+		}
+
+		enq, err := store.Enqueue(ctx, task.New{
+			Type:        executor.TaskTypeAgent,
+			Project:     "demo",
+			Payload:     []byte(`{"repo":"demo","prompt":"p"}`),
+			MaxAttempts: 1,
+		})
+		if err != nil {
+			t.Fatalf("enqueue: %v", err)
+		}
+
+		_, claim, err := store.ClaimDue(ctx, "suffix-test", time.Minute)
+		if err != nil {
+			t.Fatalf("claim: %v", err)
+		}
+
+		if err := store.Fail(ctx, enq.ID, claim, failReason, 0, raw); err != nil {
+			t.Fatalf("fail: %v", err)
+		}
+
+		return enq.ID
+	}
+
+	withEvidence := seedDead("verify failed", executor.FailureEvidence{
+		Stage:       "verify",
+		VerifyStage: executor.VerifyStageE2ETimeout,
+		ExitCode:    2,
+	})
+	withoutEvidence := seedDead("boom", nil)
+
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	out := captureStdout(t, func() {
+		if err := cmdDLQ([]string{"--db", dbPath}); err != nil {
+			t.Errorf("cmdDLQ: %v", err)
+		}
+	})
+
+	if !strings.Contains(out, withEvidence.String()) ||
+		!strings.Contains(out, "evidence=verify/"+string(executor.VerifyStageE2ETimeout)+" exit=2") {
+		t.Fatalf("row with evidence lacks the inline suffix:\n%s", out)
+	}
+
+	rowStart := strings.Index(out, withoutEvidence.String())
+	row := out[rowStart : rowStart+strings.Index(out[rowStart:], "\n")]
+
+	if strings.Contains(row, "evidence=") {
+		t.Fatalf("evidence-less row carries a suffix: %q", row)
+	}
 }

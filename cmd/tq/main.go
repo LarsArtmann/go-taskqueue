@@ -3105,11 +3105,17 @@ func cmdDLQ(args []string) error {
 		return err
 	}
 
+	evidence := make(map[task.ID]executor.FailureEvidence, len(tasks))
+
+	for _, dead := range tasks {
+		evidence[dead.ID] = failureEvidenceFor(context.Background(), store, dead.ID)
+	}
+
 	if *evidenceStage != "" {
 		filtered := make([]task.Task, 0, len(tasks))
 
 		for _, dead := range tasks {
-			if evidenceStageMatches(failureEvidenceFor(context.Background(), store, dead.ID), dead.LastError, *evidenceStage) {
+			if evidenceStageMatches(evidence[dead.ID], dead.LastError, *evidenceStage) {
 				filtered = append(filtered, dead)
 			}
 		}
@@ -3122,7 +3128,7 @@ func cmdDLQ(args []string) error {
 		return err
 	}
 
-	printDLQ(tasks, deadlines)
+	printDLQ(tasks, deadlines, evidence)
 
 	return nil
 }
@@ -3161,7 +3167,7 @@ func listDead(ctx context.Context, s *sqlite.Store) ([]task.Task, error) {
 	return s.List(ctx, queue.Filter{Status: &st})
 }
 
-func printDLQ(tasks []task.Task, dlqBackoff map[string]time.Time) {
+func printDLQ(tasks []task.Task, dlqBackoff map[string]time.Time, evidence map[task.ID]executor.FailureEvidence) {
 	if len(tasks) == 0 {
 		fmt.Println("(empty)")
 
@@ -3169,8 +3175,14 @@ func printDLQ(tasks []task.Task, dlqBackoff map[string]time.Time) {
 	}
 
 	for _, t := range tasks {
-		fmt.Printf("%s  %-24s attempts=%d/%d  %s\n",
+		row := fmt.Sprintf("%s  %-24s attempts=%d/%d  %s",
 			t.ID, t.Project+"/"+t.Type, t.Attempts, t.MaxAttempts, truncate(t.LastError, 80))
+
+		if summary := evidence[t.ID].Summary(); summary != "" {
+			row += "  evidence=" + summary
+		}
+
+		fmt.Println(row)
 
 		if until, ok := dlqBackoff[t.Project]; ok {
 			fmt.Printf("       ↳ poisoned: repo in DLQ backoff until %s (%s)\n",
