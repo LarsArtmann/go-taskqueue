@@ -127,6 +127,8 @@ if [ "${1:-}" = "--self-test" ]; then
 	rcase deny 'unscoped gofmt over ./' 'gofmt -w ./'
 	rcase deny 'gofmt over dir containing vendor/' "gofmt -l $tmp/cleanrepo"
 	rcase deny 'smoke without TQ_DB' 'scripts/smoke/api.sh'
+	rcase deny 'bash-wrapped smoke without TQ_DB' 'bash scripts/smoke/api.sh'
+	rcase deny 'smoke after separator without TQ_DB' 'cd /tmp && ./scripts/smoke/api.sh'
 	rcase deny 'git push -f' 'git push -f origin master'
 	rcase deny 'git push +refspec' 'git push origin +main'
 	rcase deny 'git -C push --force-with-lease' 'git -C /tmp/x push --force-with-lease origin main'
@@ -138,6 +140,9 @@ if [ "${1:-}" = "--self-test" ]; then
 	rcase silent 'gofmt on specific files' 'gofmt -l main.go'
 	rcase silent 'gofmt hatch prefix' 'ALLOW_UNSCOPED_GOFMT=1 gofmt -l .'
 	rcase silent 'smoke with explicit TQ_DB' 'TQ_DB=/tmp/x.db scripts/smoke/api.sh'
+	rcase silent 'git add of a smoke file (FP regression)' 'git add scripts/smoke/api.sh'
+	rcase silent 'grep over a smoke path (FP regression)' 'grep -n TQ_DB scripts/smoke/webui.sh'
+	rcase silent 'cat of a smoke doc (FP regression)' 'cat scripts/smoke/COVERAGE.md'
 	rcase silent 'plain git push' 'git push origin main'
 	rcase silent 'grep -P carries real escapes' "grep -P '\\t' f"
 	rcase silent 'grep -F literal search' "grep -F '\\t' f"
@@ -278,7 +283,27 @@ EOF
 	fi
 fi
 
-if printf '%s' "$cmd" | grep -Eq '(^|[[:space:];&])(\./)?(scripts/)?smoke/[A-Za-z0-9_.-]+' &&
+# Command-position smoke detection: only EXECUTING a smoke script denies.
+# A mere path mention (git add / grep / cat of scripts/smoke/*) passes —
+# the first fleet FP (2026-10-30 04-40 closeout §d1) blocked `git add` of
+# a smoke file; `git add -u` was the workaround. No longer needed.
+smoke_invoked() {
+	printf '%s' "$cmd" | awk '
+		{
+			n = split($0, segs, /[;|&]+/)
+			for (s = 1; s <= n; s++) {
+				m = split(segs[s], w, /[[:space:]]+/)
+				i = 1
+				while (i <= m && w[i] ~ /^[A-Za-z_][A-Za-z0-9_]*=/) i++
+				if (i > m) continue
+				t = w[i]
+				if (t == "bash" || t == "sh") { i++; if (i > m) continue; t = w[i] }
+				if (t ~ /^(\.\/)?(scripts\/)?smoke\/[A-Za-z0-9_.-]+\.sh$/) { print "hit"; exit }
+			}
+		}'
+}
+
+if [ -n "$(smoke_invoked)" ] &&
 	! printf '%s' "$cmd" | grep -q 'TQ_DB=' && ! hatched ALLOW_PROD_TQ; then
 	cat >&2 <<'EOF'
 BLOCKED: scripts/smoke/* without an explicit TQ_DB — agent shells inherit
