@@ -256,19 +256,18 @@ the same 15/15 landing state — zero regressions found.
    "highest-leverage unbuilt tooling" dispatch (SC1007 + 1335 + 1319 in
    one batch) is the cheapest possible unblock.
 
-## f) UP TO 50 NEXT THINGS (dedup-checked against 624 open unchecked rows; two NEW rows minted this pass, both listed first)
+## f) UP TO 50 NEXT THINGS (dedup-checked against 624 open unchecked rows; the two NEW rows below were appended to TODO_LIST this pass — by the concurrent twenty-third-dispatch session whose appends carry identical substance to this report's §d2/§g3 findings; deduped, not duplicated)
 
-1. **NEW (rowed this pass)**: Diagnose the two silent done-prompt dispatch
-   deaths (worker-53564 08:09→08:56 2026-10-29, worker-21570
-   08:56→2026-10-30 03:35) — zero artifacts, zero facts beyond
-   claim/release; determine the death mode (context/token exhaustion,
-   crash, lease kill) from whatever traces exist and design the
-   checkpoint-early protocol (§e2).
-2. **NEW-BLOCKED (rowed this pass)**: Abandoned-claim reclaim policy —
-   should a claim with no progress/heartbeat for >N hours be reclaimable
-   WITHOUT a competing claimant (the 18.6 h worker-21570 hold), and should
-   artifact-less deaths consume attempt budget differently than
-   artifact-producing ones?
+1. Diagnose the two silent done-prompt dispatch deaths (worker-53564
+   08:09→08:56 2026-10-29, worker-21570 08:56→2026-10-30 03:35) — zero
+   artifacts, zero facts beyond claim/release; determine the death mode
+   from whatever traces exist and land the checkpoint-early protocol
+   (§e2). [ROWED this pass]
+2. Abandoned-claim liveness policy (BLOCKED row): should a claim with no
+   progress/heartbeat for >N hours be reclaimable WITHOUT a competing
+   claimant (the 18.6 h worker-21570 hold), and should artifact-less
+   deaths consume attempt budget differently than artifact-producing
+   ones? [ROWED this pass]
 3. Heal the filter-branch dead-cite explosion, one incident battery (row
    1349) — 969 lines and accruing.
 4. Owner authorization ruling on the 2026-10-28 double filter-branch (row
@@ -380,12 +379,12 @@ the same 15/15 landing state — zero regressions found.
    and its pins verify clean (the basis this pass used), or is full
    re-derivation required every re-claim? Ratify or reject retroactively —
    five passes have now used the delta basis.
-3. **Abandoned-claim reclaim policy (NEW, rowed BLOCKED)**: should a claim
-   with no observable progress for >N hours be reclaimable without a
-   competing claimant (worker-21570 held this task ~18.6 h), and should
-   artifact-less dispatch deaths (two this window) consume attempt budget
-   differently than artifact-producing ones? Kin of rows 1345/1273 but a
-   distinct queue-mechanics decision.
+3. **Abandoned-claim reclaim policy (NEW, rowed BLOCKED by the concurrent
+   session's appends)**: should a claim with no observable progress for >N
+   hours be reclaimable without a competing claimant (worker-21570 held
+   this task ~18.6 h), and should artifact-less dispatch deaths (two this
+   window) consume attempt budget differently than artifact-producing
+   ones? Kin of rows 1345/1273 but a distinct queue-mechanics decision.
 
 ## h) BAND DRIFT (ADR-0015 accountability)
 
