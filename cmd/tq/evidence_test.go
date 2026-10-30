@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/larsartmann/go-taskqueue/internal/executor"
+	"github.com/larsartmann/go-taskqueue/internal/journal"
+	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
@@ -169,6 +171,112 @@ func TestEvidenceStageSetMatches(t *testing.T) {
 
 			if got := executor.MatchesEvidenceStageSet(evidence, lastError, tt.spec); got != tt.match {
 				t.Fatalf("MatchesEvidenceStageSet(%+v, %q, %q) = %v, want %v", evidence, lastError, tt.spec, got, tt.match)
+			}
+		})
+	}
+}
+
+// TestRequeuesCarryNoFailureEvidence pins the dead-only BY DESIGN ruling
+// (2026-10-26 01-40 §f5): the non-death refusals — provider 429 requeues,
+// budget-parked claims, preflight (env) requeues — record task.requeued
+// facts whose detail is RequeueEvidence, never FailureEvidence, so
+// evidence-stage triage can never classify a live parked task as a
+// death. Pins both halves: the shared trail reader returns zero evidence
+// for a requeue-only trail, and the requeue detail JSON carries no
+// stage/verify_stage/exit_code fields that could collide with a future
+// scan-all-facts reader.
+func TestRequeuesCarryNoFailureEvidence(t *testing.T) {
+	t.Parallel()
+
+	dbPath := filepath.Join(t.TempDir(), "requeue-evidence.db")
+
+	store, err := sqlite.Open(dbPath)
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+
+	defer store.Close()
+
+	ctx := context.Background()
+
+	classes := []struct {
+		name     string
+		class    string
+		provider string
+	}{
+		{name: "429 requeue", class: queue.RequeueClassRateLimit, provider: "anthropic"},
+		{name: "budget park", class: queue.RequeueClassBudget},
+		{name: "env requeue", class: queue.RequeueClassPreflight},
+	}
+
+	for _, tc := range classes {
+		t.Run(tc.name, func(t *testing.T) {
+			enq, err := store.Enqueue(ctx, task.New{
+				Type:        executor.TaskTypeAgent,
+				Project:     "demo",
+				Payload:     []byte(`{"repo":"demo","prompt":"p"}`),
+				MaxAttempts: 3,
+			})
+			if err != nil {
+				t.Fatalf("enqueue: %v", err)
+			}
+
+			_, claim, err := store.ClaimDue(ctx, "requeue-evidence", time.Minute)
+			if err != nil {
+				t.Fatalf("claim: %v", err)
+			}
+
+			if err := store.Requeue(ctx, enq.ID, claim, "not the task's fault", 15*time.Minute, false, tc.class, tc.provider); err != nil {
+				t.Fatalf("requeue: %v", err)
+			}
+
+			trail, err := store.FactsForTask(ctx, enq.ID.String(), 0)
+			if err != nil {
+				t.Fatalf("facts: %v", err)
+			}
+
+			for _, fact := range trail {
+				if fact.Type == journal.Failed {
+					t.Fatalf("requeue recorded a task.failed fact (class %s): %+v", tc.class, fact)
+				}
+			}
+
+			if evidence := executor.LastFailureEvidenceFromTrail(trail); evidence != (executor.FailureEvidence{}) {
+				t.Fatalf("requeue-only trail yielded failure evidence %+v (class %s)", evidence, tc.class)
+			}
+
+			var (
+				asFailure  executor.FailureEvidence
+				asRequeue  queue.RequeueEvidence
+				rawDetails []string
+			)
+
+			for _, fact := range trail {
+				if fact.Type == journal.Requeued {
+					rawDetails = append(rawDetails, string(fact.Detail))
+				}
+			}
+
+			if len(rawDetails) == 0 {
+				t.Fatalf("no task.requeued fact on the trail: %+v", trail)
+			}
+
+			for _, raw := range rawDetails {
+				if err := json.Unmarshal([]byte(raw), &asFailure); err != nil {
+					t.Fatalf("decode requeue detail as failure evidence: %v (%s)", err, raw)
+				}
+
+				if asFailure.Stage != "" || asFailure.VerifyStage != "" || asFailure.ExitCode != 0 {
+					t.Fatalf("requeue detail collides with FailureEvidence fields: %s -> %+v", raw, asFailure)
+				}
+
+				if err := json.Unmarshal([]byte(raw), &asRequeue); err != nil {
+					t.Fatalf("decode requeue detail: %v (%s)", err, raw)
+				}
+
+				if asRequeue.Class != tc.class {
+					t.Fatalf("requeue detail class = %q, want %q", asRequeue.Class, tc.class)
+				}
 			}
 		})
 	}
