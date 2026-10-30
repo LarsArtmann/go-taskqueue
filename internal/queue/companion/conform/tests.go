@@ -3548,6 +3548,7 @@ func TestRecordAnswerOnTerminalTaskNeverUnblocks(t *testing.T) {
 		if err := s.Cancel(ctx, tk.ID, "owner voided"); err != nil {
 			t.Fatalf("cancel: %v", err)
 		}
+
 		return tk
 	}
 	mkDead := func(t *testing.T, ctx context.Context, s Store) task.Task {
@@ -3563,10 +3564,12 @@ func TestRecordAnswerOnTerminalTaskNeverUnblocks(t *testing.T) {
 		}); err != nil {
 			t.Fatalf("append asked fact: %v", err)
 		}
+
 		_, claim_w1 := claimDue(t, ctx, s, "w1")
 		if err := s.Fail(ctx, tk.ID, claim_w1, "boom", 0, nil); err != nil {
 			t.Fatalf("fail to dead: %v", err)
 		}
+
 		return tk
 	}
 
@@ -3606,11 +3609,13 @@ func TestRecordAnswerOnTerminalTaskNeverUnblocks(t *testing.T) {
 
 			trail, _ = s.FactsForTask(ctx, tk.ID.String(), 0)
 			answered := 0
+
 			for _, f := range trail {
 				if f.Type == journal.QuestionAnswered {
 					answered++
 				}
 			}
+
 			if answered != 1 {
 				t.Fatalf("answered facts = %d, want 1 (idempotent per ref)", answered)
 			}
