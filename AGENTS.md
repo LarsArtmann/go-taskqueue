@@ -345,12 +345,10 @@ docs/DOMAIN_LANGUAGE.md.
   gates, never "fix" them.
 - **erraudit** gates as `erraudit lint ./... --type-aware --no-suppress
   --disable-extensions --disable generic_return --disable legacy_is
-  --enforce-coded-errors --enforce-deferred-close
-  --enforce-go-error-family --enforce-samber-oops` (the explicit
-  decomposition of the ruled `--max --disable generic_return
-  --disable legacy_is`; `--max` is dev-build-only, the CI pin v0.7.0
-  rejects it — retargeted 2026-10-30, negative-control verified)
-  run from EACH module root (`lint` REJECTS
+  --enforce-*` (explicit decomposition of the ruled `--max` form:
+  `--max` is dev-build-only, CI pin v0.7.0 rejects it; retargeted
+  2026-10-30, exact flags live in `scripts/check-erraudit.sh`,
+  negative-control verified) run from EACH module root (`lint` REJECTS
   `--modules`/`--violations-only`; the root hint naming `--modules=all` is
   wrong for `lint`). `legacy_as` = migrate to `errors.AsType` (zero since
   2026-10-27); `legacy_is` sentinel sites KEEP `errors.Is` +
