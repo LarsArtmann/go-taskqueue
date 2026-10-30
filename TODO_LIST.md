@@ -1367,7 +1367,7 @@ not here.
 
 ## Crush client/server relations ladder (2026-10-30; source: docs/planning/2026-10-30_04-43_crush-client-server-relations.md — mechanics proven live on crush v0.98.2: SSE tool-call telemetry, server-side hooks, session resume, env carry)
 
-- [ ] L1 executor seam: `--crush-server <socket>` pool flag — agentEnv adds CRUSH_CLIENT_SERVER=1 and run args add `-H <socket>`; pool runs `crush server` as a runactor actor; flag absent = today's in-process path (rollback = unset) — GO 2026-10-30 blanket (ruling R4, docs/planning/2026-10-30_17-13_OWNER-RULING-BUNDLE-2-SHEET.md §0)
+- [x] L1 executor seam: `--crush-server <socket>` pool flag — agentEnv adds CRUSH_CLIENT_SERVER=1 and run args add `-H <socket>`; pool runs `crush server` as a runactor actor; flag absent = today's in-process path (rollback = unset) — GO 2026-10-30 blanket (ruling R4, docs/planning/2026-10-30_17-13_OWNER-RULING-BUNDLE-2-SHEET.md §0) — DONE 2026-10-30 1f162e8f: executor v0.4.1 seam (work+closeout argv/env pinned by TestAgentCrushServerSeam), pool runactor actor, cmd/tq/root/worker/examples pinned v0.4.1, flag baseline regenerated
 - [ ] L2 webui live agent pane: SSE attach per active workspace (race-attach pattern, plan-doc evidence E3) feeding the existing ADR-0003 hub — live tool calls, token burn, stuck-turn visibility — BLOCKED: owner GO + L1 landed
 
 ## Done-prompt twentyfourth-dispatch appends (2026-10-30; source: docs/status/2026-10-30_04-54_done-prompt-window-report-twentyfourth-dispatch.md; deduped — the two retro closeouts are WRITTEN and rows 1331/1332 ticked; verdict receipt, attempt budget, half-closeout, SC1007, heal guards are ALL already rowed)
