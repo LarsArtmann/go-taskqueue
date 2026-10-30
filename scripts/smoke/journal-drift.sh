@@ -108,7 +108,16 @@ ev = report.get("secret_evidence")
 assert ev, "secret_evidence missing or empty: %r" % (report.get("secret_evidence"),)
 assert len(ev) == 1, "expected exactly 1 secret_evidence entry, got %d" % len(ev)
 assert ev[0].get("count") == 1, "secret_evidence[0].count = %r, want 1" % (ev[0].get("count"),)
-' "$JSON" || fail "json secret_evidence assertion"
-echo "ok: json secret_evidence non-empty with count=1"
+assert ev[0].get("field") == "error", "secret_evidence[0].field = %r, want error (seeded in the error cell)" % (ev[0].get("field"),)
+assert ev[0].get("type") == "task.failed", "secret_evidence[0].type = %r, want task.failed" % (ev[0].get("type"),)
+import sqlite3
+seeded = sqlite3.connect(sys.argv[2]).execute(
+    "SELECT task_id FROM facts WHERE type = \"task.failed\" AND error LIKE ? LIMIT 1",
+    ("%sk-ant-%",),
+).fetchone()
+assert seeded, "seeded task.failed fact not found in the journal DB"
+assert ev[0].get("taskId") == seeded[0], "secret_evidence[0].taskId = %r, want the seeded task %r (mis-routed evidence row)" % (ev[0].get("taskId"), seeded[0])
+' "$JSON" "$DB" || fail "json secret_evidence assertion"
+echo "ok: json secret_evidence count=1 field=error type=task.failed taskId=routed-to-seeded-task"
 
 echo "PASS: journal-drift audit smoke"
