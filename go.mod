@@ -59,9 +59,9 @@ require (
 	github.com/larsartmann/go-retry v0.8.0 // indirect
 	github.com/larsartmann/go-sse/sseparse v0.2.1 // indirect
 	github.com/larsartmann/go-taskqueue/internal/journal/cqrs v0.3.4 // indirect
-	github.com/larsartmann/go-taskqueue/internal/queue/companion v0.4.0 // indirect
-	github.com/larsartmann/go-taskqueue/internal/queue/postgresv4 v0.3.4 // indirect
-	github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4 v0.3.4 // indirect
+	github.com/larsartmann/go-taskqueue/internal/queue/companion v0.4.1 // indirect
+	github.com/larsartmann/go-taskqueue/internal/queue/postgresv4 v0.4.0 // indirect
+	github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4 v0.4.0 // indirect
 	github.com/larsartmann/go-taskqueue/internal/retryx v0.3.4 // indirect
 	github.com/larsartmann/templ-components/datastar v1.24.0 // indirect
 	github.com/larsartmann/templ-components/htmx v1.24.0 // indirect
@@ -111,17 +111,17 @@ require (
 	github.com/larsartmann/go-health-dashboard v0.12.1
 	github.com/larsartmann/go-sse v0.6.2
 	github.com/larsartmann/go-sse/ssetest v0.5.0
-	github.com/larsartmann/go-taskqueue/internal/composition v0.4.0
+	github.com/larsartmann/go-taskqueue/internal/composition v0.4.1
 	github.com/larsartmann/go-taskqueue/internal/config v0.3.4
 	github.com/larsartmann/go-taskqueue/internal/dlqbackoff v0.3.4
-	github.com/larsartmann/go-taskqueue/internal/executor v0.3.4
-	github.com/larsartmann/go-taskqueue/internal/journal v0.4.0
-	github.com/larsartmann/go-taskqueue/internal/queue v0.3.4
+	github.com/larsartmann/go-taskqueue/internal/executor v0.4.0
+	github.com/larsartmann/go-taskqueue/internal/journal v0.4.1
+	github.com/larsartmann/go-taskqueue/internal/queue v0.4.0
 	github.com/larsartmann/go-taskqueue/internal/queue/postgres v0.3.4
 	github.com/larsartmann/go-taskqueue/internal/queue/sqlite v0.3.4
-	github.com/larsartmann/go-taskqueue/internal/readmodel v0.4.0
+	github.com/larsartmann/go-taskqueue/internal/readmodel v0.4.1
 	github.com/larsartmann/go-taskqueue/internal/task v0.3.4
-	github.com/larsartmann/go-taskqueue/internal/worker v0.3.4
+	github.com/larsartmann/go-taskqueue/internal/worker v0.4.0
 	github.com/larsartmann/templ-components v1.24.0
 	github.com/larsartmann/templ-components/icons v1.24.0
 	github.com/larsartmann/templ-components/utils v1.24.0

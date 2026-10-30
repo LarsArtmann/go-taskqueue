@@ -7,6 +7,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+
+- Nothing yet.
+
+### Fixed
+
+- Nothing yet.
+
+## [v0.4.0] - 2026-10-30
+
+### Added
 - **`tq dlq --evidence-stage` accepts a comma-separated term spec with
   `!`-negation** (2026-10-30): e.g. `gate-env,!gate-slow` narrows to
   environmental-gate deaths that are NOT slow-gate; negation-only specs

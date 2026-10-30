@@ -3,7 +3,7 @@ module github.com/larsartmann/go-taskqueue/internal/dlqbackoff
 go 1.27.3
 
 require (
-	github.com/larsartmann/go-taskqueue/internal/journal v0.4.0
+	github.com/larsartmann/go-taskqueue/internal/journal v0.4.1
 	github.com/larsartmann/go-taskqueue/internal/queue v0.3.4
 	github.com/larsartmann/go-taskqueue/internal/task v0.3.4
 )
