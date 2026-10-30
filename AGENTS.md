@@ -311,8 +311,8 @@ docs/DOMAIN_LANGUAGE.md.
   (proven, 2026-10-20); residue fallback:
   verify exactly-mine via `git show --stat`, then `git commit --amend`
   the unpushed HEAD (2026-10-11 §d4; 02-03 §f11).
-- **`TestExactlyOnceUnderConcurrency` (worker) and
-  `TestSelfManagingLoop` (harvest) are load-flaky**: build storms drop them
+- **`TestExactlyOnceUnderConcurrency` is load-flaky (worker);
+  `TestSelfManagingLoop` is load-flaky (harvest)**: build storms drop
   at clean parents — re-run before attributing; both ride `KNOWN_FLAKY` in
   `scripts/lib/verify-retry.sh`.
 - **Agent shells inherit `TQ_DB`** (PRODUCTION journal) — scratch smokes
