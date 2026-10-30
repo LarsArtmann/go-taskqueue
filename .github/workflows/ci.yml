@@ -108,7 +108,9 @@ jobs:
         # pattern): bump in scripts/lib/tool-pins.sh, never here.
         run: |
           erraudit_version="$(sed -n 's/^ERRAUDIT_VERSION=//p' scripts/lib/tool-pins.sh)"
-          go install "github.com/larsartmann/erraudit@${erraudit_version}"
+          # cmd/erraudit is the main package; the module root holds only
+          # _test.go files and go install would fail there.
+          go install "github.com/larsartmann/erraudit/cmd/erraudit@${erraudit_version}"
           export PATH="$(go env GOPATH)/bin:$PATH"
           ./scripts/check-erraudit.sh --self-test
           ./scripts/check-erraudit.sh

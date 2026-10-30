@@ -1,13 +1,24 @@
 #!/usr/bin/env bash
-# erraudit HARD gate (owner ruling 2026-10-27, wiring ruled 2026-10-28):
+# erraudit HARD gate (owner ruling 2026-10-27, wiring ruled 2026-10-28,
+# retargeted to the published CLI 2026-10-30): the ruled semantic is
 # `erraudit lint ./... --max --disable generic_return --disable legacy_is`
-# from EVERY module root. `lint` REJECTS --modules/--violations-only — the
-# root hint naming `--modules=all` is wrong for `lint`, never switch flags.
+# from EVERY module root — but `--max` exists only on unreleased dev
+# builds; the CI pin (v0.7.0, scripts/lib/tool-pins.sh) rejects it. The
+# invocation below is the explicit decomposition of `--max` (type-aware +
+# no-suppress + disable-extensions + the enforce-* family, minus the two
+# ruled disables) and is accepted by BOTH the dev build and v0.7.0.
+# `lint` REJECTS --modules/--violations-only — the root hint naming
+# `--modules=all` is wrong for `lint`, never switch flags.
 # Rule set context (AGENTS.md §Known Issues): generic_return stays disabled
 # until the per-function error-type migration lands (~197 sites, ADOPT
-# ruling); legacy_is stays disabled because `--max` implies --no-suppress
+# ruling); legacy_is stays disabled because --no-suppress is explicit
 # and the sentinel sites legitimately keep errors.Is +
 # //nolint:legacyerrors; legacy_as must stay ZERO (migrated 2026-10-27).
+# Finding-line shapes differ by vintage: dev builds print
+# `file.go:line:col: [rule] message`; v0.7.0 prints bracketless
+# `file.go:line:col: message` — the drift net below matches BOTH
+# (negative-control verified 2026-10-30: violations fire under this
+# exact flag set, so --disable-extensions is not vacuously green).
 #
 # Countable-gate contract (fleet convention 2026-10-24): the summary is
 # pinned, not advisory — `--self-test` pins the format AND a negative-path
@@ -30,16 +41,17 @@ check_one_module() {
 	fi
 	local out rc findings
 	rc=0
-	out="$(cd "$dir" && "$bin" lint ./... --max --disable generic_return --disable legacy_is 2>&1)" || rc=$?
+	out="$(cd "$dir" && "$bin" lint ./... --type-aware --no-suppress --disable-extensions --disable generic_return --disable legacy_is --enforce-coded-errors --enforce-deferred-close --enforce-go-error-family --enforce-samber-oops 2>&1)" || rc=$?
 	if [ "$rc" -ne 0 ]; then
 		echo "FAIL: erraudit $dir" >&2
 		echo "$out" | head -20 >&2
 		return 1
 	fi
 	# rc 0 with real findings still means the rule set drifted off zero.
-	# The multi-module "nested go.mod" HINT lines are not findings — a
-	# finding line carries the `: [rule]` shape.
-	findings="$(printf '%s\n' "$out" | grep -E ': \[[a-z_]+\]' || true)"
+	# The multi-module "nested go.mod" HINT lines are not findings; a
+	# finding line is either the dev-build `: [rule]` shape or the v0.7.0
+	# bracketless `file.go:line:col: message` shape.
+	findings="$(printf '%s\n' "$out" | grep -E '(\.go:[0-9]+:[0-9]+: |: \[[a-z_]+\])' || true)"
 	if [ -n "$findings" ]; then
 		echo "FAIL: erraudit $dir emitted findings under the ruled disable set:" >&2
 		printf '%s\n' "$findings" | head -20 >&2
@@ -71,7 +83,8 @@ SCRIPT
 		return 1
 	fi
 
-	# rc 0 WITH findings is also a fail (the silent-drift path).
+	# rc 0 WITH findings is also a fail (the silent-drift path) — both
+	# finding-line vintages must be caught.
 	cat >"$tmp/erraudit-quiet" <<'SCRIPT'
 #!/usr/bin/env bash
 echo "main.go:12:3: [generic_return] returned error type is not named"
@@ -82,6 +95,19 @@ SCRIPT
 	out="$(TQ_ERRAUDIT_BIN="$tmp/erraudit-quiet" check_one_module internal/task 2>&1)" || rc=$?
 	if [ "$rc" -eq 0 ] || [[ "$out" != *"emitted findings"* ]]; then
 		echo "SELF-TEST FAIL: rc-0 findings not detected (rc=$rc, out: $out)" >&2
+		return 1
+	fi
+
+	cat >"$tmp/erraudit-quiet-v070" <<'SCRIPT'
+#!/usr/bin/env bash
+echo "main.go:15:5: use errors.AsType instead of errors.As for type-safe, cleaner error matching"
+exit 0
+SCRIPT
+	chmod +x "$tmp/erraudit-quiet-v070"
+	rc=0
+	out="$(TQ_ERRAUDIT_BIN="$tmp/erraudit-quiet-v070" check_one_module internal/task 2>&1)" || rc=$?
+	if [ "$rc" -eq 0 ] || [[ "$out" != *"emitted findings"* ]]; then
+		echo "SELF-TEST FAIL: v0.7.0 bracketless findings not detected (rc=$rc, out: $out)" >&2
 		return 1
 	fi
 
