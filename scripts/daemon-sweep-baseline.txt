@@ -1589,3 +1589,6 @@ c8d56189838e5619a58b9ff1042f1a1f541a239b
 # 2026-10-31 row-1405 scanner: two mid-edit sweeps of check-tick-claims.sh (self-test+syntax green at 31fddce2)
 5c0a58e575fd949dfbdae77e06e26147ad4ea85d
 31fddce21f71ac0f7e57433fb0ae5731897919ee
+# 2026-10-31 T17 dirty-tree batch: two mid-edit sweeps ahead of 61dbd5e8 (content verified there)
+f6deb5a3d4656d116e007c3b91f6969aab9f1a07
+5998036c79b6378814d6fff6f5d2285a9a70d340
