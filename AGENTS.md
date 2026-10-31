@@ -116,7 +116,7 @@ docs/DOMAIN_LANGUAGE.md.
 - **Unix-milli timestamps**: stored timestamps (upstream engine) are
   MILLISECOND-granular — ordering-sensitive code must not assume
   sub-millisecond completion order; sorts need deterministic non-time
-  tiebreaks or set-wise assertions (status-window flake, 2026-10-17).
+  tiebreaks or set-wise assertions.
 
 ### Payload contracts (code owns detail)
 
@@ -165,9 +165,7 @@ docs/DOMAIN_LANGUAGE.md.
   `internal/executor/redact.go`; `tq audit --journal` reports SECRET
   EVIDENCE rows. Growth: ONE `secretPatterns` entry + fake-shape sample
   in `redact_test.go` (gosec note if tripped); ONE shared table
-  (`TestSecretHitsAndRedactionCompileIdenticalTable`), windows-gated
-  (00-55 §f9). Counts = distinct secret LOCATIONS (span-merge `4ba81d8`;
-  before it, raw pattern matches). Known limitation: ZERO-separator
+  (`TestSecretHitsAndRedactionCompileIdenticalTable`), windows-gated. Counts = distinct secret LOCATIONS. Known limitation: ZERO-separator
   back-to-back tokens merge into ONE location (greedy `[A-Za-z0-9_-]{16,}`
   charsets absorb the boundary) — distinct counts need a non-token
   separator.
@@ -218,9 +216,9 @@ docs/DOMAIN_LANGUAGE.md.
   driven red in three consecutive windows.
 - **Gate receipts**: a report's "N ok / M fail" count is
   `grep -c '^ok:'` over a CAPTURED gate-output file — never counted in
-  context or taken from a summary line (17-vs-16 class).
-- **Fleet convention — countable gate summaries are PINNED, not advisory**
-  (2026-10-24): every countable sibling gate (check-script-syntax,
+  context or taken from a summary line.
+- **Fleet convention — countable gate summaries are PINNED, not
+  advisory**: every countable sibling gate (check-script-syntax,
   check-go-mods, check-dead-exports, check-guard-wiring; gosec already
   had it) carries `--self-test` pinning its summary format + a
   negative-path counter battery via an env hook; wired into ci-local.
@@ -243,11 +241,10 @@ docs/DOMAIN_LANGUAGE.md.
   touch AGENTS/TODO_LIST/status-index rows ALWAYS print the computed
   rows (dry-run) before the first real write, and the FIRST filter runs
   against a copy of the real file shape — a wrong filter is free to
-  print, fatal to run (2026-10-26: first filter deleted all 334 live
-  rows).
+  print, fatal to run (a wrong filter once deleted all 334 live rows).
 - **Closeout TICK-AUDIT**: before the FINAL commit of any batch, grep
   TODO_LIST.md for each verbatim batch anchor; finished rows must read
-  `- [x]` (landed + unchecked = paid round-trip — 000001a1699ba37fc7045).
+  `- [x]` (landed + unchecked = paid round-trip — proven).
 - **Tick-claims cite the tick commit**: "rows N-M ticked/`[x]`" claims
   in index rows + closeout reports cite the tick commit when the ticks
   are not in the report's own commit; WARN gate `check-tick-claims.sh`.
@@ -312,9 +309,8 @@ docs/DOMAIN_LANGUAGE.md.
   non-contiguous spans. A refusal naming the span's PARENT (a foreign
   footer BELOW an otherwise-exactly-mine span) is the span-terminator
   shape: run the script's printed `--from <oldest-blocker>` invocation
-  (proven, 2026-10-20); residue fallback:
-  verify exactly-mine via `git show --stat`, then `git commit --amend`
-  the unpushed HEAD (2026-10-11 §d4; 02-03 §f11).
+  (proven); residue fallback: `git commit --amend` the unpushed HEAD
+  after verifying the span exactly-mine via `git show --stat`.
 - **`TestExactlyOnceUnderConcurrency` is load-flaky (worker);
   `TestSelfManagingLoop` is load-flaky (harvest)**: build storms drop
   at clean parents — re-run before attributing; both ride `KNOWN_FLAKY` in
@@ -325,13 +321,12 @@ docs/DOMAIN_LANGUAGE.md.
   leaks to children (`env -u VAR`); multi-file `tail` fails; `printf
   %.0s` yields empty; chained `&` backgrounds the wrong span. POSIX ERE:
   `\t` inside a grep bracket class is a literal `t` (not tab) — use
-  `[[:space:]]`/`[[:alnum:]]` classes, never `\t`/`\d` (hook-denied).
+  `[[:space:]]`/`[[:alnum:]]` classes, never `\t`/`\d`.
 - **Root builds auto-use `vendor/`** — internal/ changes need `go mod
   vendor` first; dep bumps also per-module tidy
   (`check-gomod-vendor-sync.sh` gates both).
 - **GOEXPERIMENT/GOTOOLCHAIN**: ci-local exports jsonv2; CI setup-go +
-  go.mod floors + flake tarball PINNED IN LOCKSTEP (1.27.3, toolchain
-  sweep 2026-10-24); NEVER lower a `go` directive
+  go.mod floors + flake tarball PINNED IN LOCKSTEP (1.27.3); NEVER lower a `go` directive
   (`check-go-mods.sh`).
 - **Host GOCACHE/GOROOT hazards**: gates run `GOCACHE=/tmp/go-build-cache`
   (host symlink → /nix/store ENOSPCs); "package X is not in std" +
@@ -349,7 +344,7 @@ docs/DOMAIN_LANGUAGE.md.
   gates, never "fix" them.
 - **erraudit**: HARD gate `scripts/check-erraudit.sh` — exact ruled
   flags live there (`--max` is dev-build-only; CI pin v0.7.0 rejects it,
-  so the gate passes the explicit decomposition; retargeted 2026-10-30),
+  so the gate passes the explicit decomposition),
   run from EACH module root (`lint` REJECTS `--modules`/
   `--violations-only`; the root hint naming `--modules=all` is wrong for
   `lint`). `legacy_as` = migrate to `errors.AsType` (zero since
