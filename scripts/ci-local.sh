@@ -634,6 +634,9 @@ step "doctor --hygiene smoke (scratch DB: stale verify pin surfaces as WARN via 
 step "dep-sweep e2e smoke (stub planner: mint -> DAG -> go get/commit/tag -> convergence)"
 ./scripts/smoke/dep-sweep.sh
 
+step "dlq evidence-stage e2e smoke (scratch DB: sh-failure evidence -> term spec with negation)"
+./scripts/smoke/dlq-evidence-stage.sh
+
 # Advisory (2026-09-14 O5 ruling): journal-drift audit smoke over a seeded
 # fixture — reported, never a hard gate on task state.
 step "journal-drift audit smoke (advisory)"
