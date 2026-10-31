@@ -5,6 +5,11 @@
 // on every bind (no loopback exemption: API servers are meant to be
 // exposed to other machines).
 //
+// Auth-plane contract: BOTH failure modes — 401 unauthorized and the
+// repeated-failure lockout 429 (with Retry-After) — answer {error, fix}
+// JSON with Content-Type: application/json, never plain text (pinned by
+// TestAuthPlaneBodyShape).
+//
 // Viewpoint — Consumer: non-Go producers and remote dashboards; Concern:
 // queue-metadata plus the error-report command (enqueue, error.observed
 // facts, per-status counts, health); Non-goals: per-task reads — derived
