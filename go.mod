@@ -116,7 +116,7 @@ require (
 	github.com/larsartmann/go-taskqueue/internal/dlqbackoff v0.3.4
 	github.com/larsartmann/go-taskqueue/internal/executor v0.4.1
 	github.com/larsartmann/go-taskqueue/internal/journal v0.4.1
-	github.com/larsartmann/go-taskqueue/internal/queue v0.4.0
+	github.com/larsartmann/go-taskqueue/internal/queue v0.4.1
 	github.com/larsartmann/go-taskqueue/internal/queue/postgres v0.3.4
 	github.com/larsartmann/go-taskqueue/internal/queue/sqlite v0.3.4
 	github.com/larsartmann/go-taskqueue/internal/readmodel v0.4.1

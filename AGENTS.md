@@ -233,10 +233,12 @@ docs/DOMAIN_LANGUAGE.md.
   Hatches in deny messages; force-push hatchless. Smoke rule is
   command-position (git add/grep of smoke paths passes).
 - docs/status reports follow the a)-g) skeleton; indexed on creation
-  (`check-status-index.sh`; daemon bypasses hooks — AMEND MANEUVER for
-  daemon-folded reports); ONE index-row write point (top chronological
-  cluster); CHANGELOG append-only; close exit: record `tq verdict`
-  before session end (report without verdict = half-closeout).
+  (`check-status-index.sh` — its path gate resolves citations
+  docs/status/-relative OR repo-root-relative, prose backticks excluded;
+  daemon bypasses hooks — AMEND MANEUVER for daemon-folded reports); ONE
+  index-row write point (top chronological cluster); CHANGELOG
+  append-only; close exit: record `tq verdict` before session end
+  (report without verdict = half-closeout).
 - **Dry-run-first for doc/index mutation scripts**: one-off sweeps that
   touch AGENTS/TODO_LIST/status-index rows ALWAYS print the computed
   rows (dry-run) before the first real write, and the FIRST filter runs
