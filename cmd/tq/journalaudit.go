@@ -186,6 +186,42 @@ type DriftReport struct {
 	// already cut at mint time (the ceremony cut refuses autopsies for
 	// environmental deaths).
 	Autopsies AutopsyYield `json:"autopsyYield"`
+	// Failures splits the range's task.failed facts into judged execution
+	// failures versus env-streak breaker BURNS — the breaker writes an
+	// ordinary-looking task.failed whose reason carries the env-streak
+	// code, which the audit previously left unclassified (row 546).
+	Failures FailureSummary `json:"failures"`
+}
+
+// FailureSummary distinguishes env-streak breaker burns (sustained
+// environmental requeues escalated to an attempt burn) from judged
+// execution failures: a breaker burn is queue hygiene, not a task defect.
+type FailureSummary struct {
+	Total       int `json:"total"`
+	EnvStreakBurns int `json:"envStreakBurns"`
+}
+
+// failureSummary scans the fact range for task.failed facts and counts
+// the env-streak burns by the reason's bracketed code marker (the same
+// marker string burnEnvStreak writes). Pure: no I/O.
+func failureSummary(facts []journal.Fact) FailureSummary {
+	var summary FailureSummary
+
+	marker := "[" + executor.EnvStreakCode + "]"
+
+	for _, fact := range facts {
+		if fact.Type != journal.Failed {
+			continue
+		}
+
+		summary.Total++
+
+		if strings.Contains(fact.Error, marker) {
+			summary.EnvStreakBurns++
+		}
+	}
+
+	return summary
 }
 
 // RequeueSummary breaks a journal's task.requeued facts down by refusal
@@ -415,6 +451,7 @@ func journalDrift(ctx context.Context, store queue.Store) (DriftReport, error) {
 	report.FactsReplayed = len(facts)
 	report.SecretEvidence = scanFactSecrets(facts)
 	report.Requeues = requeueSummary(facts)
+	report.Failures = failureSummary(facts)
 	report.Autopsies = autopsyYield(tasks)
 
 	return report, nil
@@ -456,6 +493,7 @@ func journalDriftScoped(ctx context.Context, store queue.Store, idOrPrefix strin
 	report.FactsReplayed = len(facts)
 	report.SecretEvidence = scanFactSecrets(facts)
 	report.Requeues = requeueSummary(facts)
+	report.Failures = failureSummary(facts)
 
 	return report, nil
 }
@@ -598,6 +636,12 @@ func cmdJournalAudit(ctx context.Context, store queue.Store, asJSON bool, taskID
 				"  (budget requeues park paid turns until the daily cap or budget-cmd window resets — no attempt burn, outside the env-streak breaker; the pool LOOKS idle on purpose)",
 			)
 		}
+	}
+
+	if f := report.Failures; f.Total > 0 && f.EnvStreakBurns > 0 {
+		fmt.Printf(
+			"failures: %d total, %d env-streak breaker burn(s) — sustained environmental requeues escalated to an attempt burn, NOT judged execution failures\n",
+			f.Total, f.EnvStreakBurns)
 	}
 
 	switch y := report.Autopsies; y.Autopsies {

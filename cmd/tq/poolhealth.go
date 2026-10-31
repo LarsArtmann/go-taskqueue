@@ -92,6 +92,10 @@ type RepoHealth struct {
 type PoolHealthReport struct {
 	Since       string       `json:"since"`
 	FactsFolded int          `json:"factsFolded"`
+	// BackingOff is the top-level poisoned-repo count (repos whose
+	// DLQBackoffUntil is set) so scripts get the aggregate without
+	 // folding repos[] (TODO row 1087).
+	BackingOff int          `json:"backingOff"`
 	Repos       []RepoHealth `json:"repos"`
 }
 
@@ -286,6 +290,12 @@ func poolHealthFrom(facts []journal.Fact, meta map[task.ID]poolTaskMeta, since, 
 	sort.Slice(report.Repos, func(i, j int) bool {
 		return report.Repos[i].Repo < report.Repos[j].Repo
 	})
+
+	for _, r := range report.Repos {
+		if r.DLQBackoffUntil != nil {
+			report.BackingOff++
+		}
+	}
 
 	return report
 }
