@@ -11,7 +11,8 @@
 # affected).
 #
 # Safety rails (history policy: never rewrite pushed commits):
-#   - refuses a dirty worktree;
+#   - tolerates a dirty worktree (row 184): the rewrite is msg-only, so an
+#     autostash around filter-branch rides through and pops conflict-free;
 #   - refuses an empty heal range;
 #   - refuses if any range commit is reachable from a remote-tracking ref
 #     other than the base itself;
@@ -126,7 +127,6 @@ resolve_base() {
 # echoes "noop" when every range commit already carries the target footer.
 check_rails() {
 	local base=$1 id=$2
-	[ -z "$(git status --porcelain)" ] || die "worktree is dirty; commit or stash first"
 	[ -n "$(git rev-list "$base..HEAD")" ] || die "range $base..HEAD is empty; nothing to heal"
 
 	local pushed=""
@@ -427,7 +427,26 @@ main() {
 	stat_old=$(git rev-list --reverse "$base..HEAD" | while IFS= read -r c; do git diff-tree --no-commit-id --name-only -r "$c" | sort | md5sum; done)
 	shas_old=$(git rev-list --reverse "$base..HEAD")
 
-	run_filter "$footer" "$base" "$retitle" || die "filter-branch failed (backup kept at $BACKUP_REF if it existed)"
+	# Dirty-tree tolerance (row 184, 2026-10-13 01-31 §e3): the rewrite is
+	# msg-only, so HEAD's tree is preserved byte-identical and an autostash
+	# around filter-branch can never conflict on pop. Staged/unstaged dirt
+	# rides through; untracked dirt never blocked filter-branch anyway.
+	local stashed=""
+	if [ -n "$(git status --porcelain)" ]; then
+		echo "worktree dirty; autostashing around the msg-only rewrite (tree is preserved, pop cannot conflict)"
+		if git stash push --include-untracked --message "heal-daemon-sweep autostash" >/dev/null 2>&1; then
+			stashed=1
+		else
+			die "worktree is dirty and the autostash failed; commit or stash first"
+		fi
+	fi
+	if ! run_filter "$footer" "$base" "$retitle"; then
+		[ -n "$stashed" ] && git stash pop >/dev/null 2>&1
+		die "filter-branch failed (backup kept at $BACKUP_REF if it existed)"
+	fi
+	if [ -n "$stashed" ] && ! git stash pop >/dev/null 2>&1; then
+		die "autostash pop failed — changes preserved in the top 'git stash list' entry; recover manually (the msg-only rewrite kept the tree identical)"
+	fi
 
 	if verify_heal "$base" "$id" "$subj_old" "$stat_old"; then
 		print_fork_records "$base" "$shas_old"
@@ -560,10 +579,18 @@ EOF
 		cat "$tmp/out1" >&2
 	fi
 
-	# Rail: dirty worktree refusal.
+	# Row 184: a dirty worktree no longer refuses up front — an
+	# already-healed range no-ops (rc 0) with the dirt left untouched
+	# (no rewrite runs, so no autostash is taken).
 	echo dirt >>"$repo/a.txt"
-	(cd "$repo" && "$self" --from origin/master deadbeef00000000000000000000000000000002) >/dev/null 2>&1
-	expect_refusal "dirty worktree" $?
+	(cd "$repo" && "$self" --from origin/master deadbeef00000000000000000000000000000001) >"$tmp/out_noop_dirty" 2>&1
+	if [ "$?" = "0" ] && grep -qF "nothing to heal" "$tmp/out_noop_dirty"; then
+		ok=$((ok + 1))
+	else
+		fail=$((fail + 1))
+		echo "SELF-TEST FAIL: dirty worktree + healed range must no-op, not refuse" >&2
+		cat "$tmp/out_noop_dirty" >&2
+	fi
 	git -C "$repo" checkout -q -- a.txt
 
 	# A fully-footered range is a no-op success; a different-id footer is a
@@ -811,6 +838,34 @@ EOF
 	git -C "$repo3" commit -qm "chore: sweep mine"
 	(cd "$repo3" && "$self" deadbeef00000000000000000000000000000003) >"$tmp/out_multi" 2>"$tmp/err_multi"
 	expect_refusal "mixed span (two foreign footers)" $? "--from $blocker1" "$tmp/err_multi"
+
+	# Row 184 dirty-tree tolerance: a dirty worktree (modified + untracked)
+	# heals cleanly — the msg-only rewrite preserves HEAD's tree, so the
+	# autostash pop can never conflict — and the dirt survives byte-exact.
+	local repo4="$tmp/repo4"
+	git init -q "$repo4"
+	git -C "$repo4" config user.email t@t
+	git -C "$repo4" config user.name t
+	echo a >"$repo4/a.txt"
+	git -C "$repo4" add a.txt
+	git -C "$repo4" commit -qm "base"
+	git -C "$repo4" update-ref refs/remotes/origin/master HEAD
+	echo s >"$repo4/s.txt"
+	git -C "$repo4" add s.txt
+	git -C "$repo4" commit -qm "chore: sweep dirty"
+	echo dirt >>"$repo4/a.txt"
+	echo untracked >"$repo4/u.txt"
+	(cd "$repo4" && "$self" --from origin/master deadbeef00000000000000000000000000000008) >"$tmp/out_dirty" 2>"$tmp/err_dirty"
+	if [ "$?" = "0" ] &&
+		footer_well_formed "$(git -C "$repo4" log -1 --format='%B' HEAD)" "deadbeef00000000000000000000000000000008" &&
+		[ "$(cat "$repo4/a.txt")" = "$(printf 'a\ndirt')" ] &&
+		[ "$(cat "$repo4/u.txt")" = "untracked" ]; then
+		ok=$((ok + 1))
+	else
+		fail=$((fail + 1))
+		echo "SELF-TEST FAIL: dirty worktree must heal and preserve the dirt" >&2
+		cat "$tmp/out_dirty" "$tmp/err_dirty" >&2
+	fi
 
 	if [ "$fail" = "0" ]; then
 		echo "SELF-TEST OK ($ok checks)"

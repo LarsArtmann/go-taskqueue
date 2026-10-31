@@ -238,10 +238,21 @@ must_mention "non-signature case" 'FAIL: undefined: atomic'
 # the actual wrapper file's ONE-retry path: rc=0 plus the first-run
 # signature, the label-prefixed retry notice, and the FLAKE-RETRY line
 # must all appear in verify.sh's own output.
+
+# make_shim_pair <dir> <<'EOF' <go-body> EOF (row 216): the per-pin go/gofmt
+# pair was hand-rolled three times; the go body stays per-pin (heredoc on
+# the call site), the always-green gofmt is shared boilerplate.
+make_shim_pair() {
+	local dir=$1
+	mkdir -p "$dir"
+	cat >"$dir/go"
+	printf '#!/usr/bin/env bash\nexit 0\n' >"$dir/gofmt"
+	chmod +x "$dir/go" "$dir/gofmt"
+}
+
 shim_bin="$tmp/shim-bin"
-mkdir -p "$shim_bin"
 # pins: retry-once-branch — first red run then stamp-file green; rc=0 + retry notice + FLAKE-RETRY line in verify.sh output
-cat >"$shim_bin/go" <<'EOF'
+make_shim_pair "$shim_bin" <<'EOF'
 #!/usr/bin/env bash
 stamp="${GO_SHIM_STAMP:-}"
 if [ -n "$stamp" ] && [ -e "$stamp" ]; then
@@ -251,8 +262,6 @@ printf 'FAIL: TestSelfManagingLoop 19/20\n' >&2
 if [ -n "$stamp" ]; then : >"$stamp"; fi
 exit 1
 EOF
-printf '#!/usr/bin/env bash\nexit 0\n' >"$shim_bin/gofmt"
-chmod +x "$shim_bin/go" "$shim_bin/gofmt"
 
 last_out="$(GO_SHIM_STAMP="$tmp/verify-shim-stamp" PATH="$shim_bin:$PATH" bash "$verify" 2>&1)" && heal_rc=0 || heal_rc=$?
 if [ "$heal_rc" -ne 0 ]; then
@@ -271,18 +280,15 @@ must_mention "in-situ heal case" 'VERIFY: FLAKE-RETRY — green on the second ru
 # run) and zero retry lines. The lib-level non-signature case above pins
 # the lib; this executes the actual wrapper's rc=1 propagation.
 red_bin="$tmp/red-bin"
-mkdir -p "$red_bin"
 red_count="$tmp/go-invocations"
 : >"$red_count"
 # pins: hard-red-branch — persistently failing go must rc=1 with NO retry lines (red is not flake)
-cat >"$red_bin/go" <<EOF
+make_shim_pair "$red_bin" <<EOF
 #!/usr/bin/env bash
 printf '%s\n' 'FAIL: undefined: atomic.Lane' >&2
 echo go >>"$red_count"
 exit 1
 EOF
-printf '#!/usr/bin/env bash\nexit 0\n' >"$red_bin/gofmt"
-chmod +x "$red_bin/go" "$red_bin/gofmt"
 
 last_out="$(PATH="$red_bin:$PATH" bash "$verify" 2>&1)" && red_rc=0 || red_rc=$?
 if [ "$red_rc" -ne 1 ]; then
@@ -306,11 +312,10 @@ echo "ok: in-situ verify.sh genuine-red (rc=1, one go invocation, zero retry lin
 # line. rc=1 must propagate with exactly one go-test invocation and zero
 # retry lines, so the battery's later legs are covered by the pin too.
 test_bin="$tmp/test-bin"
-mkdir -p "$test_bin"
 test_count="$tmp/go-test-invocations"
 : >"$test_count"
 # pins: flaky-test-branch — go test FAIL retried once per the KNOWN_FLAKY signature, rc=0 on second pass
-cat >"$test_bin/go" <<EOF
+make_shim_pair "$test_bin" <<EOF
 #!/usr/bin/env bash
 if [ "\$1" = "test" ]; then
 	printf '%s\n' 'FAIL: TestSomethingReal 3/17' >&2
@@ -319,8 +324,6 @@ if [ "\$1" = "test" ]; then
 fi
 exit 0
 EOF
-printf '#!/usr/bin/env bash\nexit 0\n' >"$test_bin/gofmt"
-chmod +x "$test_bin/go" "$test_bin/gofmt"
 
 last_out="$(PATH="$test_bin:$PATH" bash "$verify" 2>&1)" && test_rc=0 || test_rc=$?
 if [ "$test_rc" -ne 1 ]; then
