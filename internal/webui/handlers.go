@@ -666,7 +666,7 @@ func (s *Server) handleTaskAnswerPOST(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	facts, err := s.store.FactsForTask(r.Context(), id, 0)
+	facts, err := s.store.FactsForTask(r.Context(), id.String(), 0)
 	if err != nil {
 		http.Error(w, "answer failed: "+err.Error(), http.StatusInternalServerError)
 
@@ -686,7 +686,7 @@ func (s *Server) handleTaskAnswerPOST(w http.ResponseWriter, r *http.Request) {
 	if err := s.store.RecordAnswer(r.Context(), id, queue.AnswerRecord{
 		Ref:        ref,
 		Answer:     answer,
-		AnsweredAt: time.Now().UnixMilli(),
+		AnsweredAt: time.Now(),
 	}); err != nil {
 		http.Error(w, "answer failed: "+err.Error(), http.StatusInternalServerError)
 

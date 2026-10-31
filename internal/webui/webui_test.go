@@ -226,7 +226,7 @@ func TestSSEFullSnapshotOnConnect(t *testing.T) {
 		}
 	}
 
-	want := []string{fragStats, fragFilters, fragTable, fragDLQ, fragFeed}
+	want := []string{fragStats, fragFilters, fragTable, fragDLQ, fragQuestions, fragFeed}
 	if len(fragIDs) != len(want) {
 		t.Fatalf("frag ids = %v, want %v", fragIDs, want)
 	}
@@ -1134,6 +1134,14 @@ func TestGoldenFragments(t *testing.T) {
 	}
 
 	for _, frag := range renderFragments(context.Background(), data) {
+		// The questions pane is presence-driven: empty (no HTML) when no
+		// `tq ask` park is open — the only fragment allowed to render
+		// nothing, so the section disappears entirely instead of leaving
+		// an empty shell.
+		if frag.ID == fragQuestions && len(data.Questions) == 0 {
+			continue
+		}
+
 		if frag.HTML == "" {
 			t.Errorf("fragment %s rendered empty", frag.ID)
 		}

@@ -418,7 +418,7 @@ func openQuestions(ctx context.Context, store queue.Store) []QuestionView {
 	var open []QuestionView
 
 	for _, t := range pending {
-		facts, err := store.FactsForTask(ctx, t.ID, 0)
+		facts, err := store.FactsForTask(ctx, t.ID.String(), 0)
 		if err != nil {
 			continue
 		}
@@ -454,14 +454,14 @@ func unansweredQuestions(id task.ID, facts []journal.Fact) []QuestionView {
 				continue
 			}
 
-			v := QuestionView{
-				TaskID:   id,
-				Ref:      d.Ref,
-				Type:     d.Type,
-				Question: d.Question,
-				Options:  d.Options,
-				AskedAt:  time.UnixMilli(fact.Time),
-			}
+		v := QuestionView{
+			TaskID:   id,
+			Ref:      d.Ref,
+			Type:     d.Type,
+			Question: d.Question,
+			Options:  d.Options,
+			AskedAt:  fact.Time,
+		}
 			if d.ExpiresAt > 0 {
 				v.ExpiresAt = time.UnixMilli(d.ExpiresAt)
 			}
