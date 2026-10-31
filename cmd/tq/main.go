@@ -3940,6 +3940,11 @@ func cmdServe(args []string) error {
 		"surface repos in poisoned-repo DLQ backoff on the dashboard (nowband chip + panel above the dead-letter queue), mirroring `tq pool-health`; defaults to the pool config file's dlq-backoff (see --config), else 0 = off")
 	configPath := fs.String("config", os.Getenv("TQ_POOL_CONFIG"),
 		"pool config file whose dlq-backoff seeds the --dlq-backoff default (other keys are ignored; $TQ_POOL_CONFIG; falls back to the bootstrap default ~/.config/tq/pool.conf when it exists)")
+	crushServer := fs.String(
+		"crush-server",
+		"",
+		"unix socket of a running `crush server` to light the live-agents pane (L2 observability, default OFF): /agents/live streams distilled tool events from routed runs into an append-only pane (race-attach with reconnect); can share the agent-pool --crush-server socket; empty = pane hidden and /agents/live serves 503 (docs/planning/2026-10-30_04-43_crush-client-server-relations.md §L2)",
+	)
 
 	db := dbFlag(fs)
 
@@ -3971,6 +3976,7 @@ func cmdServe(args []string) error {
 		AuthToken:   *authToken,
 		AllowWrites: *allowWrites,
 		DLQBackoff:  *dlqBackoff,
+		CrushServer: *crushServer,
 	}
 
 	if *readModel {
