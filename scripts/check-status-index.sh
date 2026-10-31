@@ -6,8 +6,11 @@
 set -uo pipefail
 cd "$(dirname "$0")/.." || exit 1
 
-# Index-scannability cadence (TODO row 166, 08-25 f20 / 07-49 f39): the
-# nudge is an archive sweep (docs-health ANNOTATE) or a monthly digest row.
+# Index-scannability cadence (TODO row 166, 08-25 f20 / 07-49 f39): the nudge
+# is the SINGLE ratified ritual — the monthly digest row (each month, an
+# ANNOTATE+ARCHIVE sweep lands a `digest 20…` row in docs/status/README.md
+# recording what it archived; the README scannability-cadence paragraph is
+# authoritative; the old "sweep OR digest row" either/or wording is stale).
 # 100 was the owner-ratified default (02-24 f41), not data-derived. It
 # re-fires permanently (alert fatigue) because the standing monthly sweep
 # leaves a ~265-row floor (2026-10-01 full-corpus sweep: 285->265) and the
@@ -245,12 +248,12 @@ if [ "$ROW_PATH_FAILS" -gt 0 ]; then
 fi
 
 # Index-scannability cadence (see INDEX_BLOAT_THRESHOLD above for the
-# contract): when unarchived rows exceed the threshold, nudge a monthly
-# archive sweep into docs/status/archived/ (docs-health ANNOTATE mode) or a
-# monthly digest row so the index stays scannable.
+# contract): when unarchived rows exceed the threshold, run the ratified
+# monthly ritual — the ANNOTATE+ARCHIVE sweep lands its `digest 20…` row in
+# docs/status/README.md (README scannability-cadence paragraph).
 live=$(count_live_rows "$index")
 if [ "$live" -gt "$INDEX_BLOAT_THRESHOLD" ]; then
-	echo "INDEX BLOAT WARNING: $live live rows in $index (threshold $INDEX_BLOAT_THRESHOLD) — run an archive sweep (docs-health ANNOTATE) or add a monthly digest row (08-25 f20)"
+	echo "INDEX BLOAT WARNING: $live live rows in $index (threshold $INDEX_BLOAT_THRESHOLD) — run the ratified monthly digest ritual: an ANNOTATE+ARCHIVE sweep that lands its \\(digest 20…\\) row in docs/status/README.md (08-25 f20; 2026-10-26 closeout §e4)"
 fi
 
 if [ "$mine" = 1 ] && [ "$fail" = 0 ]; then
