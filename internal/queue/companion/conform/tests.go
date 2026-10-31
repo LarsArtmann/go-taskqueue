@@ -2073,8 +2073,6 @@ func TestListPayloadContains(t *testing.T) {
 		{"mixed-case payload, upper needle", queue.Filter{PayloadContains: "VERIFY -RACE MIXED"}, 1},
 	})
 
-
-
 	// Limit applies AFTER the payload filter: a capped list shows the
 	// first N matches, not the first N tasks filtered.
 	matched, err := s.List(ctx, queue.Filter{PayloadContains: "go-taskqueue", Limit: 1})
