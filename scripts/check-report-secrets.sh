@@ -117,7 +117,7 @@ self_test() {
 		'AKIA too short' \
 		'task-000001a180325195b42bf158d5b000000000 landed via footer' \
 		'the api_key flag is unset and secret rotation is documented' \
-		>'$tmp/clean.md'
+		>"$tmp/clean.md"
 	# Dirty prose: one hit per representative class (5 expected).
 	printf '%s\n' \
 		'failed with: sk-ant-api03-abcdefghijklmnopqrst' \
@@ -125,9 +125,9 @@ self_test() {
 		'creds AKIAIOSFODNN7EXAMPLE in env dump' \
 		'set password = a1b2c3d4e5f6g7h8i9j0 here' \
 		'sent Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ4In0.sig' \
-		>'$tmp/dirty.md'
+		>"$tmp/dirty.md"
 	# Documented fake: allowlisted by the extracted probe.
-	printf '%s\n' 'probe quote: sk-ant-SMOKETEST-0000000000000000 (documented fake fixture)' >'$tmp/fake.md'
+	printf '%s\n' 'probe quote: sk-ant-SMOKETEST-0000000000000000 (documented fake fixture)' >"$tmp/fake.md"
 
 	local out rc
 	out="$(TQ_REPORT_SECRET_FILES="$tmp/clean.md" "$self_abs" 2>&1)"
