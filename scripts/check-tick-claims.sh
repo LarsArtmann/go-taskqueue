@@ -23,6 +23,20 @@
 # time (2026-10-25): 318 ok / 10 WARN — historical claim-ahead residue,
 # incl. the originally reviewer-caught 68a20cdb "row 777 `[x]`" falsehood
 # the gate now catches mechanically; a baseline REGRESSION is the signal.
+#
+# T14 extensions (2026-10-31):
+#   - claim_re window {0,2}→{0,3} (row 1114: "row 143 was already DONE and
+#     ticked" class);
+#   - an EXPLICITLY cited tick commit must itself flip a `- [x]` row
+#     (row 22: the 02-34 fixture cited a commit whose diffstat ticked the
+#     adjacent anchor) — TQ_TICK_DIFF_CMD overrides the diff fetch;
+#   - BLOCKED-claims ("BLOCKED rows written/annotated (sha)", "rows N
+#     annotated (sha)") verify the sha's TODO_LIST diff actually adds a
+#     `— BLOCKED:` line (row 1405: the 1b2fee1d class claimed both rows
+#     while touching one);
+#   - `--batch-anchors <file>` (row 1403): every anchor's TODO row must be
+#     `[x]` or carry `— BLOCKED:` — the pre-final-commit tick-audit rail,
+#     FAILing (not WARN) because the caller names its own batch.
 set -uo pipefail
 export LC_ALL=C
 cd "$(dirname "$0")/.." || exit 1
@@ -60,8 +74,18 @@ oks=0
 warns=0
 skips=0
 
+diff_at() {
+	# diff_at SHA: the sha's TODO_LIST.md diff (TQ_TICK_DIFF_CMD overrides
+	# for the self-test negative battery).
+	if [ -n "${TQ_TICK_DIFF_CMD:-}" ]; then
+		"$TQ_TICK_DIFF_CMD" "$1"
+	else
+		git show "$1" -- TODO_LIST.md 2>/dev/null || true
+	fi
+}
+
 verify_claim() {
-	local file="$1" lineno="$2" span="$3" rows="$4" key="$5"
+	local file="$1" lineno="$2" span="$3" rows="$4" key="$5" explicit="${6:-0}"
 	local at="$key" list n row
 	if [ "$(wc -w <<<"$rows")" -gt 50 ]; then
 		skips=$((skips + 1))
@@ -84,14 +108,50 @@ verify_claim() {
 		echo "  cite the tick commit (AGENTS.md: tick-claims cite the tick commit) or fix the claim"
 		return
 	done
+	# Row 22: an EXPLICITLY cited tick commit must itself flip a `[x]` row —
+	# a sha that rides the tick verb but ticks nothing (the 02-34 adjacent-
+	# anchor class) is a bad citation even when the row reads `[x]` today.
+	if [ "$explicit" = "1" ] && [[ "$key" =~ ^[0-9a-f]{8,40}$ ]] && [ "$key" != "HEAD" ]; then
+		if ! diff_at "$key" | grep -qE '^\+.*- \[[xX]\]'; then
+			warns=$((warns + 1))
+			echo "TICK-CLAIM WARN: $file:$lineno \"$span\" — cited tick commit $key flips no '- [x]' row in its TODO_LIST diff"
+			return
+		fi
+	fi
 	oks=$((oks + 1))
+}
+
+verify_blocked_claim() {
+	# Row 1405: "BLOCKED rows written/annotated" and "rows N … annotated"
+	# claims carrying an explicit sha must have that sha's TODO_LIST diff
+	# actually add a `— BLOCKED:` line (the 1b2fee1d claimed-both-touched-one
+	# class).
+	local file="$1" lineno="$2" text="$3" sha="$4"
+	if diff_at "$sha" | grep -qE '^\+.*— BLOCKED:'; then
+		oks=$((oks + 1))
+		return
+	fi
+	warns=$((warns + 1))
+	echo "TICK-CLAIM WARN: $file:$lineno \"$text\" — cited commit $sha adds no '— BLOCKED:' line"
 }
 
 scan_line() {
 	local file="$1" lineno="$2" line="$3" fallback="$4" readme="$5"
 	local apos="'"
-	local claim_re="rows? [0-9]+([/-][0-9]+)?([[:space:]]+[A-Za-z${apos}]+){0,2}[[:space:]]+(ticked|\`?\[x\]\`?)"
-	local off span low window key sep rows sc cachekey n
+	local claim_re="rows? [0-9]+([/-][0-9]+)?([[:space:]]+[A-Za-z${apos}]+){0,4}[[:space:]]+(ticked|\`?\[x\]\`?)"
+	local off span low window key sep rows sc cachekey n explicit bsha
+	# Row 1405: BLOCKED/annotated-claims with an explicit sha.
+	if [[ "$line" =~ (BLOCKED[[:space:]]+(rows?|annotations?)[[:space:]]+(written|landed|annotated)|rows?[[:space:]]+[0-9][0-9 /,-]*[[:space:]]+annotated) ]]; then
+		local btext="${BASH_REMATCH[0]}" bwin="${line:${#BASH_REMATCH[0]}:80}" bsha=""
+		if [[ "$bwin" =~ \(([0-9a-f]{8,40})\) ]]; then
+			bsha="${BASH_REMATCH[1]}"
+		elif [[ "$bwin" =~ [[:space:]](in|by|at|via)[[:space:]]+([0-9a-f]{8,40}) ]]; then
+			bsha="${BASH_REMATCH[2]}"
+		fi
+		if [ -n "$bsha" ]; then
+			verify_blocked_claim "$file" "$lineno" "$btext" "$bsha"
+		fi
+	fi
 	while IFS=: read -r off span; do
 		[ -n "$span" ] || continue
 		low="${span,,}"
@@ -111,11 +171,14 @@ scan_line() {
 			fi
 		fi
 		key=""
+		explicit=0
 		window="${line:off+${#span}:140}"
 		if [[ "$window" =~ \(([0-9a-f]{8,40})\) ]]; then
 			key="${BASH_REMATCH[1]}"
+			explicit=1
 		elif [[ "$window" =~ [[:space:]](in|by|at|via)[[:space:]]+([0-9a-f]{8,40}) ]]; then
 			key="${BASH_REMATCH[2]}"
+			explicit=1
 		elif [ "$readme" = 1 ]; then
 			# README.md has no file-level authorship commit; the pickaxe
 			# commit that last changed this exact claim span is the closest
@@ -132,7 +195,7 @@ scan_line() {
 			fi
 		fi
 		[ -n "$key" ] || key="$fallback"
-		verify_claim "$file" "$lineno" "$span" "$rows" "$key"
+		verify_claim "$file" "$lineno" "$span" "$rows" "$key" "$explicit"
 	done < <(grep -obE "$claim_re" <<<"$line" || true)
 }
 
@@ -164,6 +227,41 @@ scan_file() {
 	done <"$f"
 }
 
+batch_anchors() {
+	# Row 1403: the pre-final-commit tick-audit rail. Every anchor's TODO
+	# row must be [x] or carry an explicit '— BLOCKED: <reason>' — an open
+	# unannotated row at closeout is the paid-round-trip class. FAILs (not
+	# WARN): the caller names its own batch, so there is no historical
+	# residue to grandfather. TQ_TICK_TODO_FILE overrides the list for the
+	# self-test.
+	local anchors="$1" todo="${TQ_TICK_TODO_FILE:-TODO_LIST.md}" fail=0 a row n
+	while IFS= read -r a; do
+		[ -n "$a" ] || continue
+		n=0
+		while IFS= read -r row; do
+			n=$((n + 1))
+			case "$row" in
+			*'- [x]'*)
+				echo "ok: anchor ticked — ${a:0:60}"
+				;;
+			*'— BLOCKED:'*)
+				echo "ok: anchor blocked-annotated — ${a:0:60}"
+				;;
+			*)
+				echo "BATCH-ANCHOR FAIL: TODO_LIST.md line ${row%%:*} is neither [x] nor '— BLOCKED:' — tick the row or append ' — BLOCKED: <reason>'" >&2
+				fail=1
+				;;
+			esac
+		done < <(grep -nF -- "$a" "$todo" 2>/dev/null | grep -E '^[0-9]+:- \[.\]' || true)
+		if [ "$n" = "0" ]; then
+			echo "BATCH-ANCHOR FAIL: no TODO row carries anchor: $a" >&2
+			fail=1
+		fi
+	done <"$anchors"
+	echo "batch-anchors summary: checked $(grep -c . "$anchors" || true) anchor(s)"
+	[ "$fail" = "0" ]
+}
+
 self_test() {
 	# tmp is deliberately global: the EXIT trap reads it after self_test
 	# returned, and set -u would kill the trap on a function-local name.
@@ -176,26 +274,51 @@ case "$1" in
 HEAD) printf '%s\n' '- [x] alpha landed' '- [ ] beta open' '- [x] gamma landed' ;;
 day:2026-01-01) printf '%s\n' '- [x] alpha landed' '- [ ] beta pending' ;;
 aaaaaaaaaaaaaaaa) printf '%s\n' '- [x] alpha landed' '- [x] beta landed' ;;
+dddddddddddddddd) printf '%s\n' '- [x] alpha landed' '- [x] beta landed' ;;
 bbbbbbbbbbbbbbbb) printf '%s\n' '- [x] alpha landed' '- [ ] beta open' ;;
 *) exit 1 ;;
 esac
 EOF
 	chmod +x "$tmp/listcmd.sh"
+	cat >"$tmp/diffcmd.sh" <<'EOF'
+#!/bin/sh
+case "$1" in
+aaaaaaaaaaaaaaaa) printf '%s\n' '+- [x] alpha landed' ;;
+cccccccccccccccc) printf '%s\n' '+- [x] alpha landed' '+- [ ] beta open — BLOCKED: fixture' ;;
+*) exit 0 ;;
+esac
+EOF
+	chmod +x "$tmp/diffcmd.sh"
 	printf 'report says row 1 ticked, rows 1/3 [x], and rows 1-3 [x]\n' >"$tmp/f1.md"
 	printf 'sha-cited rows 1-2 ticked in aaaaaaaaaaaaaaaa plus row 2 ticked in bbbbbbbbbbbbbbbb\n' >"$tmp/f2.md"
 	printf 'negatives: rows 1-2 unticked, row 3 not ticked, row 4 was UNCHECKED\n' >"$tmp/f3.md"
 	printf 'broken row 1 ticked in deadbeef00\n' >"$tmp/f4.md"
 	printf 'dated claim: row 2 ticked\n' >"$tmp/2026-01-01_00-00_selftest.md"
+	# T14 shapes: wide-window claim (row 1114), explicit-sha no-flip
+	# (row 22), BLOCKED-claim diff verification (row 1405).
+	printf 'wide window: row 1 was already DONE and ticked\n' >"$tmp/f5.md"
+	printf 'then row 1 ticked (dddddddddddddddd)\n' >>"$tmp/f5.md"
+	printf 'blocked claim: BLOCKED rows written (dddddddddddddddd)\nBLOCKED rows written (cccccccccccccccc)\n' >"$tmp/f6.md"
 	local files out out2
-	files="$(printf '%s\n' "$tmp/f1.md" "$tmp/f2.md" "$tmp/f3.md" "$tmp/f4.md" "$tmp/2026-01-01_00-00_selftest.md")"
-	out="$(TQ_TICK_LIST_CMD="$tmp/listcmd.sh" TQ_TICK_CLAIM_FILES="$files" "$self_abs" 2>&1)"
-	if ! grep -qF 'tick-claims summary: 3 ok, 3 warned, 1 skipped' <<<"$out"; then
-		echo "FAIL: negative battery counters off (want 3 ok, 3 warned, 1 skipped)"
+	files="$(printf '%s\n' "$tmp/f1.md" "$tmp/f2.md" "$tmp/f3.md" "$tmp/f4.md" "$tmp/2026-01-01_00-00_selftest.md" "$tmp/f5.md" "$tmp/f6.md")"
+	out="$(TQ_TICK_LIST_CMD="$tmp/listcmd.sh" TQ_TICK_DIFF_CMD="$tmp/diffcmd.sh" TQ_TICK_CLAIM_FILES="$files" "$self_abs" 2>&1)"
+	if ! grep -qF 'tick-claims summary: 5 ok, 5 warned, 1 skipped' <<<"$out"; then
+		echo "FAIL: negative battery counters off (want 5 ok, 5 warned, 1 skipped)"
 		printf '%s\n' "$out"
 		exit 1
 	fi
-	if [ "$(grep -c 'TICK-CLAIM WARN' <<<"$out")" -ne 3 ]; then
-		echo "FAIL: expected exactly 3 WARNs (bad-HEAD range + wrong-cited-sha + stale-day)"
+	if [ "$(grep -c 'TICK-CLAIM WARN' <<<"$out")" -ne 5 ]; then
+		echo "FAIL: expected exactly 5 WARNs (bad-HEAD range + wrong-cited-sha + stale-day + explicit-no-flip + blocked-no-evidence)"
+		printf '%s\n' "$out"
+		exit 1
+	fi
+	if ! grep -q 'flips no' <<<"$out"; then
+		echo "FAIL: explicit-sha no-flip WARN missing (row 22 class)"
+		printf '%s\n' "$out"
+		exit 1
+	fi
+	if ! grep -q "adds no '— BLOCKED:'" <<<"$out"; then
+		echo "FAIL: BLOCKED-claim WARN missing (row 1405 class)"
 		printf '%s\n' "$out"
 		exit 1
 	fi
@@ -230,13 +353,34 @@ EOF
 		printf '%s\n' "$out2"
 		exit 1
 	fi
-	echo "tick-claims self-test ok (summary format pin + negative counter battery)"
+	# Row 1403 batch-anchors rail: ticked + blocked anchors pass, a bare
+	# open row FAILs, a missing anchor FAILs.
+	printf '%s\n' '- [x] alpha landed' '- [ ] beta open' '- [ ] gamma open — BLOCKED: fixture reason' >"$tmp/todo.md"
+	printf '%s\n' 'alpha landed' 'gamma open' >"$tmp/anchors-ok.txt"
+	printf '%s\n' 'beta open' 'no such anchor anywhere' >"$tmp/anchors-bad.txt"
+	local rc2=0 rc3=0
+	TQ_TICK_TODO_FILE="$tmp/todo.md" "$self_abs" --batch-anchors "$tmp/anchors-ok.txt" >/dev/null 2>&1 || rc2=$?
+	TQ_TICK_TODO_FILE="$tmp/todo.md" "$self_abs" --batch-anchors "$tmp/anchors-bad.txt" >/dev/null 2>&1 || rc3=$?
+	if [ "$rc2" != "0" ] || [ "$rc3" != "1" ]; then
+		echo "FAIL: batch-anchors rail (want clean=0 bad=1, got $rc2/$rc3)"
+		exit 1
+	fi
+	echo "tick-claims self-test ok (summary format pin + negative counter battery + no-flip/blocked/wide-window/batch-anchors rails)"
 	exit 0
 }
 
 if [ "${1:-}" = "--self-test" ]; then
 	self_test
 	exit 0
+fi
+
+if [ "${1:-}" = "--batch-anchors" ]; then
+	[ -n "${2:-}" ] || {
+		echo "usage: $0 --batch-anchors <anchors-file>" >&2
+		exit 2
+	}
+	batch_anchors "$2"
+	exit $?
 fi
 
 files=()
