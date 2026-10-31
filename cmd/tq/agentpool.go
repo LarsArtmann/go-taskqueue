@@ -6,6 +6,8 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -951,12 +953,30 @@ func worktreeInFlight(ctx context.Context, store *sqlite.Store, agentExec *execu
 	}
 }
 
+// crushKeeperInterval is how often the keeper dials the server's
+// workspaces endpoint: crush servers self-terminate once the last client
+// detaches (planning doc M7), which between dispatch bursts would kill
+// the pool's actor and force a per-task respawn churn. A gentle poll
+// holds the server across idle gaps; the supervisor below bounds the
+// worst case if the idle timer ignores polls.
+const crushKeeperInterval = 45 * time.Second
+
+// crushServerRestartBackoff is the supervisor's restart ladder for an
+// unexpected server exit (crash, idle suicide the keeper missed).
+var crushServerRestartBackoff = []time.Duration{time.Second, 5 * time.Second, 15 * time.Second, time.Minute}
+
 // runCrushServerActor is the L1 seam's server half (--crush-server): one
 // shared `crush server` per pool, bound to the flag's unix socket and torn
 // down with the run.Group. The socket's parent directory is created so a
 // data-dir path need not pre-exist; server output lands in the pool log
 // (it is the fleet-wide crash domain's console). Started before any run
 // can claim, so a thin client never races a missing socket.
+//
+// Keeper + supervisor (TODO row 1449): the server self-terminates when
+// its last client detaches, so the actor keeps one client-shaped dial
+// alive (the workspaces endpoint the L2 pane reads) and SUPERVISES the
+// process — an unexpected exit restarts on a backoff ladder instead of
+// tearing the whole pool down; pool shutdown stays the clean exit.
 func runCrushServerActor(ctx context.Context, bin, socket string) error {
 	host := socket
 	if !strings.Contains(host, "://") {
@@ -967,17 +987,86 @@ func runCrushServerActor(ctx context.Context, bin, socket string) error {
 			return fmt.Errorf("crush-server: create socket dir %s: %w", dir, err)
 		}
 	}
-	cmd := exec.CommandContext(ctx, bin, "server", "--host", host)
-	// No process-group kill here (windows-cross-compile stays portable):
-	// SIGTERM goes to the server itself, which owns its workspaces'
-	// teardown; WaitDelay keeps a wedged shutdown from hanging the actor.
-	cmd.Stdout = io.Discard
-	cmd.Stderr = os.Stderr
-	cmd.WaitDelay = 10 * time.Second
-	fmt.Fprintf(os.Stderr, "tq: agent-pool: crush server (L1 seam) listening on %s\n", host)
-	err := cmd.Run()
-	if ctx.Err() != nil {
-		return nil // pool shutdown: the server dying with us is the design
+
+	keeperStop := make(chan struct{})
+	keeperDone := make(chan struct{})
+	go crushKeeper(ctx, socket, keeperStop, keeperDone)
+	defer func() {
+		close(keeperStop)
+		<-keeperDone
+	}()
+
+	for attempt := 0; ; attempt++ {
+		cmd := exec.CommandContext(ctx, bin, "server", "--host", host)
+		// No process-group kill here (windows-cross-compile stays
+		// portable): SIGTERM goes to the server itself, which owns its
+		// workspaces' teardown; WaitDelay keeps a wedged shutdown from
+		// hanging the actor.
+		cmd.Stdout = io.Discard
+		cmd.Stderr = os.Stderr
+		cmd.WaitDelay = 10 * time.Second
+
+		if attempt == 0 {
+			fmt.Fprintf(os.Stderr, "tq: agent-pool: crush server (L1 seam) listening on %s\n", host)
+		} else {
+			fmt.Fprintf(os.Stderr, "tq: agent-pool: crush server (L1 seam) restart %d on %s\n", attempt, host)
+		}
+
+		err := cmd.Run()
+		if ctx.Err() != nil {
+			return nil // pool shutdown: the server dying with us is the design
+		}
+
+		wait := crushServerRestartBackoff[min(attempt, len(crushServerRestartBackoff)-1)]
+		fmt.Fprintf(os.Stderr, "tq: agent-pool: crush server exited unexpectedly (%v); restarting in %s\n", err, wait)
+
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-time.After(wait):
+		}
 	}
-	return fmt.Errorf("crush-server: %s exited: %w", host, err)
+}
+
+// crushKeeper holds one client-shaped dial against the pool's crush
+// server: a GET on the workspaces endpoint every crushKeeperInterval.
+// Best-effort by design — a failed dial logs nothing (the server may be
+// mid-restart); the supervisor owns correctness, the keeper only removes
+// the idle-suicide churn (M7).
+func crushKeeper(ctx context.Context, socket string, stop <-chan struct{}, done chan<- struct{}) {
+	defer close(done)
+
+	path := strings.TrimPrefix(socket, "unix://")
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+		Transport: &http.Transport{
+			DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+				d := net.Dialer{}
+				return d.DialContext(ctx, "unix", path)
+			},
+		},
+	}
+
+	ticker := time.NewTicker(crushKeeperInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-stop:
+			return
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://crush/v1/workspaces", nil)
+			if err != nil {
+				continue
+			}
+
+			resp, err := client.Do(req)
+			if err == nil {
+				_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 1<<20))
+				_ = resp.Body.Close()
+			}
+		}
+	}
 }
