@@ -454,14 +454,14 @@ func unansweredQuestions(id task.ID, facts []journal.Fact) []QuestionView {
 				continue
 			}
 
-		v := QuestionView{
-			TaskID:   id,
-			Ref:      d.Ref,
-			Type:     d.Type,
-			Question: d.Question,
-			Options:  d.Options,
-			AskedAt:  fact.Time,
-		}
+			v := QuestionView{
+				TaskID:   id,
+				Ref:      d.Ref,
+				Type:     d.Type,
+				Question: d.Question,
+				Options:  d.Options,
+				AskedAt:  fact.Time,
+			}
 			if d.ExpiresAt > 0 {
 				v.ExpiresAt = time.UnixMilli(d.ExpiresAt)
 			}

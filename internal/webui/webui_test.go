@@ -205,7 +205,7 @@ func TestSSEFullSnapshotOnConnect(t *testing.T) {
 	srv, s := newTestServer(t)
 	tk := enqueue(t, s, "sh", "demo")
 
-	events := ssetest.CollectN(t, srv.Handler(), 6, ssetest.WithPath("/api/events"))
+	events := ssetest.CollectN(t, srv.Handler(), 7, ssetest.WithPath("/api/events"))
 
 	var (
 		fragIDs  []string
@@ -318,7 +318,7 @@ func TestStreamSnapshotHonorsFilter(t *testing.T) {
 	enqueue(t, s, "sh", "alpha")
 	enqueue(t, s, "sh", "beta")
 
-	events := ssetest.CollectN(t, srv.Handler(), 6, ssetest.WithPath("/api/events?project=alpha"))
+	events := ssetest.CollectN(t, srv.Handler(), 7, ssetest.WithPath("/api/events?project=alpha"))
 
 	var tableFrag string
 
@@ -454,7 +454,7 @@ func TestResumeAfterFactsBacklog(t *testing.T) {
 			opts = append(opts, ssetest.WithLastEventID(sse.NewEventID(lastID)))
 		}
 
-		events := ssetest.CollectN(t, srv.Handler(), 6, opts...)
+		events := ssetest.CollectN(t, srv.Handler(), 7, opts...)
 
 		var tableFrag string
 
@@ -1815,7 +1815,7 @@ func TestRequestLoggingKeepsSSEStreaming(t *testing.T) {
 	srv := New(s, Config{Poll: time.Millisecond, Heartbeat: time.Millisecond, RequestLog: true})
 	tk := enqueue(t, s, "sh", "demo")
 
-	events := ssetest.CollectN(t, srv.Handler(), 6, ssetest.WithPath("/api/events"))
+	events := ssetest.CollectN(t, srv.Handler(), 7, ssetest.WithPath("/api/events"))
 
 	sawTask := false
 
