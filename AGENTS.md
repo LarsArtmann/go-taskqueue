@@ -357,7 +357,10 @@ docs/DOMAIN_LANGUAGE.md.
   per-function error types are a dedicated migration project, NOT lint
   debt to suppress away; the gate keeps `--disable generic_return` only
   until the migration lands, then the disable drops. Gate wiring ruled:
-  `scripts/check-erraudit.sh` + ci-local, HARD gate. Tool bugs (hint/flag
+  `scripts/check-erraudit.sh` + ci-local, HARD gate; CI runs the
+  `--self-test` ONLY (2026-10-31: erraudit repo is PRIVATE — proxy 404,
+  runner `go install` can never pass; lint enforcement = ci-local).
+  Tool bugs (hint/flag
   rejections, rc shape) file at github.com/larsartmann/erraudit.
 - **VendorHash drift**: after go.mod changes run
   `nix build .#checks.x86_64-linux.vendor-hash`, copy `got:` to flake.nix.

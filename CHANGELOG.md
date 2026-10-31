@@ -15,6 +15,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   re-tagging — is the fix). cmd/tq/v0.4.2 carries the canonical hash;
   root@v0.4.1 and every other v0.4.1 tag are unaffected.
 
+### Internal
+
+- CI: the erraudit step ran `go install` of a PRIVATE module
+  (proxy 404, no runner credentials), failing every `test` job since
+  2026-10-30 — CI now runs only the hermetic `--self-test`; the
+  per-module lint run stays enforced by `scripts/ci-local.sh`.
+
 ## [v0.4.1] - 2026-10-31
 
 ### Added
