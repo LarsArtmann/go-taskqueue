@@ -31,12 +31,12 @@ func TestTransitionDeltaTable(t *testing.T) {
 		}
 	})
 
-	t.Run("same-status transition nets zero per key", func(t *testing.T) {
+	t.Run("same-status transition nets zero (empty delta)", func(t *testing.T) {
 		t.Parallel()
 
 		got := transitionDelta("running", "running")
-		if got["running"] != 0 || len(got) != 1 {
-			t.Fatalf("transitionDelta(running, running) = %v, want {running:0}", got)
+		if len(got) != 0 {
+			t.Fatalf("transitionDelta(running, running) = %v, want the empty delta (net zero, never a drain)", got)
 		}
 	})
 }
