@@ -72,9 +72,13 @@ if [ "${1:-}" = "--self-test" ]; then
 
 	# O14-guard stage (TODO row 863): the CHANGELOG guard only ever running
 	# green would rot the same way — plant an internal-only row in a mutated
-	# CHANGELOG copy's Changed section and require the exact O14 miss. The
-	# copy keeps line structure (the guard's awk is line-anchored).
-	sed 's|^### Changed$|&\n- check-release-docs planted internal pin (planted-by-self-test)|' CHANGELOG.md >"$tmp/CHANGELOG.md"
+	# CHANGELOG copy and require the exact O14 miss. The row lands under a
+	# planted `### Changed` directly after `## [Unreleased]` so the battery
+	# works whatever operator headings the live section currently carries
+	# (2026-10-31: a Changed-less [Unreleased] silently moved the plant into
+	# [v0.4.0] and rotted the battery; the copy keeps line structure — the
+	# guard's awk is line-anchored).
+	sed 's|^## \[Unreleased\]$|&\n### Changed\n- check-release-docs planted internal pin (planted-by-self-test)|' CHANGELOG.md >"$tmp/CHANGELOG.md"
 	planted_rc=0
 	planted_out="$(O14_CHANGELOG_DOC="$tmp/CHANGELOG.md" bash scripts/check-release-docs.sh 2>&1)" || planted_rc=$?
 	planted_expected='release-docs drift: CHANGELOG [Unreleased] operator sections carry an internal-only row matching "check-release-docs" — move it to ### Internal (O14)'
