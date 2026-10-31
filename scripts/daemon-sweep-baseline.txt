@@ -1602,3 +1602,6 @@ bfa3234ffaf67c38f51fe9df8b221b676d6497d8
 # 2026-10-31 T18 pragma-pin batch: mid-edit sweeps incl. the compose.go partial write (content verified at bec1afeb)
 e97cccde56070759f7d5f431eee04d3bdc447ef6
 bf93e909417928ceee52214ddc6f293f21d2f76b
+# 2026-10-31 T24 depbump batch: mid-edit sweep (content verified in the executor suite, green at HEAD)
+ce2f95a75e7de5256889b31ac9119560562429ff
+2cfd99afd3b9fb26a3da5a60b91bcb307bb69f95
