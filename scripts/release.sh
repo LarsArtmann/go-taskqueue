@@ -202,7 +202,10 @@ step "fresh-GOMODCACHE re-tidy (the warm-cache lesson as code, RELEASE.md v0.4.x
 # sub-tag the proxy has not indexed yet — wait a minute and re-run.
 fresh_root="$(mktemp -d)"
 fresh_cache="$(mktemp -d)"
-trap 'rm -rf "$fresh_root" "$fresh_cache"' EXIT
+# The extracted module cache is read-only (go writes 0444); chmod before
+# rm or the cleanup dies on Permission denied (the same lesson as the
+# host cache purge runbook).
+trap 'chmod -R u+w "$fresh_root" "$fresh_cache" 2>/dev/null; rm -rf "$fresh_root" "$fresh_cache"' EXIT
 git archive HEAD | tar -x -C "$fresh_root"
 for fresh_mod in . cmd/tq; do
 	(
