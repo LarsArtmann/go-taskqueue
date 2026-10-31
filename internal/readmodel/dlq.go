@@ -18,6 +18,32 @@ func DLQPathFor(modelPath string) string {
 	return modelPath + ".dlq.db"
 }
 
+// dlqPathForDeployment is the ONE sidecar-path derivation for a
+// deployment's projection home: the sidecar lives beside the PROJECTION
+// db (a queue-home deployment describes the QUEUE db — PathFor maps
+// it). Every internal caller routes through here, and external callers
+// reach for the named exported shapes (DeploymentDLQPath /
+// LegacyDLQPath), so a raw DLQPathFor(PathFor(...)) or queue-home
+// composition cannot reappear at a call site (TODO row 56).
+func dlqPathForDeployment(d config.Deployment) string {
+	return DLQPathFor(PathFor(d.DBPath))
+}
+
+// DeploymentDLQPath is the deployment's sidecar path — the shape serve
+// opens (OpenDeadLetters) and doctor inspects. Row 56's one-derivation
+// seam, exported for the doctor surface.
+func DeploymentDLQPath(d config.Deployment) string {
+	return dlqPathForDeployment(d)
+}
+
+// LegacyDLQPath is the PRE-FIX sidecar shape (beside the QUEUE db) that
+// pre-2026-10-11 homes wrote. DETECTION ONLY — never open this shape:
+// doctor surfaces it so a stale legacy sidecar cannot hide behind the
+// corrected one (TODO row 58).
+func LegacyDLQPath(dbPath string) string {
+	return DLQPathFor(dbPath)
+}
+
 // dlqOpenTimeout bounds the sidecar's schema bootstrap; the DLQ is a
 // diagnostic convenience and must never wedge serve startup on a stuck
 // sqlite lock the busy timeout already bounded.
@@ -75,7 +101,7 @@ func dlqDSN(d config.Deployment) string {
 		parts = append(parts, "_pragma="+pragma)
 	}
 
-	return "file:" + DLQPathFor(PathFor(d.DBPath)) + "?" + strings.Join(parts, "&")
+	return "file:" + dlqPathForDeployment(d) + "?" + strings.Join(parts, "&")
 }
 
 // Store returns the platform DLQ for the projection host's

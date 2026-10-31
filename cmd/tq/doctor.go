@@ -1304,15 +1304,15 @@ func doctorProjectionWorkerDeath(dbPath string) []checkResult {
 func doctorProjectionDLQ(ctx context.Context, d config.Deployment) []checkResult {
 	const name = "projection-dlq"
 
-	modelPath := readmodel.PathFor(d.DBPath)
-
-	legacyPath := readmodel.DLQPathFor(d.DBPath)
-	dlqPath := readmodel.DLQPathFor(modelPath)
+	legacyPath := readmodel.LegacyDLQPath(d.DBPath)
+	dlqPath := readmodel.DeploymentDLQPath(d)
 
 	_, legacyErr := os.Stat(legacyPath)
 	_, dlqErr := os.Stat(dlqPath)
 
-	if !errors.Is(legacyErr, fs.ErrNotExist) && errors.Is(dlqErr, fs.ErrNotExist) {
+	legacyPresent := !errors.Is(legacyErr, fs.ErrNotExist)
+
+	if legacyPresent && errors.Is(dlqErr, fs.ErrNotExist) {
 		return []checkResult{{
 			Name:   name,
 			Status: checkWarn,
@@ -1325,20 +1325,35 @@ func doctorProjectionDLQ(ctx context.Context, d config.Deployment) []checkResult
 		return []checkResult{{Name: name, Status: checkOK, Detail: "no poison sidecar (nothing has failed to fold)"}}
 	}
 
+	// Row 59: when BOTH sidecars exist, the corrected sidecar's ok/empty
+	// verdict must not leave the legacy entries unmentioned — surface the
+	// legacy path as its own WARN row (its entries are NOT the ones serve
+	// replays; a pre-fix home wrote them).
+	var legacyRows []checkResult
+
+	if legacyPresent {
+		legacyRows = append(legacyRows, checkResult{
+			Name:   name + "-legacy",
+			Status: checkWarn,
+			Detail: "legacy sidecar also present beside the queue db — its entries are NOT what serve replays; inspect then remove",
+			Items:  []string{legacyPath},
+		})
+	}
+
 	dlq, err := readmodel.OpenDeadLetters(ctx, d)
 	if err != nil {
-		return []checkResult{{Name: name, Status: checkFail, Detail: "open: " + err.Error()}}
+		return append(legacyRows, checkResult{Name: name, Status: checkFail, Detail: "open: " + err.Error()})
 	}
 
 	defer func() { _ = dlq.Close() }()
 
 	count, err := dlq.Count(ctx)
 	if err != nil {
-		return []checkResult{{Name: name, Status: checkFail, Detail: "count: " + err.Error()}}
+		return append(legacyRows, checkResult{Name: name, Status: checkFail, Detail: "count: " + err.Error()})
 	}
 
 	if count == 0 {
-		return []checkResult{{Name: name, Status: checkOK, Detail: "sidecar present, no poison facts"}}
+		return append(legacyRows, checkResult{Name: name, Status: checkOK, Detail: "sidecar present, no poison facts"})
 	}
 
 	result := checkResult{
@@ -1355,7 +1370,7 @@ func doctorProjectionDLQ(ctx context.Context, d config.Deployment) []checkResult
 	if err != nil {
 		result.Detail += "; recent entries unreadable: " + err.Error()
 
-		return []checkResult{result}
+		return append(legacyRows, result)
 	}
 
 	for _, e := range entries {
@@ -1365,7 +1380,7 @@ func doctorProjectionDLQ(ctx context.Context, d config.Deployment) []checkResult
 		))
 	}
 
-	return []checkResult{result}
+	return append(legacyRows, result)
 }
 
 // statusDrift lists the per-status count differences between the folded
