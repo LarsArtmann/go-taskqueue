@@ -6,8 +6,64 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **`tq dlq --json`** (2026-10-31): machine-readable DLQ — a summary
+  lead object (`{count,total,evidence_read}`) followed by one JSON
+  object per dead task. Evidence prefetch is bounded (cap 200) for
+  unfiltered runs; over-cap runs skip evidence reads, mark
+  `evidence_read:false`, and note the cap on stderr — filtered runs
+  always read.
+- **`tq dlq --evidence-stage` unknown-term warning** (2026-10-31): an
+  unknown evidence term prints a stderr warning naming the closed
+  known-term vocabulary (`executor.KnownEvidenceTerms`) — typos no
+  longer silently match nothing.
+- **Dashboard evidence filter is a datalist-backed text input**
+  (2026-10-31): the DLQ `evidence:` control now accepts the full
+  `!`-negation grammar (it round-trips `tq dlq --evidence-stage`
+  specs) while offering the known terms as datalist suggestions; the
+  pane also shows an "N of M dead tasks match" count so a
+  narrowed-to-zero filter no longer looks like an empty DLQ.
+- **Dirty-tree parks get their own pool-health lane** (2026-10-31):
+  dirty-tree preflight refusals (a parked class that never burns an
+  attempt) now surface as a dedicated `DirtyTreeStreak` WARN plus a
+  text row instead of hiding inside the env-streak lane;
+  `tq tasks --parked` rows carry `requeue_class` and a dirty-tree
+  hint line.
+- **`tq stats` verify-deaths-by-stage** (2026-10-31): a
+  `verify_deaths_by_stage` counter (bounded LastFacts read) splits
+  verify deaths per stage for a quick health glance.
+- **`tq audit --journal` env-streak classification** (2026-10-31): the
+  failure summary now reports total burns / env-streak burns (by
+  `[env-streak]` marker) and deaths by verify stage.
+- **`tq api` lockout policy banner** (2026-10-31): startup prints the
+  lockout policy (max strikes, lockout window) and the usage line
+  mentions the lockout guard.
+- **`tq doctor` warns on legacy projection DLQ sidecars**
+  (2026-10-31): a `projection-dlq-legacy` WARN row appears whenever
+  both the deployment and legacy DLQ sidecars exist (derived via the
+  new named helpers, no path composition in doctor).
+
+### Changed
+
+- **(BEHAVIOR CHANGE for postgres filter users)** `Query` /
+  `PayloadContains` filters are now case-insensitive on postgres
+  (2026-10-31): companion list-where wraps both LIKE sides in
+  `LOWER()` — previously postgres matched case-sensitively while
+  sqlite already matched insensitively; mixed-case parity is pinned
+  in the conform suite on both backends.
+- **`ErrDirtyTree` failures render `… [dirty tree]`** (2026-10-31):
+  the dirty-tree park marker rides the error chain (`%w` in
+  brackets) so downstream surfaces can classify it without string
+  matching the message body.
+
 ### Fixed
 
+- **readmodel same-status transitions drained counters** (2026-10-31):
+  `transitionDelta` / `projectTransitionDelta` netted -1 for
+  from==next facts (same-status transitions), silently draining
+  per-status counters on every such event; both now return the empty
+  delta.
 - **`cmd/tq@v0.4.1` is uninstallable — install `cmd/tq@v0.4.2`**: the
   v0.4.1 cmd/tq module's go.sum pinned a pre-merge hash for
   root@v0.4.1, so cold-cache installs die with a checksum mismatch
@@ -21,6 +77,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   (proxy 404, no runner credentials), failing every `test` job since
   2026-10-30 — CI now runs only the hermetic `--self-test`; the
   per-module lint run stays enforced by `scripts/ci-local.sh`.
+- agent-pool crush-server keeper + supervisor (client-shaped
+  keepalive dial, 45s cadence, backoff restart ladder) so an idle
+  suicide can no longer kill the pool's run.Group actor.
+- release.sh fresh-GOMODCACHE re-tidy gate: root and cmd/tq are
+  re-tidied in a scratch copy against the public proxy; committed
+  go.mod/go.sum must be byte-identical or the release dies.
+- scripts/smoke/postgres-conform.sh: one-command scratch postgres
+  cluster + full conform suite (free port, readiness probe,
+  zero-pass=FAIL).
+- check-tick-claims.sh commit-message scanner (subject claims like
+  "two rows blocked" are now verified against the diff).
+- httpapi auth-plane body-shape pin ({error,fix} JSON + Content-Type
+  on 401/429) and WithFoldLockWait injectable fold-lock timeout.
 
 ## [v0.4.1] - 2026-10-31
 
