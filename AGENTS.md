@@ -105,7 +105,7 @@ docs/DOMAIN_LANGUAGE.md.
   TQ_SQLITE_SYNC reader), openers take the struct, pragma literals live
   ONLY in config; ONE engine per sqlite home — no second write pool or
   pragma copy.
-- **SQLite IO policy (2026-10-07)**: steady-state handles run at the
+- **SQLite IO policy**: steady-state handles run at the
   configured sync tier (NORMAL = checkpoint fsync, lost-tail-tolerant);
   migrations stay FULL. Claim probes use partial RUNNING-only indexes
   (companion.Migrate), never project history. Idle worker loops back
@@ -353,12 +353,11 @@ docs/DOMAIN_LANGUAGE.md.
   `//nolint:legacyerrors // <reason>` on the call line (default lint honors
   it; the gate passes `--no-suppress` explicitly; never run
   `nolint-audit --fix` — it deletes honored tokens). `generic_return`
-  (~197 sites / 24 modules under `--max`): OWNER-RULED ADOPT 2026-10-27 —
+  (~197 sites / 24 modules under `--max`): OWNER-RULED ADOPT —
   per-function error types are a dedicated migration project, NOT lint
   debt to suppress away; the gate keeps `--disable generic_return` only
-  until the migration lands, then the disable drops. Wiring: gate +
-  ci-local, HARD; CI = `--self-test` only (repo PRIVATE, runner install
-  impossible, 2026-10-31). Bugs file at github.com/larsartmann/erraudit.
+  until the migration lands, then the disable drops. Wiring: gate + ci-local, HARD; CI = `--self-test` only (repo PRIVATE,
+  runner install impossible). Bugs file at github.com/larsartmann/erraudit.
 - **VendorHash drift**: after go.mod changes run
   `nix build .#checks.x86_64-linux.vendor-hash`, copy `got:` to flake.nix.
 - **readmodel schema drift crash-loops the fold** (planned tables get no
