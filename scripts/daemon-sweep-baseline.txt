@@ -1605,3 +1605,6 @@ bf93e909417928ceee52214ddc6f293f21d2f76b
 # 2026-10-31 T24 depbump batch: mid-edit sweep (content verified in the executor suite, green at HEAD)
 ce2f95a75e7de5256889b31ac9119560562429ff
 2cfd99afd3b9fb26a3da5a60b91bcb307bb69f95
+# 2026-10-31 T25 postgres batch: mid-edit sweeps (content verified 4996d120+ ticks)
+dff2cdd311a0c716bca6eeccc4944acfcc2b97c3
+d40bb0135fabe65c9e3a2ef6697ac093d2af4d2e
