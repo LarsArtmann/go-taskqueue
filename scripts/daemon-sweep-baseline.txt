@@ -1597,3 +1597,5 @@ f6deb5a3d4656d116e007c3b91f6969aab9f1a07
 859e25ede4eac987a788468420aedff8db1e5906
 # 2026-10-31 T18 dlq-seam batch: mid-edit sweeps of the readmodel/doctor work (content verified green in the module gates)
 5939303a3fe35a51e2b279c5431f40fd5a1c096e
+# 2026-10-31 recursion: the baseline-append sweep itself
+bfa3234ffaf67c38f51fe9df8b221b676d6497d8
