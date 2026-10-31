@@ -586,10 +586,8 @@ func cmdJournalAudit(ctx context.Context, store queue.Store, asJSON bool, taskID
 				report.Requeues.ResumeCloseout)
 		}
 
-		// "rate-limit-gate" literal: the facade-pinned queue release predates
-		// internal/queue.RequeueClassRateLimitGate (02-28 §e2).
 		if n := report.Requeues.ByClass[queue.RequeueClassRateLimit] +
-			report.Requeues.ByClass["rate-limit-gate"]; n > 0 {
+			report.Requeues.ByClass[queue.RequeueClassRateLimitGate]; n > 0 {
 			fmt.Println(
 				"  (rate-limit requeues never burn an attempt; 3 consecutive ENVIRONMENTAL ones escalate — see the env-streak breaker)",
 			)

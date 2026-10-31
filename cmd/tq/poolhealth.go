@@ -43,13 +43,9 @@ const poolWarnStreak = 3
 // pool-health exists to surface. Question parks (the owner was asked)
 // and legacy unknown facts do not count.
 var poolSkipClasses = map[string]bool{
-	queue.RequeueClassRateLimit: true,
-	// "rate-limit-gate": the sibling fast-refuse class
-	// (internal/queue.RequeueClassRateLimitGate, 02-28 §e2). Literal, not
-	// the constant: this module pins the queue FACADE's released tag, and
-	// the const only exists after the next facade release bumps the floor.
-	"rate-limit-gate":           true,
-	queue.RequeueClassGate:      true,
+	queue.RequeueClassRateLimit:     true,
+	queue.RequeueClassRateLimitGate: true, // sibling fast-refuse (02-28 §e2)
+	queue.RequeueClassGate:          true,
 	queue.RequeueClassBudget:    true,
 	queue.RequeueClassPreflight: true,
 }
