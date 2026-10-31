@@ -2,9 +2,8 @@ package executor
 
 import (
 	"context"
-	"testing"
-
 	"encoding/json/v2"
+	"testing"
 
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/task"
