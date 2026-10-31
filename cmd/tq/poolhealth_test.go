@@ -103,7 +103,9 @@ func TestPoolHealthDirtyTreeOwnLane(t *testing.T) {
 			t.Fatalf("Enqueue: %v", err)
 		}
 
-		for range n {
+		// The chain's LAST park carries a real delay so the task stops
+		// being claimable and the next seed's ClaimDue cannot grab it.
+		for i := range n {
 			claimed, claim, err := store.ClaimDue(ctx, "w1", time.Minute)
 			if err != nil {
 				t.Fatalf("ClaimDue: %v", err)
@@ -113,7 +115,12 @@ func TestPoolHealthDirtyTreeOwnLane(t *testing.T) {
 				t.Fatalf("claimed %s, want the seeded task %s", claimed.ID, enq.ID)
 			}
 
-			if err := store.Requeue(ctx, claimed.ID, claim, reason, 0, false, queue.RequeueClassPreflight, ""); err != nil {
+			delay := time.Duration(0)
+			if i == n-1 {
+				delay = time.Hour
+			}
+
+			if err := store.Requeue(ctx, claimed.ID, claim, reason, delay, false, queue.RequeueClassPreflight, ""); err != nil {
 				t.Fatalf("Requeue: %v", err)
 			}
 		}
