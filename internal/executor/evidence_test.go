@@ -3,6 +3,7 @@ package executor
 import (
 	"context"
 	"encoding/json/v2"
+	"strings"
 	"testing"
 
 	"github.com/larsartmann/go-taskqueue/internal/journal"
@@ -34,6 +35,83 @@ func TestLastFailureEvidenceReadsLastFailedFact(t *testing.T) {
 
 	if got != (FailureEvidence{Stage: "verify", ExitCode: 1}) {
 		t.Fatalf("got %+v, want stage=verify exit=1", got)
+	}
+}
+
+// TestKnownEvidenceTermsMatchesStampedVocabulary pins that every term
+// KnownEvidenceTerms lists is a value the executor actually stamps (or an
+// alias the matcher derives from error text), and that the list carries
+// no duplicates: the unknown-term warn (TODO row 1418) is only honest if
+// the "known" side is exactly the stamped vocabulary.
+func TestKnownEvidenceTermsMatchesStampedVocabulary(t *testing.T) {
+	t.Parallel()
+
+	terms := KnownEvidenceTerms()
+
+	stamped := []string{
+		"agent", // SetFailureEvidence(ctx, "agent", …) — agent.go
+		"command",
+		"verify", // SetVerifyFailureEvidence stamps Stage "verify"
+		VerifyStageGofmt, VerifyStageTest, VerifyStageE2ETimeout, VerifyStageRun,
+		string(VerifyGateEnvironmental), string(VerifyGateDead), string(VerifyGateSlow),
+	}
+
+	if len(terms) != len(stamped) {
+		t.Fatalf("KnownEvidenceTerms = %v, want exactly the stamped vocabulary %v", terms, stamped)
+	}
+
+	for _, want := range stamped {
+		found := false
+
+		for _, term := range terms {
+			if strings.EqualFold(term, want) {
+				found = true
+
+				break
+			}
+		}
+
+		if !found {
+			t.Fatalf("KnownEvidenceTerms %v missing stamped term %q", terms, want)
+		}
+	}
+}
+
+// TestUnknownEvidenceTerms pins the typo-guard decode: positive terms
+// outside the stamped vocabulary surface verbatim (lowercased), negated
+// and blank terms are exempt, whitespace and case are tolerated.
+func TestUnknownEvidenceTerms(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		spec string
+		want []string
+	}{
+		{name: "all known", spec: "gate-env, gofmt,e2e-timeout,VERIFY,command,agent,run,test,gate-dead,gate-slow"},
+		{name: "typoed alias", spec: "gate-en,gate-env", want: []string{"gate-en"}},
+		{name: "unknown negation exempt", spec: "!gate-en"},
+		{name: "mixed unknown", spec: "gofmt,veryfy", want: []string{"veryfy"}},
+		{name: "blank terms skipped", spec: " , ! ,gofmt"},
+		{name: "empty spec", spec: ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := UnknownEvidenceTerms(tt.spec)
+
+			if len(got) != len(tt.want) {
+				t.Fatalf("UnknownEvidenceTerms(%q) = %v, want %v", tt.spec, got, tt.want)
+			}
+
+			for i := range got {
+				if got[i] != tt.want[i] {
+					t.Fatalf("UnknownEvidenceTerms(%q) = %v, want %v", tt.spec, got, tt.want)
+				}
+			}
+		})
 	}
 }
 

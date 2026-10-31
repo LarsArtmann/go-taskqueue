@@ -3061,7 +3061,12 @@ func cmdDLQ(args []string) error {
 	evidenceStage := fs.String(
 		"evidence-stage",
 		"",
-		"list only dead tasks whose failure evidence names this stage class: comma-separated terms with !-negation (e.g. gate-env,!gate-slow); each term is the evidence stage (agent, verify, command), the verify-gate stage (gofmt, test, e2e-timeout, run), the retry-taxonomy class, or the gate aliases (gate-env, gate-dead, gate-slow)",
+		"list only dead tasks whose failure evidence names this stage class: comma-separated terms with !-negation (e.g. gate-env,!gate-slow); whitespace around each term is tolerated; a negation-only spec keeps everything the negations miss; each term is the evidence stage (agent, verify, command), the verify-gate stage (gofmt, test, e2e-timeout, run), the retry-taxonomy class, or the gate aliases (gate-env, gate-dead, gate-slow)",
+	)
+	jsonOut := fs.Bool(
+		"json",
+		false,
+		"emit one JSON summary object ({count,total,evidence_read}) then one JSON object per dead task, instead of the text rows; machine row counting (smokes) reads count instead of grepping row text",
 	)
 	dlqBackoff := fs.Duration("dlq-backoff", 0,
 		"cross-link rows whose repo is in poisoned-repo DLQ backoff, mirroring `tq pool-health`; defaults to the pool config file's dlq-backoff (see --config), else 0 = off")
@@ -3116,10 +3121,25 @@ func cmdDLQ(args []string) error {
 		return err
 	}
 
-	evidence := make(map[task.ID]executor.FailureEvidence, len(tasks))
+	total := len(tasks)
 
-	for _, dead := range tasks {
-		evidence[dead.ID] = failureEvidenceFor(context.Background(), store, dead.ID)
+	// The evidence= suffix costs one FactsForTask trail read per dead
+	// task, so an UNFILTERED listing caps the reads (TODO row 1413): a
+	// pathologically large DLQ must not turn every `tq dlq` into N journal
+	// scans. A deliberate --evidence-stage filter always reads — the
+	// operator asked for class forensics — and says so via evidence_read.
+	evidence := make(map[task.ID]executor.FailureEvidence, len(tasks))
+	evidenceRead := true
+
+	if *evidenceStage != "" || len(tasks) <= dlqEvidenceReadCap {
+		for _, dead := range tasks {
+			evidence[dead.ID] = failureEvidenceFor(context.Background(), store, dead.ID)
+		}
+	} else {
+		evidenceRead = false
+		fmt.Fprintf(os.Stderr,
+			"evidence read skipped: %d dead tasks exceeds the %d-row cap; rows render without evidence= (narrow with --evidence-stage)\n",
+			len(tasks), dlqEvidenceReadCap)
 	}
 
 	if *evidenceStage != "" {
@@ -3137,6 +3157,12 @@ func cmdDLQ(args []string) error {
 	deadlines, err := dlqbackoff.DeadlinesForStore(context.Background(), store, time.Now(), *dlqBackoff)
 	if err != nil {
 		return err
+	}
+
+	if *jsonOut {
+		printDLQJSON(tasks, total, evidence, deadlines, evidenceRead)
+
+		return nil
 	}
 
 	printDLQ(tasks, deadlines, evidence)
@@ -3176,6 +3202,80 @@ func listDead(ctx context.Context, s *sqlite.Store) ([]task.Task, error) {
 	st := task.Dead
 
 	return s.List(ctx, queue.Filter{Status: &st})
+}
+
+// dlqEvidenceReadCap bounds the per-dead-task journal reads an UNFILTERED
+// `tq dlq` pays for the evidence= suffix (one FactsForTask trail scan per
+// dead task): over the cap the read is skipped entirely with a stderr
+// note instead of silently rendering a 10k-dead listing at 10k scans
+// (TODO row 1413). --evidence-stage runs always read — filtering IS the
+// point of that path.
+const dlqEvidenceReadCap = 200
+
+// dlqJSONSummary leads the `tq dlq --json` stream: machine consumers
+// count rows from `count` (never grep row text — the smoke fleet's
+// row-count contract, TODO row 1416), `total` is the pre-filter dead
+// population, and `evidence_read` says whether rows carry evidence at
+// all (false = over-cap unfiltered run).
+type dlqJSONSummary struct {
+	Count        int  `json:"count"`
+	Total        int  `json:"total"`
+	EvidenceRead bool `json:"evidence_read"`
+}
+
+// dlqJSONRow is one dead task in the `tq dlq --json` stream, after the
+// dlqJSONSummary lead object.
+type dlqJSONRow struct {
+	ID              string               `json:"id"`
+	Project         string               `json:"project"`
+	Type            string               `json:"type"`
+	Attempts        int                  `json:"attempts"`
+	MaxAttempts     int                  `json:"max_attempts"`
+	LastError       string               `json:"last_error,omitempty"`
+	UpdatedAt       time.Time            `json:"updated_at"`
+	Evidence        *failureEvidenceView `json:"evidence,omitempty"`
+	DLQBackoffUntil *time.Time           `json:"dlq_backoff_until,omitempty"`
+}
+
+func printDLQJSON(
+	tasks []task.Task,
+	total int,
+	evidence map[task.ID]executor.FailureEvidence,
+	dlqBackoff map[string]time.Time,
+	evidenceRead bool,
+) {
+	enc := json.NewEncoder(os.Stdout)
+
+	_ = enc.Encode(dlqJSONSummary{Count: len(tasks), Total: total, EvidenceRead: evidenceRead})
+
+	for _, t := range tasks {
+		row := dlqJSONRow{
+			ID:          t.ID.String(),
+			Project:     t.Project,
+			Type:        t.Type,
+			Attempts:    t.Attempts,
+			MaxAttempts: t.MaxAttempts,
+			LastError:   t.LastError,
+			UpdatedAt:   t.UpdatedAt,
+		}
+
+		if ev := evidence[t.ID]; ev != (executor.FailureEvidence{}) {
+			row.Evidence = &failureEvidenceView{
+				Stage:       ev.Stage,
+				VerifyStage: ev.VerifyStage,
+				Class:       ev.Class,
+				ExitCode:    ev.ExitCode,
+				Tail:        ev.Tail,
+			}
+		}
+
+		if until, ok := dlqBackoff[t.Project]; ok {
+			backoff := until
+			row.DLQBackoffUntil = &backoff
+		}
+
+		_ = enc.Encode(row)
+	}
 }
 
 func printDLQ(tasks []task.Task, dlqBackoff map[string]time.Time, evidence map[task.ID]executor.FailureEvidence) {

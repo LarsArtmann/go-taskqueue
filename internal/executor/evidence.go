@@ -182,3 +182,57 @@ func MatchesEvidenceStage(evidence FailureEvidence, lastError, want string) bool
 
 	return false
 }
+
+// KnownEvidenceTerms is the closed vocabulary the executor itself stamps
+// into FailureEvidence today: the three Stage words, the four
+// VerifyStage values, and the three verify-gate aliases (matched via
+// error text). FailureEvidence.Class is an open field (retry taxonomy),
+// so class terms are deliberately NOT listed — a term is "known" only
+// when the executor can stamp a value the matcher would hit. Consumers
+// warn on unknown POSITIVE spec terms so a typo cannot silently yield an
+// empty DLQ that reads as "no deaths of this class" (TODO row 1418).
+func KnownEvidenceTerms() []string {
+	return []string{
+		"agent", "command", "verify",
+		VerifyStageGofmt, VerifyStageTest, VerifyStageE2ETimeout, VerifyStageRun,
+		string(VerifyGateEnvironmental), string(VerifyGateDead), string(VerifyGateSlow),
+	}
+}
+
+// UnknownEvidenceTerms returns the positive terms of a comma-separated
+// evidence-stage spec that match nothing in KnownEvidenceTerms (decoded
+// with the same whitespace/`!`-negation grammar as
+// MatchesEvidenceStageSet; negated terms are exempt — an unknown
+// negation can never silently empty the list, it just never excludes).
+func UnknownEvidenceTerms(spec string) []string {
+	known := KnownEvidenceTerms()
+
+	var unknown []string
+
+	for term := range strings.SplitSeq(spec, ",") {
+		term = strings.ToLower(strings.TrimSpace(term))
+
+		negated := strings.HasPrefix(term, "!")
+		term = strings.TrimSpace(strings.TrimPrefix(term, "!"))
+
+		if term == "" || negated {
+			continue
+		}
+
+		knownTerm := false
+
+		for _, k := range known {
+			if strings.EqualFold(k, term) {
+				knownTerm = true
+
+				break
+			}
+		}
+
+		if !knownTerm {
+			unknown = append(unknown, term)
+		}
+	}
+
+	return unknown
+}
