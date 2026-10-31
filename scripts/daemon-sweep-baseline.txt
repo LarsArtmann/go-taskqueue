@@ -1573,3 +1573,5 @@ f83ee56716838329fbb69503044cc93b9180b18f
 # 2026-10-31 T11 window: e47632c9 swept the doctor-hygiene smoke + root go.mod queue-floor bump mid-batch ahead of b34310d3 (content verified there)
 # 2026-10-31 T11 window: e47632c9 swept the doctor-hygiene smoke + root go.mod queue-floor bump mid-batch ahead of b34310d3 (content verified there)
 e47632c92fa3383fea9cb31086f044fd5ed7b53d
+# 2026-10-31 T11 window (recursion): f4716153 swept the baseline update itself; content verified in-tree
+f4716153584cce47446d20f247a28338b48c30cf
