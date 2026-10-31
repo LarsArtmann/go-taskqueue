@@ -46,8 +46,8 @@ var poolSkipClasses = map[string]bool{
 	queue.RequeueClassRateLimit:     true,
 	queue.RequeueClassRateLimitGate: true, // sibling fast-refuse (02-28 §e2)
 	queue.RequeueClassGate:          true,
-	queue.RequeueClassBudget:    true,
-	queue.RequeueClassPreflight: true,
+	queue.RequeueClassBudget:        true,
+	queue.RequeueClassPreflight:     true,
 }
 
 // poolTaskMeta is the per-task identity the fold needs; sourced from the
