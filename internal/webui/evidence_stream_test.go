@@ -117,3 +117,88 @@ func TestEvidenceChipRendersRawSpec(t *testing.T) {
 		t.Errorf("page lost the raw evidence spec; want the verbatim chip text in: %.600s", rec.Body.String())
 	}
 }
+
+// TestEvidenceFilterCountsMatches pins TODO row 1411: an active evidence
+// filter renders "N of M dead tasks match" above the narrowed DLQ — a
+// narrowed-to-zero DLQ must not read as "the dead-letter queue is empty",
+// and a narrowed table must show how big the real DLQ is.
+func TestEvidenceFilterCountsMatches(t *testing.T) {
+	srv, s := newTestServer(t)
+
+	seedDeadEvidence(t, s, "evidence-count-a", "verify failed", executor.FailureEvidence{
+		Stage:       "verify",
+		VerifyStage: executor.VerifyStageE2ETimeout,
+		ExitCode:    2,
+	})
+	seedDeadEvidence(t, s, "evidence-count-b", "boom", nil)
+
+	cases := []struct {
+		name         string
+		path         string
+		wantContains string
+		wantMissing  string
+	}{
+		{
+			name:         "narrowed table shows both counts",
+			path:         "/?evidence=e2e-timeout",
+			wantContains: "1 of 2 dead tasks match evidence=e2e-timeout",
+		},
+		{
+			name:         "narrowed-to-zero is not the empty state",
+			path:         "/?evidence=gate-slow",
+			wantContains: "0 of 2 dead tasks match evidence=gate-slow",
+			wantMissing:  "dead-letter queue is empty",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, tc.path, nil))
+
+			if rec.Code != http.StatusOK {
+				t.Fatalf("status = %d, want 200", rec.Code)
+			}
+
+			body := rec.Body.String()
+
+			if !strings.Contains(body, tc.wantContains) {
+				t.Errorf("body missing %q in: %.600s", tc.wantContains, body)
+			}
+
+			if tc.wantMissing != "" && strings.Contains(body, tc.wantMissing) {
+				t.Errorf("body must not carry %q: %.600s", tc.wantMissing, body)
+			}
+		})
+	}
+}
+
+// TestEvidenceFilterInputIsSetSpec pins TODO row 1415: the FilterBar's
+// evidence control is a datalist-backed TEXT input (the full set-spec
+// grammar — comma terms, `!`-negation — round-trips through the form),
+// with the executor-owned stamped vocabulary as suggestions.
+func TestEvidenceFilterInputIsSetSpec(t *testing.T) {
+	srv, _ := newTestServer(t)
+
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/?evidence=gate-env,!gate-slow", nil))
+
+	body := rec.Body.String()
+
+	for _, want := range []string{
+		`name="evidence"`,
+		`list="evidence-terms"`,
+		`value="gate-env,!gate-slow"`,
+		`<datalist id="evidence-terms">`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("FilterBar missing %q in: %.600s", want, body)
+		}
+	}
+
+	for _, stage := range executor.KnownEvidenceTerms() {
+		if !strings.Contains(body, `value="`+stage+`"`) {
+			t.Errorf("datalist missing suggestion %q", stage)
+		}
+	}
+}

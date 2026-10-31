@@ -1102,8 +1102,8 @@ func TestEvidenceFilterNarrowsDLQ(t *testing.T) {
 		t.Errorf("evidence filter did not narrow the DLQ; got: %s", dlq)
 	}
 
-	if !strings.Contains(rec.Body.String(), `value="e2e-timeout" selected`) {
-		t.Errorf("evidence select did not render the active stage; got: %.400s", rec.Body.String())
+	if !strings.Contains(rec.Body.String(), `name="evidence"`) || !strings.Contains(rec.Body.String(), `value="e2e-timeout"`) {
+		t.Errorf("evidence input did not render the active stage; got: %.400s", rec.Body.String())
 	}
 
 	rec = httptest.NewRecorder()

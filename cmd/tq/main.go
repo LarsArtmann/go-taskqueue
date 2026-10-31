@@ -3143,6 +3143,12 @@ func cmdDLQ(args []string) error {
 	}
 
 	if *evidenceStage != "" {
+		if unknown := executor.UnknownEvidenceTerms(*evidenceStage); len(unknown) > 0 {
+			fmt.Fprintf(os.Stderr,
+				"warning: --evidence-stage term(s) match no known stage/verify-stage/alias: %s — a typo silently matches nothing (known terms: %s)\n",
+				strings.Join(unknown, ", "), strings.Join(executor.KnownEvidenceTerms(), ", "))
+		}
+
 		filtered := make([]task.Task, 0, len(tasks))
 
 		for _, dead := range tasks {
