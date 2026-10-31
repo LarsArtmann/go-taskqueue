@@ -534,8 +534,13 @@ func assertCleanTree(ctx context.Context, repo string) error {
 	}
 
 	if s := strings.TrimSpace(out.String()); s != "" {
+		// The sentinel rides %w in BRACKETS so the rendered refusal ends
+		// "… <porcelain tail> [dirty tree]" — a distinct, greppable suffix
+		// instead of the bare words glued to the last porcelain line
+		// (pinned in TestAgentExecutorRefusesDirtyTree so journal greps
+		// stay stable).
 		return fmt.Errorf(
-			"agent: repo %s has uncommitted changes; refusing to run agent (commit/stash first, or set require_clean=false): %s%w",
+			"agent: repo %s has uncommitted changes; refusing to run agent (commit/stash first, or set require_clean=false): %s [%w]",
 			repo,
 			tailBytes(out.Bytes(), 512),
 			ErrDirtyTree,

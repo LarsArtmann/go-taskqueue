@@ -63,6 +63,18 @@ func TestAgentExecutorRefusesDirtyTree(t *testing.T) {
 		t.Fatalf("want dirty-tree refusal, got %v", err)
 	}
 
+	// The sentinel renders as a DISTINCT bracketed suffix after the
+	// porcelain tail — "... wip.txt [dirty tree]" — so journal greps for
+	// the refusal stay stable (the bare-words-glued-to-tail shape was
+	// unreadable and ungreppable).
+	if !strings.HasSuffix(err.Error(), " [dirty tree]") {
+		t.Fatalf("refusal must end with the bracketed sentinel suffix, got: %q", err.Error())
+	}
+
+	if !errors.Is(err, ErrDirtyTree) {
+		t.Fatalf("refusal lost the ErrDirtyTree chain: %v", err)
+	}
+
 	pre, ok := errors.AsType[*PreflightError](err)
 	if !ok {
 		t.Fatalf("err = %T, want *PreflightError", err)

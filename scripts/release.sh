@@ -190,6 +190,35 @@ for mod_go in go.mod $(find internal task journal queue executor worker cmd/tq -
 	gate_gomod "$mod_go"
 done
 
+step "fresh-GOMODCACHE re-tidy (the warm-cache lesson as code, RELEASE.md v0.4.x #1)"
+# A tidy that runs against the warm host cache only proves the cached bits:
+# cmd/tq@v0.4.1's pre-tag tidy passed while the published checksums were
+# poisoned, because GOPRIVATE + insteadOf rewrites served everything
+# locally. Re-tidy BOTH consumer-critical modules (root + the replace-free
+# cmd/tq) in a scratch copy of the tagged tree with a FRESH module cache and
+# the public proxy forced (GOPRIVATE unset): the committed go.mod/go.sum
+# must be byte-identical to what a clean consumer's tidy computes, and
+# go mod verify must pass. A 404/timeout here usually means a just-pushed
+# sub-tag the proxy has not indexed yet — wait a minute and re-run.
+fresh_root="$(mktemp -d)"
+fresh_cache="$(mktemp -d)"
+trap 'rm -rf "$fresh_root" "$fresh_cache"' EXIT
+git archive HEAD | tar -x -C "$fresh_root"
+for fresh_mod in . cmd/tq; do
+	(
+		cd "$fresh_root/$fresh_mod"
+		env -u GOPRIVATE GOPROXY=https://proxy.golang.org,direct GOSUMDB=sum.golang.org \
+			GOMODCACHE="$fresh_cache" GOWORK=off GOFLAGS=-mod=mod go mod tidy
+		env -u GOPRIVATE GOPROXY=https://proxy.golang.org,direct GOSUMDB=sum.golang.org \
+			GOMODCACHE="$fresh_cache" GOWORK=off go mod verify
+	) || die "fresh-cache tidy failed for $fresh_mod — a 404 here names a sub-tag the proxy has not indexed (wait + re-run); anything else is a real graph break"
+	for fresh_file in go.mod go.sum; do
+		if ! diff -q "$fresh_root/$fresh_mod/$fresh_file" "$fresh_mod/$fresh_file" >/dev/null; then
+			die "fresh-cache re-tidy changed $fresh_mod/$fresh_file — the committed file does not match a clean proxy tidy (the v0.4.1 warm-cache class); land the tidy diff before tagging"
+		fi
+	done
+done
+
 step "full CI gate (scripts/ci-local.sh — test + nix jobs on this exact tree)"
 ./scripts/ci-local.sh
 
