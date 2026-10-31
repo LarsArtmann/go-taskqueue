@@ -73,7 +73,7 @@ func New(ctx context.Context, cfg config.Deployment) (*system.System, error) {
 				// (single_opener.md): the sqliteengine factory
 				// prepends journal_mode=WAL + busy_timeout=5000 to
 				// these on every connection it builds.
-				Pragmas: cfg.ProjectionPragmas(),
+				Pragmas: ProjectionEnginePragmas(cfg),
 			},
 		},
 		Instances: []system.InstanceConfig{

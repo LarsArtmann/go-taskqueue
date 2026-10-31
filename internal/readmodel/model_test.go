@@ -29,3 +29,31 @@ func TestProjectionHomeCallerPragmasHonorSyncEnv(t *testing.T) {
 		})
 	}
 }
+
+
+// TestProjectionHomeCallerPragmasMatchBuilder pins the CALLER half of
+// TODO row 86's same-union invariant (the composed half lives in
+// internal/composition): for every sync tier the self-open fallback's
+// pragma union is exactly what config.Deployment's builder yields at
+// that tier — honored through TQ_SQLITE_SYNC, never a local literal.
+func TestProjectionHomeCallerPragmasMatchBuilder(t *testing.T) {
+	for _, tier := range []config.SyncPolicy{config.SyncFull, config.SyncNormal, config.SyncOff} {
+		t.Run(string(tier), func(t *testing.T) {
+			t.Setenv(config.EnvSyncPolicy, string(tier))
+
+			want := config.SQLite("")
+			want.SyncPolicy = tier
+
+			got := projectionHomeCallerPragmas()
+			builder := want.ProjectionPragmas()
+
+			if len(got) == 0 || len(builder) == 0 {
+				t.Fatalf("tier %s: empty pragma set (caller=%v builder=%v)", tier, got, builder)
+			}
+
+			if !slices.Equal(got, builder) {
+				t.Fatalf("tier %s: caller pragmas %v != builder pragmas %v", tier, got, builder)
+			}
+		})
+	}
+}
