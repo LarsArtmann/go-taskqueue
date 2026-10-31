@@ -9,11 +9,13 @@ package main
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"encoding/json/jsontext"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
@@ -707,8 +709,8 @@ func TestFailureSummarySplitsEnvStreakBurns(t *testing.T) {
 		t.Fatalf("failureSummary = %+v, want total=2 envStreakBurns=1", got)
 	}
 
-	if got := failureSummary(nil); got != (FailureSummary{}) {
-		t.Fatalf("failureSummary(nil) = %+v, want zero value", got)
+	if zero := failureSummary(nil); zero.Total != 0 || zero.EnvStreakBurns != 0 || zero.ByVerifyStage != nil {
+		t.Fatalf("failureSummary(nil) = %+v, want zero value", zero)
 	}
 }
 
