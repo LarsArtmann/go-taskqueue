@@ -1577,3 +1577,5 @@ e47632c92fa3383fea9cb31086f044fd5ed7b53d
 f4716153584cce47446d20f247a28338b48c30cf
 # 2026-10-31 T14 window: 7bdaf4ef swept the check-tick-claims engine + archived annotation mid-batch ahead of 384370f5 (content verified there)
 7bdaf4ef15bd9b2a2408e273843e0ef6c7a43bba
+# 2026-10-31 T14 recursion: 6ef67de3 swept a mid-edit leftover; content verified in adjacent commits
+6ef67de312ede2ec43d64002cc77441f29860a71
