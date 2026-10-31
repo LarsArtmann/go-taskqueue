@@ -1454,4 +1454,4 @@ not here.
 - [ ] bash-guard hook: `rm` → trash advisory (global never-rm policy; deny stays for the paid-trap classes)
 - [ ] bash-guard hook: fixtures-under-/tmp advisory for non-Go heredoc scripts (gated trees are daemon-food)
 - [ ] Hook hatch table → docs/hooks-hatches.md (hatches live only in deny messages today; keeps AGENTS inside its byte budget)
-- [ ] AGENTS prune-candidate pass (24.4k budget; dated asides keep getting traded for new conventions — one deliberate consolidation pass)
+- [x] AGENTS prune-candidate pass (24.4k budget; dated asides keep getting traded for new conventions — one deliberate consolidation pass) — DONE 2026-10-31 (T19 pulled forward across the day's batches): ~0.8kB of dated incident asides, stale status lines (v0.3.4→v0.4.1), and dated policy headers pruned while folding IN three new conventions (post-commit footer re-read, status-index path contract, erraudit CI wiring) + the row-54 dlq-shape-ok marker contract; budget green with headroom, size-guard test green at every step
