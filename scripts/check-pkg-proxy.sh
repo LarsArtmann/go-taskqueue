@@ -23,6 +23,18 @@ fi
 	exit 0
 }
 
+# Pre-publication window (2026-10-31, v0.4.1 resume): release.sh --push
+# re-runs the gates AFTER the tag is cut locally but BEFORE it is pushed —
+# the proxy can never list it yet. A locally-tagged, unpushed version is
+# SKIPped here; the real post-push proof is release.sh's proxy-wait +
+# clean-room + facade steps. (The v0.4.0 manual tag wave never tripped
+# this because it never ran release.sh.)
+if git rev-parse -q --verify "refs/tags/$version" >/dev/null 2>&1 &&
+	[ -z "$(git ls-remote origin "refs/tags/$version" 2>/dev/null)" ]; then
+	echo "pkg-proxy SKIP: $version tagged locally but not yet pushed — publishability is proven by release.sh --push (proxy-wait + clean-room)" >&2
+	exit 0
+fi
+
 command -v go >/dev/null || {
 	echo "pkg-proxy SKIP: no go on PATH" >&2
 	exit 0
