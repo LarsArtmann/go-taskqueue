@@ -1,8 +1,13 @@
 package readmodel
 
 import (
+	"database/sql"
+	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
+
+	_ "modernc.org/sqlite" // the driver the projection-home engine rides (probe opens it directly)
 
 	"github.com/larsartmann/go-taskqueue/internal/config"
 )
@@ -53,6 +58,53 @@ func TestProjectionHomeCallerPragmasMatchBuilder(t *testing.T) {
 
 			if !slices.Equal(got, builder) {
 				t.Fatalf("tier %s: caller pragmas %v != builder pragmas %v", tier, got, builder)
+			}
+		})
+	}
+}
+
+
+// TestSelfOpenPragmasApplyEnvSyncTier pins TODO row 844: the
+// computation-to-application gap — the self-open path's pragma strings
+// (tied to the builder by TestProjectionHomeCallerPragmasMatchBuilder)
+// applied through the SAME sqlite driver the engine rides actually set
+// the connection's synchronous level to the env tier. Only the list was
+// pinned before; the application was untested.
+func TestSelfOpenPragmasApplyEnvSyncTier(t *testing.T) {
+	expected := map[config.SyncPolicy]int{
+		config.SyncOff:    0,
+		config.SyncNormal: 1,
+		config.SyncFull:   2,
+	}
+
+	for tier, want := range expected {
+		t.Run(string(tier), func(t *testing.T) {
+			t.Setenv(config.EnvSyncPolicy, string(tier))
+
+			pragmas := projectionHomeCallerPragmas()
+			if len(pragmas) == 0 {
+				t.Fatalf("tier %s: no pragmas to apply", tier)
+			}
+
+			parts := make([]string, 0, len(pragmas))
+			for _, p := range pragmas {
+				parts = append(parts, "_pragma="+p)
+			}
+
+			db, err := sql.Open("sqlite", "file:"+filepath.Join(t.TempDir(), "probe.db")+"?"+strings.Join(parts, "&"))
+			if err != nil {
+				t.Fatalf("open probe: %v", err)
+			}
+
+			t.Cleanup(func() { _ = db.Close() })
+
+			var got int
+			if err := db.QueryRowContext(t.Context(), "PRAGMA synchronous").Scan(&got); err != nil {
+				t.Fatalf("read applied synchronous: %v", err)
+			}
+
+			if got != want {
+				t.Fatalf("tier %s: applied PRAGMA synchronous = %d, want %d (pragmas %v)", tier, got, want, pragmas)
 			}
 		})
 	}
