@@ -37,6 +37,13 @@
 #     annotated (sha)") verify the sha's TODO_LIST diff actually adds a
 #     `— BLOCKED:` line (row 1405: the 1b2fee1d class claimed both rows
 #     while touching one);
+#   - COMMIT-MESSAGE claims (row 1405 open half, 2026-10-31): messages
+#     asserting the blocking action ("mark … rows blocked", "both rows
+#     annotated (sha)", "BLOCKED rows written") verify the target diff —
+#     the cited sha's, else the claiming commit's own — adds `— BLOCKED:`
+#     lines, and an explicit count ("both"/"two"/"N rows") must be covered
+#     by that many added lines; the original 1b2fee1d subject claimed both
+#     rows while its diff touched one;
 #   - `--batch-anchors <file>` (row 1403): every anchor's TODO row must be
 #     `[x]` or carry `— BLOCKED:` — the pre-final-commit tick-audit rail,
 #     FAILing (not WARN) because the caller names its own batch.
@@ -136,6 +143,62 @@ verify_blocked_claim() {
 	fi
 	warns=$((warns + 1))
 	echo "TICK-CLAIM WARN: $file:$lineno \"$text\" — cited commit $sha adds no '— BLOCKED:' line"
+}
+
+scan_commit_messages() {
+	# Row 1405 open half: COMMIT-MESSAGE action claims. A message asserting
+	# the blocking action ("mark X rows blocked", "both rows annotated",
+	# "BLOCKED rows written") is a claim about a DIFF: the cited sha's when
+	# one rides the claim, else the claiming commit's own. The target diff
+	# must add `— BLOCKED:` lines; an explicit count (both/two/N rows) must
+	# be covered by that many additions. Messages are frozen history, so a
+	# WARN here is permanent residue — the same posture as the file-claim
+	# side (baseline regressions are the signal). Scans message SUBJECTS
+	# (where the 1b2fee1d class lives; bodies stay unscanned — prose).
+	# TQ_TICK_MSG_CMD overrides the git log fetch for the self-test
+	# (prints 'sha<TAB>subject' lines).
+	local win="${TQ_TICK_MSG_WINDOW:-300}" sha msg low claim target need got rec
+	local msg_claim_re='(mark(ed)?|writ(e|ten)|annotat(e|ed)|record(ed)?|land(ed)?)[^.]{0,80}rows?[^.]{0,40}blocked|blocked[^.]{0,40}rows?[^.]{0,80}(written|annotated|landed|marked)|((both|two|[0-9]+)[^.]{0,20}rows?[^.]{0,30}(annotated|written|blocked))'
+	while IFS=$'\t' read -r sha msg; do
+		[ -n "${sha:-}" ] || continue
+		low="${msg,,}"
+		case "$low" in
+		'*not blocked*' | *unblock* | '*never blocked*') continue ;;
+		esac
+		while IFS= read -r claim; do
+			[ -n "$claim" ] || continue
+			target="$sha"
+			if [[ "$claim" =~ \(([0-9a-f]{8,40})\) ]]; then
+				target="${BASH_REMATCH[1]}"
+			elif [[ "$claim" =~ [[:space:]](in|by|at|via)[[:space:]]+([0-9a-f]{8,40}) ]]; then
+				target="${BASH_REMATCH[2]}"
+			fi
+			need=1
+			if [[ "$claim" =~ (both|two)[[:space:]]+(rows?|items?|annotations?) ]]; then
+				need=2
+			elif [[ "$claim" =~ ([0-9]+)[[:space:]]+rows ]]; then
+				need="${BASH_REMATCH[1]}"
+			fi
+			got="$(diff_at "$target" | grep -cE '^\+.*— BLOCKED:' || true)"
+			if [ "${got:-0}" -ge "$need" ]; then
+				oks=$((oks + 1))
+			else
+				warns=$((warns + 1))
+				echo "TICK-CLAIM WARN: commit-message claim \"${claim:0:90}\" ($sha) — target $target adds $got '— BLOCKED:' line(s), claim needs $need"
+			fi
+		done < <(grep -oiE "$msg_claim_re" <<<"$msg" || true)
+	done < <(msg_records "$win")
+}
+
+msg_records() {
+	# One 'sha<TAB>subject' record per commit touching TODO_LIST.md,
+	# newest first, bounded by the window.
+	local win="$1"
+	if [ -n "${TQ_TICK_MSG_CMD:-}" ]; then
+		"$TQ_TICK_MSG_CMD"
+	else
+		git log -n "$win" --format='%H%x09%s' -- TODO_LIST.md 2>/dev/null || true
+	fi
 }
 
 scan_line() {
@@ -288,10 +351,20 @@ EOF
 case "$1" in
 aaaaaaaaaaaaaaaa) printf '%s\n' '+- [x] alpha landed' ;;
 cccccccccccccccc) printf '%s\n' '+- [x] alpha landed' '+- [ ] beta open — BLOCKED: fixture' ;;
+eeeeeeeeeeeeeeee) printf '%s\n' '+- [ ] one row — BLOCKED: fixture' ;;
 *) exit 0 ;;
 esac
 EOF
 	chmod +x "$tmp/diffcmd.sh"
+	cat >"$tmp/msgcmd.sh" <<'EOF'
+#!/bin/sh
+printf '%s\t%s\n' \
+	eeeeeeeeeeeeeeee 'docs: mark todo rows blocked on owner rulings' \
+	ffffffffffffffff 'docs: both rows annotated (cccccccccccccccc)' \
+	9999999999999999 'docs: mark todo rows blocked but touching nothing' \
+	8888888888888888 'chore: unrelated subject with no claim'
+EOF
+	chmod +x "$tmp/msgcmd.sh"
 	printf 'report says row 1 ticked, rows 1/3 [x], and rows 1-3 [x]\n' >"$tmp/f1.md"
 	printf 'sha-cited rows 1-2 ticked in aaaaaaaaaaaaaaaa plus row 2 ticked in bbbbbbbbbbbbbbbb\n' >"$tmp/f2.md"
 	printf 'negatives: rows 1-2 unticked, row 3 not ticked, row 4 was UNCHECKED\n' >"$tmp/f3.md"
@@ -304,14 +377,17 @@ EOF
 	printf 'blocked claim: BLOCKED rows written (dddddddddddddddd)\nBLOCKED rows written (cccccccccccccccc)\n' >"$tmp/f6.md"
 	local files out out2
 	files="$(printf '%s\n' "$tmp/f1.md" "$tmp/f2.md" "$tmp/f3.md" "$tmp/f4.md" "$tmp/2026-01-01_00-00_selftest.md" "$tmp/f5.md" "$tmp/f6.md")"
-	out="$(TQ_TICK_LIST_CMD="$tmp/listcmd.sh" TQ_TICK_DIFF_CMD="$tmp/diffcmd.sh" TQ_TICK_CLAIM_FILES="$files" "$self_abs" 2>&1)"
-	if ! grep -qF 'tick-claims summary: 5 ok, 5 warned, 1 skipped' <<<"$out"; then
-		echo "FAIL: negative battery counters off (want 5 ok, 5 warned, 1 skipped)"
+	out="$(TQ_TICK_LIST_CMD="$tmp/listcmd.sh" TQ_TICK_DIFF_CMD="$tmp/diffcmd.sh" TQ_TICK_MSG_CMD="$tmp/msgcmd.sh" TQ_TICK_CLAIM_FILES="$files" "$self_abs" 2>&1)"
+	# file-claims: 5 ok / 5 warned / 1 skipped (as before); message-claims:
+	# eeee bare-claim ok (+1), ffff "both … (cccc)" needs 2 but cccc adds 1
+	# (+1 warn), 9999 bare claim with an empty diff (+1 warn) → 6/7/1.
+	if ! grep -qF 'tick-claims summary: 6 ok, 7 warned, 1 skipped' <<<"$out"; then
+		echo "FAIL: negative battery counters off (want 6 ok, 7 warned, 1 skipped)"
 		printf '%s\n' "$out"
 		exit 1
 	fi
-	if [ "$(grep -c 'TICK-CLAIM WARN' <<<"$out")" -ne 5 ]; then
-		echo "FAIL: expected exactly 5 WARNs (bad-HEAD range + wrong-cited-sha + stale-day + explicit-no-flip + blocked-no-evidence)"
+	if [ "$(grep -c 'TICK-CLAIM WARN' <<<"$out")" -ne 7 ]; then
+		echo "FAIL: expected exactly 7 WARNs (bad-HEAD range + wrong-cited-sha + stale-day + explicit-no-flip + blocked-no-evidence + msg-count + msg-no-evidence)"
 		printf '%s\n' "$out"
 		exit 1
 	fi
@@ -322,6 +398,11 @@ EOF
 	fi
 	if ! grep -q "adds no '— BLOCKED:'" <<<"$out"; then
 		echo "FAIL: BLOCKED-claim WARN missing (row 1405 class)"
+		printf '%s\n' "$out"
+		exit 1
+	fi
+	if ! grep -qF 'commit-message claim' <<<"$out"; then
+		echo "FAIL: commit-message WARN missing (row 1405 open half)"
 		printf '%s\n' "$out"
 		exit 1
 	fi
@@ -368,7 +449,7 @@ EOF
 		echo "FAIL: batch-anchors rail (want clean=0 bad=1, got $rc2/$rc3)"
 		exit 1
 	fi
-	echo "tick-claims self-test ok (summary format pin + negative counter battery + no-flip/blocked/wide-window/batch-anchors rails)"
+	echo "tick-claims self-test ok (summary format pin + negative counter battery + no-flip/blocked/wide-window/batch-anchors/commit-message rails)"
 	exit 0
 }
 
@@ -405,6 +486,11 @@ for f in "${files[@]}"; do
 		echo "TICK-CLAIM SKIP: missing claim file $f"
 	fi
 done
+
+# TQ_TICK_CLAIM_FILES overrides the FILE set for the self-test; message
+# scanning stays live there via TQ_TICK_MSG_CMD so both surfaces are
+# exercised in one run.
+scan_commit_messages
 
 echo "tick-claims summary: $oks ok, $warns warned, $skips skipped"
 echo "advisory (WARN-only; cite-the-tick-commit convention, TODO row 1058) — continuing"
