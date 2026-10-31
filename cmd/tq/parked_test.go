@@ -122,7 +122,7 @@ func TestParkedProviderJoinsOntoRows(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	printTaskListTo(&buf, []task.Task{parked}, 0, func() (int, error) { return 1, nil }, providers)
+	printTaskListTo(&buf, []task.Task{parked}, 0, func() (int, error) { return 1, nil }, providers, nil)
 
 	if out := buf.String(); !strings.Contains(out, "[zai] rate limited") {
 		t.Fatalf("parked row = %q, want a [zai] tag on the last-error cell", out)
