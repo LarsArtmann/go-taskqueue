@@ -687,3 +687,27 @@ func TestAutopsyYieldClassification(t *testing.T) {
 		t.Errorf("autopsyYield(nil) = %+v, want zero value", got)
 	}
 }
+
+// TestFailureSummarySplitsEnvStreakBurns pins row 546: the env-streak
+// breaker's task.failed facts (reason carrying the bracketed env-streak
+// code) count as breaker burns, distinct from judged execution failures —
+// the audit output renders the split instead of leaving burns
+// unclassified among ordinary failures.
+func TestFailureSummarySplitsEnvStreakBurns(t *testing.T) {
+	t.Parallel()
+
+	facts := []journal.Fact{
+		{Type: journal.Failed, Error: "environmental requeue streak burned the attempt [env-streak]: streak 3: preflight refusal"},
+		{Type: journal.Failed, Error: "exit status 3"},
+		{Type: journal.Completed},
+	}
+
+	got := failureSummary(facts)
+	if got.Total != 2 || got.EnvStreakBurns != 1 {
+		t.Fatalf("failureSummary = %+v, want total=2 envStreakBurns=1", got)
+	}
+
+	if got := failureSummary(nil); got != (FailureSummary{}) {
+		t.Fatalf("failureSummary(nil) = %+v, want zero value", got)
+	}
+}

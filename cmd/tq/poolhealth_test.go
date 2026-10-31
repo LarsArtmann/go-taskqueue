@@ -319,6 +319,7 @@ func TestPoolHealthJSONShape(t *testing.T) {
 		`"skipStreak":1`,
 		`"requeuesByClass":{"rate-limit":1}`,
 		`"repo":"stucky"`,
+		`"backingOff":0`,
 	} {
 		if !strings.Contains(string(raw), want) {
 			t.Fatalf("JSON %s lacks %q", raw, want)
@@ -369,6 +370,10 @@ func TestPoolHealthDLQBackoffWarns(t *testing.T) {
 
 	if warnings := strings.Join(r.Warnings, "; "); !strings.Contains(warnings, "poisoned") {
 		t.Fatalf("warnings %q lack the poisoned cause", warnings)
+	}
+
+	if report.BackingOff != 1 {
+		t.Fatalf("BackingOff = %d, want 1 (top-level aggregate mirrors the repos fold)", report.BackingOff)
 	}
 
 	raw, err := json.Marshal(report)
