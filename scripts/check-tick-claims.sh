@@ -20,7 +20,10 @@
 # reports are frozen annotate-never-rewrite history: not scanned. Mismatch
 # = WARN pointing at the cite-the-tick-commit convention; hard-gate flip is
 # a separate follow-up row, not bundled here. Live-tree baseline at ship
-# time (2026-10-25): 318 ok / 10 WARN — historical claim-ahead residue,
+# time (2026-10-25; T14 widening 2026-10-31: 352 ok / 22 WARN — the
+# {0,4} window + no-flip + BLOCKED rails surfaced 12 more true residue
+# sites, incl. the row-1114 "row 143 was already DONE and ticked"
+# falsehood): historical claim-ahead residue,
 # incl. the originally reviewer-caught 68a20cdb "row 777 `[x]`" falsehood
 # the gate now catches mechanically; a baseline REGRESSION is the signal.
 #
