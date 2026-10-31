@@ -1564,3 +1564,9 @@ ffef803a0a0b25684dd8961ca2a1373fb670ebad
 a707eff46d871f80767cb80dbdfcdd4382e081a1
 # 2026-10-31 v0.4.1 window (cont.): 3f24e9be swept the papdashboard smoke fix mid-edit; final content folded by 72f3c908 one commit later
 3f24e9be3756a80f5d013f6670c2518d00ff4fb6
+# 2026-10-31 erraudit CI-fix window: f83ee567 swept CHANGELOG+AGENTS+ci.yml mid-edit ahead of the self-test-only fix commit 4d8217ca (content verified there)
+f83ee56716838329fbb69503044cc93b9180b18f
+# 2026-10-31 T10 heal-cluster window: 68aea0bc/494840df/0701574a swept the T10 script+doc edits mid-batch ahead of b32c3269 (owner-ordered direct work, no task lineage to heal onto; content verified in that commit)
+68aea0bc5665024c191be9e4de73e2c03cbf48f3
+494840df6f8addb58770646fb4310fde40098ef9
+0701574ad27c033974775aac5b5b440bf2ac5107
