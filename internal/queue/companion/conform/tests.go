@@ -2005,6 +2005,7 @@ func TestListQueryPushdown(t *testing.T) {
 		{Project: "alpha", Type: "sh", Payload: jsontext.Value(`"echo hello"`)},
 		{Project: "beta", Type: "agent", Payload: jsontext.Value(`{"repo":"go-taskqueue","prompt":"fix the bug"}`)},
 		{Project: "gamma", Type: "http", Payload: jsontext.Value(`{"url":"https://example.com/ping"}`)},
+		{Project: "MixedCase", Type: "sh", Payload: jsontext.Value(`"Echo LOUDLY"`)},
 	})
 
 	assertFilterCounts(t, ctx, s, []filterCase{
@@ -2014,7 +2015,13 @@ func TestListQueryPushdown(t *testing.T) {
 		{"project match", queue.Filter{Query: "gamma"}, 1},
 		{"case-insensitive", queue.Filter{Query: "ECHO HELLO"}, 1},
 		{"no match", queue.Filter{Query: "zebra"}, 0},
-		{"matches several", queue.Filter{Query: "e"}, 3},
+		{"matches several", queue.Filter{Query: "e"}, 4},
+		// Row 431: MIXED-CASE stored values are the divergence case —
+		// postgres LIKE is case-sensitive, so only the LOWER()-both-sides
+		// shape matches identically across backends.
+		{"mixed-case payload, lower query", queue.Filter{Query: "echo loudly"}, 1},
+		{"mixed-case payload, upper query", queue.Filter{Query: "ECHO LOUDLY"}, 1},
+		{"mixed-case project, lower query", queue.Filter{Query: "mixedcase"}, 1},
 	})
 }
 
@@ -2048,6 +2055,10 @@ func TestListPayloadContains(t *testing.T) {
 		},
 		{Project: "fresh", Type: "agent", Payload: jsontext.Value(`{"repo":"go-taskqueue","verify":"gofmt -l ."}`)},
 		{Project: "verify", Type: "sh", Payload: jsontext.Value(`"echo hi"`)},
+		// Row 431: the mixed-case divergence pin — a stored "Verify -Race
+		// Mixed" must match a lower/upper needle on BOTH backends (LOWER()
+		// both sides, not sqlite's default-LIKE luck).
+		{Project: "mixed", Type: "agent", Payload: jsontext.Value(`{"repo":"R","verify":"Verify -Race Mixed"}`)},
 	})
 
 	assertFilterCounts(t, ctx, s, []filterCase{
@@ -2058,7 +2069,11 @@ func TestListPayloadContains(t *testing.T) {
 		{"type must NOT match", queue.Filter{PayloadContains: "agent"}, 0},
 		{"no match", queue.Filter{PayloadContains: "zebra"}, 0},
 		{"literal percent", queue.Filter{PayloadContains: "100%"}, 0},
+		{"mixed-case payload, lower needle", queue.Filter{PayloadContains: "verify -race mixed"}, 1},
+		{"mixed-case payload, upper needle", queue.Filter{PayloadContains: "VERIFY -RACE MIXED"}, 1},
 	})
+
+
 
 	// Limit applies AFTER the payload filter: a capped list shows the
 	// first N matches, not the first N tasks filtered.

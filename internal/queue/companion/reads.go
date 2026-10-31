@@ -71,9 +71,13 @@ func listWhere(f queue.Filter) (string, []any) {
 		// payload is BLOB under the upstream engine (tq stores TEXT), so
 		// the substring pushdown reads it through CAST — LIKE never
 		// matches a BLOB operand against a TEXT pattern.
-		where = append(where, `(id LIKE ? ESCAPE '\' OR type LIKE ? ESCAPE '\' OR
-			project LIKE ? ESCAPE '\' OR CAST(payload AS TEXT) LIKE ? ESCAPE '\' OR
-			lease_owner LIKE ? ESCAPE '\' OR last_error LIKE ? ESCAPE '\')`)
+		// LOWER() both sides: the match is case-insensitive IDENTICALLY
+		// on sqlite (LIKE is case-insensitive by default) and postgres
+		// (LIKE is case-sensitive) — row 431, pinned per-backend in the
+		// conform suite.
+		where = append(where, `(LOWER(id) LIKE ? ESCAPE '\' OR LOWER(type) LIKE ? ESCAPE '\' OR
+			LOWER(project) LIKE ? ESCAPE '\' OR LOWER(CAST(payload AS TEXT)) LIKE ? ESCAPE '\' OR
+			LOWER(lease_owner) LIKE ? ESCAPE '\' OR LOWER(last_error) LIKE ? ESCAPE '\')`)
 		args = append(args, like, like, like, like, like, like)
 	}
 
@@ -83,7 +87,9 @@ func listWhere(f queue.Filter) (string, []any) {
 		// Payload-only substring: the `tq tasks --verify-contains`
 		// pushdown. Unlike Query it must NOT match id/project/last_error,
 		// or the hygiene audit it feeds over-matches.
-		where = append(where, `CAST(payload AS TEXT) LIKE ? ESCAPE '\'`)
+		// LOWER() both sides keeps the case semantics identical across
+		// backends (row 431).
+		where = append(where, `LOWER(CAST(payload AS TEXT)) LIKE ? ESCAPE '\'`)
 		args = append(args, like)
 	}
 
