@@ -1560,3 +1560,5 @@ fef5a1ff7c48b8279cc8df0f4c4f22aa118c0c1f
 ff7a22a64b543812fc7734effd48896f407ea779
 ff9ef830d325ab1e0436dda26be7a39ee2a6245c
 ffef803a0a0b25684dd8961ca2a1373fb670ebad
+# 2026-10-31 v0.4.1 release window: a707eff4 swept the serve-flag + cmd/tq go.mod edits mid-session (content verified + folded into the release commit chain; interactive session, no healable task span)
+a707eff46d871f80767cb80dbdfcdd4382e081a1
