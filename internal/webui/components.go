@@ -520,7 +520,7 @@ func failureEvidenceStage(fact journalFactView) string {
 		return ""
 	}
 
-	return evidence.Summary()
+	return evidence.SummaryWithError(fact.Error)
 }
 
 // factLineText merges a fact's Error and its Detail reason into ONE honest

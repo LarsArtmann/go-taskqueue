@@ -3189,7 +3189,7 @@ func printDLQ(tasks []task.Task, dlqBackoff map[string]time.Time, evidence map[t
 		row := fmt.Sprintf("%s  %-24s attempts=%d/%d  %s",
 			t.ID, t.Project+"/"+t.Type, t.Attempts, t.MaxAttempts, truncate(t.LastError, 80))
 
-		if summary := evidence[t.ID].Summary(); summary != "" {
+		if summary := failureEvidenceSummary(evidence[t.ID], t.LastError); summary != "" {
 			row += "  evidence=" + summary
 		}
 

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
@@ -64,6 +65,64 @@ func latestRequeueProvider(facts []journal.Fact) map[string]string {
 	}
 
 	return latest
+}
+
+// failureEvidenceSummary composes the evidence= suffix from PUBLISHED
+// executor primitives — this module is replace-free (ADR-0017) and
+// executor.SummaryWithError is newer than the pinned tag: Summary plus,
+// when no structured Class exists, the verify-gate alias the recorded
+// error text matches. The alias strings and matcher stay owned by
+// executor (constants + MatchesEvidenceStage); nothing is re-typed here
+// (the cmd/tq-view-vs-executor-type boundary class, dupe ledger row 11).
+func failureEvidenceSummary(e executor.FailureEvidence, lastError string) string {
+	stage := e.Summary()
+	if e.Class != "" {
+		return stage
+	}
+
+	for _, alias := range []string{
+		string(executor.VerifyGateEnvironmental), string(executor.VerifyGateDead), string(executor.VerifyGateSlow),
+	} {
+		if executor.MatchesEvidenceStage(e, lastError, alias) {
+			if stage != "" {
+				stage += " "
+			}
+
+			return stage + "alias=" + alias
+		}
+	}
+
+	return stage
+}
+
+// latestFailureEvidenceSummary walks facts in seq order and returns, per
+// task id, the SummaryWithError of its most recent task.failed fact
+// (last-wins; the fact's error text rides along so alias-only deaths still
+// render). One self-describing row shape across `tq dlq` and
+// `tq tasks --parked` (TODO row 1414); unparsable details skip.
+func latestFailureEvidenceSummary(facts []journal.Fact) map[string]string {
+	latest := make(map[string]journal.Fact)
+
+	for _, fact := range facts {
+		if fact.Type == journal.Failed {
+			latest[fact.TaskID] = fact
+		}
+	}
+
+	out := make(map[string]string, len(latest))
+
+	for id, fact := range latest {
+		var evidence executor.FailureEvidence
+		if json.Unmarshal(fact.Detail, &evidence) != nil {
+			continue
+		}
+
+		if s := failureEvidenceSummary(evidence, fact.Error); s != "" {
+			out[id] = s
+		}
+	}
+
+	return out
 }
 
 // parkedByClass filters tasks down to the ones currently inside a park of

@@ -192,9 +192,11 @@ func cmdTasks(args []string) error {
 	}
 
 	var providers map[string]string
+	var evidenceRows map[string]string
 
 	if *parked {
 		providers = latestRequeueProvider(facts)
+		evidenceRows = latestFailureEvidenceSummary(facts)
 	}
 
 	if *asJSON {
@@ -243,7 +245,7 @@ func cmdTasks(args []string) error {
 		return enc.Encode(tasks)
 	}
 
-	printTaskListTo(os.Stdout, tasks, *limit, uncappedTotal, providers)
+	printTaskListTo(os.Stdout, tasks, *limit, uncappedTotal, providers, evidenceRows)
 
 	return nil
 }
@@ -261,7 +263,7 @@ type parkedTaskRow struct {
 // so a truncated footer never reads as the whole set (dead-letter census
 // missed a 09-20 death behind a silent 50-row cap).
 func printTaskList(tasks []task.Task, limit int, total func() (int, error)) {
-	printTaskListTo(os.Stdout, tasks, limit, total, nil)
+	printTaskListTo(os.Stdout, tasks, limit, total, nil, nil)
 }
 
 // providers (nil outside --parked) joins each task's latest requeue
@@ -273,6 +275,7 @@ func printTaskListTo(
 	limit int,
 	total func() (int, error),
 	providers map[string]string,
+	evidence map[string]string,
 ) {
 	if len(tasks) == 0 {
 		fmt.Fprintln(w, "no matching tasks")
@@ -294,11 +297,19 @@ func printTaskListTo(
 
 	now := time.Now()
 	for _, t := range tasks {
-		fmt.Fprintf(w, "%-36s %-14s %-16s %-7s %5d %-9s  %s\n",
+		row := fmt.Sprintf("%-36s %-14s %-16s %-7s %5d %-9s  %s",
 			t.ID.String(), statusCell(t, now), t.Project, t.Type, t.Attempts,
 			notBeforeCell(t, now),
 			truncate(parkedCell(t, providers), 60),
 		)
+		// The evidence= suffix keeps tq dlq's self-describing row shape on
+		// parked rows too (verify-stage/class of the death that parked it,
+		// alias-only deaths included) — TODO row 1414.
+		if summary := evidence[t.ID.String()]; summary != "" {
+			row += "  evidence=" + summary
+		}
+
+		fmt.Fprintln(w, row)
 	}
 
 	if limit > 0 && len(tasks) == limit {

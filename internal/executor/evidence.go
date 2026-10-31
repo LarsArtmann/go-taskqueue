@@ -72,6 +72,32 @@ func (e FailureEvidence) Summary() string {
 	return stage
 }
 
+// SummaryWithError renders Summary and, when NO structured Class exists,
+// the verify-gate alias the recorded error text matches ("alias=gate-env"):
+// the gate-env/gate-dead/gate-slow classes live only in the error text, so
+// without this an alias-only death renders a bare or empty suffix while
+// `--evidence-stage gate-env` still matches it (TODO row 1419).
+func (e FailureEvidence) SummaryWithError(lastError string) string {
+	stage := e.Summary()
+	if e.Class != "" {
+		return stage
+	}
+
+	for _, alias := range []string{
+		string(VerifyGateEnvironmental), string(VerifyGateDead), string(VerifyGateSlow),
+	} {
+		if MatchesEvidenceStage(e, lastError, alias) {
+			if stage != "" {
+				stage += " "
+			}
+
+			return stage + "alias=" + alias
+		}
+	}
+
+	return stage
+}
+
 // MatchesEvidenceStageSet matches a comma-separated evidence-stage spec
 // with `!`-negation (e.g. `gate-env,!gate-slow`): a task survives when it
 // matches at least one positive term and matches NO negated term; a spec
