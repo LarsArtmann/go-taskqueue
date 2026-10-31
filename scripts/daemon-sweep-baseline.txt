@@ -1611,3 +1611,8 @@ d40bb0135fabe65c9e3a2ef6697ac093d2af4d2e
 # 2026-10-31 continuation session: CHANGELOG Unreleased rows (8497f3c2) + row-852 gci fix in conform/tests.go (c78b852d) — both verified: O14 check green, lint-baseline --check green 2430=2430
 8497f3c25a99766147181b691be8bd1393be7ffd
 c78b852d92aea64ed883436bc56ca2eb112dd37f
+# 2026-10-31 T20 row-1445 questions pane: mid-edit sweeps (all content webui-suite green at each sweep; final suite green at feee6dda)
+9a93b08855ac26e266843e9464f0a65aea7d5182
+c14066e705b88a3001e81378f09aa6504f3a193b
+07d4841dd3a3c4131d14b050ee3a0b90a435f8c1
+feee6dda3a08c8a5802164c7c40683cffcefd543
