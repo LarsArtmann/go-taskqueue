@@ -1595,3 +1595,5 @@ f6deb5a3d4656d116e007c3b91f6969aab9f1a07
 # 2026-10-31 T17 audit/stats batch: mid-edit sweeps of the 546/797/1087 work ahead of a6b6193e (content verified there)
 6fb51fa456676a74c9c5d689f1d580d49e08f917
 859e25ede4eac987a788468420aedff8db1e5906
+# 2026-10-31 T18 dlq-seam batch: mid-edit sweeps of the readmodel/doctor work (content verified green in the module gates)
+5939303a3fe35a51e2b279c5431f40fd5a1c096e
