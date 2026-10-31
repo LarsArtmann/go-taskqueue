@@ -37,6 +37,7 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/harvest"
 	"github.com/larsartmann/go-taskqueue/internal/httpapi"
 	"github.com/larsartmann/go-taskqueue/internal/incident"
+	"github.com/larsartmann/go-taskqueue/internal/lockout"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/journal/cqrs"
 	"github.com/larsartmann/go-taskqueue/internal/prioritize"
@@ -107,7 +108,7 @@ tq cancel TASK_ID [--force] [--reason WHY] [--db PATH]   (--force: cooperative c
                   session that is quiet and no longer owned by a live crush
                   process; replay-safe via the close dedup keys)
   tq serve [--addr ADDR] [--auth-token TOKEN] [--db PATH] [--store PATH|DSN] [--poll DUR] [--verbose] [--read-model]   (--read-model default; =false uses the hand journal tailer)
-  tq api [--addr ADDR] --auth-token TOKEN [--db PATH] [--store PATH|DSN] [--read-model]   (write API: POST /api/v1/tasks; --read-model default)
+  tq api [--addr ADDR] --auth-token TOKEN [--db PATH] [--store PATH|DSN] [--read-model]   (write API: POST /api/v1/tasks; --read-model default; repeated bad tokens lock the client IP: 429 + Retry-After)
   tq verdict '<json>'   (agent-facing: record this task's structured result
                   into $TQ_RESULT_FILE; validates JSON, no database access)
   tq ask --task <id> [--type info|approval|confirmation|input]
@@ -3899,6 +3900,11 @@ func cmdAPI(args []string) error {
 	defer stop()
 
 	fmt.Fprintf(os.Stderr, "tq: write API on http://%s (token required)\n", *addr)
+	// The lockout policy line (row 205): misconfigured producers hit the
+	// 429 + Retry-After surface without reading the source — the startup
+	// banner names the exact knobs, and every lock also WARNs to stderr.
+	fmt.Fprintf(os.Stderr, "tq: auth lockout: %d failed attempts lock the client IP for %s (429 + Retry-After; resets on a valid token)\n",
+		lockout.DefaultMaxHits, lockout.DefaultLockout)
 
 	return server.ListenAndServe(ctx, *addr)
 }

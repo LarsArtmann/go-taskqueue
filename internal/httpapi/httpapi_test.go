@@ -388,6 +388,73 @@ func TestAuthLockoutIsPerClient(t *testing.T) {
 	}
 }
 
+// TestAuthPlaneBodyShape pins row 586: BOTH auth-plane failures — 401
+// unauthorized and the lockout 429 — answer {error, fix} JSON with
+// Content-Type: application/json, so a regression back to plain-text
+// http.Error fails CI and machine consumers can always decode the fix.
+func TestAuthPlaneBodyShape(t *testing.T) {
+	srv, _ := newTestAPI(t)
+	srv.strikes = lockout.New(lockout.Config{
+		MaxHits:  authMaxHits,
+		Lockout:  time.Hour,
+		IdleKeep: authIdleKeep,
+		MaxKeys:  authMaxKeys,
+	})
+	h := srv.Handler()
+
+	assertBody := func(t *testing.T, rec *httptest.ResponseRecorder, wantStatus int) {
+		t.Helper()
+
+		if rec.Code != wantStatus {
+			t.Fatalf("status = %d, want %d", rec.Code, wantStatus)
+		}
+
+		if ct := rec.Header().Get("Content-Type"); !strings.HasPrefix(ct, "application/json") {
+			t.Fatalf("Content-Type = %q, want application/json (plain-text http.Error regression)", ct)
+		}
+
+		var body struct {
+			Error string `json:"error"`
+			Fix   string `json:"fix"`
+		}
+		if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+			t.Fatalf("body not JSON: %v (%s)", err, rec.Body.String())
+		}
+
+		if body.Error == "" || body.Fix == "" {
+			t.Fatalf("body must carry non-empty error+fix keys, got %+v (%s)", body, rec.Body.String())
+		}
+	}
+
+	t.Run("401 unauthorized", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/healthz", nil)
+		req.Header.Set("Authorization", "Bearer wrong")
+
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+
+		assertBody(t, rec, http.StatusUnauthorized)
+	})
+
+	t.Run("lockout 429", func(t *testing.T) {
+		for range authMaxHits {
+			req := httptest.NewRequest(http.MethodGet, "/api/v1/healthz", nil)
+			req.Header.Set("Authorization", "Bearer wrong")
+
+			rec := httptest.NewRecorder()
+			h.ServeHTTP(rec, req)
+		}
+
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/healthz", nil)
+		req.Header.Set("Authorization", "Bearer secret-token")
+
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+
+		assertBody(t, rec, http.StatusTooManyRequests)
+	})
+}
+
 // TestAuthStrikesResetOnSuccess mirrors the dashboard limiter: a successful
 // auth clears the strikes, so scattered one-off failures never lock out a
 // legitimate producer.
