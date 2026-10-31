@@ -8,21 +8,49 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- Nothing yet.
+
+### Fixed
+
+- Nothing yet.
+
+## [v0.4.1] - 2026-10-31
+
+### Added
+
 - **`tq agent-pool --crush-server <socket>` (L1 client-server seam)**:
   when set, the pool runs a shared `crush server` on the socket as a
   lifecycle actor and every dispatched agent run becomes a thin client
   (argv adds `-H <socket>`, env adds `CRUSH_CLIENT_SERVER=1`); absent =
   today's in-process runs, rollback = unset the flag. Executors pin the
   seam via internal/executor v0.4.1.
-- **Live agent pane (L2 observability)**: the dashboard gained an
-  append-only live-agents pane streaming distilled tool events from
-  routed runs (`GET /agents/live`; 503 when no crush server is
-  configured). The `tq serve --crush-server` wiring ships with the next
-  root tag.
+- **`tq serve --crush-server <socket>` + live agent pane (L2
+  observability)**: pointing serve at a running crush server's unix
+  socket lights the dashboard's append-only live-agents pane —
+  `GET /agents/live` streams distilled tool events from routed runs
+  (race-attach with reconnect, byte-exact excerpts; can share the
+  agent-pool's socket). Absent flag = pane hidden and `/agents/live`
+  serves 503; rollback = unset the flag.
 
-### Fixed
+### Changed
 
-- Nothing yet.
+- **(BEHAVIOR CHANGE for release consumers)** v0.4.1 supersedes the
+  v0.4.0 tag wave: the v0.4.0 tag tree failed CI (cmd/tq tidy drift plus
+  two treefmt formatting drifts) and tags are immutable, so the fixes
+  ship here. The v0.4.0 module tags remain proxy-resolvable and the
+  consumer job was green on them; `cmd/tq@v0.4.1` is the FIRST published
+  cmd/tq module tag of the 0.4.x line — install that.
+
+### Internal
+
+- Riding this release: release-docs O14 self-test anchored under
+  [Unreleased] itself; report-secrets gate broken-on-arrival heal
+  (quoted-redirect fixtures) plus two documentation-fake redactions;
+  daemon-sweep attribution baseline regen (+179, the 2026-10-30
+  multi-session window); dupe-type ledger row 11
+  (FailureEvidence vs cmd/tq view); dlq evidence-stage e2e smoke wired
+  into ci-local (was orphaned); treefmt sync (executor test imports,
+  fragments.templ).
 
 ## [v0.4.0] - 2026-10-30
 

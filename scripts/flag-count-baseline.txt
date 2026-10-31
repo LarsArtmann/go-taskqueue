@@ -16,7 +16,7 @@ dlq 10
 cancel 3
 facts 7
 tail 3
-serve 10
+serve 11
 api 5
 version 0
 ask 0
