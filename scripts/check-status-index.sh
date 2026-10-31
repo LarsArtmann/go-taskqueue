@@ -253,7 +253,7 @@ fi
 # docs/status/README.md (README scannability-cadence paragraph).
 live=$(count_live_rows "$index")
 if [ "$live" -gt "$INDEX_BLOAT_THRESHOLD" ]; then
-	echo "INDEX BLOAT WARNING: $live live rows in $index (threshold $INDEX_BLOAT_THRESHOLD) — run the ratified monthly digest ritual: an ANNOTATE+ARCHIVE sweep that lands its \\(digest 20…\\) row in docs/status/README.md (08-25 f20; 2026-10-26 closeout §e4)"
+	echo "INDEX BLOAT WARNING: $live live rows in $index (threshold $INDEX_BLOAT_THRESHOLD) — run the ratified monthly digest ritual: an ANNOTATE+ARCHIVE sweep that lands its \`digest 20…\` row in docs/status/README.md (08-25 f20; 2026-10-26 closeout §e4)"
 fi
 
 if [ "$mine" = 1 ] && [ "$fail" = 0 ]; then
