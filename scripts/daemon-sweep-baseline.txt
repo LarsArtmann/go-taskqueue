@@ -1579,3 +1579,6 @@ f4716153584cce47446d20f247a28338b48c30cf
 7bdaf4ef15bd9b2a2408e273843e0ef6c7a43bba
 # 2026-10-31 T14 recursion: 6ef67de3 swept a mid-edit leftover; content verified in adjacent commits
 6ef67de312ede2ec43d64002cc77441f29860a71
+# 2026-10-31 T15/T19 windows: mid-edit sweeps of the evidence/parked work + AGENTS consolidation ahead of dc3cc7fc/054cbb55 (content verified there)
+9de9279e056d98df27dd1d5af6b12e3415779384
+ccab5c68ce883c0136c2dd6df6ee36aed8715caa
