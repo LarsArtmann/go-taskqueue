@@ -1,6 +1,6 @@
 # Status Report — WebUI/UX Design Pass (interactive session, no task id)
 
-> **ANNOTATED 2026-10-31** (digest-ritual ANNOTATE pass, batch 000001a18fe3eac5; per-item triage at HEAD; owner of residue = the ratified monthly digest ritual). Dispositions — SHIPPED: AGENTS GOTOOLCHAIN truthing (row 917, d34b3770); screenshot harness productized (row 798 RULED); CHANGELOG instrument-pass entry. ROUTED: `tq serve --daily-budget` + role=meter a11y (row 617). OPEN: app.js Esc-handler overlay-close verification (no row).
+> **ANNOTATED 31 Oct 2026** (digest-ritual ANNOTATE pass, batch 000001a18fe3eac5; per-item triage at HEAD; owner of residue = the ratified monthly digest ritual). Dispositions — SHIPPED: AGENTS GOTOOLCHAIN truthing (row 917, d34b3770); screenshot harness productized (row 798 RULED); CHANGELOG instrument-pass entry. ROUTED: `tq serve --daily-budget` + role=meter a11y (row 617). OPEN: app.js Esc-handler overlay-close verification (no row).
 
 **Date:** 2026-09-21 13:31 CEST
 **Scope:** one interactive session on `internal/webui` (dashboard + task detail + board), plus two root-cause dev-tooling fixes it surfaced. No queue tasks were consumed or minted (owner-driven interactive work).

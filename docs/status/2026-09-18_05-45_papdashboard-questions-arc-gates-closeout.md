@@ -1,6 +1,6 @@
 # PapDashboard Questions Arc — Gates Close-out + Brutal Self-Review (2026-09-18 05-45)
 
-> **ANNOTATED 2026-10-31** (digest-ritual ANNOTATE pass, batch 000001a18fe3eac5; per-item triage at HEAD; owner of residue = the ratified monthly digest ritual). Dispositions — SHIPPED: master CI legs healed (v0.3.4 pushed, row 69); formatterWithGo note; lint-baseline --clean-cache; vendor-sync guard (check-gomod-vendor-sync.sh); daemon-footer heal + index sweeps (heal-daemon-sweep.sh, rows 200/634). ROUTED/OPEN-OWNER: questions follow-ups — 72h expiry, TQ_TASK_ID env, expiry-sweep fact, TQ_QUESTION_FILE pin, SECURITY note (rows 264-268), questions-loop surface bundle (row 297).
+> **ANNOTATED 31 Oct 2026** (digest-ritual ANNOTATE pass, batch 000001a18fe3eac5; per-item triage at HEAD; owner of residue = the ratified monthly digest ritual). Dispositions — SHIPPED: master CI legs healed (v0.3.4 pushed, row 69); formatterWithGo note; lint-baseline --clean-cache; vendor-sync guard (check-gomod-vendor-sync.sh); daemon-footer heal + index sweeps (heal-daemon-sweep.sh, rows 200/634). ROUTED/OPEN-OWNER: questions follow-ups — 72h expiry, TQ_TASK_ID env, expiry-sweep fact, TQ_QUESTION_FILE pin, SECURITY note (rows 264-268), questions-loop surface bundle (row 297).
 
 Session: interactive continuation (no Task-Queue-ID; the owner-driven
 "READ, UNDERSTAND, REFLECT, execute, verify" close-out of the questions
