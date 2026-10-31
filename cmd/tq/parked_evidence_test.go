@@ -26,10 +26,10 @@ func TestParkedRowsCarryEvidenceSuffix(t *testing.T) {
 	}
 
 	facts := []journal.Fact{{
-		Type:    journal.Failed,
-		TaskID:  id.String(),
-		Error:   "agent verify gate environmental: " + executor.VerifyGateEnvCode,
-		Detail:  detail,
+		Type:   journal.Failed,
+		TaskID: id.String(),
+		Error:  "agent verify gate environmental: " + executor.VerifyGateEnvCode,
+		Detail: detail,
 	}}
 
 	summaries := latestFailureEvidenceSummary(facts)
