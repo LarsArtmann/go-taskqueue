@@ -44,6 +44,7 @@ signal (`exec.ExitError`, code −1).
 | `multi-repo.sh`           | multi-project claiming                        |
 | `new-module.sh`           | module scaffold + mirror-clone gate           |
 | `papdashboard-e2e.sh`     | dead-letter alert bridge                      |
+| `postgres-conform.sh`     | scratch postgres cluster + conform suite      |
 | `proxy-wait.sh`           | module-proxy readiness                        |
 | `questions-e2e.sh`        | `tq ask` park/answer routing                  |
 | `ratelimit-e2e.sh`        | 429 requeue-without-burn                      |
