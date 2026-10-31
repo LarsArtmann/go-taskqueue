@@ -51,6 +51,16 @@ const DefaultEngineName = "projections"
 // deployment's resolved sync tier drives the engine's pragmas — the
 // config.Deployment is the ONE deployment description (ADR-0022
 // deployment lane); the projection home itself stays sqlite-embedded.
+// ProjectionEnginePragmas is the pragma set the composed system's
+// projection-home engine declares. Extracted from New so the
+// same-union invariant with readmodel's self-open caller path is PINNABLE
+// (TODO row 86): both sides must derive from config.Deployment's builder
+// — a pragma edit landing on one side only fails
+// TestProjectionPragmaUnionSingleSource instead of rotting prose.
+func ProjectionEnginePragmas(cfg config.Deployment) []string {
+	return cfg.ProjectionPragmas()
+}
+
 func New(ctx context.Context, cfg config.Deployment) (*system.System, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, fmt.Errorf("composition: deployment: %w", err)
