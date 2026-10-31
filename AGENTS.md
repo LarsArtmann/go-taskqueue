@@ -2,8 +2,8 @@
 
 Projects-aware task queue / worker pool for Go — see README.md.
 
-**STATUS: v0.3.4 shipped (tags pushed, proxy verified); MULTIPLE
-concurrent agents** — re-read files, re-run tests; uncommitted parallel
+**STATUS: v0.4.1 shipped; MULTIPLE concurrent agents** — re-read files,
+re-run tests; uncommitted parallel
 changes: read, judge, build on, never revert. (Size guard: TestAgentsDocSizeGuard)
 
 **MAJOR OPEN PROBLEMS**: [dispatch prompting + batch granularity](docs/problems/major-prompting-and-batching.md) —
@@ -160,7 +160,7 @@ docs/DOMAIN_LANGUAGE.md.
   **Env-requeue breaker**: env requeues carry `requeue_class`; 3
   consecutive burn an attempt + escalate (`env-streak`) — never uncap.
   Dirty-tree preflight refusals are EXEMPT (typed `ErrDirtyTree`): they
-  park on the escalating ladder, NO attempt burn (a0a343eb).
+  park on the escalating ladder, NO attempt burn.
 - **Secrets redaction** (default ON): every output tail passes
   `internal/executor/redact.go`; `tq audit --journal` reports SECRET
   EVIDENCE rows. Growth: ONE `secretPatterns` entry + fake-shape sample
@@ -348,9 +348,8 @@ docs/DOMAIN_LANGUAGE.md.
   flags live there (`--max` is dev-build-only; CI pin v0.7.0 rejects it,
   so the gate passes the explicit decomposition),
   run from EACH module root (`lint` REJECTS `--modules`/
-  `--violations-only`; the root hint naming `--modules=all` is wrong for
-  `lint`). `legacy_as` = migrate to `errors.AsType` (zero since
-  2026-10-27); `legacy_is` sentinel sites KEEP `errors.Is` +
+  `--violations-only` — never pass them). `legacy_as` = migrate to
+  `errors.AsType` (migrated; zero standing); `legacy_is` sentinel sites KEEP `errors.Is` +
   `//nolint:legacyerrors // <reason>` on the call line (default lint honors
   it; the gate passes `--no-suppress` explicitly; never run
   `nolint-audit --fix` — it deletes honored tokens). `generic_return`
@@ -377,9 +376,9 @@ docs/DOMAIN_LANGUAGE.md.
   the download) and `formatterWithGo` wraps templ fmt/goimports with it;
   ALL FOUR blocks drop together when nixpkgs ships go ≥ 1.27.3 — hashes
   stay paired (`goTarballHash`).
-- **templ-components sibling pins**: zero pseudo-versions
-  (`v…00001010100000-…`) in a dep's root go.mod pass local builds but
-  kill consumer graph loads (Nix FOD) — `grep -r 00010101` the dep
+- **templ-components sibling pins**: pseudo-versions
+  in a dep's root go.mod pass local builds but kill consumer graph loads
+  (Nix FOD) — `grep -r 00010101` the dep
   before blaming the flake/vendorHash.
 - **gofmt gates are SCOPED to non-gitignored files**
   (`executor.ScopedGofmtStage`, doctor `gofmt:<repo>`; scoped recipe in
