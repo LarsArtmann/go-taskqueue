@@ -1,5 +1,7 @@
 # 2026-09-16 12:11 — "why is tq.home.lan still so ugly?" → diagnosis + instrument-pass redesign
 
+> **ANNOTATED 2026-10-31** (digest-ritual ANNOTATE pass, batch 000001a18fe3eac5; per-item triage at HEAD; owner of residue = the ratified monthly digest ritual). Dispositions — SHIPPED: CSP composition + noindex /health (internal/webui/health.go withHealthHeaders + health_test.go); screenshots harness (scripts/webui-screenshots.sh); CHANGELOG/FEATURES entries. ROUTED: ci-local soak (row 225); dark-mode /health + browser health test + knobs ADR (row 305). OPEN: board/detail-page instrument pass, board keyboard/drag notes, WithTrend/Prometheus/prober extensions, SECURITY/README health product rows (no open rows).
+
 Session lap 2 (same session as the 08:28 health-dashboard adoption report). The owner
 complained the live dashboard at https://tq.home.lan/ is "still so ugly". This lap:
 diagnosed the ugliness with receipts (fetched the LIVE site's markup + CSS), designed a

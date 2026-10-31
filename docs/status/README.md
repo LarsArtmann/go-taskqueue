@@ -89,7 +89,7 @@ gate re-verifies. Full contract: AGENTS.md (evidence-archive bullets).
 
 Archive counter (update when moving files): 616 reports in `archived/`,
 39 plans in `docs/planning/archived/` + 2 feedback drafts in
-`docs/feedback/archived/` (new home, 2026-10-12 sweep 6). 2026-10-28 row-1044 chain sweep: the 2026-10-20 done-prompt chain archived — canonical window report 02-31 (per-item triage at HEAD: all §f items done/routed rows 1041/1043/1044, §g routed rows 652/653/1045/1046) + seven verify-only re-dispatch layers (03-14 → 14-48) as DUPLICATE dispositions; digest row added, live count measurable again. 2026-10-12
+`docs/feedback/archived/` (new home, 2026-10-12 sweep 6). 2026-10-31 digest-ritual ANNOTATE pass (batch 000001a18fe3eac5): per-item triage of all 32 live 2026-09-16..09-25 root window reports at HEAD — every report carries an inline ANNOTATED block with per-item SHIPPED/ROUTED/OWNER/OPEN verdicts; 4 fully-resolved reports flagged as archive candidates for the November sweep (01-40, 02-51, 03-45, 03-15 of 09-17/09-19); nothing git-mv'd — the archive half belongs to the sweep that updates `digest 2026-11` in place. 2026-10-28 row-1044 chain sweep: the 2026-10-20 done-prompt chain archived — canonical window report 02-31 (per-item triage at HEAD: all §f items done/routed rows 1041/1043/1044, §g routed rows 652/653/1045/1046) + seven verify-only re-dispatch layers (03-14 → 14-48) as DUPLICATE dispositions; digest row added, live count measurable again. 2026-10-12
 sixth docs-health sweep (owner-directed per-item strike pass): full
 2026-0* corpus re-triaged via 9 date-bucket fan-outs — 23 files archived
 with inline strikes + disposition notes (18 status reports, 3 planning

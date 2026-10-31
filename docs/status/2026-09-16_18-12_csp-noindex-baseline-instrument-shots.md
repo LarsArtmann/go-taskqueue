@@ -1,5 +1,7 @@
 # Session Close-Out: CSP/Noindex Hardening, Baseline Regen, Instrument Pass FINALLY SEEN (3 Screenshots)
 
+> **ANNOTATED 2026-10-31** (digest-ritual ANNOTATE pass, batch 000001a18fe3eac5; per-item triage at HEAD; owner of residue = the ratified monthly digest ritual). Dispositions — SHIPPED: X-Robots-Tag header matrix pin (internal/webui/headermatrix_test.go); shots harness productized (row 798 RULED scripts/webui-screenshots.sh); 08-28/12-11/12-30 archive sweeps. ROUTED: dark-mode CDP shots (row 305); X-Robots-Tag/CSP curl smoke asserts (row 301); ci-local compound (row 225); tq.home.lan deploy (row 53 BLOCKED owner). OPEN: upstream go-health-dashboard issues (f17-20).
+
 **2026-09-16 18:12 CEST · continuation lap of the 08-28/12-11/12-30 session · master @ 953cf91 (tree clean at write time)**
 
 Executed the 12-30 report's delta-5 list end-to-end: CSP composition + noindex (fixed, pinned, swept by the daemon), CHANGELOG/FEATURES (written), merged-tree gate (green), lint gates (green after one owned fix + one deliberate regen), screenshot spike (harnessed, hung once, then THREE PNGs). The headline: **the instrument pass is no longer designed blind — the first browser pixels ever taken of `tq serve` confirm the light-mode design landed.**
