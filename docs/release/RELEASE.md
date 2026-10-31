@@ -272,3 +272,24 @@ cold module caches: `go list -m` reports an empty Dir for a module whose
 source was never extracted, so `scripts/build-webui-css.sh` now warms
 the cache (`go mod download`) before resolving the two out-of-repo
 `@source` dirs.
+
+## v0.4.x window lessons (2026-10-30..31; supersession of v0.4.0 and cmd/tq@v0.4.1)
+
+1. **A warm-cache proof is only a proof of the cached bits.** cmd/tq@v0.4.1
+   shipped a go.sum hash for the PRE-merge root@v0.4.1 tree because the
+   tidy ran against a warm cache (GOPRIVATE + insteadOf to the local
+   checkout) while the tag had been re-cut at the merge. Procedure: after
+   ANY tag re-cut or re-point, re-run the consuming module's tidy against
+   a FRESH `GOMODCACHE` (or force `GOPROXY=proxy.golang.org`) and diff
+   go.sum BEFORE pushing the tag. When stale bits DO land in the cache,
+   purge all THREE layers (`@v` files, extracted dir after `chmod -R u+w`,
+   the `cache/vcs` bare repo) and re-verify the `.ziphash` — a single
+   still-warm layer silently re-serves them.
+2. **A CI step that installs a private module can never pass.** The
+   erraudit gate step died on every public runner (`go install` of a
+   private repo → git auth prompt). Private-tool gates keep only their
+   hermetic `--self-test` in CI; lint enforcement lives in ci-local.
+3. **Merge, never rebase, a mid-release remote move.** A parallel push
+   moved origin/master mid-wave; merging preserved the local tag wave and
+   baselines intact — a rebase would have invalidated every re-cut tag
+   object and the sweep baseline.
