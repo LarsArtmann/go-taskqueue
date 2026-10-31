@@ -87,10 +87,30 @@ fi
 export TQ_DB="$TMP/tasks.db"
 FLAG="$TMP/flaky.flag"
 
+# One tq process pays the migrate serially BEFORE the worker and enqueue
+# can race each other's open (M25 class — 2026-10-31: the worker lost the
+# open-migrate race to the enqueue's first attempt twice; the enqueue leg
+# already retried, the worker leg just died, and the smoke asserted
+# against a workerless pool for 120s).
+"$TMP/tq" watermarks show >/dev/null 2>&1 || true
+
+start_worker() {
+	"$TMP/tq" worker --alert-url "$PAP_URL" --alert-api-key smoke-key --alert-poll 1s \
+		>"$TMP/worker.log" 2>&1 &
+	WORKER_PID=$!
+}
+
 echo "== start worker with alert bridge -> $PAP_URL"
-"$TMP/tq" worker --alert-url "$PAP_URL" --alert-api-key smoke-key --alert-poll 1s \
-	>"$TMP/worker.log" 2>&1 &
-WORKER_PID=$!
+start_worker
+for _ in 1 2 3 4 5; do
+	sleep 1
+	if kill -0 "$WORKER_PID" 2>/dev/null; then
+		break
+	fi
+	grep -q 'database is locked' "$TMP/worker.log" 2>/dev/null || break
+	echo "WARN: worker lost the open-migrate race — retrying" >&2
+	start_worker
+done
 
 echo "== enqueue a task that fails once, succeeds after rescue"
 # The worker was started first; under gate load its migrate can hold the
