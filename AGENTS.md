@@ -356,12 +356,9 @@ docs/DOMAIN_LANGUAGE.md.
   (~197 sites / 24 modules under `--max`): OWNER-RULED ADOPT 2026-10-27 —
   per-function error types are a dedicated migration project, NOT lint
   debt to suppress away; the gate keeps `--disable generic_return` only
-  until the migration lands, then the disable drops. Gate wiring ruled:
-  `scripts/check-erraudit.sh` + ci-local, HARD gate; CI runs the
-  `--self-test` ONLY (2026-10-31: erraudit repo is PRIVATE — proxy 404,
-  runner `go install` can never pass; lint enforcement = ci-local).
-  Tool bugs (hint/flag
-  rejections, rc shape) file at github.com/larsartmann/erraudit.
+  until the migration lands, then the disable drops. Wiring: gate +
+  ci-local, HARD; CI = `--self-test` only (repo PRIVATE, runner install
+  impossible, 2026-10-31). Bugs file at github.com/larsartmann/erraudit.
 - **VendorHash drift**: after go.mod changes run
   `nix build .#checks.x86_64-linux.vendor-hash`, copy `got:` to flake.nix.
 - **readmodel schema drift crash-loops the fold** (planned tables get no
