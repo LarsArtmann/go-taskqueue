@@ -6,13 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
-### Added
-
-- Nothing yet.
-
 ### Fixed
 
-- Nothing yet.
+- **`cmd/tq@v0.4.1` is uninstallable — install `cmd/tq@v0.4.2`**: the
+  v0.4.1 cmd/tq module's go.sum pinned a pre-merge hash for
+  root@v0.4.1, so cold-cache installs die with a checksum mismatch
+  (the module proxy had already indexed v0.4.1, so superseding — never
+  re-tagging — is the fix). cmd/tq/v0.4.2 carries the canonical hash;
+  root@v0.4.1 and every other v0.4.1 tag are unaffected.
 
 ## [v0.4.1] - 2026-10-31
 
