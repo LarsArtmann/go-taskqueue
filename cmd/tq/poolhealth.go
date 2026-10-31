@@ -80,23 +80,23 @@ type RepoHealth struct {
 	// their OWN lane (split from SkipStreak 2026-10-31): foreign dirt
 	// waiting for the tree to clean is not environment sickness, so it
 	// must not hold the env-skip streak at WARN forever.
-	DirtyTreeStreak int            `json:"dirtyTreeStreak,omitempty"`
-	DLQBackoffUntil *time.Time     `json:"dlqBackoffUntil,omitempty"`
-	LastHarvest     *time.Time     `json:"lastHarvest,omitempty"`
-	LastActivity    *time.Time     `json:"lastActivity,omitempty"`
-	Verdict         string         `json:"verdict"`
-	Warnings        []string       `json:"warnings,omitempty"`
+	DirtyTreeStreak int        `json:"dirtyTreeStreak,omitempty"`
+	DLQBackoffUntil *time.Time `json:"dlqBackoffUntil,omitempty"`
+	LastHarvest     *time.Time `json:"lastHarvest,omitempty"`
+	LastActivity    *time.Time `json:"lastActivity,omitempty"`
+	Verdict         string     `json:"verdict"`
+	Warnings        []string   `json:"warnings,omitempty"`
 }
 
 // PoolHealthReport is the whole pool-health result.
 type PoolHealthReport struct {
-	Since       string       `json:"since"`
-	FactsFolded int          `json:"factsFolded"`
+	Since       string `json:"since"`
+	FactsFolded int    `json:"factsFolded"`
 	// BackingOff is the top-level poisoned-repo count (repos whose
 	// DLQBackoffUntil is set) so scripts get the aggregate without
-	 // folding repos[] (TODO row 1087).
+	// folding repos[] (TODO row 1087).
 	BackingOff int          `json:"backingOff"`
-	Repos       []RepoHealth `json:"repos"`
+	Repos      []RepoHealth `json:"repos"`
 }
 
 // harvestItemKeyPrefix mirrors harvest.ItemKey's "todo:" prefix (the

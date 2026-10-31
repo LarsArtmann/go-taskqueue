@@ -51,7 +51,7 @@ func TestKnownEvidenceTermsMatchesStampedVocabulary(t *testing.T) {
 	stamped := []string{
 		"agent", // SetFailureEvidence(ctx, "agent", …) — agent.go
 		"command",
-		"verify", // SetVerifyFailureEvidence stamps Stage "verify"
+		"verify",        // SetVerifyFailureEvidence stamps Stage "verify"
 		TaskTypeDepBump, // depbump.go's fail() closure (row 241)
 		VerifyStageGofmt, VerifyStageTest, VerifyStageE2ETimeout, VerifyStageRun,
 		string(VerifyGateEnvironmental), string(VerifyGateDead), string(VerifyGateSlow),

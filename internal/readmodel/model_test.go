@@ -35,7 +35,6 @@ func TestProjectionHomeCallerPragmasHonorSyncEnv(t *testing.T) {
 	}
 }
 
-
 // TestProjectionHomeCallerPragmasMatchBuilder pins the CALLER half of
 // TODO row 86's same-union invariant (the composed half lives in
 // internal/composition): for every sync tier the self-open fallback's
@@ -62,7 +61,6 @@ func TestProjectionHomeCallerPragmasMatchBuilder(t *testing.T) {
 		})
 	}
 }
-
 
 // TestSelfOpenPragmasApplyEnvSyncTier pins TODO row 844: the
 // computation-to-application gap — the self-open path's pragma strings
