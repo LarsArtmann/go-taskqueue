@@ -1599,3 +1599,6 @@ f6deb5a3d4656d116e007c3b91f6969aab9f1a07
 5939303a3fe35a51e2b279c5431f40fd5a1c096e
 # 2026-10-31 recursion: the baseline-append sweep itself
 bfa3234ffaf67c38f51fe9df8b221b676d6497d8
+# 2026-10-31 T18 pragma-pin batch: mid-edit sweeps incl. the compose.go partial write (content verified at bec1afeb)
+e97cccde56070759f7d5f431eee04d3bdc447ef6
+bf93e909417928ceee52214ddc6f293f21d2f76b
