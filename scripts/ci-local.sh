@@ -209,6 +209,15 @@ step "erraudit gate self-test (summary + negative-path pins)"
 step "erraudit gate (per-module, ruled disable set)"
 ./scripts/check-erraudit.sh
 
+# DLQ sidecar citation gate (row 54): unchecked TODO rows + living md must
+# not cite the pre-fix DLQPathFor(<x>.DBPath) derivation; self-test first
+# (fleet countable-gate contract).
+step "dlq-sidecar-citations gate self-test (summary + negative-path pins)"
+./scripts/check-dlq-sidecar-citations.sh --self-test
+
+step "dlq-sidecar-citations gate (pre-fix shape sweep)"
+./scripts/check-dlq-sidecar-citations.sh
+
 # Hook fleet hard gates (T7/H6-H8, ruling R5 2026-10-30): both PreToolUse
 # hooks' pinned self-tests AND benign corpora, with the countable summary
 # grepped (fleet contract). Batteries are fully sandboxed (clean tmp repos,

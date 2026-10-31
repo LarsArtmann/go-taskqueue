@@ -260,12 +260,16 @@ docs/DOMAIN_LANGUAGE.md.
 - **Clock-first filenames**: run `date +%Y-%m-%d_%H-%M` BEFORE
   composing a `<ts>_<slug>` filename — a guessed `<ts>` lies.
 - **Edit→commit→battery ordering**: stage+commit BEFORE running anything
-  (daemon sweeps <60 s, footer-less, take STAGED files too); fold only
-  while local-only + contiguous + exactly-mine (`scripts/commit-task.sh
-  <id> <subject> <file>…`). During MULTI-STEP git surgery modified-
-  unstaged AND untracked files are daemon-food — a mid-sequence sweep
-  makes the span non-contiguous and the heal refuses; between steps the
-  tree must be CLEAN, not merely "nothing left to stage".
+  (daemon sweeps <60 s, footer-less, take STAGED files too); after ANY
+  commit re-read `git log -1
+  --format='%(trailers:key=Task-Queue-ID,valueonly)'` — EMPTY output =
+  an in-flight daemon sweep landing between your edits (heal immediately
+  while the unpushed window is open; commit-task.sh and the hooks cannot
+  see it). Fold only while local-only + contiguous + exactly-mine
+  (`scripts/commit-task.sh <id> <subject> <file>…`). In MULTI-STEP git
+  surgery modified-unstaged AND untracked files are daemon-food — a
+  mid-sequence sweep breaks span contiguity and the heal refuses; between
+  steps the tree must be CLEAN, not merely "nothing left to stage".
 - Tab-bearing insertions go through python-heredoc replace — free-text
   edit glues tabs into comments as literal `\t`.
 - Pure-Go deps only (`CGO_ENABLED=0`); Go 1.26+ idioms deliberate
