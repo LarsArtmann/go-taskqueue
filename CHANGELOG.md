@@ -8,6 +8,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- **Dashboard questions pane with browser answers** (2026-10-31, L3):
+  the dashboard surfaces every OPEN `tq ask` question (unanswered
+  question-asked facts on parked tasks) as an amber pane with an inline
+  answer box; answering POSTs through the same AllowWrites + CSRF +
+  lockout + token rails as cancel/rescue and routes home via the
+  AnswerPoller's home-side seam (`RecordAnswer`: answer injected into
+  the task payload, park cleared, `task.question-answered` fact — one
+  transaction). Unknown or lapsed refs answer 409; without
+  `--allow-writes` the pane is read-only with a CLI hint. The pane rides
+  the SSE fragment stream (`#frag-questions`), so answered questions
+  disappear live.
 - **`tq dlq --json`** (2026-10-31): machine-readable DLQ — a summary
   lead object (`{count,total,evidence_read}`) followed by one JSON
   object per dead task. Evidence prefetch is bounded (cap 200) for
