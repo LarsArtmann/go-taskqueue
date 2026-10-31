@@ -1575,3 +1575,5 @@ f83ee56716838329fbb69503044cc93b9180b18f
 e47632c92fa3383fea9cb31086f044fd5ed7b53d
 # 2026-10-31 T11 window (recursion): f4716153 swept the baseline update itself; content verified in-tree
 f4716153584cce47446d20f247a28338b48c30cf
+# 2026-10-31 T14 window: 7bdaf4ef swept the check-tick-claims engine + archived annotation mid-batch ahead of 384370f5 (content verified there)
+7bdaf4ef15bd9b2a2408e273843e0ef6c7a43bba
