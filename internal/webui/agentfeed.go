@@ -199,6 +199,14 @@ func excerpt(s string) string {
 // backoff on transport errors — the race-attach pattern from the
 // client-server relations doc (E3): attach mid-run is supported, so the
 // collector may connect at any point of a run's lifetime.
+//
+// M6 ordering contract (pinned by TestAgentFeedAttachesBeforeAnyOtherCall):
+// the events attach is the FIRST workspace-scoped request this collector
+// makes. Crush delivers permission/question prompts ONLY to SSE-attached
+// clients whose current-session views the session — attach FIRST, then
+// POST .../current-session, else 409 "client not attached". Any future
+// current-session (or prompt-viewing) call added here MUST be issued only
+// after a successful attach, never before it.
 func attachWorkspace(ctx context.Context, client *http.Client, feed *AgentFeed, ws crushWorkspace, clientID string) {
 	key := ws.key()
 	label := ws.Path

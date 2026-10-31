@@ -80,10 +80,11 @@ type Config struct {
 	// query parameter. Validate refuses non-loopback binds without it.
 	AuthToken string
 	// AllowWrites opts in to admin actions from the dashboard (cancel
-	// pending/running tasks, rescue dead-lettered ones). ADR-0003's default
-	// is a read-only projection; writes are a conscious operator decision
-	// guarded by per-form CSRF tokens (withCSRF) and, on non-loopback
-	// binds, by the auth token. Off by default.
+	// pending/running tasks, rescue dead-lettered ones, answer open
+	// questions). ADR-0003's default is a read-only projection; writes
+	// are a conscious operator decision guarded by per-form CSRF tokens
+	// (withCSRF) and, on non-loopback binds, by the auth token. Off by
+	// default.
 	AllowWrites bool
 	// ReadModelPath, when set, moves the aggregate read side and the live
 	// notifications onto an ADR-0019 S3 metaengine read model: the
@@ -296,6 +297,7 @@ func (s *Server) writeBindings() []struct {
 	}{
 		{"POST", "/task/{id}/cancel", s.handleTaskCancelPOST},
 		{"POST", "/task/{id}/rescue", s.handleTaskRescuePOST},
+		{"POST", "/task/{id}/answer", s.handleTaskAnswerPOST},
 	}
 }
 

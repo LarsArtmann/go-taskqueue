@@ -15,6 +15,14 @@ templ Page(data DashboardData) {
 				</div>
 			</section>
 			@MetricsRow(data)
+			<!-- L3 questions pane: empty (and invisible) until a `tq ask`
+			     park exists; the SSE swap targets #frag-questions so an
+			     answered question disappears live. -->
+			<section id="sec-questions" class="pb-2 pt-6">
+				<div id="frag-questions">
+					@QuestionsPane(data)
+				</div>
+			</section>
 			if data.Filter.View == viewBoard {
 				<!-- Board view: the lanes are the instrument — the task section
 				spans the full content width and the feed/DLQ flow below. -->

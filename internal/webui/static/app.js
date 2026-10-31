@@ -342,7 +342,7 @@
      the new filter from the pushed location. The swap-guard and state
      re-apply above apply to these swaps too. A seq counter drops stale
      responses when a debounce fires after an Enter submit. */
-  var FRAG_IDS = ["frag-filters", "frag-stats", "frag-table", "frag-dlq"];
+  var FRAG_IDS = ["frag-filters", "frag-stats", "frag-table", "frag-dlq", "frag-questions"];
   var applySeq = 0;
   var searchDebounce = null;
 

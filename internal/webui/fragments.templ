@@ -2,6 +2,8 @@ package webui
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/larsartmann/go-taskqueue/internal/dlqbackoff"
 	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
@@ -309,6 +311,70 @@ templ rescueAction(id task.ID) {
 			<button type="submit">re-queue</button>
 		</form>
 	</details>
+}
+
+// QuestionsPane renders the L3 browser-answerable questions surface
+// (inner content of #frag-questions): every OPEN task.question-asked fact
+// on a parked task — the `tq ask` park — with an inline answer form that
+// POSTs through the same CSRF/lockout/token rails as cancel/rescue and
+// routes home via store.RecordAnswer (the AnswerPoller's home-side seam:
+// answered-injection + park clear + question-answered fact). Empty when
+// nothing waits on a human, so the whole section appears and disappears
+// with the questions themselves.
+templ QuestionsPane(data DashboardData) {
+	if len(data.Questions) > 0 {
+		<div class="tq-heading">
+			<span class="tq-label text-amber-600 dark:text-amber-400">open questions</span>
+		</div>
+		<ul class="mt-3 space-y-3">
+			for _, q := range data.Questions {
+				<li class="rounded-lg border border-amber-300/60 bg-amber-50/50 p-4 dark:border-amber-500/30 dark:bg-amber-950/20">
+					<div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+						<a class="font-mono text-xs underline underline-offset-4 hover:text-amber-700 dark:hover:text-amber-300" href={ templ.URL("/task/" + q.TaskID.String()) }>{ q.TaskID.String() }</a>
+						<span class="tq-label">{ q.Type }</span>
+						<span
+							class="font-mono text-xs text-gray-500 dark:text-gray-400"
+							data-age={ fmt.Sprintf("%d", q.AskedAt.UnixMilli()) }
+							title={ q.AskedAt.Format(timeFormat) }
+						>{ timeAgo(data.Now, q.AskedAt) }</span>
+						if !q.ExpiresAt.IsZero() {
+							<span class="font-mono text-xs text-gray-400 dark:text-gray-500">expires { q.ExpiresAt.Format(timeFormat) }</span>
+						}
+					</div>
+					<p class="mt-2 break-words font-mono text-sm">{ q.Question }</p>
+					if len(q.Options) > 0 {
+						<p class="mt-1 font-mono text-xs text-gray-500 dark:text-gray-400">options: { strings.Join(q.Options, " · ") }</p>
+					}
+					if data.AllowWrites {
+						<form class="mt-3 flex flex-wrap items-center gap-2" method="post" action={ templ.URL("/task/" + q.TaskID.String() + "/answer") }>
+							<input type="hidden" name="csrf" value={ ctxCSRF(ctx) }/>
+							<input type="hidden" name="ref" value={ q.Ref }/>
+							<input
+								class="tq-answer-input w-64 rounded-md border border-gray-300 bg-white px-2 py-1 font-mono text-sm dark:border-gray-700 dark:bg-gray-900"
+								type="text"
+								name="answer"
+								placeholder="your answer"
+								required
+							/>
+							if len(q.Options) > 0 {
+								<datalist id={ "opts-" + q.Ref }>
+									for _, opt := range q.Options {
+										<option value={ opt }></option>
+									}
+								</datalist>
+							}
+							<button
+								class="rounded-md bg-amber-600 px-3 py-1 font-mono text-xs text-white hover:bg-amber-700 dark:bg-amber-500 dark:hover:bg-amber-400 dark:text-gray-950"
+								type="submit"
+							>answer</button>
+						</form>
+					} else {
+						<p class="mt-3 font-mono text-xs text-gray-500 dark:text-gray-400">answer from the CLI (`tq` answers or PapDashboard) — the dashboard accepts answers only with --allow-writes</p>
+					}
+				</li>
+			}
+		</ul>
+	}
 }
 
 // DeadLetterTable renders the dead-letter queue (inner content of
