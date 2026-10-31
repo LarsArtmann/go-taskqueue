@@ -428,7 +428,7 @@ not here.
 
 ## Row-115 window follow-ups (harvested from docs/status/2026-09-27_06-40_task-000001a0e120a5734e81fa3310f3b5954315.md §f; verified against code this pass)
 
-- [ ] Normalize companion LIKE case semantics: `Filter.Query` + `Filter.PayloadContains` must be case-insensitive identically on sqlite AND postgres (lower() both sides or dialect-aware ILIKE in `listWhere`), with an explicit per-backend case pin in the conform suite (sqlite LIKE is case-insensitive by default, postgres LIKE is case-sensitive — the divergence predates row 115 via Query)
+- [x] Normalize companion LIKE case semantics — DONE 2026-10-31 (T25): LOWER() on every Query/PayloadContains column (input was already lowercased); mixed-case divergence cases pinned in the conform suite (TestListQueryPushdown + TestListPayloadContains) and verified green on BOTH backends (sqlitev4 suite + a live scratch postgres cluster)
 - [ ] Webui task table: payload-substring filter input wired to `Filter.PayloadContains` (operator parity with `tq tasks --verify-contains`; internal/webui fragments.templ filter bar + query plumbing)
 
 ## Row-115 re-dispatch window findings (harvested from docs/status/archived/2026-09-27_06-51_task-000001a0e120a5734e81fa3310f3b5954315.md §e; live-observed at HEAD 552a1383)
@@ -1259,7 +1259,7 @@ not here.
 
 ## Parked-surface follow-up batch residue (2026-10-27 08-30; source: docs/status/tasks/2026-10-27_08-30_task-000001a17c354ee30317bf208e0b00000000.md; deduped — heal --from semantics already row 578(a), dirty-tree refusal row 184)
 
-- [ ] scripts/smoke/postgres-conform.sh: script the scratch trust-auth postgres cluster (initdb -U tq --auth=trust on a free port + socket dir, createdb, TQ_TEST_POSTGRES export, run the postgresv4 conform suite, FAIL on skip, stop cluster + clean tmpdir) so the postgres-proven bar proven at fdb258b9 is one command (recipe: internal/queue/postgresv4/store_test.go TestStoreConformance comment)
+- [x] scripts/smoke/postgres-conform.sh — DONE 2026-10-31 (T25): free-port scratch cluster + psql readiness probe + zero-pass=FAIL (by-design skips exempt); live-proven rc=0 with 76 conform case(s) green
 - [ ] heal-daemon-sweep.sh blocker detection: bound the foreign-footer scan to the sweep window (commits since the last queue-footered or non-chore commit) — today a HEAD-only sweep lists days-old foreign-footer commits as blockers and suggests stale --from bases, which burned two invocations before the amend fallback (2026-10-27 08-30 closeout §d1/§e2; coordinates with row 578(a))
 - [ ] Finish or trim the truncated AI-scorer FEATURES.md sentence — the row ends mid-clause "…decodes the completion fact's `PrioritizeResult` typed" (2026-10-27 08-30 closeout §e4; docs-only)
 - [ ] Pin the done-prompt verdict-receipt contract: report + TODO edits + `tq verdict` as the scripted FINAL exit step belong in docs/status/README.md's a)-g) skeleton and the dispatch templates, so a committed-but-unverdicted done prompt is a visible convention violation — the twelfth dispatch (3ce1609d) committed at 08:17 but never recorded its verdict, so the queue re-claimed task 000001a17bfb2501 and paid the thirteenth re-dispatch (2026-10-27 08-49 thirteenth dispatch §d/§e1)
