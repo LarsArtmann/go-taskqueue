@@ -156,6 +156,16 @@ func (e *DepBumpExecutor) gitBin() string {
 func (e *DepBumpExecutor) Execute(ctx context.Context, t task.Task) error {
 	var payload DepBumpPayload
 
+	// fail stamps the structured failure evidence (agent-parity, TODO row
+	// 241): Stage "depbump" + exit code + the error tail, so depbump
+	// deaths are queryable evidence (`--evidence-stage depbump`) instead
+	// of error-text-only forensics.
+	fail := func(err error) error {
+		SetFailureEvidence(ctx, TaskTypeDepBump, err, tailBytes([]byte(err.Error()), EvidenceTailBytes))
+
+		return err
+	}
+
 	if len(t.Payload) == 0 {
 		return Permanent(ErrDepBumpEmptyPayload)
 	}
@@ -213,48 +223,48 @@ func (e *DepBumpExecutor) Execute(ctx context.Context, t task.Task) error {
 	}
 
 	if err := e.verify(ctx, repoDir, cmdTimeout, "baseline"); err != nil {
-		return fmt.Errorf(
+		return fail(fmt.Errorf(
 			"depbump: baseline failed in %s (pre-existing breakage, repo untouched): %w",
 			payload.Repo,
 			err,
-		)
+		))
 	}
 
 	if len(payload.Bumps) > 0 {
 		if err := e.applyBumps(ctx, repoDir, payload.Bumps, cmdTimeout); err != nil {
-			return err // applyBumps rolled back already
+			return fail(err) // applyBumps rolled back already
 		}
 	}
 
 	if err := e.verify(ctx, repoDir, cmdTimeout, "verify"); err != nil {
 		_ = e.rollback(ctx, repoDir)
 
-		return fmt.Errorf(
+		return fail(fmt.Errorf(
 			"depbump: verify failed in %s (touched paths rolled back): %w",
 			payload.Repo,
 			err,
-		)
+		))
 	}
 
 	if len(payload.Bumps) > 0 {
 		if err := e.commit(ctx, repoDir, payload.Bumps); err != nil {
 			_ = e.rollback(ctx, repoDir)
 
-			return fmt.Errorf(
+			return fail(fmt.Errorf(
 				"depbump: commit failed in %s (touched paths rolled back): %w",
 				payload.Repo,
 				err,
-			)
+			))
 		}
 	}
 
 	if payload.Release != nil {
 		if err := e.release(ctx, repoDir, payload.Release); err != nil {
-			return fmt.Errorf(
+			return fail(fmt.Errorf(
 				"depbump: release failed in %s (bumps, if any, stay committed): %w",
 				payload.Repo,
 				err,
-			)
+			))
 		}
 	}
 

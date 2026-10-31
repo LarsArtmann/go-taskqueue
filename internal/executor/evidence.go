@@ -193,7 +193,7 @@ func MatchesEvidenceStage(evidence FailureEvidence, lastError, want string) bool
 // empty DLQ that reads as "no deaths of this class" (TODO row 1418).
 func KnownEvidenceTerms() []string {
 	return []string{
-		"agent", "command", "verify",
+		"agent", "command", "verify", TaskTypeDepBump,
 		VerifyStageGofmt, VerifyStageTest, VerifyStageE2ETimeout, VerifyStageRun,
 		string(VerifyGateEnvironmental), string(VerifyGateDead), string(VerifyGateSlow),
 	}
