@@ -48,7 +48,7 @@ func seedDeadEvidence(t *testing.T, s *sqlite.Store, owner, failReason string, e
 		t.Fatalf("ClaimDue: %v", err)
 	}
 
-	if err := s.Fail(ctx, tk.ID, claim.Token, failReason, 0, detail); err != nil {
+	if err := s.Fail(ctx, tk.ID, claim, failReason, 0, detail); err != nil {
 		t.Fatalf("Fail: %v", err)
 	}
 
