@@ -12,6 +12,7 @@ import (
 
 	"github.com/larsartmann/go-sse"
 	"github.com/larsartmann/go-taskqueue/internal/executor"
+	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
@@ -639,6 +640,91 @@ func (s *Server) handleTaskRescuePOST(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Redirect(w, r, "/task/"+id.String(), http.StatusSeeOther)
+}
+
+// handleTaskAnswerPOST records the operator's answer to an OPEN question
+// on a parked task (the L3 questions pane): routes through
+// store.RecordAnswer — the same home-side seam the PapDashboard
+// AnswerPoller rides — which injects the answer into the task payload,
+// clears the park (not_before = now) and appends the
+// task.question-answered fact in one transaction. The ref must belong
+// to an unanswered asked fact of THIS task; anything else is a 409 so a
+// stale pane cannot answer a question that already lapsed or moved.
+// Registered only with AllowWrites.
+func (s *Server) handleTaskAnswerPOST(w http.ResponseWriter, r *http.Request) {
+	id := task.ID(r.PathValue("id"))
+	ref := strings.TrimSpace(r.PostFormValue("ref"))
+	answer := strings.TrimSpace(r.PostFormValue("answer"))
+
+	if ref == "" || answer == "" {
+		http.Error(w, "ref and answer are both required", http.StatusBadRequest)
+
+		return
+	}
+
+	if _, ok := s.taskFromPath(w, r, id.String()); !ok {
+		return
+	}
+
+	facts, err := s.store.FactsForTask(r.Context(), id, 0)
+	if err != nil {
+		http.Error(w, "answer failed: "+err.Error(), http.StatusInternalServerError)
+
+		return
+	}
+
+	if !questionIsOpen(facts, ref) {
+		http.Error(
+			w,
+			"no open question with that ref on task "+id.String(),
+			http.StatusConflict,
+		)
+
+		return
+	}
+
+	if err := s.store.RecordAnswer(r.Context(), id, queue.AnswerRecord{
+		Ref:        ref,
+		Answer:     answer,
+		AnsweredAt: time.Now().UnixMilli(),
+	}); err != nil {
+		http.Error(w, "answer failed: "+err.Error(), http.StatusInternalServerError)
+
+		return
+	}
+
+	http.Redirect(w, r, "/task/"+id.String(), http.StatusSeeOther)
+}
+
+// questionIsOpen reports whether ref names an asked-but-not-yet-answered
+// question in the task's fact trail (the pane's staleness guard).
+func questionIsOpen(facts []journal.Fact, ref string) bool {
+	asked, answered := false, false
+
+	for _, fact := range facts {
+		switch fact.Type {
+		case journal.QuestionAsked:
+			var d queue.QuestionAskedDetail
+			if err := json.Unmarshal(fact.Detail, &d); err != nil {
+				continue
+			}
+
+			if d.Ref == ref {
+				asked = true
+			}
+		case journal.QuestionAnswered:
+			var d queue.QuestionAnsweredDetail
+			if err := json.Unmarshal(fact.Detail, &d); err != nil {
+				continue
+			}
+
+			if d.Ref == ref {
+				answered = true
+			}
+		}
+	}
+
+	return asked && !answered
 }
 
 // renderTaskNotFound serves the styled 404 through the dashboard layout —

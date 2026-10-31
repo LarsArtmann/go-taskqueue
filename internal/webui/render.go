@@ -353,6 +353,37 @@ type DashboardData struct {
 	// dlq`'s poisoned rows. Nil when the surface is off
 	// (Config.DLQBackoff == 0) or no repo is standing in backoff.
 	DLQBackoff map[string]time.Time
+	// Questions holds the OPEN owner questions — unanswered
+	// task.question-asked facts on parked tasks (the `tq ask` park, L3):
+	// the browser-answerable pane. Newest first, bounded by
+	// questionPaneLimit; nil when nothing is waiting on a human.
+	Questions []QuestionView
+}
+
+// QuestionView is one open owner question in the dashboard pane: the
+// asked fact distilled for the browser, paired with the parked task it
+// blocks. The answer POST routes through queue.Store.RecordAnswer — the
+// same home-side seam the PapDashboard AnswerPoller rides (payload
+// answered-injection + not_before clear + task.question-answered fact,
+// one transaction).
+type QuestionView struct {
+	// TaskID is the parked task asking (the pane links to its detail
+	// page; the answer POST targets /task/{TaskID}/answer).
+	TaskID task.ID
+	// Ref is the question ref — the stable correlation key between the
+	// asked fact, the answer POST and the answered fact.
+	Ref string
+	// Type is the question type (info/approval/confirmation/input).
+	Type string
+	// Question is the asked text, already secrets-redacted at ask time.
+	Question string
+	// Options are the offered choices, when the ask carried any.
+	Options []string
+	// AskedAt is when the asked fact landed.
+	AskedAt time.Time
+	// ExpiresAt is the ask's TTL deadline (zero when the ask carried
+	// none): past it the park lapses and the task re-enters unanswered.
+	ExpiresAt time.Time
 }
 
 // parkedCount counts rate-limit-parked tasks (pending, not_before in the
@@ -367,6 +398,96 @@ func parkedCount(ctx context.Context, store queue.Store) int {
 }
 
 var parkedTrue = true
+
+// questionPaneLimit bounds the questions pane: the parked set is small
+// by construction (each park is a live human round-trip), the cap only
+// keeps a runaway ask loop from turning the dashboard into a wall.
+const questionPaneLimit = 20
+
+// openQuestions derives the pane's rows: parked tasks whose trail
+// carries a task.question-asked fact without a matching
+// task.question-answered fact — newest ask first. Two bounded reads
+// (one parked list capped at the pane limit, one facts read per parked
+// task). Best effort: a failed read dims the pane, never the dashboard.
+func openQuestions(ctx context.Context, store queue.Store) []QuestionView {
+	pending, err := store.List(ctx, queue.Filter{Parked: &parkedTrue, Limit: questionPaneLimit})
+	if err != nil {
+		return nil
+	}
+
+	var open []QuestionView
+
+	for _, t := range pending {
+		facts, err := store.FactsForTask(ctx, t.ID, 0)
+		if err != nil {
+			continue
+		}
+
+		open = append(open, unansweredQuestions(t.ID, facts)...)
+		if len(open) >= questionPaneLimit {
+			break
+		}
+	}
+
+	slices.SortStableFunc(open, func(a, b QuestionView) int { return b.AskedAt.Compare(a.AskedAt) })
+
+	if len(open) > questionPaneLimit {
+		open = open[:questionPaneLimit]
+	}
+
+	return open
+}
+
+// unansweredQuestions pairs one task's question facts the way
+// cmd/tq's buildQuestionView does (asked fact mints the ref, answered
+// fact retires it) and returns the still-open asks, oldest fact order
+// preserved for same-task multi-asks.
+func unansweredQuestions(id task.ID, facts []journal.Fact) []QuestionView {
+	answered := make(map[string]struct{})
+	var asks []QuestionView
+
+	for _, fact := range facts {
+		switch fact.Type {
+		case journal.QuestionAsked:
+			var d queue.QuestionAskedDetail
+			if err := json.Unmarshal(fact.Detail, &d); err != nil || d.Ref == "" {
+				continue
+			}
+
+			v := QuestionView{
+				TaskID:   id,
+				Ref:      d.Ref,
+				Type:     d.Type,
+				Question: d.Question,
+				Options:  d.Options,
+				AskedAt:  time.UnixMilli(fact.Time),
+			}
+			if d.ExpiresAt > 0 {
+				v.ExpiresAt = time.UnixMilli(d.ExpiresAt)
+			}
+
+			asks = append(asks, v)
+		case journal.QuestionAnswered:
+			var d queue.QuestionAnsweredDetail
+			if err := json.Unmarshal(fact.Detail, &d); err != nil || d.Ref == "" {
+				continue
+			}
+
+			answered[d.Ref] = struct{}{}
+		}
+	}
+
+	var open []QuestionView
+	for _, v := range asks {
+		if _, done := answered[v.Ref]; done {
+			continue
+		}
+
+		open = append(open, v)
+	}
+
+	return open
+}
 
 // dlqBackoffDeadlines folds the journal into the repos currently in
 // poisoned-repo DLQ backoff (the dlqbackoff derivation shared with `tq
@@ -752,6 +873,7 @@ func (s *Server) loadSnapshot(ctx context.Context, filter FilterState) (Dashboar
 	data.Stranded = strandedCount(ctx, s.store)
 	data.SessionsOpened, data.SessionsClosed, data.SessionsOpen = sessionStats(ctx, s.store)
 	data.DLQBackoff = s.dlqBackoffDeadlines(ctx, now)
+	data.Questions = openQuestions(ctx, s.store)
 
 	projectCounts, err := s.store.ProjectCounts(ctx)
 	if err != nil {
@@ -1131,6 +1253,11 @@ const (
 	fragTable   = "frag-table"
 	fragDLQ     = "frag-dlq"
 	fragFeed    = "frag-feed"
+	// fragQuestions is the L3 questions pane container: present on every
+	// page render (hidden-by-emptiness in CSS terms — the pane renders
+	// nothing when no question is open) so the SSE swap always has a
+	// target.
+	fragQuestions = "frag-questions"
 
 	fragDetail   = "frag-detail"
 	fragTimeline = "frag-timeline"
@@ -1150,6 +1277,7 @@ func renderFragments(ctx context.Context, data DashboardData) []fragment {
 		{ID: fragFilters, HTML: renderComponent(ctx, FilterBar(data))},
 		{ID: fragTable, HTML: renderComponent(ctx, tasks)},
 		{ID: fragDLQ, HTML: renderComponent(ctx, DeadLetterTable(data))},
+		{ID: fragQuestions, HTML: renderComponent(ctx, QuestionsPane(data))},
 		{ID: fragFeed, HTML: renderComponent(ctx, FactFeed(data))},
 	}
 }
