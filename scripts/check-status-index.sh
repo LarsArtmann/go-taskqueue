@@ -95,6 +95,7 @@ if [ "${1:-}" = "--self-test" ]; then
 | 2026-09-13_10-00 | [e](`archived/e.md`) | archived, backticked — not live |
 | 2026-09-13_11-00 | [f](archived/f.md) | archived WITHOUT backticks — convention bug, counts live |
 | digest 2026-08 | 44 reports archived (scopes: executor 12, gates 9, webui 7) | digest row — never counts live |
+| digest 2026-11 | 0 reports archived (PROSPECTIVE empty accrual) | empty-accrual digest row — also never counts live |
 | see 2026-09-01 report | not a table row | malformed — the date-row regex skips it |
 EOF
 	got=$(count_live_rows "$tmp/index.md")
@@ -153,7 +154,7 @@ EOF
 		echo "$path_out"
 		exit 1
 	fi
-	echo "status-index self-test ok (live=$got; digest excluded, unbackticked-archive counts live, malformed skipped; row-paths 3 ok / 1 missing caught, tasks/ row live)"
+	echo "status-index self-test ok (live=$got; digest + empty-accrual digest excluded, unbackticked-archive counts live, malformed skipped; row-paths 3 ok / 1 missing caught, tasks/ row live)"
 	exit 0
 fi
 
