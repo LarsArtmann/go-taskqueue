@@ -409,3 +409,19 @@ seam; deeper integration ideas, in rough order of expected value:
 - go-cqrs-lite `middleware`/`metadata` tracing IDs on facts (correlation
   across the bridge boundaries): only if PapDashboard ingest grows
   multi-hop causality needs.
+
+### Crush host integration (2026-10-31 harvest from 13-48 §f; owner-gated on the v0.99 host upgrade)
+
+- v0.99 host upgrade via the crush-config repo (unlocks `notes` + piped
+  permissions L3/L4 would consume) — owner-owned end-to-end.
+- PostToolUse hook (v0.99): catch unscoped-gofmt slips the PreToolUse guard
+  missed; PostToolUseFailure logging.
+- SessionStart hook (v0.99): inject the AGENTS reader-route map per agent.
+- PreCompact guard (v0.99): block compaction mid-migration.
+- Weekly hook-FP triage ritual over the deny log (the side-channel +
+  ci-local shape-pin exist; the cadence is operational).
+- Eval: replace TQ_QUESTION_FILE polling with the server questions API once
+  the host supports it — one question channel, two transports is a
+  split-brain risk.
+- Eval: webui live-agent pane vs the journal tailer — one source of truth
+  for agent output; avoid a second output pipeline calcifying.

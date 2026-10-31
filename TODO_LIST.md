@@ -1374,7 +1374,7 @@ not here.
 ## Crush client/server relations ladder (2026-10-30; source: docs/planning/2026-10-30_04-43_crush-client-server-relations.md — mechanics proven live on crush v0.98.2: SSE tool-call telemetry, server-side hooks, session resume, env carry)
 
 - [x] L1 executor seam: `--crush-server <socket>` pool flag — agentEnv adds CRUSH_CLIENT_SERVER=1 and run args add `-H <socket>`; pool runs `crush server` as a runactor actor; flag absent = today's in-process path (rollback = unset) — GO 2026-10-30 blanket (ruling R4, docs/planning/2026-10-30_17-13_OWNER-RULING-BUNDLE-2-SHEET.md §0) — DONE 2026-10-30 1f162e8f: executor v0.4.1 seam (work+closeout argv/env pinned by TestAgentCrushServerSeam), pool runactor actor, cmd/tq/root/worker/examples pinned v0.4.1, flag baseline regenerated
-- [ ] L2 webui live agent pane: SSE attach per active workspace (race-attach pattern, plan-doc evidence E3) feeding the existing ADR-0003 hub — live tool calls, token burn, stuck-turn visibility — BLOCKED: owner GO + L1 landed
+- [x] L2 webui live agent pane: SSE attach per active workspace (race-attach pattern, plan-doc evidence E3) feeding the existing ADR-0003 hub — live tool calls, token burn, stuck-turn visibility — BLOCKED: owner GO + L1 landed — DONE: shipped in v0.4.1 as `tq serve --crush-server <socket>` + `/agents/live` (append-only pane, race-attach with reconnect, 503 when the flag is absent); re-verified 2026-10-31 pane-E2E on a scratch DB: SSE 200 with the flag (heartbeat-cadence flush), 503 with the exact errAgentFeedDisabled body without
 
 ## Done-prompt twentyfourth-dispatch appends (2026-10-30; source: docs/status/2026-10-30_04-54_done-prompt-window-report-twentyfourth-dispatch.md; deduped — the two retro closeouts are WRITTEN and rows 1331/1332 ticked; verdict receipt, attempt budget, half-closeout, SC1007, heal guards are ALL already rowed)
 
@@ -1439,3 +1439,19 @@ not here.
 - [ ] check-status-index --self-test-paths: echo a fixture marker line (e.g. "path-branch fixture") from the subcommand and grep it in the parent battery, so a drifted subcommand-guard cannot make the battery vacuously pass against the REAL repo when the live index happens to carry a violation (2026-10-31_00-15 report §f2)
 - [ ] row_path_violations counting-granularity ruling: sort -u counts unique PATHS not live-row citations (two rows citing one missing file = "1 missing", the checked-count under-reports) — pick per-path (document in the gate header) or per-row (fail per citation) (2026-10-31_00-15 report §e4/§g1)
 - [ ] Run ./scripts/ci-local.sh end-to-end green post-amend 83b453a2 (the fix session ran the gate's two ci-local-wired invocations + check-script-syntax + root build/vet individually; the full pre-push suite went unexercised for a scripts-only change) (2026-10-31_00-15 report §b1)
+
+## 2026-10-31 docs-health HARVEST (source: docs/status/2026-10-30_13-48_crush-hooks-fleet-and-client-server-relations.md §f items 3-9, 16-21, 23, 26; dropped as done: 1-2 shipped v0.4.1, 14 hook gates wired in ci-local, 20 GOEXPERIMENT advisory exists at scripts/hooks/tq-bash-guard.sh:560, 22 check-erraudit.sh exists+green, 24 check-script-syntax 120-ok at HEAD, 25 = this pass, 8 single implementation — no twin to extract)
+
+- [ ] L3 browser-answerable questions pane: surface parked `tq ask` questions in the webui with an answer box routed through the AnswerPoller (attach→current-session ordering pinned first) (13-48 §f3; rides the shipped L2 feed)
+- [ ] L3 structured closeout facts from the crush messages endpoint — kill stdout parsing for closeout reports (13-48 §f4; the derived-outcomes stdout contract stays as fallback)
+- [ ] L3 dashboard cancel for stuck dispatched turns: a write endpoint per AGENTS `tq serve` security rails (CSRF + lockout + token-gate), cancel routed to the run actor (13-48 §f5)
+- [ ] L4 pilot on ONE repo + shared-server memory measurement before any fleet-wide client-server rollout (13-48 §f6)
+- [ ] Keeper-client so the pool's `crush server` survives idle — no respawn churn between dispatch bursts (13-48 §f7)
+- [ ] E-gap proofs under ROUTED runs (thin client over `-H <socket>`): `$TQ_RESULT_FILE` verdict, `$TQ_QUESTION_FILE`/AnswerPoller round-trip, 429 fast-refuse evidence — mechanics are pinned for in-process runs only; one smoke covers all three (13-48 §f9)
+- [ ] Fix or pin `TestShowJSONCarriesFailureEvidence` order-dependence (leaked stdout writer, proven at 105c1cb6 — foreign, unclaimed)
+- [ ] edit-advice hook: docs/planning/* creation note (clock-first `date +%Y-%m-%d_%H-%M` before composing `<ts>_<slug>`) — the note exists for docs/status only (13-48 §f16)
+- [ ] edit-advice hook: internal/webui/ADOPTION.md guard note (rejected components list — display.Eyebrow, KanbanBoard, errorpage, icons.Render)
+- [ ] bash-guard hook: `rm` → trash advisory (global never-rm policy; deny stays for the paid-trap classes)
+- [ ] bash-guard hook: fixtures-under-/tmp advisory for non-Go heredoc scripts (gated trees are daemon-food)
+- [ ] Hook hatch table → docs/hooks-hatches.md (hatches live only in deny messages today; keeps AGENTS inside its byte budget)
+- [ ] AGENTS prune-candidate pass (24.4k budget; dated asides keep getting traded for new conventions — one deliberate consolidation pass)
