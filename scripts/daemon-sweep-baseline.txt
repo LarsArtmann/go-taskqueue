@@ -1582,3 +1582,7 @@ f4716153584cce47446d20f247a28338b48c30cf
 # 2026-10-31 T15/T19 windows: mid-edit sweeps of the evidence/parked work + AGENTS consolidation ahead of dc3cc7fc/054cbb55 (content verified there)
 9de9279e056d98df27dd1d5af6b12e3415779384
 ccab5c68ce883c0136c2dd6df6ee36aed8715caa
+# 2026-10-31 T16 evidence batch: three mid-edit sweeps of the dlq/webui evidence work ahead of 14424324 (content verified there)
+13059c792517cb182684d4f693702621be8bd35f
+c8d56189838e5619a58b9ff1042f1a1f541a239b
+19c9d0b3c63b66c38216b304860c535ec76f969d
