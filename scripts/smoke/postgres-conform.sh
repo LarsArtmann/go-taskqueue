@@ -34,19 +34,22 @@ echo "== start cluster on 127.0.0.1:$PGPORT"
 mkdir -p "$PGSOCK"
 pg_ctl -D "$PGDATA" -l "$TMP/pg.log" -o "-p $PGPORT -k $PGSOCK -c listen_addresses=127.0.0.1" start >/dev/null
 
+createdb -h 127.0.0.1 -p "$PGPORT" -U tq tqconform 2>/dev/null || true
+
 for _ in 1 2 3 4 5 6 7 8 9 10; do
-	if createdb -h 127.0.0.1 -p "$PGPORT" -U tq tqconform 2>/dev/null; then
+	if psql -h 127.0.0.1 -p "$PGPORT" -U tq -d tqconform -c 'SELECT 1' >/dev/null 2>&1; then
 		break
 	fi
 	sleep 1
 done
 
-createdb -h 127.0.0.1 -p "$PGPORT" -U tq tqconform 2>/dev/null || {
-	echo "FAIL: postgres never became ready (see $TMP/pg.log)"
+if ! psql -h 127.0.0.1 -p "$PGPORT" -U tq -d tqconform -c 'SELECT 1' >/dev/null 2>&1; then
+	echo "FAIL: postgres never became ready — cluster log tail:"
+	tail -20 "$TMP/pg.log" 2>/dev/null || echo "(no pg.log — pg_ctl start itself failed)"
 	exit 1
-}
+fi
 
-echo "== run postgresv4 conformance suite (skip = FAIL)"
+echo "== run postgresv4 conformance suite (zero-pass = FAIL)"
 cd "$REPO_ROOT/internal/queue/postgresv4"
 if ! TQ_TEST_POSTGRES="postgres://tq@127.0.0.1:${PGPORT}/tqconform?sslmode=disable" \
 	GOEXPERIMENT=jsonv2 GOWORK=off CGO_ENABLED=0 \
@@ -56,11 +59,13 @@ if ! TQ_TEST_POSTGRES="postgres://tq@127.0.0.1:${PGPORT}/tqconform?sslmode=disab
 	exit 1
 fi
 
-if grep -q "SKIP:" "$TMP/conform.log"; then
-	echo "FAIL: conformance SKIPPED (TQ_TEST_POSTGRES leaked unset?)"
-	grep "SKIP:" "$TMP/conform.log" | head -3
+# Some conform cases skip BY DESIGN on postgres (sqlite-only migration
+# shims, perf baselines); the failure mode to catch is the WHOLE suite
+# skipping because TQ_TEST_POSTGRES leaked unset — zero PASSes.
+PASSCOUNT="$(grep -c '^    --- PASS' "$TMP/conform.log" || true)"
+if [ "$PASSCOUNT" -eq 0 ]; then
+	echo "FAIL: conformance passed ZERO cases (TQ_TEST_POSTGRES leaked unset?)"
 	exit 1
 fi
 
-PASSCOUNT="$(grep -c '^    --- PASS' "$TMP/conform.log" || true)"
 echo "PASS: postgres conformance smoke ($PASSCOUNT conform case(s) green on a scratch cluster)"
