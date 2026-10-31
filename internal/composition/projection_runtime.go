@@ -31,6 +31,21 @@ type ProjectionRuntime struct {
 // genuinely owned home demotes serve to a reader without hanging it.
 const projectionFoldLockWait = 5 * time.Second
 
+// ProjectionRuntimeOption tunes NewProjectionRuntime. Only tests reach
+// for the non-default shapes (a short fold-lock wait keeps the
+// yield-to-holder pin at ~150ms instead of sleeping the real 5s).
+type ProjectionRuntimeOption func(*projectionRuntimeConfig)
+
+type projectionRuntimeConfig struct {
+	foldLockWait time.Duration
+}
+
+// WithFoldLockWait overrides the fold-lock election wait. Production
+// callers never pass it; the composition yield test rides ~150ms.
+func WithFoldLockWait(d time.Duration) ProjectionRuntimeOption {
+	return func(cfg *projectionRuntimeConfig) { cfg.foldLockWait = d }
+}
+
 // NewProjectionRuntime composes the projection runtime for one
 // deployment's projection home (derived beside cfg.DBPath) over the
 // queue journal (src): elect the single folder through the projection
@@ -43,10 +58,19 @@ const projectionFoldLockWait = 5 * time.Second
 // and build the managed host wired with the sidecar. Starting stays the
 // caller's job (Host.Start) so the runactor actor keeps its own
 // lifecycle; on a build error nothing is left open.
-func NewProjectionRuntime(ctx context.Context, src queue.Store, cfg config.Deployment) (*ProjectionRuntime, error) {
+func NewProjectionRuntime(
+	ctx context.Context,
+	src queue.Store,
+	cfg config.Deployment,
+	opts ...ProjectionRuntimeOption,
+) (*ProjectionRuntime, error) {
+	rcfg := projectionRuntimeConfig{foldLockWait: projectionFoldLockWait}
+	for _, opt := range opts {
+		opt(&rcfg)
+	}
 	modelPath := readmodel.PathFor(cfg.DBPath)
 
-	lock, err := readmodel.AcquireFoldLock(modelPath, projectionFoldLockWait)
+	lock, err := readmodel.AcquireFoldLock(modelPath, rcfg.foldLockWait)
 	if err != nil && !errors.Is(err, readmodel.ErrFoldLocked) {
 		return nil, fmt.Errorf("composition: acquire fold lock: %w", err)
 	}

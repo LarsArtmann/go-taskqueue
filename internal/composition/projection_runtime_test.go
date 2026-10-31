@@ -75,7 +75,9 @@ func TestNewProjectionRuntimeYieldsToLockHolder(t *testing.T) {
 		t.Fatalf("hold the fold lock: %v", err)
 	}
 
-	rt, err := NewProjectionRuntime(ctx, store, config.SQLite(dbPath))
+	// Short fold-lock wait (row 686): the demotion path rides ~150ms
+	// instead of sleeping the production 5s on every -race run.
+	rt, err := NewProjectionRuntime(ctx, store, config.SQLite(dbPath), WithFoldLockWait(150*time.Millisecond))
 	if err != nil {
 		t.Fatalf("NewProjectionRuntime under a held lock: %v", err)
 	}
