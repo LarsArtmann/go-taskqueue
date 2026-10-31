@@ -3126,7 +3126,7 @@ func cmdDLQ(args []string) error {
 		filtered := make([]task.Task, 0, len(tasks))
 
 		for _, dead := range tasks {
-			if evidenceStageMatches(evidence[dead.ID], dead.LastError, *evidenceStage) {
+			if executor.MatchesEvidenceStageSet(evidence[dead.ID], dead.LastError, *evidenceStage) {
 				filtered = append(filtered, dead)
 			}
 		}
