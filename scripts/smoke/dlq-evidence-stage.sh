@@ -25,6 +25,30 @@ fi
 
 export TQ_DB="$TMP/tasks.db"
 
+# json_count FILTER-ARGS… — dead-row count read from the `tq dlq --json`
+# summary lead object's `count` field (TODO row 1416: project-name greps
+# break on name collisions and summary lines; the summary count cannot).
+# sed reads the WHOLE stream (no early exit) so the pipeline cannot
+# SIGPIPE the tq binary under pipefail.
+json_count() {
+	local lead
+	lead="$("$TMP/tq" dlq --json "$@" 2>/dev/null | sed -n '1p')"
+	printf '%s' "$lead" | sed -n 's/.*"count":\([0-9][0-9]*\).*/\1/p'
+}
+
+# expect_count LABEL EXPECTED_MIN FILTER-ARGS… — assert the filtered dead
+# population reaches EXPECTED_MIN rows, counted via the JSON summary.
+expect_count() { # expect_count LABEL EXPECTED_MIN [FILTER-ARGS…]
+	local label="$1" want="$2" got
+	shift 2
+	got="$(json_count "$@")"
+	if [ "${got:-0}" -lt "$want" ]; then
+		echo "FAIL: $label — expected >=$want dead rows, saw ${got:-none}"
+		"$TMP/tq" dlq "$@" || true
+		exit 1
+	fi
+}
+
 echo "== seed two failing sh tasks (max-attempts 1)"
 # Task A: plain command failure — the sh executor stamps FailureEvidence
 # Stage "command" on the task.failed fact.
@@ -39,8 +63,8 @@ echo "== seed two failing sh tasks (max-attempts 1)"
 echo "== run the sh worker until both tasks are dead"
 for _ in 1 2 3 4 5 6; do
 	"$TMP/tq" worker --once --poll 50ms --lease 5s --task-timeout 30s >>"$TMP/worker.log" 2>&1 || true
-	DEAD="$("$TMP/tq" dlq --db "$TQ_DB" 2>/dev/null | grep -c 'smoke' || true)"
-	[ "$DEAD" -ge 2 ] && break
+	DEAD="$(json_count --db "$TQ_DB" || true)"
+	[ "${DEAD:-0}" -ge 2 ] && break
 done
 
 "$TMP/tq" dlq >"$TMP/dlq-all.txt"
@@ -55,19 +79,9 @@ grep -q 'exit status 7' "$TMP/dlq-all.txt" || {
 	exit 1
 }
 
-expect_ids() { # expect_ids LABEL EXPECTED_MIN_COUNT OUTPUT_FILE
-	local label="$1" want="$2" file="$3" got
-	got="$(grep -c 'smoke' "$file" || true)"
-	if [ "$got" -lt "$want" ]; then
-		echo "FAIL: $label — expected >=$want dead rows, saw $got"
-		cat "$file"
-		exit 1
-	fi
-}
-
 echo "== single-term filter: command"
 "$TMP/tq" dlq --evidence-stage command >"$TMP/dlq-command.txt"
-expect_ids "evidence-stage command" 1 "$TMP/dlq-command.txt"
+expect_count "evidence-stage command" 1 --evidence-stage command
 grep -q 'gate-env' "$TMP/dlq-command.txt" && {
 	echo "FAIL: command filter leaked the gate-env death"
 	cat "$TMP/dlq-command.txt"
@@ -76,7 +90,7 @@ grep -q 'gate-env' "$TMP/dlq-command.txt" && {
 
 echo "== alias filter: gate-env (matched through the recorded error text)"
 "$TMP/tq" dlq --evidence-stage gate-env >"$TMP/dlq-gateenv.txt"
-expect_ids "evidence-stage gate-env" 1 "$TMP/dlq-gateenv.txt"
+expect_count "evidence-stage gate-env" 1 --evidence-stage gate-env
 grep -q 'exit status 7' "$TMP/dlq-gateenv.txt" || {
 	echo "FAIL: gate-env filter picked the wrong death"
 	cat "$TMP/dlq-gateenv.txt"
@@ -90,16 +104,17 @@ grep -q 'exit status 3' "$TMP/dlq-gateenv.txt" && {
 
 echo "== set spec with negation: gate-env,!gate-slow"
 "$TMP/tq" dlq --evidence-stage 'gate-env,!gate-slow' >"$TMP/dlq-set.txt"
-expect_ids "evidence-stage gate-env,!gate-slow" 1 "$TMP/dlq-set.txt"
+expect_count "evidence-stage gate-env,!gate-slow" 1 --evidence-stage 'gate-env,!gate-slow'
 
 echo "== negation-only spec: !gate-slow keeps both"
 "$TMP/tq" dlq --evidence-stage '!gate-slow' >"$TMP/dlq-negonly.txt"
-expect_ids "evidence-stage !gate-slow" 2 "$TMP/dlq-negonly.txt"
+expect_count "evidence-stage !gate-slow" 2 --evidence-stage '!gate-slow'
 
 echo "== contradictory spec: command,!command is empty"
 "$TMP/tq" dlq --evidence-stage 'command,!command' >"$TMP/dlq-empty.txt"
-if grep -q 'smoke' "$TMP/dlq-empty.txt"; then
-	echo "FAIL: command,!command must exclude both deaths"
+EMPTY="$(json_count --evidence-stage 'command,!command')"
+if [ "${EMPTY:-1}" -ne 0 ]; then
+	echo "FAIL: command,!command must exclude both deaths (count=$EMPTY)"
 	cat "$TMP/dlq-empty.txt"
 	exit 1
 fi

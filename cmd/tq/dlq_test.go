@@ -35,6 +35,190 @@ func TestParseAgentPoolOptionsDLQFixFlag(t *testing.T) {
 	}
 }
 
+// seedDeadTask enqueues, claims and fails one task so it lands Dead with
+// the given failure detail (nil = no evidence JSON on the failed fact).
+func seedDeadTask(t *testing.T, store *sqlite.Store, project string, failReason string, evidence executor.FailureEvidence) task.Task {
+	t.Helper()
+
+	ctx := context.Background()
+
+	enq, err := store.Enqueue(ctx, task.New{
+		Type:        executor.TaskTypeAgent,
+		Project:     project,
+		Payload:     []byte(`{"repo":"demo","prompt":"p"}`),
+		MaxAttempts: 1,
+	})
+	if err != nil {
+		t.Fatalf("enqueue: %v", err)
+	}
+
+	_, claim, err := store.ClaimDue(ctx, "seed", time.Minute)
+	if err != nil {
+		t.Fatalf("claim: %v", err)
+	}
+
+	var raw []byte
+
+	if (evidence != executor.FailureEvidence{}) {
+		raw, err = json.Marshal(evidence)
+		if err != nil {
+			t.Fatalf("marshal evidence: %v", err)
+		}
+	}
+
+	if err := store.Fail(ctx, enq.ID, claim, failReason, 0, raw); err != nil {
+		t.Fatalf("fail: %v", err)
+	}
+
+	got, err := store.Get(ctx, enq.ID)
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+
+	return got
+}
+
+// TestCmdDLQJSONStream pins the --json contract (TODO rows 1416 + 1413):
+// a lead summary object {count,total,evidence_read} then one row object
+// per dead task — machine consumers count rows from `count`, never grep
+// row text — and each row carries its failure evidence decoded.
+func TestCmdDLQJSONStream(t *testing.T) {
+	t.Parallel()
+
+	dbPath := filepath.Join(t.TempDir(), "dlq-json.db")
+
+	store, err := sqlite.Open(dbPath)
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+
+	dead := seedDeadTask(t, store, "demo", "boom", executor.FailureEvidence{Stage: "command", ExitCode: 3})
+
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	out := captureStdout(t, func() {
+		if err := cmdDLQ([]string{"--db", dbPath, "--json"}); err != nil {
+			t.Errorf("cmdDLQ --json: %v", err)
+		}
+	})
+
+	lines := strings.Split(strings.TrimSpace(out), "\n")
+	if len(lines) != 2 {
+		t.Fatalf("expected summary + 1 row, saw %d lines:\n%s", len(lines), out)
+	}
+
+	var summary dlqJSONSummary
+
+	if err := json.Unmarshal([]byte(lines[0]), &summary); err != nil {
+		t.Fatalf("summary line not JSON: %v\n%s", err, lines[0])
+	}
+
+	if summary.Count != 1 || summary.Total != 1 || !summary.EvidenceRead {
+		t.Fatalf("summary = %+v, want count=1 total=1 evidence_read=true", summary)
+	}
+
+	var row dlqJSONRow
+
+	if err := json.Unmarshal([]byte(lines[1]), &row); err != nil {
+		t.Fatalf("row line not JSON: %v\n%s", err, lines[1])
+	}
+
+	if row.ID != dead.ID.String() || row.Project != "demo" || row.Attempts != 1 {
+		t.Fatalf("row = %+v, want id=%s project=demo attempts=1", row, dead.ID)
+	}
+
+	if row.Evidence == nil || row.Evidence.Stage != "command" || row.Evidence.ExitCode != 3 {
+		t.Fatalf("row evidence = %+v, want stage=command exit=3", row.Evidence)
+	}
+}
+
+// TestCmdDLQEvidenceReadCap pins the bounded prefetch (TODO row 1413): an
+// unfiltered listing over dlqEvidenceReadCap dead tasks skips the
+// per-task trail reads (summary evidence_read=false, rows carry no
+// evidence), while an explicit --evidence-stage filter still reads.
+func TestCmdDLQEvidenceReadCap(t *testing.T) {
+	t.Parallel()
+
+	dbPath := filepath.Join(t.TempDir(), "dlq-cap.db")
+
+	store, err := sqlite.Open(dbPath)
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+
+	for range dlqEvidenceReadCap + 1 {
+		seedDeadTask(t, store, "cap", "boom", executor.FailureEvidence{Stage: "command"})
+	}
+
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	runJSON := func(args ...string) (dlqJSONSummary, []dlqJSONRow) {
+		t.Helper()
+
+		out := captureStdout(t, func() {
+			if err := cmdDLQ(append([]string{"--db", dbPath, "--json"}, args...)); err != nil {
+				t.Errorf("cmdDLQ: %v", err)
+			}
+		})
+
+		lines := strings.Split(strings.TrimSpace(out), "\n")
+
+		var summary dlqJSONSummary
+
+		if err := json.Unmarshal([]byte(lines[0]), &summary); err != nil {
+			t.Fatalf("summary line not JSON: %v", err)
+		}
+
+		rows := make([]dlqJSONRow, 0, len(lines)-1)
+
+		for _, line := range lines[1:] {
+			var row dlqJSONRow
+
+			if err := json.Unmarshal([]byte(line), &row); err != nil {
+				t.Fatalf("row line not JSON: %v", err)
+			}
+
+			rows = append(rows, row)
+		}
+
+		return summary, rows
+	}
+
+	summary, rows := runJSON()
+	if summary.Count != dlqEvidenceReadCap+1 || summary.Total != dlqEvidenceReadCap+1 {
+		t.Fatalf("summary = %+v, want count=total=%d", summary, dlqEvidenceReadCap+1)
+	}
+
+	if summary.EvidenceRead {
+		t.Fatal("over-cap unfiltered run must report evidence_read=false")
+	}
+
+	for _, row := range rows {
+		if row.Evidence != nil {
+			t.Fatalf("over-cap unfiltered row carried evidence: %+v", row.Evidence)
+		}
+	}
+
+	summary, rows = runJSON("--evidence-stage", "command")
+	if !summary.EvidenceRead {
+		t.Fatal("filtered run must always read evidence")
+	}
+
+	if summary.Count != dlqEvidenceReadCap+1 || summary.Total != dlqEvidenceReadCap+1 {
+		t.Fatalf("filtered summary = %+v, want count=total=%d", summary, dlqEvidenceReadCap+1)
+	}
+
+	for _, row := range rows {
+		if row.Evidence == nil || row.Evidence.Stage != "command" {
+			t.Fatalf("filtered row missing evidence: %+v", row)
+		}
+	}
+}
+
 // TestCmdDLQDismissDeadTask runs the operator lever end-to-end against a
 // scratch store: a dead task becomes cancelled with the reason recorded on
 // the cancelled fact.

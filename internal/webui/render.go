@@ -270,6 +270,11 @@ type DashboardData struct {
 	TotalPages int
 	MatchTotal int
 	Budget     *BudgetView
+	// DeadTotal is the UNFILTERED dead-task population: when an evidence
+	// filter narrows Dead, the DLQ renders "N of DeadTotal match" instead
+	// of an empty-state that reads as "no dead tasks at all" (TODO row
+	// 1411). Unfiltered snapshots set it to len(Dead).
+	DeadTotal int
 	// Board holds the per-status columns when the filter selects the board
 	// view; nil on the table view (which uses Tasks/Page/TotalPages).
 	Board []BoardColumn
@@ -669,23 +674,14 @@ func clearEvidence(f FilterState) string {
 	return filterHref(f)
 }
 
-// evidenceStageChoices is the DLQ evidence filter's dropdown vocabulary:
-// the failure stages, verify-gate classes and gate aliases the shared
-// executor.MatchesEvidenceStage matcher understands — the same semantics
-// as `tq dlq --evidence-stage` (2026-10-26 01-40 §b1).
+// evidenceStageChoices is the DLQ evidence filter's suggestion vocabulary:
+// the closed stamped death-class vocabulary owned by the executor
+// (KnownEvidenceTerms — stages, verify-gate stages and gate aliases), the
+// same semantics as `tq dlq --evidence-stage`. The FilterBar's datalist
+// rides it; the set-spec GRAMMAR (comma terms, `!`-negation) is free-text
+// beyond these suggestions (TODO row 1415).
 func evidenceStageChoices() []string {
-	return []string{
-		"agent",
-		"verify",
-		"command",
-		executor.VerifyStageGofmt,
-		executor.VerifyStageTest,
-		executor.VerifyStageE2ETimeout,
-		executor.VerifyStageRun,
-		string(executor.VerifyGateEnvironmental),
-		string(executor.VerifyGateDead),
-		string(executor.VerifyGateSlow),
-	}
+	return executor.KnownEvidenceTerms()
 }
 
 func filterURL(f FilterState, reset func(FilterState) string) string {
@@ -829,6 +825,7 @@ func (s *Server) loadSnapshot(ctx context.Context, filter FilterState) (Dashboar
 	}
 
 	data.Dead = deadTasks
+	data.DeadTotal = len(deadTasks)
 
 	if filter.Evidence != "" {
 		filtered := make([]task.Task, 0, len(deadTasks))
