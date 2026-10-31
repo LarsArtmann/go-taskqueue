@@ -1608,3 +1608,6 @@ ce2f95a75e7de5256889b31ac9119560562429ff
 # 2026-10-31 T25 postgres batch: mid-edit sweeps (content verified 4996d120+ ticks)
 dff2cdd311a0c716bca6eeccc4944acfcc2b97c3
 d40bb0135fabe65c9e3a2ef6697ac093d2af4d2e
+# 2026-10-31 continuation session: CHANGELOG Unreleased rows (8497f3c2) + row-852 gci fix in conform/tests.go (c78b852d) — both verified: O14 check green, lint-baseline --check green 2430=2430
+8497f3c25a99766147181b691be8bd1393be7ffd
+c78b852d92aea64ed883436bc56ca2eb112dd37f
