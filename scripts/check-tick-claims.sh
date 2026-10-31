@@ -157,7 +157,7 @@ scan_commit_messages() {
 	# (where the 1b2fee1d class lives; bodies stay unscanned — prose).
 	# TQ_TICK_MSG_CMD overrides the git log fetch for the self-test
 	# (prints 'sha<TAB>subject' lines).
-	local win="${TQ_TICK_MSG_WINDOW:-300}" sha msg low claim target need got rec
+	local win="${TQ_TICK_MSG_WINDOW:-300}" sha msg low claim target need got
 	local msg_claim_re='(mark(ed)?|writ(e|ten)|annotat(e|ed)|record(ed)?|land(ed)?)[^.]{0,80}rows?[^.]{0,40}blocked|blocked[^.]{0,40}rows?[^.]{0,80}(written|annotated|landed|marked)|((both|two|[0-9]+)[^.]{0,20}rows?[^.]{0,30}(annotated|written|blocked))'
 	while IFS=$'\t' read -r sha msg; do
 		[ -n "${sha:-}" ] || continue
