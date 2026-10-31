@@ -711,3 +711,36 @@ func TestFailureSummarySplitsEnvStreakBurns(t *testing.T) {
 		t.Fatalf("failureSummary(nil) = %+v, want zero value", got)
 	}
 }
+
+// TestFailureSummaryCountsVerifyStages pins the forensics half of row
+// 797: task.failed facts carrying a structured verify stage are counted
+// by stage (gofmt/test/e2e-timeout/run) for the audit's verify-deaths
+// output; facts without structured evidence skip.
+func TestFailureSummaryCountsVerifyStages(t *testing.T) {
+	t.Parallel()
+
+	plain, err := json.Marshal(executor.FailureEvidence{Stage: "command", ExitCode: 3})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+
+	gofmtDeath, err := json.Marshal(executor.FailureEvidence{Stage: "verify", VerifyStage: executor.VerifyStageGofmt})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+
+	facts := []journal.Fact{
+		{Type: journal.Failed, Error: "boom", Detail: plain},
+		{Type: journal.Failed, Error: "gofmt", Detail: gofmtDeath},
+		{Type: journal.Failed, Error: "legacy no detail"},
+	}
+
+	got := failureSummary(facts)
+	if got.Total != 3 || got.EnvStreakBurns != 0 {
+		t.Fatalf("failureSummary = %+v, want total=3 burns=0", got)
+	}
+
+	if got.ByVerifyStage[executor.VerifyStageGofmt] != 1 || len(got.ByVerifyStage) != 1 {
+		t.Fatalf("ByVerifyStage = %v, want gofmt=1 only", got.ByVerifyStage)
+	}
+}

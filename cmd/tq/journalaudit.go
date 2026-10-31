@@ -197,8 +197,12 @@ type DriftReport struct {
 // environmental requeues escalated to an attempt burn) from judged
 // execution failures: a breaker burn is queue hygiene, not a task defect.
 type FailureSummary struct {
-	Total       int `json:"total"`
-	EnvStreakBurns int `json:"envStreakBurns"`
+	Total          int            `json:"total"`
+	EnvStreakBurns int            `json:"envStreakBurns"`
+	// ByVerifyStage counts verify-gate attempt deaths by their structured
+	// verify stage (gofmt/test/e2e-timeout/run) — the forensics half of
+	// surfacing verify_stage beyond the DLQ prompts (row 797).
+	ByVerifyStage map[string]int `json:"byVerifyStage,omitempty"`
 }
 
 // failureSummary scans the fact range for task.failed facts and counts
@@ -218,6 +222,15 @@ func failureSummary(facts []journal.Fact) FailureSummary {
 
 		if strings.Contains(fact.Error, marker) {
 			summary.EnvStreakBurns++
+		}
+
+		var evidence executor.FailureEvidence
+		if json.Unmarshal(fact.Detail, &evidence) == nil && evidence.VerifyStage != "" {
+			if summary.ByVerifyStage == nil {
+				summary.ByVerifyStage = make(map[string]int)
+			}
+
+			summary.ByVerifyStage[evidence.VerifyStage]++
 		}
 	}
 
@@ -642,6 +655,19 @@ func cmdJournalAudit(ctx context.Context, store queue.Store, asJSON bool, taskID
 		fmt.Printf(
 			"failures: %d total, %d env-streak breaker burn(s) — sustained environmental requeues escalated to an attempt burn, NOT judged execution failures\n",
 			f.Total, f.EnvStreakBurns)
+	}
+
+	if f := report.Failures; len(f.ByVerifyStage) > 0 {
+		stages := make([]string, 0, len(f.ByVerifyStage))
+		for stage := range f.ByVerifyStage {
+			stages = append(stages, stage)
+		}
+
+		sort.Strings(stages)
+
+		for _, stage := range stages {
+			fmt.Printf("verify deaths by stage: %s=%d\n", stage, f.ByVerifyStage[stage])
+		}
 	}
 
 	switch y := report.Autopsies; y.Autopsies {

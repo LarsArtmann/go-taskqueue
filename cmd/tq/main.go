@@ -2124,6 +2124,11 @@ func cmdStats(args []string) error {
 	// task before anyone looked; this is the one-glance flag for that class.
 	suspects := claimSuspects(ctx, store, filter.Project)
 
+	// Verify-deaths by stage (row 797): which verify-gate stage kills
+	// runs, from one bounded fact-tail read — the DLQ prompt's
+	// verify_stage knowledge surfaced as a stats counter.
+	verifyDeaths := verifyDeathsByStage(ctx, store)
+
 	budgetJSON := budgetView{SpentToday: spent, Cap: *dailyBudget}
 	if usage.Runs > 0 {
 		budgetJSON.SessionUsage = &budgetUsageView{
@@ -2151,6 +2156,7 @@ func cmdStats(args []string) error {
 			SessionsClosed:        int(sessionsClosed),
 			ClaimAnomalies:        suspects,
 			ClaimAnomalyThreshold: claimAnomalyThreshold,
+			VerifyDeathsByStage:   verifyDeaths,
 		})
 	}
 
@@ -2170,6 +2176,22 @@ func cmdStats(args []string) error {
 		for _, suspect := range suspects {
 			fmt.Printf("              %s  %d claims\n", suspect.ID, suspect.Claims)
 		}
+	}
+
+	if len(verifyDeaths) > 0 {
+		stages := make([]string, 0, len(verifyDeaths))
+		for stage := range verifyDeaths {
+			stages = append(stages, stage)
+		}
+
+		sort.Strings(stages)
+
+		parts := make([]string, 0, len(stages))
+		for _, stage := range stages {
+			parts = append(parts, fmt.Sprintf("%s=%d", stage, verifyDeaths[stage]))
+		}
+
+		fmt.Printf("verify deaths  %s (by gate stage, recent fact window)\n", strings.Join(parts, " "))
 	}
 
 	if len(openSessions) > 0 {
@@ -2198,6 +2220,46 @@ type statsPayload struct {
 	SessionsClosed        int                       `json:"sessions_closed,omitempty"`
 	ClaimAnomalies        []claimSuspect            `json:"claim_anomalies,omitempty"`
 	ClaimAnomalyThreshold int                       `json:"claim_anomaly_threshold,omitempty"`
+	// VerifyDeathsByStage counts recent task.failed facts carrying a
+	// structured verify stage (gofmt/test/e2e-timeout/run) — the
+	// which-gate-stage-kills-runs counter over the bounded fact tail
+	// (row 797); absent when the window carries none.
+	VerifyDeathsByStage map[string]int `json:"verify_deaths_by_stage,omitempty"`
+}
+
+// verifyDeathsByStage counts recent verify-gate attempt deaths by their
+// structured verify stage from ONE bounded journal tail read
+// (factTailLimit) — not per-task trails. Any task.failed fact carrying a
+// non-empty FailureEvidence.VerifyStage is a verify-gate death by
+// construction (only SetVerifyFailureEvidence stamps the field); legacy
+// facts without structured evidence skip. Best-effort: a read failure
+// yields nil (stats still renders).
+func verifyDeathsByStage(ctx context.Context, store *sqlite.Store) map[string]int {
+	facts, err := store.LastFacts(ctx, factTailLimit)
+	if err != nil {
+		return nil
+	}
+
+	out := map[string]int{}
+
+	for _, fact := range facts {
+		if fact.Type != journal.Failed {
+			continue
+		}
+
+		var evidence executor.FailureEvidence
+		if err := json.Unmarshal(fact.Detail, &evidence); err != nil || evidence.VerifyStage == "" {
+			continue
+		}
+
+		out[evidence.VerifyStage]++
+	}
+
+	if len(out) == 0 {
+		return nil
+	}
+
+	return out
 }
 
 // claimAnomalyThreshold mirrors queue.ClaimAnomalyThreshold for the stats
