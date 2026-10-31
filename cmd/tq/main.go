@@ -2071,6 +2071,15 @@ func cmdStats(args []string) error {
 		if err != nil {
 			return err
 		}
+
+		// Row 685: a read-only mount (the fold lock is held elsewhere —
+		// serve runs) silently serves a possibly-lagging projection; the
+		// stats BODY carries the note so operators see it without reading
+		// stderr logs.
+		if m.ReadOnly() {
+			health := m.ProjectionHealth(ctx)
+			fmt.Fprintf(os.Stderr, "projection: read-only mount (fold lock held elsewhere), cursor %d fact(s) behind the journal head\n", health.Lag)
+		}
 	} else {
 		var err error
 

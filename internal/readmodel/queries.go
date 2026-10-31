@@ -208,6 +208,14 @@ func counterFold[E any]( //nolint:ireturn // Fold is the library's declarative f
 // not folded) emits only the increment — the counter then converges on
 // the next full replay, same degradation story as the map folds.
 func transitionDelta(next, from string) metaengine.Delta {
+	// A same-status transition (e.g. a re-enqueue whose prev read already
+	// saw pending) must net ZERO: the {next:1} then delta[from]=-1 shape
+	// left -1 — a silent per-event counter drain (found by the row-684
+	// helper table, the §d2 bug class).
+	if from == next {
+		return metaengine.Delta{}
+	}
+
 	delta := metaengine.Delta{next: 1}
 	if from != "" {
 		delta[from] = -1
@@ -222,6 +230,10 @@ func transitionDelta(next, from string) metaengine.Delta {
 // emits only the increment — the counter then converges on the next full
 // replay, same degradation story as the map folds.
 func projectTransitionDelta(project, nextStatus, fromStatus string) metaengine.Delta {
+	if fromStatus == nextStatus {
+		return metaengine.Delta{}
+	}
+
 	delta := metaengine.Delta{projectStatusKey(project, nextStatus): 1}
 	if fromStatus != "" {
 		delta[projectStatusKey(project, fromStatus)] = -1

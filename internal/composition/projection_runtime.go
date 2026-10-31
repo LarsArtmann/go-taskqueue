@@ -100,14 +100,14 @@ func NewProjectionRuntime(
 		return nil, fmt.Errorf("composition: open projection-home engine: %w", err)
 	}
 
-	opts := []readmodel.Option{readmodel.WithDurableCursor(), readmodel.WithEngine(eng)}
+	modelOpts := []readmodel.Option{readmodel.WithDurableCursor(), readmodel.WithEngine(eng)}
 	if folder {
-		opts = append(opts, readmodel.WithFoldLock(lock))
+		modelOpts = append(modelOpts, readmodel.WithFoldLock(lock))
 	} else {
-		opts = append(opts, readmodel.WithReadOnly())
+		modelOpts = append(modelOpts, readmodel.WithReadOnly())
 	}
 
-	m, err := readmodel.Open(ctx, modelPath, src, opts...)
+	m, err := readmodel.Open(ctx, modelPath, src, modelOpts...)
 	if err != nil {
 		_ = eng.Close()
 		_ = lock.Release()
