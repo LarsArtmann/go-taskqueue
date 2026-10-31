@@ -1446,7 +1446,7 @@ not here.
 - [ ] L3 structured closeout facts from the crush messages endpoint — kill stdout parsing for closeout reports (13-48 §f4; the derived-outcomes stdout contract stays as fallback)
 - [ ] L3 dashboard cancel for stuck dispatched turns: a write endpoint per AGENTS `tq serve` security rails (CSRF + lockout + token-gate), cancel routed to the run actor (13-48 §f5)
 - [ ] L4 pilot on ONE repo + shared-server memory measurement before any fleet-wide client-server rollout (13-48 §f6)
-- [ ] Keeper-client so the pool's `crush server` survives idle — no respawn churn between dispatch bursts (13-48 §f7)
+- [x] Keeper-client so the pool's `crush server` survives idle — DONE 2026-10-31 (T26): the L1 actor keeps one client-shaped dial alive (workspaces endpoint, 45s cadence) AND supervises the process — an unexpected exit (idle suicide the keeper misses, crash) restarts on a backoff ladder (1s/5s/15s/1m) instead of tearing the pool's run.Group down; pool shutdown stays the clean exit (M7 churn removed, pool death made impossible)
 - [ ] E-gap proofs under ROUTED runs (thin client over `-H <socket>`): `$TQ_RESULT_FILE` verdict, `$TQ_QUESTION_FILE`/AnswerPoller round-trip, 429 fast-refuse evidence — mechanics are pinned for in-process runs only; one smoke covers all three (13-48 §f9)
 - [ ] Fix or pin `TestShowJSONCarriesFailureEvidence` order-dependence (leaked stdout writer, proven at 105c1cb6 — foreign, unclaimed)
 - [ ] edit-advice hook: docs/planning/* creation note (clock-first `date +%Y-%m-%d_%H-%M` before composing `<ts>_<slug>`) — the note exists for docs/status only (13-48 §f16)
