@@ -2051,6 +2051,12 @@ func cmdStats(args []string) error {
 	)
 
 	if *readModel {
+		// Row 79 — DELIBERATE per-surface exception to the
+		// NewProjectionRuntime seam: stats is a LIGHT reader (no fold, no
+		// host, no DLQ sidecar), and mounting the full runtime would
+		// contend for the projection home's fold lock (a bounded 5s wait)
+		// just to read tallies. The self-open stays; the seam owns every
+		// surface that FOLDS.
 		m, err := readmodel.Open(ctx, readmodel.PathFor(dbPath), store, readmodel.WithDurableCursor())
 		if err != nil {
 			return err

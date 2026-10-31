@@ -1223,6 +1223,10 @@ func doctorProjection(ctx context.Context, store queue.Store, dbPath string) []c
 		return append(results, checkResult{Name: "projection-db", Status: checkOK, Detail: detail})
 	}
 
+	// Row 79 — DELIBERATE per-surface exception to the
+	// NewProjectionRuntime seam (same reasoning as `tq stats`): doctor is
+	// a light reader over the projection; the runtime's fold-lock
+	// election belongs to surfaces that FOLD.
 	m, err := readmodel.Open(ctx, projectionPath, store, readmodel.WithDurableCursor())
 	if err != nil {
 		return append(results, checkResult{Name: "projection-db", Status: checkFail, Detail: "open: " + err.Error()})
