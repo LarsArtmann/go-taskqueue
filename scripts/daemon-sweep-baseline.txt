@@ -1592,3 +1592,6 @@ c8d56189838e5619a58b9ff1042f1a1f541a239b
 # 2026-10-31 T17 dirty-tree batch: two mid-edit sweeps ahead of 61dbd5e8 (content verified there)
 f6deb5a3d4656d116e007c3b91f6969aab9f1a07
 5998036c79b6378814d6fff6f5d2285a9a70d340
+# 2026-10-31 T17 audit/stats batch: mid-edit sweeps of the 546/797/1087 work ahead of a6b6193e (content verified there)
+6fb51fa456676a74c9c5d689f1d580d49e08f917
+859e25ede4eac987a788468420aedff8db1e5906
