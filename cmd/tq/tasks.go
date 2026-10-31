@@ -193,24 +193,27 @@ func cmdTasks(args []string) error {
 
 	var providers map[string]string
 	var evidenceRows map[string]string
+	var requeueClasses map[string]string
 
 	if *parked {
 		providers = latestRequeueProvider(facts)
 		evidenceRows = latestFailureEvidenceSummary(facts)
+		requeueClasses = latestRequeueClass(facts)
 	}
 
 	if *asJSON {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
 
-		// Parked rows carry the requeue-evidence provider (omitempty when
-		// the facts carry none) so JSON consumers get the one-glance
-		// "which provider" answer without journal reads; non-parked JSON
-		// stays the plain task array (2026-10-15 01-15 §b2).
+		// Parked rows carry the requeue-evidence provider and class (omitempty
+		// when the facts carry none) so JSON consumers get the one-glance
+		// "which provider" answer and can distinguish dirty-tree parks
+		// (requeue_class=preflight) from gate parks without journal reads;
+		// non-parked JSON stays the plain task array (2026-10-15 01-15 §b2).
 		if providers != nil {
 			rows := make([]parkedTaskRow, len(tasks))
 			for i, t := range tasks {
-				rows[i] = parkedTaskRow{Task: t, Provider: providers[t.ID.String()]}
+				rows[i] = parkedTaskRow{Task: t, Provider: providers[t.ID.String()], RequeueClass: requeueClasses[t.ID.String()]}
 			}
 
 			if *jsonEnvelope {
@@ -245,16 +248,18 @@ func cmdTasks(args []string) error {
 		return enc.Encode(tasks)
 	}
 
-	printTaskListTo(os.Stdout, tasks, *limit, uncappedTotal, providers, evidenceRows)
+	printTaskListTo(os.Stdout, tasks, *limit, uncappedTotal, providers, evidenceRows, requeueClasses)
 
 	return nil
 }
 
-// parkedTaskRow joins a task with its requeue-evidence provider for the
-// parked JSON surface; the embedded task keeps the wire shape additive.
+// parkedTaskRow joins a task with its requeue-evidence provider and class
+// for the parked JSON surface; the embedded task keeps the wire shape
+// additive.
 type parkedTaskRow struct {
 	task.Task
-	Provider string `json:"provider,omitempty"`
+	Provider     string `json:"provider,omitempty"`
+	RequeueClass string `json:"requeue_class,omitempty"`
 }
 
 // printTaskList renders the list view: full IDs (they are the handle into
@@ -263,7 +268,7 @@ type parkedTaskRow struct {
 // so a truncated footer never reads as the whole set (dead-letter census
 // missed a 09-20 death behind a silent 50-row cap).
 func printTaskList(tasks []task.Task, limit int, total func() (int, error)) {
-	printTaskListTo(os.Stdout, tasks, limit, total, nil, nil)
+	printTaskListTo(os.Stdout, tasks, limit, total, nil, nil, nil)
 }
 
 // providers (nil outside --parked) joins each task's latest requeue
@@ -276,6 +281,7 @@ func printTaskListTo(
 	total func() (int, error),
 	providers map[string]string,
 	evidence map[string]string,
+	classes map[string]string,
 ) {
 	if len(tasks) == 0 {
 		fmt.Fprintln(w, "no matching tasks")
@@ -310,6 +316,15 @@ func printTaskListTo(
 		}
 
 		fmt.Fprintln(w, row)
+
+		// Dirty-tree parks are foreign dirt waiting, not task sickness —
+		// the hint keeps the no-attempt-burn contract visible on the text
+		// surface (JSON consumers read requeue_class=preflight + the
+		// refusal's [dirty tree] marker).
+		if classes != nil && classes[t.ID.String()] == queue.RequeueClassPreflight &&
+			strings.Contains(oneLine(t.LastError), "dirty tree") {
+			fmt.Fprintln(w, "       ↳ parked by a dirty tree — waits for the tree to clean; no attempt burn")
+		}
 	}
 
 	if limit > 0 && len(tasks) == limit {

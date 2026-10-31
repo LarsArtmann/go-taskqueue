@@ -84,6 +84,75 @@ func TestPoolHealthSkipStreakWarns(t *testing.T) {
 	}
 }
 
+// TestPoolHealthDirtyTreeOwnLane pins the dirty-tree lane split: a long
+// foreign-dirt park chain counts into DirtyTreeStreak (its OWN lane,
+// WARN only at poolDirtyWarnStreak) and never holds the env SkipStreak
+// at WARN — while a NON-dirty preflight (missing autonomy) still counts
+// the environmental lane.
+func TestPoolHealthDirtyTreeOwnLane(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	store := journalAuditStore(t)
+
+	seedParks := func(project, reason string, n int) {
+		t.Helper()
+
+		enq, err := store.Enqueue(ctx, task.New{Project: project, Type: "sh", Payload: []byte(`"true"`)})
+		if err != nil {
+			t.Fatalf("Enqueue: %v", err)
+		}
+
+		for range n {
+			claimed, claim, err := store.ClaimDue(ctx, "w1", time.Minute)
+			if err != nil {
+				t.Fatalf("ClaimDue: %v", err)
+			}
+
+			if claimed.ID != enq.ID {
+				t.Fatalf("claimed %s, want the seeded task %s", claimed.ID, enq.ID)
+			}
+
+			if err := store.Requeue(ctx, claimed.ID, claim, reason, 0, false, queue.RequeueClassPreflight, ""); err != nil {
+				t.Fatalf("Requeue: %v", err)
+			}
+		}
+	}
+
+	seedParks("dirt", "agent: repo dirt has uncommitted changes; refusing to run agent: ?? wip.txt [dirty tree]", 5)
+	seedParks("autonomy", "agent: missing autonomy config", 3)
+
+	report, err := poolHealth(ctx, store, 24*time.Hour, time.Now(), 0)
+	if err != nil {
+		t.Fatalf("poolHealth: %v", err)
+	}
+
+	dirt := poolRepoByName(t, report, "dirt")
+	if dirt.SkipStreak != 0 {
+		t.Fatalf("dirty-tree parks must not count the env lane: SkipStreak = %d, want 0", dirt.SkipStreak)
+	}
+
+	if dirt.DirtyTreeStreak != 5 {
+		t.Fatalf("DirtyTreeStreak = %d, want 5", dirt.DirtyTreeStreak)
+	}
+
+	for _, w := range dirt.Warnings {
+		if strings.Contains(w, "dirty tree streak") {
+			t.Fatalf("5 dirty parks is below poolDirtyWarnStreak (%d) but warned: %s", poolDirtyWarnStreak, w)
+		}
+	}
+
+	autonomy := poolRepoByName(t, report, "autonomy")
+	if autonomy.SkipStreak != 3 || autonomy.DirtyTreeStreak != 0 {
+		t.Fatalf("non-dirty preflight must stay in the env lane: SkipStreak=%d DirtyTreeStreak=%d, want 3/0",
+			autonomy.SkipStreak, autonomy.DirtyTreeStreak)
+	}
+
+	if autonomy.Verdict != poolVerdictWarn {
+		t.Fatalf("Verdict = %q, want WARN (env lane still escalates)", autonomy.Verdict)
+	}
+}
+
 // TestPoolHealthTerminalResetsStreak pins that a turn which RAN clears
 // the streak: requeues followed by a completion leave streak 0, verdict
 // OK (the repo's work moved).

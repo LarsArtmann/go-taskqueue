@@ -38,6 +38,14 @@ const (
 // + escalate") — by then the loop is no longer transient.
 const poolWarnStreak = 3
 
+// poolDirtyWarnStreak is the dirty-tree lane's own WARN threshold: a
+// foreign-dirt park waits on the ESCALATING ladder (15 min cap) without
+// burning attempts, so a long-lived dirty tree is EXPECTED during another
+// session's work — only a tree that stays dirty across a full day of parks
+// (~96 ladder steps) is worth operator attention, and as a
+// clean-the-tree nudge, not an env-breaker alarm.
+const poolDirtyWarnStreak = 96
+
 // poolSkipClasses are the requeue classes that mean "the environment
 // refused, the task never ran": the claim→requeue-without-burn loop
 // pool-health exists to surface. Question parks (the owner was asked)
@@ -68,6 +76,11 @@ type RepoHealth struct {
 	Dead            int            `json:"dead"`
 	RequeuesByClass map[string]int `json:"requeuesByClass,omitempty"`
 	SkipStreak      int            `json:"skipStreak"`
+	// DirtyTreeStreak counts consecutive dirty-tree preflight parks in
+	// their OWN lane (split from SkipStreak 2026-10-31): foreign dirt
+	// waiting for the tree to clean is not environment sickness, so it
+	// must not hold the env-skip streak at WARN forever.
+	DirtyTreeStreak int            `json:"dirtyTreeStreak,omitempty"`
 	DLQBackoffUntil *time.Time     `json:"dlqBackoffUntil,omitempty"`
 	LastHarvest     *time.Time     `json:"lastHarvest,omitempty"`
 	LastActivity    *time.Time     `json:"lastActivity,omitempty"`
@@ -162,12 +175,14 @@ func poolHealthFrom(facts []journal.Fact, meta map[task.ID]poolTaskMeta, since, 
 			}
 		case journal.Completed:
 			r.SkipStreak = 0
+			r.DirtyTreeStreak = 0
 
 			if inWindow {
 				r.Completed++
 			}
 		case journal.Failed, journal.DeadLettered, journal.Cancelled:
 			r.SkipStreak = 0
+			r.DirtyTreeStreak = 0
 
 			if inWindow {
 				switch fact.Type {
@@ -194,7 +209,15 @@ func poolHealthFrom(facts []journal.Fact, meta map[task.ID]poolTaskMeta, since, 
 			}
 
 			if poolSkipClasses[class] {
-				r.SkipStreak++
+				// Dirty-tree preflight parks are their OWN lane (2026-10-31): a
+				// foreign-dirt park waits on the escalating ladder without
+				// burning attempts, so it must not hold the env-skip streak at
+				// WARN forever — it counts toward DirtyTreeStreak instead.
+				if class == queue.RequeueClassPreflight && strings.Contains(evidence.Reason, "dirty tree") {
+					r.DirtyTreeStreak++
+				} else {
+					r.SkipStreak++
+				}
 			}
 		case journal.Claimed, journal.Released, journal.Reprioritized,
 			journal.Heartbeat, journal.CancelRequested, journal.Orphaned,
@@ -230,6 +253,13 @@ func poolHealthFrom(facts []journal.Fact, meta map[task.ID]poolTaskMeta, since, 
 				r.SkipStreak,
 				poolWarnStreak,
 			))
+		}
+
+		if r.DirtyTreeStreak >= poolDirtyWarnStreak {
+			r.Verdict = poolVerdictWarn
+			r.Warnings = append(r.Warnings, fmt.Sprintf(
+				"dirty tree streak %d: the repo tree has stayed dirty across a full day of parks — clean or stash the foreign changes (no attempt burn, but the work is stuck behind them)",
+				r.DirtyTreeStreak))
 		}
 
 		if r.Enqueued > 0 && r.Completed+r.Failed+r.Dead == 0 {
@@ -436,6 +466,10 @@ func printPoolHealth(report PoolHealthReport) {
 			ageOrNever(r.LastHarvest),
 			ageOrNever(r.LastActivity),
 		)
+
+		if r.DirtyTreeStreak > 0 {
+			fmt.Printf("       ↳ dirtyTreeStreak=%d (own lane; no attempt burn)\n", r.DirtyTreeStreak)
+		}
 
 		for _, w := range r.Warnings {
 			fmt.Printf("       ↳ %s\n", w)
