@@ -22,19 +22,13 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# A kernel-chosen ephemeral port: the historical fixed port collided with a
-# real PapDashboard instance running on this machine (the stub silently
-# failed to bind and the smoke asserted against nothing).
-free_port() {
-	python3 - <<'PY'
-import socket
-with socket.socket() as s:
-    s.bind(("127.0.0.1", 0))
-    print(s.getsockname()[1])
-PY
-}
-
-STUB_PORT="${PAP_SMOKE_PORT:-$(free_port)}"
+# A kernel-chosen ephemeral port — the stub BINDS port 0 and reports the
+# port it actually got via a file, so there is no probe→close→bind race
+# window for another listener to steal (the historical fixed-port collision
+# class; free_port() had the same TOCTOU, just narrower — the smoke failed
+# twice on 2026-10-31 with a live stub but no ingest rows).
+# PAP_SMOKE_PORT still pins an explicit port for debugging collisions.
+STUB_PORT_FILE="$TMP/stub.port"
 
 # TQ_BIN points at a prebuilt binary (e.g. the nix-built result/bin/tq);
 # unset, the script builds from source with `go build`. Either way the
@@ -57,7 +51,8 @@ if [ -z "$PAP_URL" ]; then
 	cat >"$TMP/stub.py" <<'PYEOF'
 import sys
 from http.server import BaseHTTPRequestHandler, HTTPServer
-LOG, PORT = sys.argv[1], int(sys.argv[2])
+LOG, PORTFILE = sys.argv[1], sys.argv[2]
+want = int(sys.argv[3]) if len(sys.argv) > 3 else 0
 class H(BaseHTTPRequestHandler):
     def do_POST(self):
         n = int(self.headers.get("Content-Length", 0))
@@ -66,22 +61,26 @@ class H(BaseHTTPRequestHandler):
             f.write(self.path + " " + self.headers.get("Idempotency-Key", "") + " " + body + "\n")
         self.send_response(200); self.end_headers(); self.wfile.write(b"ok")
     def log_message(self, *a): pass
-HTTPServer(("127.0.0.1", PORT), H).serve_forever()
+srv = HTTPServer(("127.0.0.1", want), H)
+with open(PORTFILE, "w") as f:
+    f.write(str(srv.server_address[1]))
+srv.serve_forever()
 PYEOF
-	python3 "$TMP/stub.py" "$INGEST_LOG" "$STUB_PORT" &
+	python3 "$TMP/stub.py" "$INGEST_LOG" "$STUB_PORT_FILE" "${PAP_SMOKE_PORT:-0}" &
 	STUB_PID=$!
 	for _ in $(seq 1 20); do
 		kill -0 "$STUB_PID" 2>/dev/null || {
-			echo "FAIL: stub dashboard exited (port $STUB_PORT taken? override with PAP_SMOKE_PORT)"
+			echo "FAIL: stub dashboard exited (PAP_SMOKE_PORT=${PAP_SMOKE_PORT:-unset} taken?)"
 			exit 1
 		}
-		python3 -c "import socket; socket.create_connection((\"127.0.0.1\", $STUB_PORT), 0.2)" 2>/dev/null && break
+		[ -s "$STUB_PORT_FILE" ] && break
 		sleep 0.25
 	done
-	if ! python3 -c "import socket; socket.create_connection((\"127.0.0.1\", $STUB_PORT), 0.2)" 2>/dev/null; then
-		echo "FAIL: stub dashboard never accepted connections on 127.0.0.1:$STUB_PORT (port taken? override with PAP_SMOKE_PORT)"
+	STUB_PORT="$(cat "$STUB_PORT_FILE" 2>/dev/null || true)"
+	[ -n "$STUB_PORT" ] || {
+		echo "FAIL: stub dashboard never reported its bound port"
 		exit 1
-	fi
+	}
 	PAP_URL="http://127.0.0.1:$STUB_PORT"
 fi
 
