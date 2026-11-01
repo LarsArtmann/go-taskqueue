@@ -9,22 +9,20 @@ changes: read, judge, build on, never revert. (Size guard: TestAgentsDocSizeGuar
 **MAJOR OPEN PROBLEMS**: [dispatch prompting + batch granularity](docs/problems/major-prompting-and-batching.md) —
 redesign SHIPPED v0.3.4; follow-ups tracked in the doc.
 
-**READER ROUTE — read only your lanes** (dense by design):
-dispatched executors → §Payload contracts + §Conventions (claims,
-battery, gate receipts); review/dlqfix/status agents → §Conventions +
-§Operational contracts; gate/verify runners → §Commands + §Known Issues;
-store/queue code → §Store invariants; platform/docs work → §Relation to
-other projects. Everyone: scan §Known Issues before attributing
-failures. Package-level reader maps live in each package's doc comment.
+**READER ROUTE — read only your lanes** (dense by design): executors →
+§Payload contracts + §Conventions; review/dlqfix/status agents →
+§Conventions + §Operational contracts; gate/verify runners → §Commands +
+§Known Issues; store/queue → §Store invariants; platform/docs →
+§Relation to other projects. Everyone: scan §Known Issues before
+attributing failures. Per-package reader maps live in each doc comment.
 
 ## Commands
 
 ```bash
 ./scripts/ci-local.sh # pre-push gate; transient foreign breaks retry 45s ×3
-  # TRANSIENT_MAX_POLLS=0: NO retry (check-transient-retry pins);
-  # nix/check-ci/daemon-attribution unwrapped. Preflight EVERY
-  # battery: agents-size + dead-exports --self-test + module
-  # test + facade-parity + ROOT vet + quiet tree.
+  # TRANSIENT_MAX_POLLS=0: NO retry (check-transient-retry pins); nix/check-ci/
+  # daemon-attribution unwrapped. Preflight EVERY battery: agents-size +
+  # dead-exports --self-test + module test + facade-parity + ROOT vet + quiet tree.
 ./scripts/root-gate.sh # root verify gate; ONE retry on known-flaky signatures
 ./scripts/lint-baseline.sh --check --clean-cache # opt-in stale-cache clean before a warm --check (regen ALWAYS cleans)
 nix build # nix run .#test; .#webui-css
@@ -44,16 +42,14 @@ for m in $(find internal task journal queue executor worker -name go.mod -printf
 ```
 
 **Public facades (ADR-0016):** `task/ journal/ queue/ queue/sqlite/
-queue/postgres/ executor/ worker/` re-export internals via type aliases
-— the only external import surface; in-repo code imports `internal/…`.
-Facades: require (real tag) + relative replace; tests import internals,
-never sibling facades; parity via `scripts/check-facade-parity.sh`
-BEFORE staging; postgres `OpenWithPool` pools CALLER-OWNED. No go.work
-at root — replace-only (exception: tracked `cmd/tq/go.work` dev
-workspace, ADR-0017). When a module's `go` directive bumps, bump
-`cmd/tq/go.work`'s `go` line (`go work edit -go=<ver>`) in the same
-change — a stale line fails every cmd/tq go command. Release flow:
-docs/release/.
+queue/postgres/ executor/ worker/` re-export internals via type aliases —
+the only external import surface; in-repo code imports `internal/…`.
+Facades: require (real tag) + relative replace; tests import internals, never
+sibling facades; parity via `scripts/check-facade-parity.sh` BEFORE staging;
+postgres `OpenWithPool` pools CALLER-OWNED. No root go.work — replace-only
+(exception: tracked `cmd/tq/go.work`, ADR-0017); a module `go`-directive bump
+bumps its `go` line (`go work edit -go=<ver>`) in the same change — a stale
+line fails every cmd/tq go command. Release flow: docs/release/.
 
 Smokes (CI-safe): `scripts/smoke/`. Guards: check-*.sh +
 release-gates + lint-baseline. `scripts/new-module.sh <dir> [deps…]`
@@ -261,16 +257,15 @@ docs/DOMAIN_LANGUAGE.md.
 - **Clock-first filenames**: run `date +%Y-%m-%d_%H-%M` BEFORE
   composing a `<ts>_<slug>` filename — a guessed `<ts>` lies.
 - **Edit→commit→battery ordering**: stage+commit BEFORE running anything
-  (daemon sweeps <60 s, footer-less, take STAGED files too); after ANY
-  commit re-read `git log -1
-  --format='%(trailers:key=Task-Queue-ID,valueonly)'` — EMPTY output =
-  an in-flight daemon sweep landing between your edits (heal immediately
-  while the unpushed window is open; commit-task.sh and the hooks cannot
-  see it). Fold only while local-only + contiguous + exactly-mine
-  (`scripts/commit-task.sh <id> <subject> <file>…`). In MULTI-STEP git
-  surgery modified-unstaged AND untracked files are daemon-food — a
-  mid-sequence sweep breaks span contiguity and the heal refuses; between
-  steps the tree must be CLEAN, not merely "nothing left to stage".
+  (daemon sweeps <60 s, footer-less, take STAGED files too); after ANY commit
+  re-read `git log -1 --format='%(trailers:key=Task-Queue-ID,valueonly)'` —
+  EMPTY output = an in-flight daemon sweep landing between your edits (heal
+  while the unpushed window is open; the hooks cannot see it). Fold only while
+  local-only + contiguous + exactly-mine (`scripts/commit-task.sh <id>
+  <subject> <file>…`). In MULTI-STEP git surgery, modified-unstaged AND
+  untracked files are daemon-food: a mid-sequence sweep breaks span contiguity
+  and the heal refuses, so between steps the tree must be CLEAN, not merely
+  "nothing left to stage".
 - Tab-bearing insertions go through python-heredoc replace — free-text
   edit glues tabs into comments as literal `\t`.
 - Pure-Go deps only (`CGO_ENABLED=0`); Go 1.26+ idioms deliberate
@@ -305,16 +300,14 @@ docs/DOMAIN_LANGUAGE.md.
 ## Known Issues
 
 - **Concurrent agents commit constantly** (auto-commit daemon): re-run
-  `go test ./... -race` before declaring success; never generate Go
-  source via heredocs; fixtures under /tmp (gated trees are daemon-food).
-  Footer-less daemon `chore:` sweeps heal via
-  `scripts/heal-daemon-sweep.sh [--from <ref>] [--retitle <subject>] <Task-Queue-ID>`
-  (unpushed only; backup on failure; `--self-test` pins rails). REFUSES
-  non-contiguous spans. A refusal naming the span's PARENT (a foreign
-  footer BELOW an otherwise-exactly-mine span) is the span-terminator
-  shape: run the script's printed `--from <oldest-blocker>` invocation
-  (proven); residue fallback: `git commit --amend` the unpushed HEAD
-  after verifying the span exactly-mine via `git show --stat`.
+  `go test ./... -race` before declaring success; never generate Go source via
+  heredocs; fixtures under /tmp (gated trees are daemon-food). Footer-less
+  `chore:` sweeps heal via `scripts/heal-daemon-sweep.sh [--from <ref>]
+  [--retitle <s>] <Task-Queue-ID>` (unpushed only; backup on failure;
+  `--self-test` pins rails) — it REFUSES non-contiguous spans, and a refusal
+  naming the span's PARENT (foreign footer BELOW an exactly-mine span) is the
+  span-terminator shape: run its printed `--from <oldest-blocker>`; residue
+  fallback = amend the unpushed HEAD once `git show --stat` proves it mine.
 - **`TestExactlyOnceUnderConcurrency` is load-flaky (worker);
   `TestSelfManagingLoop` is load-flaky (harvest)**: build storms drop
   at clean parents — re-run before attributing; both ride `KNOWN_FLAKY` in
@@ -348,20 +341,18 @@ docs/DOMAIN_LANGUAGE.md.
   (SECURITY.md); no new write endpoints without it.
 - **templ + cmd/tq LSP diagnostics are false positives** — trust the CLI
   gates, never "fix" them.
-- **erraudit**: HARD gate `scripts/check-erraudit.sh` — exact ruled
-  flags live there (`--max` is dev-build-only; CI pin v0.7.0 rejects it,
-  so the gate passes the explicit decomposition),
-  run from EACH module root (`lint` REJECTS `--modules`/
-  `--violations-only` — never pass them). `legacy_as` = migrate to
-  `errors.AsType` (migrated; zero standing); `legacy_is` sentinel sites KEEP `errors.Is` +
-  `//nolint:legacyerrors // <reason>` on the call line (default lint honors
-  it; the gate passes `--no-suppress` explicitly; never run
-  `nolint-audit --fix` — it deletes honored tokens). `generic_return`
-  (~197 sites / 24 modules under `--max`): OWNER-RULED ADOPT —
-  per-function error types are a dedicated migration project, NOT lint
-  debt to suppress away; the gate keeps `--disable generic_return` only
-  until the migration lands, then the disable drops. Wiring: gate + ci-local, HARD; CI = `--self-test` only (repo PRIVATE,
-  runner install impossible). Bugs file at github.com/larsartmann/erraudit.
+- **erraudit**: HARD gate `scripts/check-erraudit.sh` — exact ruled flags live
+  there (`--max` is dev-build-only; CI pin v0.7.0 rejects it, hence the explicit
+  decomposition), run from EACH module root (`lint` REJECTS `--modules`/
+  `--violations-only`). `legacy_as` = migrate to `errors.AsType` (done, zero
+  standing); `legacy_is` sentinel sites KEEP `errors.Is` +
+  `//nolint:legacyerrors // <reason>` on the call line (the gate passes
+  `--no-suppress` explicitly; never run `nolint-audit --fix` — it deletes
+  honored tokens). `generic_return` (~197 sites / 24 modules): OWNER-RULED
+  ADOPT — per-function error types are a migration project, not lint debt to
+  suppress; the gate keeps `--disable generic_return` only until it lands.
+  Wiring: gate + ci-local HARD; CI = `--self-test` only (repo PRIVATE). Bugs
+  file at github.com/larsartmann/erraudit.
 - **VendorHash drift**: after go.mod changes run
   `nix build .#checks.x86_64-linux.vendor-hash`, copy `got:` to flake.nix.
 - **readmodel schema drift crash-loops the fold** (planned tables get no
