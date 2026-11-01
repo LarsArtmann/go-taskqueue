@@ -174,15 +174,29 @@ eval "$files_cmd" |
 cut -f2 "$declfile" | sort -u >"$namesfile"
 : >"$hitsfile"
 if [ -s "$namesfile" ]; then
+	# Identifier tokens, not a -F pattern set: rg -o with hundreds of -f
+	# patterns shadows overlapping names (leftmost match wins, so e.g.
+	# NewAnswerPoller vanished behind shorter set members — battery-15
+	# debug). One token sweep + substring containment in awk reproduces
+	# the ORIGINAL per-symbol substring semantics (a name counts when ANY
+	# identifier token in a file contains it, suffixed refs included).
 	rg -o --no-ignore -g '*.go' -g '!vendor/**' -g '!.git/**' -g '!.crush/**' -g '!.tq-verify/**' \
-		-F -f "$namesfile" . 2>/dev/null |
-		awk -F: '
+		'[A-Za-z_][A-Za-z0-9_]*' . 2>/dev/null |
+		awk -F: -v namesfile="$namesfile" '
+			FILENAME == namesfile { names[$0]; next }
 			/^[^:]+\.go:[^:]+$/ {
 				path = $1
 				sub(/^\.\//, "", path)
-				if (!($2 SUBSEP path in seen)) { seen[$2 SUBSEP path]; print $2 "\t" path }
+				tok = $2
+				if ((tok SUBSEP path) in tokseen) next
+				tokseen[tok SUBSEP path]
+				for (n in names)
+					if (index(tok, n) > 0 && !((n SUBSEP path) in seen)) {
+						seen[n SUBSEP path]
+						print n "\t" path
+					}
 			}
-		' >>"$hitsfile" || true
+		' "$namesfile" - >>"$hitsfile" || true
 fi
 
 # Alive = at least one occurrence OUTSIDE the declaring directory (usages
