@@ -223,6 +223,44 @@ it applies to both agent runs and interactive crush sessions in that repo.
 payload-level model resets the reasoning effort; bootstrap deliberately
 never composes it either.)
 
+### Server mode: one shared `crush server` per pool
+
+`--crush-server <socket>` turns every agent turn into a thin client
+against a pool-owned `crush server` — one supervised process holds the
+sessions, provider calls, and tool execution; agent processes become
+cheap dialers:
+
+```sh
+tq agent-pool --projects-dir ~/projects --yolo --crush-server /run/tq/crush.sock
+```
+
+- **Supervised** — the pool boots the server as an actor and restarts it
+  on a backoff ladder if it dies; SIGTERM to the pool tears the server
+  down with it (never orphaned).
+- **No-burn crash domain** — a server death mid-run severs the stream;
+  the executor classifies it (`[crush-server]`), the task requeues
+  WITHOUT burning an attempt, and the supervisor's restart owns the
+  recovery. `tq dlq` and the dashboard show the class.
+- **Memory watch** — the keeper samples the server's RSS every dial into
+  `<journal-dir>/crush-server-rss.log`; `tq pool-health` folds it into a
+  `crushServerRss` summary and WARNs past a 2 GiB band.
+- **Prompt rails, not env** — the server-side bash tool cannot see the
+  client's environment (charmbracelet/crush#4210), so work and closeout
+  prompts bake the per-run channels in as explicit rails
+  (`tq verdict --file <path> …`, `tq ask --task <id> --file <path> …`);
+  local and routed runs share one contract. The pool's PATH is the
+  server's PATH — keep `tq` on it so the rails can run.
+- **Version pin** — `tq doctor` WARNs when the host crush differs from
+  the version the smokes proved (currently 0.99.0); a client finding an
+  older server auto-replaces it.
+- **Rollback** — run the pool without the flag: identical in-process
+  behavior, zero residue (the socket file is the only artifact).
+
+The whole surface is pinned by two zero-spend smokes (`scripts/smoke/
+crush-server-route.sh` for the wire legs, `crush-pool-supervisor.sh` for
+the pool legs: fast-refuse, restart ladder, mid-run kill no-burn, routed
+verdict bridge, operator cancel).
+
 ### One command from zero: `tq bootstrap`
 
 Everything above, wired in one idempotent command — per repo it validates the

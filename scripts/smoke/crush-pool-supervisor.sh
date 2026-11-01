@@ -21,6 +21,17 @@
 #     crush-server death, the worker REQUEUES without attempt burn (task
 #     pending, attempts 0, last error carries [crush-server]), and the
 #     supervisor restart ladder rides the same death.
+#   routed verdict bridge (V2.18) — the mock regexes the verdict rail's
+#     per-run path out of the work prompt and scripts the REAL
+#     `tq verdict --file <path> '<json>'` as the bash tool call: the
+#     SERVER-side tool runs it (tq rides the pool's PATH into the server
+#     env), the executor reads the file after the run, and the completion
+#     fact carries the verdict — the full M8 bridge, in-pool, zero spend.
+#   operator cancel (V2.15) — tq cancel --force on a stalled routed turn:
+#     the worker's heartbeat cancel stops the run context (the routed
+#     client process exits), the task lands cancelled, and once the held
+#     server-side turn drains no session over the repo stays busy (the
+#     server reaped the cancelled client's workspace).
 #
 # Zero spend by construction (mock provider, XDG-isolated scratch config;
 # the isolation gate refuses to run anything before it is proven). Needs
@@ -156,6 +167,7 @@ cat >"$TMP/mock_crush_pool.py" <<'PYEOF'
 # message (the route smoke's proven content-key).
 import json
 import os
+import re
 import sys
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -199,15 +211,30 @@ class Handler(BaseHTTPRequestHandler):
                 fh.write(f"#req stream={req.get('stream')} roles={roles} last_user={last_user!r}\n")
         delta = {"role": "assistant", "content": "ok"}
         is_template = last_user_full.startswith("Generate a concise title") or last_user_full.startswith("Provide a detailed summary")
-        if any(m.get("role") == "tool" for m in messages):
-            stall = float(os.environ.get("MOCK_STALL", "0"))
-            if stall > 0:
-                marker = os.environ.get("MOCK_STALL_MARKER", "")
-                if marker:
-                    with open(marker, "a") as fh:
-                        fh.write("stall\n")
-                time.sleep(stall)
+        has_tool = any(m.get("role") == "tool" for m in messages)
+        if has_tool:
+            # Stall ONLY the kill/cancel chains (their scripted command is
+            # the probe echo) so the verdict leg completes at full speed.
+            if "pool-leg-probe" in json.dumps(messages):
+                stall = float(os.environ.get("MOCK_STALL", "0"))
+                if stall > 0:
+                    marker = os.environ.get("MOCK_STALL_MARKER", "")
+                    if marker:
+                        with open(marker, "a") as fh:
+                            fh.write("stall\n")
+                    time.sleep(stall)
             delta = {"role": "assistant", "content": "mock done"}
+        elif "record the verdict result" in last_user_full and not is_template:
+            # V2.18: run the rail VERBATIM — path regexed out of the baked
+            # prompt rail, executed by the server-side bash tool (the tq
+            # binary rides the pool's PATH into the server's env).
+            m = re.search(r"tq verdict --file (\S+)", last_user_full)
+            path = m.group(1) if m else "/tmp/mock-verdict-path-missing"
+            cmd = "tq verdict --file " + path + " '{\"status\":\"done\",\"note\":\"routed e2e\"}'"
+            args = json.dumps({"command": cmd, "description": "record the routed verdict"})
+            delta = {"role": "assistant", "content": None,
+                     "tool_calls": [{"id": "call_1", "type": "function",
+                                     "function": {"name": "bash", "arguments": args}}]}
         elif "verdict" in last_user_full.lower() and not is_template:
             args = json.dumps({"command": "echo pool-leg-probe", "description": "probe tool call"})
             delta = {"role": "assistant", "content": None,
@@ -317,8 +344,8 @@ git -C "$TMP/poolproj/repo" commit -qm seed
 
 (
 	cd "$TMP/poolproj"
-	XDG_CONFIG_HOME="$XDG" XDG_DATA_HOME="$DATA" \
-		setsid timeout 300 "$TMP/tq" agent-pool --db "$TMP/pool.db" \
+	XDG_CONFIG_HOME="$XDG" XDG_DATA_HOME="$DATA" PATH="$TMP:$PATH" \
+		setsid timeout 420 "$TMP/tq" agent-pool --db "$TMP/pool.db" \
 		--projects-dir "$TMP/poolproj" --repos repo \
 		--poll 200ms --task-timeout 30s --interval 5s --crush-server "$PSOCK" \
 		>"$TMP/pool.log" 2>&1 </dev/null
@@ -462,6 +489,151 @@ done
 echo "PASS: task requeued without attempt burn (pending, attempts 0, class crush-server)"
 wait_pattern "$TMP/pool.log" "restart 2" 45 "supervisor did not restart the server after the mid-run kill"
 echo "PASS: supervisor restart ladder rode the mid-run death too"
+# Retire the probe task: its ~2m no-burn park could re-claim mid-leg and
+# steal the running slot from the later probes (its job is done).
+"$TMP/tq" cancel --db "$TMP/pool.db" --reason "smoke: probe retired after the kill leg" "$RUNNING_ID" 2>/dev/null || true
+
+echo "== leg: routed verdict bridge completes end-to-end (V2.18)"
+# The mock regexes the rail's per-run path out of the baked prompt and
+# scripts the REAL tq verdict --file call as the bash tool: the
+# SERVER-side tool executes it (tq rides the pool's PATH into the server
+# env), the executor reads the file after the run, and the completion
+# fact carries the verdict — the full M8 bridge, in-pool, zero spend.
+printf -- '- [ ] smoke probe: record the verdict result\n' >"$TMP/poolproj/repo/TODO_LIST.md"
+git -C "$TMP/poolproj/repo" add -A
+git -C "$TMP/poolproj/repo" commit -qm "open the routed verdict probe item"
+VERDICT_ID=""
+for _ in $(seq 1 150); do
+	VERDICT_ID="$(task_state running-id)"
+	[ -n "$VERDICT_ID" ] && [ "$VERDICT_ID" != "$RUNNING_ID" ] && break
+	size_guard
+	sleep 0.3
+done
+[ -n "$VERDICT_ID" ] || {
+	tail -25 "$TMP/pool.log"
+	fail "verdict probe: no task reached running"
+}
+VSTATE=""
+for _ in $(seq 1 100); do
+	VSTATE="$(task_state "$VERDICT_ID")"
+	case "$VSTATE" in
+		completed* | dead* | failed* | cancelled*) break ;;
+	esac
+	size_guard
+	sleep 0.3
+done
+case "$VSTATE" in
+	completed*) : ;;
+	*)
+		tail -25 "$TMP/pool.log"
+		"$TMP/tq" show --db "$TMP/pool.db" "$VERDICT_ID" 2>/dev/null | head -40
+		fail "verdict probe task state = '$VSTATE', want completed"
+		;;
+esac
+"$TMP/tq" show --db "$TMP/pool.db" "$VERDICT_ID" 2>/dev/null | grep -q "routed e2e" || {
+	"$TMP/tq" show --db "$TMP/pool.db" "$VERDICT_ID" 2>/dev/null | head -50
+	fail "the routed verdict never landed in the task facts (bridge broken)"
+}
+echo "PASS: routed run recorded its verdict via the baked rail (file -> facts)"
+
+echo "== leg: operator cancel reaches the routed client + the server reaps (V2.15)"
+cat >"$TMP/busy.py" <<'PYEOF'
+import http.client, json, socket, sys
+
+class UnixHTTPConnection(http.client.HTTPConnection):
+    def __init__(self, path):
+        super().__init__("localhost")
+        self.unix_path = path
+    def connect(self):
+        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        s.settimeout(5)
+        s.connect(self.unix_path)
+        self.sock = s
+
+def get(sock, path):
+    conn = UnixHTTPConnection(sock)
+    conn.request("GET", path)
+    body = conn.getresponse().read()
+    conn.close()
+    return json.loads(body)
+
+busy = 0
+try:
+    for w in get(sys.argv[1], "/v1/workspaces"):
+        if sys.argv[2] not in str(w.get("path", "")):
+            continue
+        for sess in get(sys.argv[1], "/v1/workspaces/%s/sessions" % w.get("id")):
+            if sess.get("is_busy"):
+                busy += 1
+except Exception as exc:
+    print("probe-error %s" % exc)
+else:
+    print(busy)
+PYEOF
+printf -- '- [ ] smoke probe: cancel this verdict run\n' >"$TMP/poolproj/repo/TODO_LIST.md"
+git -C "$TMP/poolproj/repo" add -A
+git -C "$TMP/poolproj/repo" commit -qm "open the cancel probe item"
+CANCEL_ID=""
+for _ in $(seq 1 150); do
+	CANCEL_ID="$(task_state running-id)"
+	[ -n "$CANCEL_ID" ] && [ "$CANCEL_ID" != "$RUNNING_ID" ] && break
+	size_guard
+	sleep 0.3
+done
+[ -n "$CANCEL_ID" ] || {
+	tail -25 "$TMP/pool.log"
+	fail "cancel probe: no task reached running"
+}
+# Gate on the SECOND stall line (the kill leg wrote the first): the cancel
+# must land INSIDE the held tool-result turn, same window rule as the kill.
+STALL_LINES=0
+for _ in $(seq 1 200); do
+	STALL_LINES="$(wc -l <"$TMP/stall-entered.log" 2>/dev/null || echo 0)"
+	[ "$STALL_LINES" -ge 2 ] && break
+	size_guard
+	sleep 0.3
+done
+[ "$STALL_LINES" -ge 2 ] || {
+	tail -25 "$TMP/pool.log"
+	tail -10 "$TMP/mock2-requests.log" 2>/dev/null
+	fail "cancel probe never entered its stalled tool-result turn"
+}
+PRE_BUSY="$(python3 "$TMP/busy.py" "$PSOCK" "$TMP/poolproj/repo" 2>/dev/null || true)"
+echo "== busy sessions over the repo before cancel: ${PRE_BUSY:-unprobed}"
+"$TMP/tq" cancel --db "$TMP/pool.db" --force --reason "smoke cancel leg" "$CANCEL_ID"
+wait_pattern "$TMP/pool.log" "task cancelled by operator request" 45 \
+	"the cooperative cancel never stopped the routed run"
+echo "PASS: cancel reached the worker and stopped the routed run"
+CLIENTS_OK=0
+for _ in $(seq 1 40); do
+	if ! pgrep -f "crush run --verbose --cwd $TMP/poolproj/repo" >/dev/null 2>&1; then
+		CLIENTS_OK=1
+		break
+	fi
+	size_guard
+	sleep 0.5
+done
+[ "$CLIENTS_OK" = 1 ] || fail "routed crush client still alive after cancel"
+BUSY_OK=0
+for _ in $(seq 1 90); do
+	BUSY_NOW="$(python3 "$TMP/busy.py" "$PSOCK" "$TMP/poolproj/repo" 2>/dev/null || true)"
+	if [ "$BUSY_NOW" = "0" ]; then
+		BUSY_OK=1
+		break
+	fi
+	size_guard
+	sleep 0.5
+done
+[ "$BUSY_OK" = 1 ] || {
+	python3 "$TMP/busy.py" "$PSOCK" "$TMP/poolproj/repo" 2>&1 || true
+	fail "a session over the repo stayed busy after cancel (server never reaped the turn)"
+}
+CSTATE="$(task_state "$CANCEL_ID")"
+case "$CSTATE" in
+	cancelled*) : ;;
+	*) fail "cancel probe task state = '$CSTATE', want cancelled" ;;
+esac
+echo "PASS: cancel leg — client exited, server reaped the turn, task cancelled"
 
 pkill -TERM -f "$TMP/tq agent-pool"
 for _ in $(seq 1 30); do
@@ -479,4 +651,4 @@ pgrep -f "$SRVPATT" >/dev/null && fail "crush server orphaned after pool exit"
 echo "PASS: pool exited clean on SIGTERM, server torn down with it"
 
 echo
-echo "PASS: crush-pool-supervisor smoke — routed 429 fast-refuse + keeper/supervisor restart + mid-run kill no-burn all green"
+echo "PASS: crush-pool-supervisor smoke — routed 429 fast-refuse + keeper/supervisor restart + mid-run kill no-burn + routed verdict bridge + operator cancel all green"
