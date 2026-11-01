@@ -58,7 +58,7 @@ func Deadlines(
 func scanOutcomes(
 	facts []journal.Fact,
 	projectByID map[task.ID]string,
-) (deadAt map[task.ID]time.Time, dismissed map[task.ID]bool, everCompleted map[string]bool) {
+) (map[task.ID]time.Time, map[task.ID]bool, map[string]bool) {
 	deadAt = make(map[task.ID]time.Time)
 	dismissed = make(map[task.ID]bool)
 	everCompleted = make(map[string]bool)

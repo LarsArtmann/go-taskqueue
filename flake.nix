@@ -344,10 +344,28 @@
                     };
                   };
                 };
+                # Routed branch (the dogfood flip): crushServerSocket set —
+                # BOTH units gain --crush-server <sock>, and (the rollback
+                # contract) the default branch above must stay flag-free.
+                routedConfig = evalFull {
+                  services.tq-agent-pool = {
+                    user = "alice";
+                    group = "users";
+                    dbPath = "/mnt/pool/services/tq/tq.db";
+                    crushServerSocket = "/mnt/pool/services/tq/crush-pool.sock";
+                    serve = {
+                      enable = true;
+                      addr = "127.0.0.1:8100";
+                    };
+                  };
+                };
                 defaultPool = defaultUnits.tq-agent-pool;
                 deployedPool = deployedUnits.tq-agent-pool;
                 deployedServe = deployedUnits.tq-serve;
                 tokenServe = tokenUnits.tq-serve;
+                routedPool = routedConfig.systemd.services.tq-agent-pool;
+                routedServe = routedConfig.systemd.services.tq-serve;
+                routedConfPath = routedConfig.services.tq-agent-pool.renderedConfigFile;
                 # The pool unit must carry a non-empty agent-toolchain PATH
                 # (f11, 2026-09-10 pool-deploy incident: systemd's default
                 # service PATH has no git/go/crush — a vanished/empty PATH
@@ -395,6 +413,15 @@
                     != null
                   # authTokenFile wires EnvironmentFile on the serve unit
                   && tokenServe.serviceConfig.EnvironmentFile == [ "/run/tq-token" ]
+                  # routed flip: both units END with --crush-server <sock>
+                  # (pool after --config/extraArgs; serve after --addr), and
+                  # the default (unrouted) pool stays flag-free — rollback
+                  # = unset the option
+                  && routedPool.serviceConfig.ExecStart
+                    == "${expectedBin} agent-pool --config ${routedConfPath} --crush-server /mnt/pool/services/tq/crush-pool.sock"
+                  && routedServe.serviceConfig.ExecStart
+                    == "${expectedBin} serve --addr 127.0.0.1:8100 --crush-server /mnt/pool/services/tq/crush-pool.sock"
+                  && !(lib.hasInfix "--crush-server" defaultPool.serviceConfig.ExecStart)
                   # drain invariants survive on both units
                   && drainInvariants deployedPool
                   && (deployedPool.serviceConfig.KillSignal or "" == "SIGINT")
@@ -404,6 +431,8 @@
               ''
                 echo "pool ExecStart: ${deployedPool.serviceConfig.ExecStart}"
                 echo "serve ExecStart: ${deployedServe.serviceConfig.ExecStart}"
+                echo "routed pool ExecStart: ${routedPool.serviceConfig.ExecStart}"
+                echo "routed serve ExecStart: ${routedServe.serviceConfig.ExecStart}"
                 if ! grep -q 'typo-key-that-tq-rejects' '${unknownKeyConfPath}'; then
                   echo 'nixos-module-eval FAILED: unknown poolSettings key vanished from the rendered pool.conf (typos would run with silent defaults)'
                   exit 1

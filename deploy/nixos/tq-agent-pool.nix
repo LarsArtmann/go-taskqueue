@@ -136,6 +136,22 @@ in
       example = [ "--once" ];
     };
 
+    crushServerSocket = lib.mkOption {
+      type = lib.types.nullOr lib.types.str;
+      default = null;
+      description = ''
+        Unix socket for the pool-owned `crush server` (thin-client
+        routing, the --crush-server seam). Set = the pool unit boots and
+        supervises one shared server and routes every agent turn through
+        it, and (with serve.enable) the dashboard unit attaches its live
+        /agents/live pane to the same socket. null (default) = today's
+        in-process agent runs; unsetting is the one-line rollback.
+        Keep the socket inside the dbPath directory — both units already
+        hold write access there (WAL siblings, ReadWritePaths).
+      '';
+      example = "/mnt/pool/services/tq/crush-pool.sock";
+    };
+
     renderedConfigFile = lib.mkOption {
       type = lib.types.path;
       readOnly = true;
@@ -193,7 +209,7 @@ in
 
       serviceConfig = {
         Type = "simple";
-        ExecStart = "${lib.getExe' cfg.package "tq"} agent-pool --config ${poolConf} ${lib.escapeShellArgs cfg.extraArgs}";
+        ExecStart = "${lib.getExe' cfg.package "tq"} agent-pool --config ${poolConf} ${lib.escapeShellArgs cfg.extraArgs}${lib.optionalString (cfg.crushServerSocket != null) " --crush-server ${cfg.crushServerSocket}"}";
         Environment = [
           "TQ_DB=${toString cfg.dbPath}"
           "PATH=${cfg.agentPath}"
@@ -246,7 +262,7 @@ in
 
       serviceConfig = {
         Type = "simple";
-        ExecStart = "${lib.getExe' cfg.package "tq"} serve --addr ${cfg.serve.addr}";
+        ExecStart = "${lib.getExe' cfg.package "tq"} serve --addr ${cfg.serve.addr}${lib.optionalString (cfg.crushServerSocket != null) " --crush-server ${cfg.crushServerSocket}"}";
         Environment = [ "TQ_DB=${toString cfg.dbPath}" ];
         EnvironmentFile = lib.optional (cfg.serve.authTokenFile != null) cfg.serve.authTokenFile;
         User = cfg.user;
