@@ -1666,3 +1666,5 @@ eebb838345a41e85f6633d0ecd6e3f38b0b43d9c
 1237120ba2b6f7b5fb248ba71a0b2ce5c336f67b
 # 2026-11-01 CI-red fixes: unix build tag + CloseReadModel + treefmt (crushserver.go alignment)
 348275dc978d530331a8460b33e383003f817844
+# 2026-11-01 wave-3 closeout report file (index row landed footered)
+b2c611bba044f708331f8e2067e53ebf1cb3682a
