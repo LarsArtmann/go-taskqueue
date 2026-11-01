@@ -1662,3 +1662,5 @@ ce4f04bad46a71efc01a289085c1e87ab5b2ba04
 41980164be8ee656bbf60a88a171e5718dfbeb48
 # 2026-11-01 row-806 e2e derivation test mid-write (execute_derive_test.go)
 eebb838345a41e85f6633d0ecd6e3f38b0b43d9c
+# 2026-11-01 baseline-append recursion (the eebb8383 grandfather)
+1237120ba2b6f7b5fb248ba71a0b2ce5c336f67b
