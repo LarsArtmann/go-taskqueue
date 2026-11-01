@@ -22,7 +22,9 @@ failures. Package-level reader maps live in each package's doc comment.
 ```bash
 ./scripts/ci-local.sh # pre-push gate; transient foreign breaks retry 45s ×3
   # TRANSIENT_MAX_POLLS=0: NO retry (check-transient-retry pins);
-  # nix/check-ci/daemon-attribution unwrapped.
+  # nix/check-ci/daemon-attribution unwrapped. Preflight EVERY
+  # battery: agents-size + dead-exports --self-test + module test
+  # + quiet tree (attempts died on preflightable causes).
 ./scripts/root-gate.sh # root verify gate; ONE retry on known-flaky signatures
 ./scripts/lint-baseline.sh --check --clean-cache # opt-in stale-cache clean before a warm --check (regen ALWAYS cleans)
 nix build # nix run .#test; .#webui-css
@@ -320,7 +322,9 @@ docs/DOMAIN_LANGUAGE.md.
   MUST export `TQ_DB=<scratch>`.
 - **Session shell hazards**: no usable `PIPESTATUS`; bare `unset VAR`
   leaks to children (`env -u VAR`); multi-file `tail` fails; `printf
-  %.0s` yields empty; chained `&` backgrounds the wrong span. POSIX ERE:
+  %.0s` yields empty; chained `&` backgrounds the wrong span; the
+  `kill` builtin cannot signal LIVE pids (rc=2) — use python3
+  `os.kill`. POSIX ERE:
   `\t` inside a grep bracket class is a literal `t` (not tab) — use
   `[[:space:]]`/`[[:alnum:]]` classes, never `\t`/`\d`.
 - **Root builds auto-use `vendor/`** — internal/ changes need `go mod
