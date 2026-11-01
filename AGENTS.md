@@ -133,10 +133,8 @@ docs/DOMAIN_LANGUAGE.md.
   invisible; hook rejects), files via `git diff-tree`, usage via
   go-crush-data. No stdout self-report.
 - **Verdict channel**: paid turns record via `tq verdict '<json>'` into
-  `$TQ_RESULT_FILE` (file > legacy stdout, last-wins). The executor bakes a
-  ONE-line rail into work+closeout prompts naming the per-run path:
-  `tq verdict --file <path> '<json>'` — always-on (local + routed share ONE
-  contract; agents never edit or drop the rail).
+  `$TQ_RESULT_FILE` (file > stdout, last-wins); prompts also bake the rail
+  `tq verdict --file <path> '<json>'` (always-on, never drop, routing-safe).
 - **Batched harvest** (`--batch-items`, default 3): N adjacent
   same-section items → one task (dedup `batch:` + SORTED-key hash;
   gates see ONE task); direct `tq enqueue` forbidden — work prompts
@@ -167,8 +165,8 @@ docs/DOMAIN_LANGUAGE.md.
 - **Secrets redaction** (default ON): every output tail passes
   `internal/executor/redact.go`; `tq audit --journal` reports SECRET
   EVIDENCE rows. Growth: ONE `secretPatterns` entry + fake-shape sample
-  in `redact_test.go` (gosec note if tripped); ONE shared table
-  (`TestSecretHitsAndRedactionCompileIdenticalTable`), windows-gated. Counts = distinct secret LOCATIONS. Known limitation: ZERO-separator
+  in `redact_test.go` (gosec); ONE shared table
+  test, windows-gated. Counts = distinct secret LOCATIONS. Known limitation: ZERO-separator
   back-to-back tokens merge into ONE location (greedy `[A-Za-z0-9_-]{16,}`
   charsets absorb the boundary) — distinct counts need a non-token
   separator.
