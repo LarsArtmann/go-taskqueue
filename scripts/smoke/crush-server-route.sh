@@ -82,11 +82,6 @@ s.bind(("127.0.0.1", 0))
 print(s.getsockname()[1])
 s.close()')"
 
-echo "== isolation gate (crush dirs under candidate env)"
-DIRS_LINE1="$(XDG_CONFIG_HOME="$XDG" XDG_DATA_HOME="$DATA" crush dirs 2>/dev/null | head -1)"
-[ "$DIRS_LINE1" = "$XDG/crush" ] || fail "crush dirs first line is '$DIRS_LINE1', want the scratch config dir '$XDG/crush' — isolation NOT proven, refusing to run anything"
-echo "PASS: candidate config dir resolves inside the scratch"
-
 echo "== scratch config (mock provider only, defaults disabled)"
 cat >"$XDG/crush/crush.json" <<EOF
 {
@@ -111,6 +106,14 @@ cat >"$XDG/crush/crush.json" <<EOF
 EOF
 python3 -c 'import json,sys; json.load(open(sys.argv[1]))' "$XDG/crush/crush.json" || fail "scratch crush.json does not parse"
 echo "PASS: config parses (snake_case, disable_default_providers)"
+
+# crush dirs prints its report on stderr (a 2>/dev/null swallow reads as
+# "no output" — proven the hard way), and head -1 SIGPIPEs the writer under
+# pipefail — the || true is load-bearing.
+echo "== isolation gate (crush dirs under candidate env)"
+DIRS_LINE1="$(XDG_CONFIG_HOME="$XDG" XDG_DATA_HOME="$DATA" crush dirs 2>&1 | head -1 || true)"
+[ "$DIRS_LINE1" = "$XDG/crush" ] || fail "crush dirs first line is '$DIRS_LINE1', want the scratch config dir '$XDG/crush' — isolation NOT proven, refusing to run anything"
+echo "PASS: candidate config dir resolves inside the scratch"
 
 echo "== seed scratch repo"
 git -C "$REPO" init -q
