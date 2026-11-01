@@ -23,8 +23,8 @@ failures. Package-level reader maps live in each package's doc comment.
 ./scripts/ci-local.sh # pre-push gate; transient foreign breaks retry 45s ×3
   # TRANSIENT_MAX_POLLS=0: NO retry (check-transient-retry pins);
   # nix/check-ci/daemon-attribution unwrapped. Preflight EVERY
-  # battery: agents-size + dead-exports --self-test + module test
-  # + quiet tree (attempts died on preflightable causes).
+  # battery: agents-size + dead-exports --self-test + module
+  # test + facade-parity + ROOT vet + quiet tree.
 ./scripts/root-gate.sh # root verify gate; ONE retry on known-flaky signatures
 ./scripts/lint-baseline.sh --check --clean-cache # opt-in stale-cache clean before a warm --check (regen ALWAYS cleans)
 nix build # nix run .#test; .#webui-css
