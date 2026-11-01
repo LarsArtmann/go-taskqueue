@@ -119,7 +119,8 @@ func TestMalformedDetailIsRefusedAtMarshal(t *testing.T) {
 
 	_, err := factEvent(fact)
 	if err == nil {
-		t.Fatal("factEvent(malformed detail) error = nil, want a refusal — undecodable bytes must not enter the event stream")
+		t.Fatal("factEvent(malformed detail) error = nil, want a refusal — undecodable bytes " +
+			"must not enter the event stream")
 	}
 
 	if !strings.Contains(err.Error(), "marshal payload") {
@@ -133,9 +134,11 @@ func TestMalformedDetailIsRefusedAtMarshal(t *testing.T) {
 func TestSliceSourceServesUnknownFamilies(t *testing.T) {
 	t.Parallel()
 
+	const taskID = "000001a0sliceunknown0000000000000000"
+
 	facts := []journal.Fact{
-		{Seq: 1, Time: time.Now(), TaskID: "000001a0sliceunknown0000000000000000", Type: journal.FactType("engine.future.family")},
-		{Seq: 2, Time: time.Now(), TaskID: "000001a0sliceunknown0000000000000000", Type: journal.Enqueued},
+		{Seq: 1, Time: time.Now(), TaskID: taskID, Type: journal.FactType("engine.future.family")},
+		{Seq: 2, Time: time.Now(), TaskID: taskID, Type: journal.Enqueued},
 	}
 
 	got, err := NewSliceSource(facts).Facts(context.Background(), 0, 0)
