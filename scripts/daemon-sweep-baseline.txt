@@ -1782,3 +1782,38 @@ be1e384f0dfd1bfc0faf3de2fae6b475848bfd8a
 8b74d8abb1e4df22623c3f9bc4cbc865f69c8813
 #   415741eb
 415741ebec48923dff85017cf33421feb871b244
+
+# 2026-11-01 OKF->receipt window (undispatched session, no Task-Queue-ID):
+# the auto-commit daemon swept every edit below within ~60 s, footer-less.
+# Attribution is by CONTENT (git show --stat), not by guess: each sha is this
+# window's work except 52e7b65c, which the daemon mixed with a concurrent
+# agent's FEATURES/README rows. NOT baselined: 826aa46f (.golangci-baseline.txt,
+# not this window) — routed to its owner via TODO_LIST instead of laundered.
+#   DOMAIN_LANGUAGE trust vocabulary + OKF note correction
+dc542370ff6920176f3f6d60f73e183ba60ac03d
+#   forward-compat pins (executor/cqrs/readmodel)
+02f06fcc894300cc1ec8a0bce5732b8660715317
+#   AGENTS.md compress pass 1
+e4063bd5d09b75dba07672ebc7b3adad20ebee42
+#   AGENTS.md compress pass 2
+3d4aa9dc8d1768a02ecfb86c158e05c56c86f0aa
+#   AGENTS.md compress pass 3
+ebe30f71091698787486637712891146f60c2e1b
+#   research-note shape gate + ci-local wiring
+df7162c77210a33725fa7d864f2fdfdd20e96439
+#   research-note template norms
+1e0638a2c4b7e5e46d067db997f9b39e8d5352dc
+#   cite-drift gate
+6650193ebbd305570782c01b9955ce2a5873e9f8
+#   reresolve retire-vs-narrow note + TODO row
+f2d674a631d9b9af784945577f6a489ec75aaf8f
+#   cmd/tq receipt surface tests + TODO tick
+9ef3b7708ed113786527e77f9ce364b2f3e7eb9b
+#   tq show/dlq receipt wiring
+f22962fa982786cd9dbfdbcf13c466871ccc6ad4
+#   MIXED sweep: cmd/tq/verifyreceipt.go + receipt_test.go are this window's; the FEATURES/README hunks are a concurrent agent's
+52e7b65c9ef5c8342fb1c96072853f786b74cd1c
+#   verify receipt emission (agent/result/status)
+3bf4b6cf18c2d7d4137eee82c01103f8c8acb40b
+#   D3 measured justification in receipt.go
+770310c011b8e336d83868cfa10bd2dacedf730c
