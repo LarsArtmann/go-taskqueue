@@ -21,14 +21,22 @@
 #                server's os.Environ). When upstream fixes env
 #                propagation this leg goes RED on purpose: flip the
 #                asserts, drop the caveat rows, re-enable the E-gaps.
+#   bridge     — the env-gap CURE on the wire: a bash tool call running
+#                the REAL `tq verdict --file <abs-path> '<json>'` lands
+#                the verdict file with ZERO env dependency (the rail the
+#                executor bakes into every prompt; A1/V1.5). If upstream
+#                fixes env propagation this leg STAYS green — the flag
+#                channel works either way.
 #   hooks      — repo .crushrc PreToolUse hook fires SERVER-side and
 #                denies a marker command (M3: the hook fleet survives
 #                routing)
 #   respawn    — kill -9 the server; the next routed client respawns it
 #                (M7: ensureServer) and a fresh run completes
 #
-# No tq binary is exercised (wire legs only — the pool-integration E-gaps
-# 429/question-poll stay unit-pinned until the env gap closes); TQ_DB is
+# No tq binary is exercised by the WIRE legs (the pool-integration E-gaps
+# 429/question-poll stay unit-pinned until the env gap closes); the BRIDGE
+# leg builds one (TQ_BIN pre-supply honored — `tq verdict --file` is the
+# command the rail teaches). TQ_DB is
 # exported anyway per the production-trap rule: a bare tq command in a
 # debug session would otherwise touch the PRODUCTION journal.
 #
@@ -46,6 +54,7 @@ command -v crush >/dev/null 2>&1 || fail "crush binary not on PATH — this smok
 command -v python3 >/dev/null 2>&1 || fail "python3 required (mock provider + HTTP probes)"
 
 TMP="$(mktemp -d /tmp/tq-crush-route-smoke.XXXXXX)"
+REPO_ROOT="$(pwd)" # the bridge leg builds tq via scripts/build-tq.sh
 MOCK_PID=""
 SERVER_PID=""
 cleanup() {
@@ -415,6 +424,36 @@ if [ "$SEEN" = "[]" ]; then
 else
 	fail "canary flipped: bash tool now sees \$TQ_RESULT_FILE='$SEEN' — upstream fixed env propagation! Flip this leg, drop the L1 caveat rows, re-enable the E-gap legs"
 fi
+
+echo "== leg: verdict bridge (tq verdict --file lands under routing, no env)"
+# The env-gap CURE (A1): the executor rail bakes an ABSOLUTE per-run path
+# into the prompt; the agent records with `tq verdict --file <path>`. Prove
+# the flag channel end-to-end on the wire: the mock's bash tool runs the
+# REAL tq binary — with the client's $TQ_RESULT_FILE proven INVISIBLE
+# server-side (canary above), landing the file can only ride the flag.
+ensure_our_server
+if [ -n "${TQ_BIN:-}" ]; then
+	echo "== using prebuilt tq: $TQ_BIN"
+	cp "$TQ_BIN" "$TMP/tq-bin"
+else
+	echo "== build tq (bridge leg)"
+	"$REPO_ROOT/scripts/build-tq.sh" "$TMP/tq-bin"
+fi
+chmod +x "$TMP/tq-bin"
+BRIDGE_OUT="$TMP/bridge-verdict.json"
+rm -f "$BRIDGE_OUT" "$REPO/smoke-verdict.json"
+start_mock "\"$TMP/tq-bin\" verdict --file \"$BRIDGE_OUT\" '{\"verdict\":\"bridge-ok\"}'" 'mock done' 0
+RC=0
+routed_run run-bridge.log || RC=$?
+[ "$RC" -eq 0 ] || {
+	cat "$TMP/run-bridge.log"
+	fail "bridge run rc=$RC"
+}
+grep -q '"verdict":"bridge-ok"' "$BRIDGE_OUT" || {
+	cat "$TMP/run-bridge.log"
+	fail "tq verdict --file did not land the bridge file under routing — the flag channel is broken"
+}
+echo "PASS: flag channel (tq verdict --file) lands the verdict under routing — zero env dependency"
 
 echo "== leg: hooks fire server-side and deny (M3)"
 # pins: the exit-2 deny branch (marker command blocked, hook log written)

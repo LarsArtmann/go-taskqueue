@@ -74,13 +74,16 @@ flag depends on (planning doc §L1; TODO row 1450).
 | routed verdict run  | `CRUSH_CLIENT_SERVER=1` + `-H`| rc 0; `Created session … session_id=` line (M4); every provider call on the mock (request log = zero-spend receipt); tool-call wrote the verdict file (M1) | run log + mock request log + file |
 | live workspace + M5 | `/v1/workspaces[/{id}/sessions\|/messages]` | workspace listed DURING the run (the routing discriminator — local runs never appear); session keys (id/title/message_count/is_busy); message part types (text/tool_call/tool_result/finish) | unix socket HTTP (de-chunked) |
 | env-gap canary      | tool exec env, two-sided      | server env var VISIBLE in the routed bash tool; client `$TQ_RESULT_FILE` EMPTY — v0.99.0 does not forward workspace Env to tool exec (`internal/shell/background.go` builds the shell without it); flips red when upstream fixes it | files written by the tool     |
+| verdict bridge      | `tq verdict --file` (real binary) | bash tool runs the REAL tq with `--file <abs-path> '<json>'`; the verdict file lands with ZERO env dependency (the executor rail's command; stays green even after an upstream env fix) | bridge verdict file           |
 | hooks server-side   | repo `.crushrc` PreToolUse    | hook fired (its own log line); exit-2 deny BLOCKED the marker command (the file it would write is absent) — M3, deny contract per runner.go exit 2 | hook log + side-effect file   |
 | server-kill respawn | `ensureServer` (M7)           | kill -9 the server; the next routed client respawns it, run rc 0, health 200 after                                              | process + socket              |
 
-Deliberately NOT covered at smoke level: the pool-integration E-gaps
-(verdict file via the executor's `$TQ_RESULT_FILE` channel, question
-parking under routed runs) — BLOCKED on the env gap above
+Deliberately NOT covered at smoke level: the question-parking E-gap
+(`$TQ_QUESTION_FILE` under routed runs) — BLOCKED on the env gap above
 upstream; unit-pinned in-process (ratelimit-e2e stub class) until then.
+The verdict E-gap IS covered twice — the plain tool-call write (routed
+verdict run leg) AND the flag channel (verdict bridge leg, real
+`tq verdict --file`).
 The 429 E-gap IS covered — `crush-pool-supervisor.sh` below (the
 rate-limit signature rides the agent-stream error text, not the env
 channel, so it is env-gap-independent). Also not covered:
