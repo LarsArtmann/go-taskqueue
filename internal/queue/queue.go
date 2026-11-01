@@ -409,7 +409,13 @@ const (
 	RequeueClassRateLimitGate = "rate-limit-gate"
 	RequeueClassQuestion      = "question" // owner question parked the run
 	RequeueClassBudget        = "budget"   // claim-time spend gate blocked the paid turn
-	RequeueClassUnknown       = "unknown"  // legacy task.requeued facts predating the field
+	// RequeueClassCrushServer marks the shared crush-server death mid-run
+	// (routed `--crush-server` turns): the severed client exits 0 with a
+	// WARN line (observed v0.99.0), so the executor classifies the
+	// signature and the worker requeues without burn — the supervisor's
+	// restart ladder owns the recovery window.
+	RequeueClassCrushServer = "crush-server"
+	RequeueClassUnknown     = "unknown" // legacy task.requeued facts predating the field
 )
 
 type RequeueEvidence struct {
