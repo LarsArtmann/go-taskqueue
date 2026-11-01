@@ -3,6 +3,10 @@
 # must be exactly what `nix run .#webui-css` produces from the current
 # templ sources + templ-components version. Run inside the flake (needs
 # tailwindcss); CI-equivalent is the nix check treefmt gate for .templ.
+# dprint MUST NOT format app.css (generated + minified): a dprint run once
+# prettified it to 8,154 lines and shipped unminified CSS to master twice
+# (2026-09/2026-11). The exclusion lives in dprint.json; this gate is what
+# catches the next lapse.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 

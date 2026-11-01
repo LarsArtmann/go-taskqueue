@@ -16,6 +16,8 @@
     "node_modules/**",
     "**/CHANGELOG.md",
     "**/helm/**/templates/**",
-    "**/charts/**/templates/**"
+    "**/charts/**/templates/**",
+    "internal/webui/static/app.css",
+    "**/*_templ.go"
   ]
 }
