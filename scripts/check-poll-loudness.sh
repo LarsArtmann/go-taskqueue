@@ -11,7 +11,9 @@
 # canonical shapes put the exhaust message right after the loop:
 # `if ! probe; then echo "WARN: …"` / `[ -n "$x" ] || { echo "FAIL: …" }`).
 # `return N` alone is NOT loudness — a bare return is exactly the silent
-# absorption this gate exists to prevent.
+# absorption this gate exists to prevent. The smoke `fail "…"` helper
+# convention counts as loudness (the helper prints "FAIL: …" and exits —
+# same reasoning as `die `).
 set -uo pipefail
 cd "$(dirname "$0")/.." || exit 1
 self_abs="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
@@ -19,7 +21,7 @@ self_abs="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 window_after_done=6
 # `die` counts as loudness: it prints the exhaust reason and exits — the
 # opposite of silent absorption (release.sh's CI-green poll loops end in die).
-loud_pattern='FAIL|WARN|die '
+loud_pattern='FAIL|WARN|die |fail "'
 
 # awk: emit "<file>:<loopstart>:<loud 0|1>" for every poll loop found.
 scan_file() {
@@ -48,7 +50,7 @@ scan_file() {
 			}
 			if (body != "") body = body "\n" $0
 			else body = $0
-			if ($0 ~ /(FAIL|WARN|die )/) body_loud = 1
+			if ($0 ~ /(FAIL|WARN|die |fail "/)/) body_loud = 1
 		}
 	' "$1"
 }
