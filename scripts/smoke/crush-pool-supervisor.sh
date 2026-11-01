@@ -192,6 +192,11 @@ class Handler(BaseHTTPRequestHandler):
         last_user_full = next((str(m.get("content")) for m in reversed(messages)
                                if m.get("role") == "user"), "")
         last_user = last_user_full[:80]
+        req_log = os.environ.get("MOCK_REQ_LOG", "")
+        if req_log:
+            roles = ",".join(str(m.get("role")) for m in messages)
+            with open(req_log, "a") as fh:
+                fh.write(f"#req stream={req.get('stream')} roles={roles} last_user={last_user!r}\n")
         delta = {"role": "assistant", "content": "ok"}
         is_template = last_user_full.startswith("Generate a concise title") or last_user_full.startswith("Provide a detailed summary")
         if any(m.get("role") == "tool" for m in messages):
@@ -350,7 +355,15 @@ echo "== leg: server death MID-RUN requeues the routed task without attempt burn
 # window. The severed client exits 0 with the WARN line; the executor's
 # DetectCrushServerDeath classifies it; the worker requeues (class
 # crush-server): task PENDING, attempts 0, last error carries the marker.
+# rm the marker BEFORE the item can run: with claim-wake armed the whole
+# pre-stall phase (claim -> title -> tool_call -> tool result) takes under
+# a second, so a marker written before a LATER rm gets erased and the poll
+# then waits 60s for a second stall that never comes (run9 lesson: task
+# completed exactly MOCK_STALL after enqueue = the stall DID arm; the
+# marker died to the rm race, not to an inert mock).
+rm -f "$TMP/stall-entered.log"
 MOCK_429=0 MOCK_STALL=25 MOCK_STALL_MARKER="$TMP/stall-entered.log" \
+	MOCK_REQ_LOG="$TMP/mock2-requests.log" \
 	python3 "$TMP/mock_crush_pool.py" "$PORT" >"$TMP/mock2.log" 2>&1 &
 sleep 1
 printf -- '- [ ] smoke probe: write the verdict file now\n' >"$TMP/poolproj/repo/TODO_LIST.md"
@@ -399,8 +412,8 @@ done
 # Kill INSIDE the stalled tool-result turn, not at claim time: a kill
 # before the first provider round lets the client respawn the server
 # (ensureServer, M7) and the run completes normally — no severed stream.
-# The mock marks the stall's entry; the kill must land after it.
-rm -f "$TMP/stall-entered.log"
+# The mock marks the stall's entry (marker rm'd pre-item above); the kill
+# must land after the marker and inside the MOCK_STALL window.
 for _ in $(seq 1 200); do
 	[ -s "$TMP/stall-entered.log" ] && break
 	size_guard
@@ -410,6 +423,7 @@ done
 	tail -25 "$TMP/pool.log"
 	"$TMP/tq" tasks --db "$TMP/pool.db" --json 2>/dev/null | head -30
 	tail -10 "$TMP/mock2.log" 2>/dev/null
+	tail -10 "$TMP/mock2-requests.log" 2>/dev/null
 	fail "the mock never entered the stalled tool-result turn — probe task never reached its tool call"
 }
 DEAD_PID="$(pgrep -f "crush server --host unix://$PSOCK" | head -1)"
