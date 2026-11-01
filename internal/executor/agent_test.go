@@ -281,15 +281,28 @@ func TestAgentExecutorArgvContract(t *testing.T) {
 
 	got := strings.Split(strings.TrimRight(string(raw), "\n"), "\n")
 
-	want := []string{"run", "--quiet", "--cwd", repo, "--model", "prov/m1", "--", "do it"}
-	if len(got) != len(want) {
-		t.Fatalf("argv = %v, want %v", got, want)
+	// The work prompt is the LAST argv element: the payload prompt plus
+	// the verdict rail (M8 bridge). The rail embeds the per-run temp path
+	// AND newlines (the stub logs one line per element, so the prompt
+	// spans the remaining lines) — rejoin the tail and pin prefix+shape.
+	wantPrefix := []string{"run", "--quiet", "--cwd", repo, "--model", "prov/m1", "--"}
+	if len(got) < len(wantPrefix)+1 {
+		t.Fatalf("argv = %v, want %v + the work prompt", got, wantPrefix)
 	}
 
-	for i := range want {
-		if got[i] != want[i] {
-			t.Fatalf("argv[%d] = %q, want %q (full: %v)", i, got[i], want[i], got)
+	for i := range wantPrefix {
+		if got[i] != wantPrefix[i] {
+			t.Fatalf("argv[%d] = %q, want %q (full: %v)", i, got[i], wantPrefix[i], got)
 		}
+	}
+
+	prompt := strings.Join(got[len(wantPrefix):], "\n")
+	if !strings.HasPrefix(prompt, "do it\n\nVerdict channel: record your final structured verdict before exiting by running: tq verdict --file /tmp/tq-verdict-") {
+		t.Fatalf("work prompt must be the payload prompt + the verdict rail: %q", prompt)
+	}
+
+	if !strings.HasSuffix(prompt, "'<one-line result JSON>' — the queue reads this file; it is the authoritative channel (stdout is only a fallback).") {
+		t.Fatalf("work prompt rail tail changed: %q", prompt)
 	}
 }
 
@@ -326,11 +339,13 @@ func TestAgentPromptTaskIDSubstitution(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// The stub logs one line per argv element; the substituted prompt is the
-	// final argument, so its full text must appear verbatim at the tail.
+	// The stub logs one line per argv element; the substituted prompt is
+	// the final argument. The verdict rail follows the payload prompt, so
+	// the resolved {{TASK_ID}} is pinned by containment (the rail's temp
+	// path is per-run).
 	want := "work item\n\nTask-Queue-ID: " + tk.ID.String()
-	if !strings.HasSuffix(strings.TrimRight(string(raw), "\n"), want) {
-		t.Fatalf("argv log = %q, want prompt tail %q ({{TASK_ID}} resolved)", string(raw), want)
+	if !strings.Contains(string(raw), want) {
+		t.Fatalf("argv log = %q, want the resolved prompt %q ({{TASK_ID}} resolved)", string(raw), want)
 	}
 }
 
@@ -1033,7 +1048,10 @@ func TestAgentExecutorCloseoutTurn(t *testing.T) {
 
 	script := `#!/bin/sh
 printf '%s\n' "$*" >> "` + argsLog + `"
-if [ "$(wc -l < "` + argsLog + `")" = "1" ]; then
+echo '---8<---' >> "` + argsLog + `"
+n=$(( $(cat "` + filepath.Join(dir, "calls") + `" 2>/dev/null || echo 0) + 1 ))
+echo "$n" > "` + filepath.Join(dir, "calls") + `"
+if [ "$n" = "1" ]; then
 	printf 'INFO Created session for non-interactive run session_id=sess-1234\n'
 fi
 printf 'TQ_RESULT: {"files_changed":["x.go"]}\n'
@@ -1057,17 +1075,22 @@ printf 'TQ_RESULT: {"files_changed":["x.go"]}\n'
 		t.Fatal(err)
 	}
 
-	lines := strings.Split(strings.TrimRight(string(raw), "\n"), "\n")
-	if len(lines) != 2 {
-		t.Fatalf("want 2 agent invocations (work + closeout), got %d: %q", len(lines), lines)
+	// The verdict rail makes each invocation multi-line (its text carries
+	// newlines), so invocations are separated by a marker line.
+	blocks := strings.Split(strings.TrimRight(string(raw), "\n"), "---8<---")
+	blocks = blocks[:len(blocks)-1] // trailing empty after the last marker
+	if len(blocks) != 2 {
+		t.Fatalf("want 2 agent invocations (work + closeout), got %d: %q", len(blocks), blocks)
 	}
 
-	if !strings.Contains(lines[0], "--verbose") || strings.Contains(lines[0], "--session") {
-		t.Fatalf("work turn must run verbose without --session: %q", lines[0])
+	work := strings.Split(strings.TrimRight(blocks[0], "\n"), "\n")
+	if len(work) == 0 || !strings.Contains(work[0], "--verbose") || strings.Contains(work[0], "--session") {
+		t.Fatalf("work turn must run verbose without --session: %q", blocks[0])
 	}
 
-	if !strings.Contains(lines[1], "--session sess-1234") || !strings.Contains(lines[1], "closeout review ") {
-		t.Fatalf("closeout turn must resume the extracted session with the resolved prompt: %q", lines[1])
+	closeout := strings.Split(strings.TrimRight(blocks[1], "\n"), "\n")
+	if len(closeout) == 0 || !strings.Contains(closeout[0], "--session sess-1234") || !strings.Contains(closeout[0], "closeout review ") {
+		t.Fatalf("closeout turn must resume the extracted session with the resolved prompt: %q", blocks[1])
 	}
 }
 

@@ -22,15 +22,19 @@ func TestExecuteDerivesOutcomeFromRealRun(t *testing.T) {
 	repo := t.TempDir()
 	setupGitRepo(t, repo)
 
-	// The stub extracts the task id from the substituted prompt's last
-	// word ({{TASK_ID}} renders as the final token), commits one file
-	// with the Task-Queue-ID footer as the LAST trailer — the exact
+	// The stub extracts the task id from the substituted prompt (the id
+	// is the 4th word of "ship the work <id>" — the verdict rail follows
+	// on later lines, so word-split the prompt and take $4), commits one
+	// file with the Task-Queue-ID footer as the LAST trailer — the exact
 	// derived-outcome delivery contract.
 	stub := makeStubAgent(t, `
 tid=""
 prev=""
 for a in "$@"; do
-	[ "$prev" = "--" ] && tid="${a##* }"
+	if [ "$prev" = "--" ]; then
+		set -- $a
+		tid="$4"
+	fi
 	prev="$a"
 done
 echo shipped > work.txt
