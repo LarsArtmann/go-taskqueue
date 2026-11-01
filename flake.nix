@@ -417,9 +417,11 @@
                   # (pool after --config/extraArgs; serve after --addr), and
                   # the default (unrouted) pool stays flag-free — rollback
                   # = unset the option
-                  && routedPool.serviceConfig.ExecStart
+                  &&
+                    routedPool.serviceConfig.ExecStart
                     == "${expectedBin} agent-pool --config ${routedConfPath} --crush-server /mnt/pool/services/tq/crush-pool.sock"
-                  && routedServe.serviceConfig.ExecStart
+                  &&
+                    routedServe.serviceConfig.ExecStart
                     == "${expectedBin} serve --addr 127.0.0.1:8100 --crush-server /mnt/pool/services/tq/crush-pool.sock"
                   && !(lib.hasInfix "--crush-server" defaultPool.serviceConfig.ExecStart)
                   # drain invariants survive on both units
