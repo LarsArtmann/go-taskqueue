@@ -403,9 +403,10 @@ else
 fi
 
 echo "== leg: hooks fire server-side and deny (M3)"
-cat >"$TMP/deny-hook.sh" <<'EOF'
+cat >"$TMP/deny-hook.sh" <<'HOOKEOF'
 #!/bin/sh
 input="$(cat)"
+printf '%s\n' "$input" >>"${HOOK_LOG:-/dev/null}"
 case "$input" in
 	*hook-deny-probe*)
 		echo "BLOCKED: hook-deny-probe is forbidden by the scratch hook fleet" >&2
@@ -413,15 +414,23 @@ case "$input" in
 		;;
 esac
 exit 0
-EOF
+HOOKEOF
 chmod +x "$TMP/deny-hook.sh"
-cat >"$REPO/.crushrc" <<EOF
+cat >"$REPO/.crushrc" <<CRUSHEOF
 permissions allow bash view read write edit
-hook add PreToolUse --matcher '^bash\$' --command 'sh $TMP/deny-hook.sh' --name smoke-deny --timeout 5
-EOF
-start_mock 'echo hook-deny-probe' 'mock done' 0
+hook add PreToolUse --matcher '^bash\$' --command 'env HOOK_LOG="$TMP/hook.log" sh $TMP/deny-hook.sh' --name smoke-deny --timeout 5
+CRUSHEOF
+# Ground truth is side-effects, not run output: non-interactive output
+# carries only the final assistant text, never tool results — the deny
+# reason lives in the tool_result (messages API), invisible to grep on the
+# run log. So: the hook must leave its own log line (it fired), and the
+# blocked command must NOT leave its file (it was denied).
+start_mock "echo hook-deny-probe > \"$TMP/tool-ran.txt\"" 'mock done' 0
+rm -f "$TMP/hook.log" "$TMP/tool-ran.txt" "$REPO/smoke-verdict.json"
 routed_run run4.log
-grep -q "hook-deny-probe is forbidden" "$TMP/run4.log" && echo "PASS: scratch hook denied the routed bash call server-side (M3)" || { cat "$TMP/run4.log"; fail "hook deny marker absent — hooks did not fire server-side"; }
+[ -s "$TMP/hook.log" ] || { cat "$TMP/run4.log"; fail "hook.log empty — the PreToolUse hook never fired server-side (M3 broken)"; }
+[ ! -e "$TMP/tool-ran.txt" ] || fail "the marker command EXECUTED — the exit-2 deny did not block it (deny contract changed?)"
+echo "PASS: scratch hook fired server-side and its exit-2 deny blocked the bash call (M3)"
 rm -f "$REPO/.crushrc"
 
 echo "== leg: server-kill respawn (M7)"
