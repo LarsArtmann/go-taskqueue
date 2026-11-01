@@ -56,9 +56,9 @@ the pattern tq's journal detail structs should follow when they grow.
 | -- | ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1  | `SPEC.md` §4.1                                                                        | `type` is "the only always-required key"; `title`/`description`/`resource`/`tags` are recommended. "Type values are **not** registered centrally… consumers MUST tolerate unknown types gracefully, typically by treating them as generic concepts."                                                       |
 | 2  | `SPEC.md` §4.1 "Extensions"                                                           | "Producers MAY include any additional keys. Consumers SHOULD preserve unknown keys when round-tripping and MUST NOT reject documents with unrecognized fields."                                                                                                                                          |
-| 3  | `SPEC.md` §5.5                                                                        | `stale_after` is "an absolute instant. A concept is stale when `now >= stale_after`." The v0.2 article gives the rationale: an absolute date makes staleness "a plain date comparison independent of when the concept happens to be read" — determinism that non-LLM consumers want, hence no relative TTL.  |
+| 3  | `SPEC.md` §5.5                                                                        | `stale_after` is "an absolute instant. A concept is stale when `now >= stale_after`." The spec gives the rationale directly: "An absolute instant, not a relative TTL, keeps the staleness decision a plain comparison with no reference to when the concept was read."  |
 | 4  | `SPEC.md` §5.4                                                                        | `status: draft \| stable \| deprecated`; "Absent `status` ⇒ `stable`." The article adds the reason deprecated concepts are *kept*: the legacy definition "is preserved for historical query reproducibility but not surfaced to new work".                                                                 |
-| 5  | `SPEC.md` §5.1 + v0.2 article                                                         | `sources` records the materials a concept derives from, each optionally carrying objective credibility signals (`author`, `usage_count` + a `usage_window`, `last_modified`). Credibility **scores** are deliberately omitted: "scores are subjective, don't port across consumers, and go stale immediately"; the consumer infers. Per-claim attribution is an ordinary footnote keyed to the source `id`. |
+| 5  | `SPEC.md` §5.1 + v0.2 article                                                         | `sources` records the materials a concept derives from, each optionally carrying objective credibility signals (`author`, `usage_count` + a `usage_window`, `last_modified`). Credibility **scores** are deliberately omitted — the spec's words are that a score "is subjective, unportable across consumers, and goes stale"; the consumer infers. Per-claim attribution is an ordinary footnote keyed to the source `id`. |
 | 6  | `SPEC.md` §5.2 + v0.2 article                                                         | `generated: {by, at}` and `verified: [{by, at}]` are deliberately distinct because "who wrote something need not be who confirmed it". Trust tiers are **derived** from `verified` (no key ⇒ unverified; machine-only ⇒ machine-confirmed; a `human:<id>` ⇒ human-reviewed) and are "advisory signals, not access control". A bare `verified` mapping MUST be read as a one-element list. |
 | 7  | `SPEC.md` §11                                                                         | Conformance needs three things only (parseable frontmatter, non-empty `type`, well-formed `index.md`/`log.md`). Consumers "MUST NOT reject a bundle because of: missing optional frontmatter fields, unknown `type` values, unknown additional frontmatter keys, broken cross-links, missing `index.md` files." Broken links "may simply represent not-yet-written knowledge". |
 | 8  | `SPEC.md` §3.1, §8, §9                                                                | `index.md` and `log.md` are reserved filenames "at any level of the hierarchy and MUST NOT be used for concept documents"; everything else is a concept. `index.md` carries no frontmatter except an optional root `okf_version`. `log.md` dates MUST be ISO `YYYY-MM-DD`.                                   |
@@ -148,13 +148,31 @@ weakened.
 
 ## Verification trail
 
-- 2026-11-01: the §-numbered quotations above were fetched from
-  `raw.githubusercontent.com/GoogleCloudPlatform/open-knowledge-format/main/SPEC.md`
-  and the two Google Cloud blog posts, and read directly; no claim here rests on
-  a subagent summary. The reference implementation paths named in the article
-  (`reference_agent`, static visualizer, the four sample bundles,
-  `attesters/sql_equality.py`) were **not** read at source — this note makes no
-  claim about their code beyond what the article states.
+- 2026-11-01, read in TWO passes, and the shape of the passes matters:
+  1. *First pass was subagent-mediated.* The `fetch` tool returned an empty body
+     for both blog URLs (tried twice, markdown and text), so the initial reading
+     came from `agentic_fetch`, an AI extraction sub-agent, including the
+     `SPEC.md` text.
+  2. *Second pass byte-verified the originals.* `download` retrieved the raw
+     files (`SPEC.md`, 1006 lines; both blog HTML pages), and every load-bearing
+     phrase in the citations table was then grepped against those bytes: the
+     §4.1 "only always-required key" and "tolerate unknown types" wording, the
+     §4.1 Extensions "MUST NOT reject documents with unrecognized fields"
+     wording, §5.5's "An absolute instant, not a relative TTL…", §5.4's
+     "Absent `status` ⇒ `stable`", §5.2's "bare mapping as a one-element list",
+     §11's "MUST NOT reject a bundle because of" list, §10.3's "MAY only supply
+     *values*", §10.6's "doc-level, slow, and recorded in the bundle", §6.1's
+     "directed edges of an untyped" relationship, plus the article dates
+     (2026-06-12 / 2026-07-25), both author names, and the phrases "vocabulary,
+     not rules", "unverified / machine-confirmed / human-reviewed",
+     "Minimally opinionated", "Producer/consumer independence" and "Format, not
+     platform". All matched.
+- Residual caveat, stated rather than papered over: the reference
+  implementation (`reference_agent`, the static visualizer, the four sample
+  bundles, `attesters/sql_equality.py`) was **not** read at source. This note
+  makes no claim about their code beyond what the article's prose states, and
+  the row-10 lesson is drawn from the SPEC's declared field set, not from that
+  example attester.
 - tq-side claims verified against the working tree the same window:
   - `internal/readmodel/events.go:223` (unknown fact types skipped by the fold's
     `default` branch), `:271` (legacy requeue detail tolerance).
