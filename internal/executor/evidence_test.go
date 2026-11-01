@@ -33,8 +33,14 @@ func TestLastFailureEvidenceReadsLastFailedFact(t *testing.T) {
 
 	got := LastFailureEvidence(context.Background(), store, id)
 
-	if got != (FailureEvidence{Stage: "verify", ExitCode: 1}) {
+	if got.Stage != "verify" || got.ExitCode != 1 {
 		t.Fatalf("got %+v, want stage=verify exit=1", got)
+	}
+
+	rest := got
+	rest.Stage, rest.ExitCode = "", 0
+	if !rest.IsZero() {
+		t.Fatalf("got %+v, want every field beyond stage/exit zero", got)
 	}
 }
 
@@ -121,7 +127,7 @@ func TestLastFailureEvidenceZeroWhenNoFailedFact(t *testing.T) {
 
 	store := trailStore{id.String(): []journal.Fact{{Type: journal.Completed}}}
 
-	if got := LastFailureEvidence(context.Background(), store, id); got != (FailureEvidence{}) {
+	if got := LastFailureEvidence(context.Background(), store, id); !got.IsZero() {
 		t.Fatalf("got %+v, want zero evidence", got)
 	}
 }

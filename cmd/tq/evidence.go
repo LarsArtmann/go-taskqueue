@@ -14,11 +14,12 @@ import (
 // gate-dead) is a queryable JSON surface instead of log forensics
 // (2026-09-29 01-30 §f8/§f13 + 05-23 §f1).
 type failureEvidenceView struct {
-	Stage       string `json:"stage,omitempty"`
-	VerifyStage string `json:"verify_stage,omitempty"`
-	Class       string `json:"class,omitempty"`
-	ExitCode    int    `json:"exit_code,omitempty"`
-	Tail        string `json:"tail,omitempty"`
+	Stage       string   `json:"stage,omitempty"`
+	VerifyStage string   `json:"verify_stage,omitempty"`
+	Class       string   `json:"class,omitempty"`
+	ExitCode    int      `json:"exit_code,omitempty"`
+	Tail        string   `json:"tail,omitempty"`
+	FilesChanged []string `json:"files_changed,omitempty"`
 }
 
 // failureEvidenceFor delegates to the shared executor reader (ONE
@@ -34,7 +35,7 @@ func failureEvidenceFor(ctx context.Context, store *sqlite.Store, id task.ID) ex
 func buildFailureEvidenceView(ctx context.Context, store *sqlite.Store, id task.ID) *failureEvidenceView {
 	evidence := failureEvidenceFor(ctx, store, id)
 
-	if evidence == (executor.FailureEvidence{}) {
+	if evidence.IsZero() {
 		return nil
 	}
 
@@ -44,5 +45,6 @@ func buildFailureEvidenceView(ctx context.Context, store *sqlite.Store, id task.
 		Class:       evidence.Class,
 		ExitCode:    evidence.ExitCode,
 		Tail:        evidence.Tail,
+		FilesChanged: evidence.FilesChanged,
 	}
 }

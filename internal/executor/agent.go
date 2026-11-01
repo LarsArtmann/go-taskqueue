@@ -377,6 +377,7 @@ func (e *AgentExecutor) Execute(ctx context.Context, t task.Task) error {
 		// full output survives in the sidecar only when TQ_LOG_DIR is set,
 		// so the fact carries its own excerpt.
 		SetFailureEvidence(ctx, "agent", err, tailBytes([]byte(output), EvidenceTailBytes))
+		EnrichFailureEvidenceFiles(ctx, runDir, t.ID)
 
 		// Routed runs severed by the shared server dying (dial failures,
 		// failed respawn) classify as environmental: requeue, no burn.
@@ -398,6 +399,7 @@ func (e *AgentExecutor) Execute(ctx context.Context, t task.Task) error {
 	tail, verifyStage, err := runVerify(runCtx, t.ID, runDir, &p, e.ReresolveVerify, baseRev)
 	if err != nil {
 		SetVerifyFailureEvidence(ctx, verifyStage, err, tail)
+		EnrichFailureEvidenceFiles(ctx, runDir, t.ID)
 
 		return err
 	}

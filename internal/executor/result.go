@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os/exec"
 	"regexp"
+	"slices"
 	"sync"
 
 	"github.com/larsartmann/go-taskqueue/internal/task"
@@ -121,6 +122,21 @@ type FailureEvidence struct {
 	// (a verify gate wraps a plain failure and changes its class). Empty
 	// on legacy facts; readers treat empty as "unclassified".
 	Class string `json:"class,omitempty"`
+	// FilesChanged is the union of files the run's footer-attributed
+	// commits touched, derived AFTER a failing agent/verify run so a DLQ
+	// autopsy sees what the run had already shipped when it died (work
+	// left uncommitted carries no footer and stays invisible — that is
+	// the derivation contract). Empty when the run died before any
+	// footer commit landed.
+	FilesChanged []string `json:"files_changed,omitempty"`
+}
+
+// IsZero reports whether no evidence was recorded — the field-wise zero
+// check FailureEvidence consumers use now that FilesChanged (a slice)
+// took struct comparability away.
+func (e FailureEvidence) IsZero() bool {
+	return e.Stage == "" && e.VerifyStage == "" && e.Class == "" &&
+		e.ExitCode == 0 && e.Tail == "" && len(e.FilesChanged) == 0
 }
 
 // EvidenceTailBytes is the ONE output-tail size every executor pins into
@@ -231,6 +247,48 @@ func setFailureEvidence(ctx context.Context, evidence FailureEvidence) {
 			s.mu.Unlock()
 		}
 	}
+}
+
+// EnrichFailureEvidenceFiles merges the files the failing run's
+// footer-attributed commits touched into the sink's already-recorded
+// failure evidence, so a DLQ autopsy sees what the run had changed when
+// it died without re-deriving from rotated sidecar logs. Best-effort: no
+// sink, no recorded evidence or an empty derivation leaves the evidence
+// untouched; a recorded files list is unioned, never replaced.
+func EnrichFailureEvidenceFiles(ctx context.Context, runDir string, id task.ID) {
+	s, ok := ctx.Value(sinkKey{}).(*Sink)
+	if !ok {
+		return
+	}
+
+	s.mu.Lock()
+	raw := s.failure
+	s.mu.Unlock()
+
+	if raw == nil {
+		return
+	}
+
+	var evidence FailureEvidence
+	if json.Unmarshal(raw, &evidence) != nil {
+		return
+	}
+
+	derived := deriveOutcome(ctx, runDir, "", id)
+	if len(derived.Files) == 0 {
+		return
+	}
+
+	merged := slices.Clone(evidence.FilesChanged)
+	for _, file := range derived.Files {
+		if !slices.Contains(merged, file) {
+			merged = append(merged, file)
+		}
+	}
+	slices.Sort(merged)
+	evidence.FilesChanged = merged
+
+	setFailureEvidence(ctx, evidence)
 }
 
 // Failure returns the recorded failure evidence, or nil.

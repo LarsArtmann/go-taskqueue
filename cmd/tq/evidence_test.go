@@ -184,7 +184,7 @@ func TestRequeuesCarryNoFailureEvidence(t *testing.T) {
 				}
 			}
 
-			if evidence := executor.LastFailureEvidenceFromTrail(trail); evidence != (executor.FailureEvidence{}) {
+			if evidence := executor.LastFailureEvidenceFromTrail(trail); !evidence.IsZero() {
 				t.Fatalf("requeue-only trail yielded failure evidence %+v (class %s)", evidence, tc.class)
 			}
 

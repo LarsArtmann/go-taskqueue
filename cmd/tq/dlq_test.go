@@ -65,7 +65,7 @@ func seedDeadTask(
 
 	var raw []byte
 
-	if (evidence != executor.FailureEvidence{}) {
+	if !evidence.IsZero() {
 		raw, err = json.Marshal(evidence)
 		if err != nil {
 			t.Fatalf("marshal evidence: %v", err)

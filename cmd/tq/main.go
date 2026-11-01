@@ -3363,13 +3363,14 @@ func printDLQJSON(
 			UpdatedAt:   t.UpdatedAt,
 		}
 
-		if ev := evidence[t.ID]; ev != (executor.FailureEvidence{}) {
+		if ev := evidence[t.ID]; !ev.IsZero() {
 			row.Evidence = &failureEvidenceView{
-				Stage:       ev.Stage,
-				VerifyStage: ev.VerifyStage,
-				Class:       ev.Class,
-				ExitCode:    ev.ExitCode,
-				Tail:        ev.Tail,
+				Stage:        ev.Stage,
+				VerifyStage:  ev.VerifyStage,
+				Class:        ev.Class,
+				ExitCode:     ev.ExitCode,
+				Tail:         ev.Tail,
+				FilesChanged: ev.FilesChanged,
 			}
 		}
 
