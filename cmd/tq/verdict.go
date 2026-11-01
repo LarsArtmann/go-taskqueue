@@ -17,16 +17,24 @@ import (
 // agent process), and nothing else — no database access, no TQ_DB
 // coupling. The executor reads the file after the agent exits; the prompt
 // contracts teach this command instead of a TQ_RESULT stdout line.
+//
+// `--file <path>` overrides the env channel: under `--crush-server` the
+// bash tool sees only the SERVER env (M8), so $TQ_RESULT_FILE is invisible
+// to routed agents — the work prompt bakes the path instead and the agent
+// records with `tq verdict --file <path> '<json>'`. Local runs keep the
+// env channel byte-identical (the flag is additive; unset = today).
 func cmdVerdict(args []string) error {
 	fs := flag.NewFlagSet("verdict", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
+	fileFlag := fs.String("file", "",
+		"write the verdict to this path (the routed-run channel; overrides $TQ_RESULT_FILE — the task prompt names the path)")
 
 	if err := fs.Parse(args); err != nil {
-		return fmt.Errorf("tq verdict: %w (usage: tq verdict '<json>' | tq verdict - < file)", err)
+		return fmt.Errorf("tq verdict: %w (usage: tq verdict '<json>' | tq verdict --file <path> '<json>' | tq verdict - < file)", err)
 	}
 
 	if fs.NArg() != 1 {
-		return errors.New("usage: tq verdict '<json>'   (or: tq verdict - < file.json)")
+		return errors.New("usage: tq verdict '<json>'   (or: tq verdict --file <path> '<json>'  |  tq verdict - < file.json)")
 	}
 
 	var body []byte
@@ -62,10 +70,15 @@ func cmdVerdict(args []string) error {
 		)
 	}
 
-	path := os.Getenv("TQ_RESULT_FILE")
+	path := *fileFlag
+	if path == "" {
+		path = os.Getenv("TQ_RESULT_FILE")
+	}
+
 	if path == "" {
 		return errors.New(
-			"TQ_RESULT_FILE is not set — this command records a verdict for a queue task and only works inside one. " +
+			"no verdict channel: pass --file <path> (the task prompt names it) or set $TQ_RESULT_FILE — " +
+				"this command records a verdict for a queue task and only works inside one. " +
 				"Running outside a task there is nothing to record",
 		)
 	}
