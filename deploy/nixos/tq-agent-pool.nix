@@ -209,7 +209,10 @@ in
 
       serviceConfig = {
         Type = "simple";
-        ExecStart = "${lib.getExe' cfg.package "tq"} agent-pool --config ${poolConf} ${lib.escapeShellArgs cfg.extraArgs}${lib.optionalString (cfg.crushServerSocket != null) " --crush-server ${cfg.crushServerSocket}"}";
+        # extraArgs carries its own leading space ONLY when non-empty — an
+        # empty list must not leave a double space before --crush-server
+        # (the module-eval check pins the routed ExecStart byte-exactly).
+        ExecStart = "${lib.getExe' cfg.package "tq"} agent-pool --config ${poolConf}${lib.optionalString (cfg.extraArgs != [ ]) " ${lib.escapeShellArgs cfg.extraArgs}"}${lib.optionalString (cfg.crushServerSocket != null) " --crush-server ${cfg.crushServerSocket}"}";
         Environment = [
           "TQ_DB=${toString cfg.dbPath}"
           "PATH=${cfg.agentPath}"
