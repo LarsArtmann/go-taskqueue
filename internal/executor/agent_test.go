@@ -423,6 +423,23 @@ func TestAgentCrushServerSeam(t *testing.T) {
 				t.Fatalf("argv %v: -H %s presence = %v, want %v", argv, wantHost, hasHost, tc.wantArg)
 			}
 
+			// Routed work turns run --verbose (the severed-stream WARN is the
+			// rc-0-lie discriminator and quiet suppresses it); local runs stay
+			// --quiet. The stub argv carries exactly one of the two verbs.
+			routedVerb := ""
+			for _, a := range argv {
+				if a == "--verbose" || a == "--quiet" {
+					routedVerb = a
+				}
+			}
+			wantVerb := "--quiet"
+			if tc.wantArg {
+				wantVerb = "--verbose"
+			}
+			if routedVerb != wantVerb {
+				t.Fatalf("argv %v: run verb = %q, want %q", argv, routedVerb, wantVerb)
+			}
+
 			envRaw, err := os.ReadFile(envLog)
 			if err != nil {
 				t.Fatal(err)

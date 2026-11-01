@@ -763,9 +763,13 @@ func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPa
 	// runs verbose when enabled: quiet mode suppresses the "Created session
 	// … session_id=" line ExtractSessionID needs, and --continue would race
 	// for the most recent session when another pool agent finishes at the
-	// same moment.
+	// same moment. Routed runs are ALWAYS verbose: quiet also suppresses
+	// the severed-stream WARN ("Events stream ended") — the only output
+	// discriminator a mid-run server death leaves on the rc-0 lie path
+	// (observed v0.99.0: a quiet severed run exits 0 with a 1-byte output;
+	// pinned live by the pool smoke's V2.10 leg).
 	runVerb := "--quiet"
-	if e.CloseoutPrompt != "" {
+	if e.CloseoutPrompt != "" || e.CrushServer != "" {
 		runVerb = "--verbose"
 	}
 
@@ -1014,7 +1018,14 @@ func (e *AgentExecutor) runCloseoutTurn(
 		closeout += fmt.Sprintf(questionRailTmpl, id.String(), questionPath)
 	}
 
-	closeoutArgs := []string{"run", "--quiet", "--cwd", repoDir}
+	// Routed closeouts run verbose for the same reason as routed work
+	// turns: the rc-0 severed-stream lie is only visible in verbose output.
+	closeoutVerb := "--quiet"
+	if e.CrushServer != "" {
+		closeoutVerb = "--verbose"
+	}
+
+	closeoutArgs := []string{"run", closeoutVerb, "--cwd", repoDir}
 	if e.CrushServer != "" {
 		closeoutArgs = append(closeoutArgs, "-H", crushHostFlag(e.CrushServer))
 	}
@@ -1056,6 +1067,13 @@ func (e *AgentExecutor) runCloseoutTurn(
 	buf.WriteString(closeoutBuf.String())
 
 	if err == nil {
+		// Same rc-0 lie as the work turn: a server death mid-closeout
+		// exits 0 with the report unwritten — classify so the worker
+		// requeues without burn instead of completing on silence.
+		if e.CrushServer != "" && DetectCrushServerDeath(closeoutBuf.String(), "") {
+			return &CrushServerDeathError{}
+		}
+
 		return nil
 	}
 
