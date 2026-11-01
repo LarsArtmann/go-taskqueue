@@ -62,7 +62,13 @@ case "$prompt" in
 		# Prove the run happens in a LINKED checkout: commit there. The
 		# main checkout must never see this file. The name is prompt-unique
 		# so two same-repo tasks never add/add-conflict on the auto-merge.
-		wf="work-$(printf '%s' "$prompt" | tr -cd 'a-z0-9' | head -c 24).txt"
+		# Slug the FIRST LINE only: the executor appends the verdict and
+		# question rails AFTER the payload prompt, so slugging the whole
+		# prompt renames the delivery whenever rail wording changes (it
+		# did — work-taskone.txt became work-taskoneerdictchannelreco.txt
+		# when the verdict rail landed, silently rotting the merged-tree
+		# assertion below).
+		wf="work-$(printf '%s\n' "$prompt" | head -n 1 | tr -cd 'a-z0-9').txt"
 		printf 'work: %s\n' "$prompt" >"$wf"
 		git add "$wf"
 		git commit -qm "work: $prompt"
@@ -129,9 +135,18 @@ echo "== deliveries merged through tq/* branches; main checkout clean"
 	echo "FAIL: work files on disk in the main checkout — merges are plumbing-side (commit-tree), the working dir must never see them directly"
 	exit 1
 }
-for wf in work-taskone.txt work-tasktwo.txt; do
+for want in taskone:"task one" tasktwo:"task two"; do
+	wf="work-${want%%:*}.txt"
+	body="${want#*:}"
 	git -C "$REPO" ls-tree --name-only HEAD | grep -qx "$wf" || {
 		echo "FAIL: $wf missing from the merged HEAD tree"
+		exit 1
+	}
+	# Identity, not just existence: each delivery must carry ITS OWN prompt,
+	# so a merge that swapped or duplicated the two trees still fails here.
+	git -C "$REPO" show "HEAD:$wf" | grep -qF "work: $body" || {
+		echo "FAIL: $wf does not carry its own task prompt ($body)"
+		git -C "$REPO" show "HEAD:$wf" | head -3
 		exit 1
 	}
 done
