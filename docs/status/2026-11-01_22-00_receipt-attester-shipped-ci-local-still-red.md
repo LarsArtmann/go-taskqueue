@@ -346,9 +346,10 @@ Fork records from that heal (old→new), for any doc still citing the old shas:
 `0a7a4d05→1b1bb079`, `cfb29e66→3ff368ec`, `c6489b3b→36f500b1`,
 `2e4db1d3→243d0152`, `0ea3f21b→90140f93`, `eb512007→b0f325f4`,
 `600a5c04→45bdc108`, `cef0c928→6b56fc3c`, `12e1d625→dbfb8598`,
-`7f7c7aea→0ea99799`. Commits that already carried the footer kept their shas
-verbatim in the second pass (the heal prints identity records for them), so this
-list stays the only mapping a reader needs.
+`7f7c7aea→0ea99799`. A commit keeps its sha only while no ancestor moved, so
+part of that pass printed identity records (`826aa46f→6e27a41e` stayed put,
+`eb512007→b0f325f4` did not) — the two lists below are the complete mapping, and
+nothing outside them changed.
 
 A second heal, right before the push, caught the sweeps that landed after the
 first one (the fuzz-seed corpus and two doc sweeps): `10184f1a→2a5e04c3`,
