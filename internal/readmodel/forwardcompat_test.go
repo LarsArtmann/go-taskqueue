@@ -51,11 +51,13 @@ func TestEventForSkipsUnknownFactType(t *testing.T) {
 
 	evt, ok, err := eventFor(context.Background(), fact, nil)
 	if err != nil {
-		t.Fatalf("eventFor(unknown type) error = %v, want nil — an unknown fact family is VERSION SKEW, not corruption", err)
+		t.Fatalf("eventFor(unknown type) error = %v, want nil — an unknown fact family is "+
+			"VERSION SKEW, not corruption", err)
 	}
 
 	if ok || evt != nil {
-		t.Fatalf("eventFor(unknown type) = (%v, %v), want (nil, false) — the fold must skip what it cannot place", evt, ok)
+		t.Fatalf("eventFor(unknown type) = (%v, %v), want (nil, false) — the fold must skip "+
+			"what it cannot place", evt, ok)
 	}
 }
 
@@ -73,7 +75,9 @@ func TestKnownFactDetailsIgnoreUnknownKeys(t *testing.T) {
 			Type:   journal.Reprioritized,
 			// evidence_ref/confidence are fields a future producer could add;
 			// the known four must still decode.
-			Detail: []byte(`{"old_priority":3,"new_priority":7,"source":"ai","reason":"rescored","evidence_ref":"abc123","confidence":0.9,"schema":2}`),
+			Detail: []byte(
+				`{"old_priority":3,"new_priority":7,"source":"ai","reason":"rescored","evidence_ref":"abc123","confidence":0.9,"schema":2}`,
+			),
 		}
 
 		evt, ok, err := eventFor(context.Background(), fact, nil)
@@ -91,7 +95,10 @@ func TestKnownFactDetailsIgnoreUnknownKeys(t *testing.T) {
 		}
 
 		if got.Priority != 7 {
-			t.Errorf("Priority = %d, want 7 — an unknown sibling key must not disturb the known ones", got.Priority)
+			t.Errorf(
+				"Priority = %d, want 7 — an unknown sibling key must not disturb the known ones",
+				got.Priority,
+			)
 		}
 	})
 
@@ -101,7 +108,9 @@ func TestKnownFactDetailsIgnoreUnknownKeys(t *testing.T) {
 		fact := journal.Fact{
 			TaskID: "000001a0requeueunknownkeys0000000000000",
 			Type:   journal.Requeued,
-			Detail: []byte(`{"retry_in_ms":3600000,"class":"budget","provider":"anthropic","requeue_seq":4}`),
+			Detail: []byte(
+				`{"retry_in_ms":3600000,"class":"budget","provider":"anthropic","requeue_seq":4}`,
+			),
 		}
 
 		evt, ok, err := eventFor(context.Background(), fact, nil)
@@ -143,6 +152,8 @@ func TestKnownFactDetailStillRejectsCorruption(t *testing.T) {
 
 	_, _, err := eventFor(context.Background(), fact, nil)
 	if err == nil {
-		t.Fatal("eventFor(truncated detail) error = nil, want a corruption-class error — tolerance must not extend to unparseable bytes")
+		t.Fatal(
+			"eventFor(truncated detail) error = nil, want a corruption-class error — tolerance must not extend to unparseable bytes",
+		)
 	}
 }
