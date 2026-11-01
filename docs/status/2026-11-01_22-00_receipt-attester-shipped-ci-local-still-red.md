@@ -362,7 +362,9 @@ first one (the fuzz-seed corpus and two doc sweeps): `10184f1a→2a5e04c3`,
 `1523a841→bd7180ac`, `2d2e3d58→d244d725`, `44f9074c→c36fcd98`,
 `01bdf856→fd46a6f8`, `80bd4a1a→37abcc78`, `6677e260→af971f32`. Lesson worth
 keeping: heal LAST, after every file edit, because each daemon sweep between the
-heal and the push is a new unattributed commit.
+heal and the push is a new commit without a footer. The two that landed after
+this heal were docs-only, which the audit classifies `report-only` — they cannot
+fail the gate, and re-healing for them would only churn shas.
 
 The three owner rulings in §g still stand, and the `cmd/tq` re-pin still owns
 `verify-ok`/`verify-mismatch` (§f 4-5).
