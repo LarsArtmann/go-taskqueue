@@ -133,7 +133,10 @@ docs/DOMAIN_LANGUAGE.md.
   invisible; hook rejects), files via `git diff-tree`, usage via
   go-crush-data. No stdout self-report.
 - **Verdict channel**: paid turns record via `tq verdict '<json>'` into
-  `$TQ_RESULT_FILE` (file > legacy stdout, last-wins).
+  `$TQ_RESULT_FILE` (file > legacy stdout, last-wins). The executor bakes a
+  ONE-line rail into work+closeout prompts naming the per-run path:
+  `tq verdict --file <path> '<json>'` — always-on (local + routed share ONE
+  contract; agents never edit or drop the rail).
 - **Batched harvest** (`--batch-items`, default 3): N adjacent
   same-section items → one task (dedup `batch:` + SORTED-key hash;
   gates see ONE task); direct `tq enqueue` forbidden — work prompts

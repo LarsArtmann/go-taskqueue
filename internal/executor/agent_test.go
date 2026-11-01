@@ -409,6 +409,97 @@ func TestAgentCrushServerSeam(t *testing.T) {
 	}
 }
 
+// TestVerdictRailBakedIntoPrompts pins the M8 bridge: when the verdict
+// channel exists, BOTH the work prompt and the closeout prompt carry the
+// rail naming the per-run path (`tq verdict --file <path>`), and the env
+// channel stays byte-identical (TQ_RESULT_FILE exported as before) — the
+// rail is additive, so local runs keep today's contract while routed
+// runs (whose bash tool cannot see the env) still find the channel.
+func TestVerdictRailBakedIntoPrompts(t *testing.T) {
+	dir := t.TempDir()
+	argsLog := filepath.Join(dir, "argv.log")
+	envLog := filepath.Join(dir, "env.log")
+
+	// One stub, two turns: dump argv+env APPEND-mode (the closeout turn
+	// overwrites the work turn otherwise) and emit the session-id line the
+	// closeout seam extracts.
+	stub := "#!/bin/sh\n" +
+		"printf '%s\\n' \"$@\" >> \"" + argsLog + "\"\n" +
+		"echo '---' >> \"" + argsLog + "\"\n" +
+		"env >> \"" + envLog + "\"\n" +
+		"echo '---' >> \"" + envLog + "\"\n" +
+		"echo 'Created session for non-interactive run session_id=stub-sess-1'\n"
+	bin := filepath.Join(dir, "rail-agent")
+	if err := os.WriteFile(bin, []byte(stub), 0o755); err != nil {
+		t.Fatalf("write stub: %v", err)
+	}
+
+	repo := t.TempDir()
+	if err := os.WriteFile(filepath.Join(repo, ".crushrc"), []byte("permissions allow view\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	e := &AgentExecutor{
+		Bin:            bin,
+		CloseoutPrompt: "close out task {{TASK_ID}}",
+	}
+	if err := e.Execute(
+		context.Background(),
+		agentTaskT(t, AgentPayload{Repo: repo, Prompt: "do the work"}),
+	); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+
+	raw, err := os.ReadFile(argsLog)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	invocations := strings.Split(strings.TrimRight(string(raw), "\n"), "---\n")
+	if len(invocations) < 2 { // trailing split leaves an empty tail
+		t.Fatalf("want 2 stub invocations (work + closeout), got %d:\n%s", len(invocations)-1, raw)
+	}
+
+	paths := make([]string, 0, 2)
+	for i, inv := range invocations[:2] {
+		lines := strings.Split(strings.TrimRight(inv, "\n"), "\n")
+		prompt := ""
+		for j, l := range lines {
+			if l == "--" && j+1 < len(lines) {
+				prompt = strings.Join(lines[j+1:], "\n")
+			}
+		}
+		if prompt == "" {
+			t.Fatalf("invocation %d: no prompt after -- in %q", i, inv)
+		}
+		if !strings.Contains(prompt, "tq verdict --file ") {
+			t.Fatalf("invocation %d prompt lacks the verdict rail: %q", i, prompt)
+		}
+		idx := strings.Index(prompt, "tq verdict --file ") + len("tq verdict --file ")
+		rest := prompt[idx:]
+		end := strings.Index(rest, " ")
+		if end < 0 {
+			end = len(rest)
+		}
+		paths = append(paths, rest[:end])
+	}
+
+	if paths[0] != paths[1] {
+		t.Fatalf("work and closeout rails name different paths: %q vs %q", paths[0], paths[1])
+	}
+	if !strings.Contains(paths[0], "tq-verdict-") {
+		t.Fatalf("rail path %q is not the per-run verdict temp file", paths[0])
+	}
+
+	envRaw, err := os.ReadFile(envLog)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.Count(string(envRaw), "TQ_RESULT_FILE="+paths[0]); got < 2 {
+		t.Fatalf("env channel must stay exported on BOTH turns, got %d hits for %s", got, paths[0])
+	}
+}
+
 // TestAgentExecutorYoloWithoutRepoAutonomyFailsFast verifies the guard that
 // keeps unattended pools from burning their attempt budget on runs that can
 // never act: yolo requested, but the repo has no project-local crush config
