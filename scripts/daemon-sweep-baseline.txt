@@ -1650,3 +1650,7 @@ d5a372e79a11d2b385f315828957c9262a10fed7
 8657de8ed8c605655402c7485279dc50d3b7dd4c
 # 2026-11-01 row-1446 enricher: row-1446 closeout (CHANGELOG rows + TODO tick + facade alias)
 e7838543692811d067d7cf141534a5de439429af
+# 2026-11-01 row-462/534 drift+fullcore landing (journalaudit_postgres_test.go + ci.yml widen)
+26d1c640419ba29df1c84c7f230e25a8936fbcd0
+# 2026-11-01 row-462 postgres seeded-drift test mid-write
+e4420d2d0dc47f4dea85748cafdde7a5057577bd
