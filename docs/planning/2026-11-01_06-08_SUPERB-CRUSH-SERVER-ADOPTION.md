@@ -204,3 +204,46 @@ TestAgentCrushServerSeam). The pane (A7) must not fork a second output source
 of truth without the one-source ruling (V2.4 rides the EXISTING hub; the
 tailer stays until ruled). No step here rewrites shipped contracts — the
 smokes pin every one of them.
+
+## Decision memo — question bridge (A4, ruled 2026-11-01 18:05)
+
+**Ruling: the file-path rail (option a), NOT SSE-parked questions.**
+
+- The verdict bridge (A1) already proved the pattern: the prompt names a
+  per-run absolute path, the flag form (`tq ask --task <id> --file <path>`)
+  writes the marker, env fallback stays byte-identical for local runs.
+  One bridge shape for both agent→queue channels = one mental model, one
+  canary, one ritual.
+- SSE-parked questions (option b) need the M6 prompt-forwarding surface
+  plus a pane answer loop — a second bridge implementation, a second
+  failure domain, and a hard dependency on an attached dashboard at park
+  time. The QuestionsPane (row 1445) already renders journal-asked
+  questions; `tq ask` already lands the fact there. Parking does not need
+  the SSE leg; answering does not either (the AnswerPoller exists).
+- The AnswerPoller reads the MARKER (parkedAfterCloseout scans the file
+  at the prompt-named path — same file, whether env or flag delivered
+  the path to the agent). No poller change.
+- DOMAIN_LANGUAGE carries the ruling under "question channel".
+
+## LIVE-STATUS (dogfood flip + adoption execution, updated 2026-11-01)
+
+- **Deployed flip: NOT YET.** The SystemNix flip is staged but owner-run
+  (`nix run .#deploy` is sudo-gated; V1.9). The upstream module option
+  (`crushServerSocket`, default off) + the SystemNix house wiring +
+  eval-branch pins landed in the adoption batch. When the flip deploys,
+  record: date, first routed wave, DLQ/attempts deltas, pane usage.
+- **Adoption execution 2026-11-01 (this session)**: A1 SHIPPED (verdict
+  `--file` + always-on rails, bridge leg in the route smoke green ×1);
+  A4 SHIPPED per the memo above; A3 SHIPPED (crush#4210 filed, OPEN);
+  A8 SHIPPED (CrushServerDeathError + RequeueClassCrushServer +
+  IsEnvironmentalDeath marker — severed rc-0 runs classify, no burn,
+  breaker-exempt); A9 SHIPPED (keeper RSS log + pool-health WARN band +
+  `crushServerRSS` JSON); A10 SHIPPED (stall tracker, 10m bar, busy-gated,
+  fake-clock pinned); A13 doctor pin PENDING; A12 cancel leg PENDING;
+  A14/A15 pending the flip; docs wave (A16) in flight.
+- **Seam bug found + fixed by the A14 smoke leg (V2.10)**: the executor
+  passed `-H <bare-path>` — crush rejects scheme-less hosts ("Invalid
+  host URL"); `crushHostFlag` now normalizes (unit-pinned 3-way). The
+  pool smoke's mid-run kill leg is the E2E that caught it.
+- **Env-gap residue**: unchanged (crush#4210 open). Canary holds green-red
+  per the route smoke; flip ritual = V3.6 note in the smoke header.

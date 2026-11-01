@@ -1018,14 +1018,14 @@ func TestDoctorCrushVersionCheck(t *testing.T) {
 		wantIn     []string
 	}{
 		{
-			"at floor", "crush version v0.94.1", nil,
+			"at proven pin", "crush version v" + doctorCrushProvenVersion, nil,
 			checkOK,
-			[]string{"0.94.1"},
+			[]string{doctorCrushProvenVersion},
 		},
 		{
-			"above floor", "crush version v0.96.1", nil,
-			checkOK,
-			[]string{"0.96.1"},
+			"above floor but off the proven pin", "crush version v0.96.1", nil,
+			checkWarn,
+			[]string{"0.96.1", doctorCrushProvenVersion, "crush-server-route.sh"},
 		},
 		{
 			"below floor", "crush version v0.92.0", nil,
@@ -1138,7 +1138,7 @@ func TestDoctorEnvironmentIncludesCrushVersionCheck(t *testing.T) {
 	t.Cleanup(func() { doctorProbeCrushVersion = orig })
 
 	doctorProbeCrushVersion = func(_ context.Context, bin string) (string, error) {
-		return "crush version v9.9.9 (" + bin + ")", nil
+		return "crush version v" + doctorCrushProvenVersion + " (" + bin + ")", nil
 	}
 
 	results := doctorEnvironment(context.Background(), doctorOptions{
@@ -1147,8 +1147,8 @@ func TestDoctorEnvironmentIncludesCrushVersionCheck(t *testing.T) {
 	})
 
 	r := resultByName(results, "crush-version")
-	if r.Status != checkOK || !strings.Contains(r.Detail, "9.9.9") {
-		t.Errorf("crush-version check = %+v, want ok naming the stubbed version", r)
+	if r.Status != checkOK || !strings.Contains(r.Detail, doctorCrushProvenVersion) {
+		t.Errorf("crush-version check = %+v, want ok naming the stubbed proven-pin version", r)
 	}
 }
 

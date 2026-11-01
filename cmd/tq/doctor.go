@@ -114,6 +114,16 @@ const doctorHeartbeatWindow = 10 * time.Minute
 // older binary silently cannot honor the managed block's effort pin.
 const doctorCrushMinVersion = "0.94.1"
 
+// doctorCrushProvenVersion is the version the client/server wire legs were
+// PROVEN on (crush-server-route.sh + crush-pool-supervisor.sh, both
+// ci-local-wired): the seam, the env-gap canary, kill/respawn, and the
+// severed-stream classification all carry version-sensitive wire shapes.
+// A host binary at a DIFFERENT version is a WARN (not FAIL): re-run the
+// two smokes before trusting `--crush-server`, then bump this pin in the
+// same change (A13/V2.16; ensureServer's mismatch auto-replace is the
+// server-side upgrade path — a client newer than the server replaces it).
+const doctorCrushProvenVersion = "0.99.0"
+
 // crushVersionProbeTimeout bounds one `--version` call: a hung binary must
 // not hang the doctor.
 const crushVersionProbeTimeout = 15 * time.Second
@@ -228,9 +238,18 @@ func doctorCrushVersionCheck(ctx context.Context, bin string) checkResult {
 		}
 	}
 
+	if v != doctorCrushProvenVersion {
+		return checkResult{
+			Name: name, Status: checkWarn,
+			Detail: "crush " + v + " (floor " + doctorCrushMinVersion + ", smokes-proven pin " + doctorCrushProvenVersion +
+				") — the client/server wire legs were proven on " + doctorCrushProvenVersion +
+				"; re-run scripts/smoke/crush-server-route.sh + crush-pool-supervisor.sh before trusting --crush-server, then bump the pin",
+		}
+	}
+
 	return checkResult{
 		Name: name, Status: checkOK,
-		Detail: "crush " + v + " (floor " + doctorCrushMinVersion + ")",
+		Detail: "crush " + v + " (floor " + doctorCrushMinVersion + ", proven pin " + doctorCrushProvenVersion + ")",
 	}
 }
 
