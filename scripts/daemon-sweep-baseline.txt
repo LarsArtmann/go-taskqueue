@@ -1664,3 +1664,5 @@ ce4f04bad46a71efc01a289085c1e87ab5b2ba04
 eebb838345a41e85f6633d0ecd6e3f38b0b43d9c
 # 2026-11-01 baseline-append recursion (the eebb8383 grandfather)
 1237120ba2b6f7b5fb248ba71a0b2ce5c336f67b
+# 2026-11-01 CI-red fixes: unix build tag + CloseReadModel + treefmt (crushserver.go alignment)
+348275dc978d530331a8460b33e383003f817844
