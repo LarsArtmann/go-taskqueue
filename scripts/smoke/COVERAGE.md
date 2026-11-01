@@ -55,6 +55,7 @@ signal (`exec.ExitError`, code −1).
 | `release-gates.sh`        | release gate battery                          |
 | `reviews.sh`              | review executor + verdict gate                |
 | `session-close.sh`        | session bridge + crush wrapper (table above)  |
+| `status-rewind.sh`        | status sweeper rewind-replay done-guard       |
 | `status-loop.sh`          | status sweeper turn                           |
 | `webui.sh`                | serve dashboard + SSE                         |
 | `worktree.sh`             | `--worktrees` agent branches                  |
