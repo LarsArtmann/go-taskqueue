@@ -8,6 +8,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- **Failure evidence carries the files a dying run already changed**
+  (2026-11-01, row 806): `tq show`'s `failure` section and
+  `tq dlq --json` evidence rows gain `files_changed` — the union of
+  files the run's `Task-Queue-ID`-footer commits touched, derived
+  after a failing agent/verify run so a DLQ autopsy sees what shipped
+  before the death without re-deriving from rotated sidecar logs
+  (empty when the run died before any footer commit).
+- **`tq doctor` verdict-channel check** (2026-11-01, row 806): a new
+  `verdict-channel` probe WARNs when `tq` is not on PATH — the work
+  and closeout prompts bake `tq verdict`/`tq ask` rails, so a pool
+  PATH without `tq` fails every paid turn's recording channel at the
+  source; a PATH hit differing from the running binary still passes
+  with a shadowing note.
 - **`tq verdict --file` and `tq ask --file`** (2026-11-01, client/server
   adoption): both agent→queue channels gain a flag form that overrides the
   env channel — the work/closeout prompts now bake a one-line rail naming
@@ -120,6 +133,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Internal
 
+- dead-exports gate (2026-11-01): importer scan rewritten from
+  per-symbol whole-tree sweeps (O(symbols × tree), hours under the
+  grown vendor/) to ONE identifier-token sweep + awk containment join
+  (~20 s); `rg -o -F -f` overlapping-name shadowing fixed via token
+  extraction; the `.tq-verify` clone no longer counts as an importer
+  (it had silently masked every symbol for weeks) — honest floor now
+  179 dead / 555 alive / 28 structurally alive, self-test pins
+  byte-identical (b714c6b0).
+- prompt-stack de-micromanagement residue (row 470, 2026-11-01): the
+  last mechanics dictation ("Run `date` (CLI)…") in the closeout and
+  status prompts became the clock-first outcome ("timestamp from the
+  clock, never guessed") — DefaultCloseoutPrompt 1243→1233 chars;
+  footer-last/verify-gate/.tq-verify/dedup+HARD CAP invariants
+  untouched, all prompt pins green.
+- executor test pins: crushdeath_test.go tagged `//go:build unix`
+  (windows cross-compile); argv-contract + closeout-turn pins extended
+  to the always-on verdict and owner-question rails (6668d0d8,
+  09afb5fd, f803b203).
 - CI: the erraudit step ran `go install` of a PRIVATE module
   (proxy 404, no runner credentials), failing every `test` job since
   2026-10-30 — CI now runs only the hermetic `--self-test`; the
