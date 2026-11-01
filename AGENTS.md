@@ -9,20 +9,19 @@ changes: read, judge, build on, never revert. (Size guard: TestAgentsDocSizeGuar
 **MAJOR OPEN PROBLEMS**: [dispatch prompting + batch granularity](docs/problems/major-prompting-and-batching.md) —
 redesign SHIPPED v0.3.4; follow-ups tracked in the doc.
 
-**READER ROUTE — read only your lanes** (dense by design): executors →
-§Payload contracts + §Conventions; review/dlqfix/status agents →
-§Conventions + §Operational contracts; gate/verify runners → §Commands +
-§Known Issues; store/queue → §Store invariants; platform/docs →
-§Relation to other projects. Everyone: scan §Known Issues before
-attributing failures. Per-package reader maps live in each doc comment.
+**READER ROUTE — read only your lanes**: executors → §Payload contracts +
+§Conventions; review/dlqfix/status → §Conventions + §Operational contracts; gate
+runners → §Commands + §Known Issues; store/queue → §Store invariants;
+platform/docs → §Relation to other projects. Scan §Known Issues before attributing
+failures; per-package maps live in each doc comment.
 
 ## Commands
 
 ```bash
 ./scripts/ci-local.sh # pre-push gate; transient foreign breaks retry 45s ×3
-  # TRANSIENT_MAX_POLLS=0: NO retry (check-transient-retry pins); nix/check-ci/
-  # daemon-attribution unwrapped. Preflight EVERY battery: agents-size +
-  # dead-exports --self-test + module test + facade-parity + ROOT vet + quiet tree.
+  # TRANSIENT_MAX_POLLS=0: NO retry (pinned); nix/check-ci/daemon-attribution
+  # unwrapped. Preflight EVERY battery: agents-size + dead-exports --self-test +
+  # module test + facade-parity + ROOT vet + quiet tree.
 ./scripts/root-gate.sh # root verify gate; ONE retry on known-flaky signatures
 ./scripts/lint-baseline.sh --check --clean-cache # opt-in stale-cache clean before a warm --check (regen ALWAYS cleans)
 nix build # nix run .#test; .#webui-css
@@ -51,16 +50,15 @@ postgres `OpenWithPool` pools CALLER-OWNED. No root go.work — replace-only
 bumps its `go` line (`go work edit -go=<ver>`) in the same change — a stale
 line fails every cmd/tq go command. Release flow: docs/release/.
 
-Smokes (CI-safe): `scripts/smoke/`. Guards: check-*.sh +
-release-gates + lint-baseline. `scripts/new-module.sh <dir> [deps…]`
-scaffolds go.mods.
+Smokes (CI-safe): `scripts/smoke/`. Guards: check-*.sh (incl. `check-cite-drift`,
+`check-research-note-shape`) + release-gates + lint-baseline.
+`scripts/new-module.sh <dir> [deps…]` scaffolds go.mods.
 
 ## Architecture
 
-Facts-first: every state change is an immutable fact in an append-only
-journal; queue views, retry state, DLQ are projections. Claim
-exclusivity = lease TTL + expiry reclaim. Vocabulary:
-docs/DOMAIN_LANGUAGE.md.
+Facts-first: every state change is an immutable fact in an append-only journal;
+queue views, retry state and the DLQ are projections. Claim exclusivity = lease
+TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 
 | Package | Purpose |
 | --- | --- |
@@ -68,7 +66,7 @@ docs/DOMAIN_LANGUAGE.md.
 | `internal/journal` | Fact types + append-only Journal |
 | `internal/journal/cqrs` | Read-only go-cqrs-lite adapter (ADR-0014) |
 | `internal/queue` | Store contract, Filter, Queue facade, Waker |
-| `internal/queue/{sqlite,postgres}` | Thin drivers over the v4 adapters; conform suite: `queue/companion/conform` |
+| `internal/queue/{sqlite,postgres}` | Thin drivers over the v4 adapters; conform suite: `internal/queue/companion/conform` |
 | `internal/queue/{sqlitev4,postgresv4}` | tq Store over the go-cqrs-lite queue engines |
 | `internal/queue/companion` | Shared tq surfaces: reads, watermarks, scores, exclusivity, `WithToken` finalize |
 | `internal/{readmodel,composition}` | S3 projection `<db>.readmodel.db` (`--read-model` ON) + S4 root: `system.New`, `ProjectionRuntime` |
@@ -94,24 +92,26 @@ docs/DOMAIN_LANGUAGE.md.
 - **Single serialized writer**: `sqlitev4.Open` = ONE shared `*sql.DB`
   (MaxOpenConns(1), WAL, busy_timeout) ridden by engine AND companion — never a
   second write pool; never drop the `RowsAffected()` re-checks. The projection
-  home elects separately: the `.fold-lock` flock every folding readmodel Open
-  must win — a loser mounts read-only (no fold, no checkpoint); the stale
-  zero-byte sidecar is steady state (never unlinked).
+  home elects separately: the `.fold-lock` flock every folding readmodel Open must
+  win — a loser mounts read-only (no fold, no checkpoint); the stale zero-byte
+  sidecar is steady state (never unlinked).
 - **One deployment description (ADR-0022)**: `config.Deployment` is the only
-  store-opening input — flags resolve via `config.FromFlags` (ONE
-  TQ_SQLITE_SYNC reader), openers take the struct, pragma literals live ONLY in
-  config; ONE engine per sqlite home — no second write pool or pragma copy.
+  store-opening input — flags resolve via `config.FromFlags` (ONE TQ_SQLITE_SYNC
+  reader), openers take the struct, pragma literals live ONLY in config; ONE
+  engine per sqlite home, so no second write pool or pragma copy.
 - **SQLite IO policy**: steady-state handles run at the configured sync tier
   (NORMAL = checkpoint fsync, lost-tail-tolerant); migrations stay FULL. Claim
-  probes use partial RUNNING-only indexes (companion.Migrate), never project
-  history. Idle worker loops back off (cap `IdlePollMax` 2s).
+  probes use partial RUNNING-only indexes (companion.Migrate), never history;
+  idle loops back off (cap `IdlePollMax` 2s).
 - **Task contexts survive pool shutdown** (bounded only by
   `--task-timeout`) — no shared drain deadline.
 - **Facts in the same tx as state**, or it didn't happen.
-- **Unix-milli timestamps**: stored timestamps (upstream engine) are
-  MILLISECOND-granular — ordering-sensitive code must not assume
-  sub-millisecond completion order; sorts need deterministic non-time
-  tiebreaks or set-wise assertions.
+- **Additive-growth contract for detail structs** (OKF v0.2 §11): a new
+  journal-detail field is OPTIONAL, documents what its ABSENCE means, and gets a
+  legacy fallback read — never required, never a second writer.
+- **Unix-milli timestamps**: stored timestamps are MILLISECOND-granular, so
+  ordering-sensitive code must not assume sub-millisecond completion order; sorts
+  need deterministic non-time tiebreaks or set-wise assertions.
 
 ### Payload contracts (code owns detail)
 
@@ -123,81 +123,84 @@ docs/DOMAIN_LANGUAGE.md.
   never edit their own gate). Model+effort ONLY in the repo `.crushrc`
   managed block. `--task-closeout` resumes the EXACT session for its
   a)-g) report (`docs/status/tasks/<ts>_task-<id>.md`).
-- **Derived outcomes**: the queue derives what a run did — commits via
-  ONE `Task-Queue-ID` footer as LAST trailer (attribution above it is
-  invisible; hook rejects), files via `git diff-tree`, usage via
-  go-crush-data. No stdout self-report.
+- **Derived outcomes**: the queue derives what a run did — commits via ONE
+  `Task-Queue-ID` footer as LAST trailer (attribution above it is invisible; the
+  hook rejects), files via `git diff-tree`, usage via go-crush-data. Never a
+  stdout self-report.
 - **Verdict channel**: paid turns record via `tq verdict '<json>'` into
-  `$TQ_RESULT_FILE` (file > stdout, last-wins); prompts bake the
-  `--file` rails (verdict + ask — routed bash tools see only SERVER
-  env, crush#4210; never drop). `-H` sans CRUSH_CLIENT_SERVER=1 is
-  silently LOCAL (R4).
-- **Batched harvest** (`--batch-items`, default 3): N adjacent
-  same-section items → one task (dedup `batch:` + SORTED-key hash;
-  gates see ONE task); direct `tq enqueue` forbidden — work prompts
-  grant the move. Prompts are OUTCOME contracts: rails only, AGENTS.md
-  owns the rules.
-- **`review`/`dlqfix`/`status`/`prioritize`/`depbump`**: verdict-gated
-  or deterministic turns on the closeout-free agent clone; usage derived
-  for ALL paid turns; findings commit-anchored (verbatim `anchor` or
-  REJECTED); dead agent tasks mint ONE autopsy (`dlqfix:<id>`);
-  gate-artifact death WITH shipped-proof auto-dismisses
-  (`executor.IsGateArtifactDeath`).
+  `$TQ_RESULT_FILE` (file > stdout, last-wins); prompts bake the `--file` rails
+  (verdict + ask — routed bash tools see only SERVER env, crush#4210; never
+  drop). `-H` sans CRUSH_CLIENT_SERVER=1 is silently LOCAL (R4).
+- **Batched harvest** (`--batch-items`, default 3): N adjacent same-section
+  items → one task (dedup `batch:` + SORTED-key hash; gates see ONE task);
+  direct `tq enqueue` forbidden — work prompts grant the move. Prompts are
+  OUTCOME contracts: rails only, AGENTS.md owns the rules.
+- **`review`/`dlqfix`/`status`/`prioritize`/`depbump`**: verdict-gated or
+  deterministic turns on the closeout-free agent clone; usage derived for ALL
+  paid turns; findings commit-anchored (verbatim `anchor` or REJECTED); dead
+  agent tasks mint ONE autopsy (`dlqfix:<id>`); gate-artifact death WITH
+  shipped-proof auto-dismisses (`executor.IsGateArtifactDeath`).
 - **Session-close bridge**: `tq session begin/close` + `tq crush`;
   close scans `Crush-Session:` trailers → ONE review + ONE status task.
 - **PapDashboard questions**: `tq ask --task <id>` parks without burning
   an attempt; the AnswerPoller routes answers home.
-- **Idempotent enqueue**: `DedupKey` re-enqueue returns the stored
-  task; COMPLETED keys refused (`ErrTaskDone`); cancelled/dead keys
-  still suppress (escape: edit the item).
-- **Rate limits (429)**: `executor.DetectRateLimit`; requeue WITHOUT
-  burn (jittered wait, fallback 15min cap 6h); per-repo gates
-  fast-refuse siblings; closeout 429 arms `closeoutPending` resume;
-  the provider RIDES the requeue evidence (`RequeueEvidence.provider`,
-  rendered on `tq tasks --parked`).
-  **Env-requeue breaker**: env requeues carry `requeue_class`; 3
-  consecutive burn an attempt + escalate (`env-streak`) — never uncap.
-  Dirty-tree preflight refusals are EXEMPT (typed `ErrDirtyTree`): they
-  park on the escalating ladder, NO attempt burn.
+- **Idempotent enqueue**: `DedupKey` re-enqueue returns the stored task;
+  COMPLETED keys refused (`ErrTaskDone`); cancelled/dead keys still suppress
+  (escape: edit the item).
+- **Rate limits (429)**: `executor.DetectRateLimit`; requeue WITHOUT burn
+  (jittered wait, fallback 15min cap 6h); per-repo gates fast-refuse siblings;
+  closeout 429 arms `closeoutPending` resume; the provider RIDES the requeue
+  evidence (`RequeueEvidence.provider`, on `tq tasks --parked`).
+  **Env-requeue breaker**: env requeues carry `requeue_class`; 3 consecutive
+  burn an attempt + escalate (`env-streak`) — never uncap. Dirty-tree preflight
+  refusals are EXEMPT (typed `ErrDirtyTree`): escalating ladder, NO attempt burn.
 - **Secrets redaction** (default ON): every output tail passes
-  `internal/executor/redact.go`; `tq audit --journal` reports SECRET
-  EVIDENCE rows. Growth: ONE `secretPatterns` entry + fake-shape sample
-  in `redact_test.go` (gosec); ONE shared table
-  test, windows-gated. Counts = distinct secret LOCATIONS. Known limitation: ZERO-separator
-  back-to-back tokens merge into ONE location (greedy `[A-Za-z0-9_-]{16,}`
-  charsets absorb the boundary) — distinct counts need a non-token
-  separator.
+  `internal/executor/redact.go`; `tq audit --journal` reports SECRET EVIDENCE
+  rows. Growth: ONE `secretPatterns` entry + fake-shape sample in
+  `redact_test.go` (gosec); ONE shared table test, windows-gated. Counts =
+  distinct secret LOCATIONS. Limitation: ZERO-separator back-to-back tokens
+  merge into ONE location (the greedy charset absorbs the boundary) — distinct
+  counts need a non-token separator.
 - **Enqueued-fact snapshots are THIN** (`{project,type}`;
   `Caps.EnqueuedSnapshot=false` pinned in conform suites).
+- **Unknown keys ≠ a newer contract**: unknown detail/payload KEYS are ignored
+  (additive growth), but a greater payload `V` is REFUSED — a misparsed
+  execution payload runs the WRONG ACTION (`payload_test.go` pins both halves).
+- **Verify receipts**: every gate run records `executor.VerifyReceipt`
+  (command/rc/HEAD/ok/fail) on BOTH paths plus its write-time `AttestVerify`
+  verdict; `tq show` renders it, `tq dlq` rows carry `verify=<verdict>`.
 
 ### Operational contracts
 
 - **SQLite migrations** in `migrate()`: schema const → pragma + ALTER
   for legacy DBs → indexes AFTER the column exists.
-- **Watermarks**: checkpoint AFTER the batch's last accepted fact;
-  failed checkpoint gates forwarding; `tq watermarks show/set`; replay
-  idempotent (seq-derived).
+- **Watermarks**: checkpoint AFTER the batch's last accepted fact; a failed
+  checkpoint gates forwarding; `tq watermarks show/set`; replay is seq-derived
+  (idempotent).
 - **Priority (ADR-0015)**: claim order = STORED priority + aging (3d/pt,
-  cap 10); stored value never mutates. Markers `— P[1-4]` stripped
-  before the dedup hash. ONE ladder everywhere (marker > AI > keyword).
-  Probes enter `--priority ≥90`.
-- **Failure-evidence surface**: `tq dlq --evidence-stage <spec>` filters
-  the DLQ by the failed fact's Stage/VerifyStage/Class plus the
-  gate-env/gate-dead/gate-slow aliases — comma-separated terms with
-  `!`-negation; `tq show` renders a `failure` JSON section; `tq dlq`
-  rows + webui timeline lines carry an `evidence=` suffix.
-  Matcher: `executor.MatchesEvidenceStageSet` (ONE copy, no second).
+  cap 10); stored value never mutates. Markers `— P[1-4]` stripped before the
+  dedup hash. ONE ladder everywhere (marker > AI > keyword). Probes enter
+  `--priority ≥90`. **Signals, never scores**: an AI score is a SCHEDULING
+  signal, never a trust tier or authority grant — trust derives only from
+  verification facts (the receipt's attestation).
+- **Failure-evidence surface**: `tq dlq --evidence-stage <spec>` filters the
+  DLQ by the failed fact's Stage/VerifyStage/Class plus the gate-env/gate-dead/
+  gate-slow aliases — comma-separated terms with `!`-negation; `tq show` renders
+  a `failure` JSON section; `tq dlq` rows + webui timeline lines carry an
+  `evidence=` suffix (matcher `executor.MatchesEvidenceStageSet`, ONE copy).
 - **prune-stale**: cancels PENDING tasks whose item is `[x]` or gone;
   pools sweep once at start.
-- **Claim-time budget gate**: paid turns block once the daily
-  cap/budget-cmd is spent — requeue class `budget`, no burn, parked to
-  midnight (cap) / 15m (cmd), outside env-streak. Claim checks run
-  CHEAP-FIRST (budget → preflight → executor — gated pools never spawn
-  a process the hook can refuse).
+- **Claim-time budget gate**: paid turns block once the daily cap/budget-cmd
+  is spent — class `budget`, no burn, parked to midnight (cap) / 15m (cmd),
+  outside env-streak. Claim checks run CHEAP-FIRST (budget → preflight →
+  executor: gated pools never spawn a process the hook can refuse).
 
 ## Conventions
 
 - Table-driven tests, plain `testing`; sentinels in `internal/task/errors.go`.
+- **No absolute verification phrases**: record "verified <date> by <method>"
+  plus the PASS history, never "nothing here rests on a subagent summary" — the
+  2026-11-01 note said exactly that while every fact came through one.
 - **Claims carry citations** (gate run or SHA; never a running gate);
   filter-scope claims cite file:line or a pin.
 - **Verify-window battery**: cheap HEAD gates (check-doc-refs, root
@@ -303,29 +306,27 @@ docs/DOMAIN_LANGUAGE.md.
   naming the span's PARENT (foreign footer BELOW an exactly-mine span) is the
   span-terminator shape: run its printed `--from <oldest-blocker>`; residue
   fallback = amend the unpushed HEAD once `git show --stat` proves it mine.
-- **`TestExactlyOnceUnderConcurrency` is load-flaky (worker);
-  `TestSelfManagingLoop` is load-flaky (harvest)**: build storms drop
-  at clean parents — re-run before attributing; both ride `KNOWN_FLAKY` in
-  `scripts/lib/verify-retry.sh`.
+- **`TestExactlyOnceUnderConcurrency` (worker) and `TestSelfManagingLoop`
+  (harvest) are load-flaky**: build storms drop at clean parents — re-run before
+  attributing; both ride `KNOWN_FLAKY` in `scripts/lib/verify-retry.sh`.
 - **Agent shells inherit `TQ_DB`** (PRODUCTION journal) — scratch smokes
   MUST export `TQ_DB=<scratch>`.
-- **Session shell hazards**: no usable `PIPESTATUS`; bare `unset VAR`
-  leaks to children (`env -u VAR`); multi-file `tail` fails; `printf
-  %.0s` yields empty; chained `&` backgrounds the wrong span; the
-  `kill` builtin cannot signal LIVE pids (rc=2) — use python3
-  `os.kill`. POSIX ERE:
-  `\t` inside a grep bracket class is a literal `t` (not tab) — use
-  `[[:space:]]`/`[[:alnum:]]` classes, never `\t`/`\d`.
+- **Session shell hazards**: no `PIPESTATUS`; bare `unset VAR` leaks to
+  children (`env -u VAR`); multi-file `tail` fails; a zero-repeat `printf`
+  format yields empty; chained `&` backgrounds the wrong span; `kill` cannot
+  signal LIVE pids (rc=2) — use python3 `os.kill`. POSIX ERE: `\t` in a grep
+  bracket class is a literal `t` — use `[[:space:]]`/`[[:alnum:]]`, never `\t`/`\d`.
 - **Root builds auto-use `vendor/`** — internal/ changes need `go mod
   vendor` first; dep bumps also per-module tidy
   (`check-gomod-vendor-sync.sh` gates both).
-- **GOEXPERIMENT/GOTOOLCHAIN**: ci-local exports jsonv2; CI setup-go +
-  go.mod floors + flake tarball PINNED IN LOCKSTEP (1.27.3); NEVER lower a `go` directive
-  (`check-go-mods.sh`).
+- **GOEXPERIMENT/GOTOOLCHAIN**: ci-local exports jsonv2; CI setup-go + go.mod
+  floors + flake tarball PINNED IN LOCKSTEP (1.27.3); NEVER lower a `go`
+  directive (`check-go-mods.sh`).
+- **`fetch` empty ≠ URL dead**: an empty body is a tool mismatch — retry with
+  `download`, and record the pass in the verification trail.
 - **Host GOCACHE/GOROOT hazards**: gates run `GOCACHE=/tmp/go-build-cache`
   (host symlink → /nix/store ENOSPCs); "package X is not in std" +
-  `$GOMODCACHE/toolchain@…` GOROOT = corrupt extraction (chmod -R u+w +
-  trash, or `GOTOOLCHAIN=local`).
+  `$GOMODCACHE/toolchain@…` GOROOT = corrupt extraction (chmod -R u+w + trash).
 - **golangci-lint is advisory** (~1.4k baseline, growth gated by
   `scripts/lint-baseline.sh --check`); hard gates: vet+gofmt+tests;
   regen only green after `golangci-lint cache clean`.
@@ -352,17 +353,15 @@ docs/DOMAIN_LANGUAGE.md.
 - **readmodel schema drift crash-loops the fold** (planned tables get no
   column migration): `ConvergeProjectionHome` snapshots divergent homes
   aside; crash remedy: quarantine `<db>.readmodel.db*` + restart.
-- **History policy**: NEVER reword/amend/rebase PUSHED commits; no force
-  push.
+- **History policy**: NEVER reword/amend/rebase PUSHED commits; no force push.
 - **Kernel ETXTBSY**: fresh-binary execve intermittently fails — route
   exec sites through `execWithTransientRetry`.
 - **Nix 2.34 flake gotcha**: `outputs = let … in <lambda>` reads as a
   thunk ("expected a function but got a thunk"); keep the `let` INSIDE
   the lambda.
-- **formatterWithGo drop-day** (flake.nix): `goTarball*` builds the toolchain
-  from the go.dev tarball (floor > nixpkgs go; the sandbox blocks the download)
-  and `formatterWithGo` wraps templ fmt/goimports with it; ALL FOUR blocks drop
-  together when nixpkgs ships go ≥ 1.27.3 — hashes stay paired.
+- **formatterWithGo drop-day** (flake.nix): `goTarball*` + `formatterWithGo` drop
+  together at nixpkgs go ≥ 1.27.3; hashes paired — see the 2026-11-01
+  vendorhash/drop-day planning note.
 - **templ-components sibling pins**: pseudo-versions
   in a dep's root go.mod pass local builds but kill consumer graph loads
   (Nix FOD) — `grep -r 00010101` the dep
