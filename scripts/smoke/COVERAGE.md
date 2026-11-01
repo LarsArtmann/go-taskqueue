@@ -32,6 +32,7 @@ signal (`exec.ExitError`, code −1).
 | `archive-evidence.sh`     | evidence-archive helper rails                 |
 | `bootstrap-install.sh`    | `tq bootstrap` install path                   |
 | `consumer-install.sh`      | journal consumer wiring                       |
+| `crush-pool-supervisor.sh` | routed 429 fast-refuse + pool keeper/supervisor (table below) |
 | `crush-server-route.sh`    | crush client/server route wire legs (table below) |
 | `dep-sweep.sh`             | `--dep-sweep` sweeper turn                    |
 | `dlq-evidence-stage.sh`   | `tq dlq --evidence-stage` filter vs real DLQ  |
@@ -77,11 +78,29 @@ flag depends on (planning doc §L1; TODO row 1450).
 
 Deliberately NOT covered at smoke level: the pool-integration E-gaps
 (verdict file via the executor's `$TQ_RESULT_FILE` channel, question
-parking, 429 evidence under routed runs) — BLOCKED on the env gap above
+parking under routed runs) — BLOCKED on the env gap above
 upstream; unit-pinned in-process (ratelimit-e2e stub class) until then.
-Also not covered: `--session` resume through the server (M4's second half,
+The 429 E-gap IS covered — `crush-pool-supervisor.sh` below (the
+rate-limit signature rides the agent-stream error text, not the env
+channel, so it is env-gap-independent). Also not covered:
+`--session` resume through the server (M4's second half,
 executor-pinned via ExtractSessionID) and SSE events attach (M2/M6,
 webui unit tests with a fake server).
+
+## `crush-pool-supervisor.sh` — the pool-side E-gap legs (2026-11-01)
+
+Same isolation rails as the sibling smoke (XDG scratch config, mock
+provider, `crush dirs` gate, size-guard); needs the tq binary (TQ_BIN
+or build-tq.sh) for the keeper leg.
+
+| Leg                    | Surface                                            | Key assertions                                                                                                                                                                          | Stream                   |
+| ---------------------- | -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------ |
+| routed 429 fast-refuse | `CRUSH_CLIENT_SERVER=1` + `-H` (agentEnv argv) + `MOCK_429` provider | rc != 0; output carries the rate-limit error text (`rate limit exceeded …`) DetectRateLimit classifies — routed runs surface ONLY the final Agent error (no WARN retry lines; those are local-run client-side calls) | run log                  |
+| keeper/supervisor      | `tq agent-pool --crush-server` actor               | "listening on" line; kill -9 the server child → "exited unexpectedly … restart" line + NEW server pid; SIGTERM pool → clean exit, server torn down (never orphaned) — the row-1449 ladder, live | pool log + process table |
+
+Not covered here: the env-gap canary + wire shapes (sibling smoke owns
+them); the verdict/question env channels stay upstream-blocked per its
+canary.
 
 ## `--db` flag-placement audit (2026-10-24)
 
