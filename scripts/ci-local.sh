@@ -646,6 +646,34 @@ step "dep-sweep e2e smoke (stub planner: mint -> DAG -> go get/commit/tag -> con
 step "dlq evidence-stage e2e smoke (scratch DB: sh-failure evidence -> term spec with negation)"
 ./scripts/smoke/dlq-evidence-stage.sh
 
+# Host-tool smoke (initdb): spins a scratch trust-auth cluster and runs the
+# postgresv4 conformance suite with FAIL-on-skip. ci.yml cannot run it
+# (runners lack postgres tooling) — this is its only wired home.
+step "postgres conformance smoke (scratch cluster; skips initdb-less hosts)"
+if command -v initdb >/dev/null 2>&1; then
+	./scripts/smoke/postgres-conform.sh
+else
+	echo "SKIP: initdb not on PATH — postgres conformance smoke is host-pinned"
+fi
+
+# Host-tool smokes (crush binary): the L1 client/server seam's wire legs +
+# the pool-side E-gap legs, both zero-spend by construction (mock provider,
+# XDG-isolated scratch). ci.yml cannot run them (runners lack crush) —
+# this is their only wired home.
+step "crush client/server route smoke (wire legs; skips crush-less hosts)"
+if command -v crush >/dev/null 2>&1; then
+	./scripts/smoke/crush-server-route.sh
+else
+	echo "SKIP: crush not on PATH — crush route smoke is host-pinned"
+fi
+
+step "crush pool supervisor smoke (routed 429 + keeper; skips crush-less hosts)"
+if command -v crush >/dev/null 2>&1; then
+	./scripts/smoke/crush-pool-supervisor.sh
+else
+	echo "SKIP: crush not on PATH — crush pool smoke is host-pinned"
+fi
+
 # Advisory (2026-09-14 O5 ruling): journal-drift audit smoke over a seeded
 # fixture — reported, never a hard gate on task state.
 step "journal-drift audit smoke (advisory)"
