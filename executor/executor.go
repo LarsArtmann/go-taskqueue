@@ -61,6 +61,8 @@ var (
 	LastFailureEvidenceFromTrail = internalexecutor.LastFailureEvidenceFromTrail
 	MatchesEvidenceStageSet      = internalexecutor.MatchesEvidenceStageSet
 	MatchesEvidenceStage         = internalexecutor.MatchesEvidenceStage
+	KnownEvidenceTerms           = internalexecutor.KnownEvidenceTerms
+	UnknownEvidenceTerms         = internalexecutor.UnknownEvidenceTerms
 )
 
 // Typed errors.
