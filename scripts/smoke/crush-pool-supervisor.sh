@@ -60,8 +60,8 @@ size_guard() {
 }
 
 wait_pattern() { # file pattern timeout_s label
-	local i
-	for i in $(seq 1 "$(($3 * 2))"); do
+	local _
+	for _ in $(seq 1 "$(($3 * 2))"); do
 		grep -q "$2" "$1" 2>/dev/null && return 0
 		size_guard
 		sleep 0.5
@@ -233,8 +233,8 @@ echo "== leg: routed 429 fast-refuse (executor seam argv)"
 start_mock_429
 start_server
 [ "$(probe_health)" = "200" ] || fail "server health probe failed before the 429 leg"
-routed_run run429.log
-RC=$?
+RC=0
+routed_run run429.log || RC=$?
 [ "$RC" -ne 0 ] || { cat "$TMP/run429.log"; fail "routed 429 run exited 0 — fast-refuse contract broken"; }
 grep -qi "rate limit exceeded" "$TMP/run429.log" || {
 	echo "--- run output ---"
@@ -284,7 +284,7 @@ echo "PASS: pool up, server child pid $SRVPID"
 pkill -9 -f "$SRVPATT"
 wait_pattern "$TMP/pool.log" "restart 1" 45 "supervisor did not log a restart after kill -9"
 NEWPID=""
-for i in $(seq 1 90); do
+for _ in $(seq 1 90); do
 	NEWPID="$(pgrep -f "$SRVPATT" | head -1)"
 	[ -n "$NEWPID" ] && [ "$NEWPID" != "$SRVPID" ] && break
 	size_guard
@@ -294,7 +294,7 @@ done
 echo "PASS: supervisor restarted the server ($SRVPID -> $NEWPID)"
 
 pkill -TERM -f "$TMP/tq agent-pool"
-for i in $(seq 1 30); do
+for _ in $(seq 1 30); do
 	pgrep -f "$TMP/tq agent-pool" >/dev/null || break
 	size_guard
 	sleep 0.5
