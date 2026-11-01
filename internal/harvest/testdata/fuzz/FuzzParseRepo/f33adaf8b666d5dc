@@ -1,0 +1,2 @@
+go test fuzz v1
+string("[X]\xf0\xba\xae𖺮𖺮𖺮𖺮𖺎𖺮𖺮\xf0\xba\xae𖺮𖺎𖺮𖺮𞺛")

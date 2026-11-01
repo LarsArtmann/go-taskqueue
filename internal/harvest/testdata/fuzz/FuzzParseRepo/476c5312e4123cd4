@@ -1,0 +1,2 @@
+go test fuzz v1
+string("[X]\U0003a6ee\U0003a9ae𖺘𖺮𖺦𖺮\U0003a6ee𞺦")
