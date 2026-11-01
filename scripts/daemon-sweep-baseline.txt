@@ -1660,3 +1660,5 @@ b56b65ea58a253828beda1005d2cb7c3fb5f1481
 ce4f04bad46a71efc01a289085c1e87ab5b2ba04
 # 2026-11-01 row-654 landing (smoke + ci-local wire + TODO tick)
 41980164be8ee656bbf60a88a171e5718dfbeb48
+# 2026-11-01 row-806 e2e derivation test mid-write (execute_derive_test.go)
+eebb838345a41e85f6633d0ecd6e3f38b0b43d9c
