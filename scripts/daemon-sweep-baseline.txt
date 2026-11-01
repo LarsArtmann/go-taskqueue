@@ -1695,3 +1695,90 @@ a3dc773a730f0e5a7ca7856cb2b815ec525f66e8
 fe62b87b52507cffefb824137398befd5e0413ea
 #   0998e88b
 0998e88bca638f29f0a5f431df1a4f95f1aec2cb
+# 2026-11-01 20:40 census (wave-4/5 close residue): the full 17:33-20:37 window's
+# footer-less daemon sweeps from FOUR concurrent lanes (wave-4 rows 806/470,
+# SUPERB crush-server smoke+docs, OKF lessons/pins, receipt-and-attester plan
+# start) plus this session's cures. Every sweep content-verified via
+# `git show <sha> --stat`: files match only the named waves' artifacts (smoke
+# scripts, executor/receipt code+tests, doctor surfaces, docs/status, flake,
+# go.sum cleanup). GRANDFATHERED DELIBERATELY: heal-daemon-sweep.sh needs a
+# Task-Queue-ID; these windows were owner-directive/undispatched sessions with
+# none to invent. Pushing freezes them; this records the decision.
+#   b094059e
+b094059e643483b1521fc7af7a1641f7d6ecf994
+#   3c875802
+3c8758029a57fed9746056f9bf42ff733eaadd60
+#   a9a65fcb
+a9a65fcb75a5314b38416e6eadc851faa52fb6fc
+#   c25d0a38
+c25d0a3858776e980f6db025f14af1667f768c68
+#   835f9851
+835f98513fcbcb8f70329acb81687cdac79a6ea9
+#   051b6f6a
+051b6f6a7a18b920f3775879b2d7b523402b70b4
+#   7d870ae2
+7d870ae2d4e5a9436c8283cb4d86e11a46b181d0
+#   3e7beada
+3e7beada24f41bb2ea9e5650a57e6969d24b827b
+#   8189c714
+8189c7146b513f2e63be87b53624087e4e50cbc5
+#   6d65d3a5
+6d65d3a53f89b1cc5fc541572e15568f11fc74dc
+#   81ce7ba9
+81ce7ba9723257e111fb96a1f4b71987a3953416
+#   d26c8590
+d26c8590affd76797c13521229dab8766783a57c
+#   59058a08
+59058a08774e2dffe30e7b5d68f0f019c1fe525e
+#   0f15ab09
+0f15ab0991b9f97e36ffff633140ab63c0834c93
+#   7f4631ff
+7f4631ffbee41be86deeb6dea945611440aed0ba
+#   0b62dc0d
+0b62dc0dc2a8f5058ce9492bab589d2df31c8a56
+#   4fc12192
+4fc12192bc5d2c6d474c9f4958d67f7c1f2df321
+#   d7aab273
+d7aab273f18fef7f53117edb649229dd0ffb4661
+#   d50db616
+d50db6167018dd2de59ca09cc474b4e298a2e67f
+#   89603a24
+89603a2465cd4b21c82f615c04d40167bff3a41f
+#   cfaeb716
+cfaeb7169e237a98442825cf4945e37ec332d9f4
+#   9ab74595
+9ab74595f5a10b227062d5e558f17e221a198ec5
+#   cac59f14
+cac59f1407c3d9ad4c133c1bad49643bbd1f28d4
+#   47b5f27f
+47b5f27fa5d2d92704894318faebc83cf83070c8
+#   f22dd9f3
+f22dd9f33a00cfeeffe443bda34f3eba87f5f013
+#   a9ca3134
+a9ca3134b69216f04b75c3492b6b32fe187363c4
+#   719a329c
+719a329c35dab560a3f3ee2e16614bebda3c82f9
+#   dc0267fa
+dc0267fa2c3692972ac11ac8ef6a127f6c1e263c
+#   a399baf9
+a399baf9f32d8df22a0e2f1a3f19636f6efa018e
+#   f4b6561b
+f4b6561be13cb072ec40f5eac0a18e93b2944fc8
+#   b45cd9d5
+b45cd9d578df2483abdc0a4460c11c541ad5def2
+#   0dffffcc
+0dffffcc885c315b5d35efd7f4553fc12e8160ae
+#   6931f6cc
+6931f6cc26de5d2c9b49d388243b20f8bd35bb19
+#   388787b7
+388787b709a7345dd6a5d8dded29d452d9b2ea86
+#   c5c91667
+c5c91667dc132f8e1eca47bea51cf19cf229652e
+#   88106af3
+88106af336c13992e67a9dd736f5841b91652564
+#   be1e384f
+be1e384f0dfd1bfc0faf3de2fae6b475848bfd8a
+#   8b74d8ab
+8b74d8abb1e4df22623c3f9bc4cbc865f69c8813
+#   415741eb
+415741ebec48923dff85017cf33421feb871b244
