@@ -23,7 +23,7 @@ failures; per-package maps live in each doc comment.
   # unwrapped. Preflight EVERY battery: agents-size + dead-exports --self-test +
   # module test + facade-parity + ROOT vet + quiet tree.
 ./scripts/root-gate.sh # root verify gate; ONE retry on known-flaky signatures
-./scripts/lint-baseline.sh --check --clean-cache # opt-in stale-cache clean before a warm --check (regen ALWAYS cleans)
+./scripts/lint-baseline.sh --check --clean-cache # opt-in; regen ALWAYS cleans
 nix build # nix run .#test; .#webui-css
 ./scripts/fuzz/nightly.sh
 ```
@@ -107,7 +107,7 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   `--task-timeout`) — no shared drain deadline.
 - **Facts in the same tx as state**, or it didn't happen.
 - **Additive-growth contract for detail structs** (OKF v0.2 §11): a new
-  journal-detail field is OPTIONAL, documents what its ABSENCE means, and gets a
+  journal-detail field is OPTIONAL, documents its ABSENCE meaning, and gets a
   legacy fallback read — never required, never a second writer.
 - **Unix-milli timestamps**: stored timestamps are MILLISECOND-granular, so
   ordering-sensitive code must not assume sub-millisecond completion order; sorts
@@ -163,12 +163,12 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   counts need a non-token separator.
 - **Enqueued-fact snapshots are THIN** (`{project,type}`;
   `Caps.EnqueuedSnapshot=false` pinned in conform suites).
-- **Unknown keys ≠ a newer contract**: unknown detail/payload KEYS are ignored
-  (additive growth), but a greater payload `V` is REFUSED — a misparsed
-  execution payload runs the WRONG ACTION (`payload_test.go` pins both halves).
-- **Verify receipts**: every gate run records `executor.VerifyReceipt`
-  (command/rc/HEAD/ok/fail) on BOTH paths plus its write-time `AttestVerify`
-  verdict; `tq show` renders it, `tq dlq` rows carry `verify=<verdict>`.
+- **Unknown keys ≠ a newer contract**: unknown detail/payload KEYS are ignored,
+  but a greater payload `V` is REFUSED — a misparsed execution payload runs the
+  WRONG ACTION (`payload_test.go` pins both halves).
+- **Verify receipts**: each gate run records `executor.VerifyReceipt` + its
+  `AttestVerify` verdict on BOTH paths; `tq show`/`tq dlq` surface it as
+  `verify=<verdict>` (vocabulary: docs/DOMAIN_LANGUAGE.md).
 
 ### Operational contracts
 
@@ -188,8 +188,8 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   gate-slow aliases — comma-separated terms with `!`-negation; `tq show` renders
   a `failure` JSON section; `tq dlq` rows + webui timeline lines carry an
   `evidence=` suffix (matcher `executor.MatchesEvidenceStageSet`, ONE copy).
-- **prune-stale**: cancels PENDING tasks whose item is `[x]` or gone;
-  pools sweep once at start.
+- **prune-stale**: cancels PENDING tasks whose item is `[x]` or gone; pools
+  sweep at start.
 - **Claim-time budget gate**: paid turns block once the daily cap/budget-cmd
   is spent — class `budget`, no burn, parked to midnight (cap) / 15m (cmd),
   outside env-streak. Claim checks run CHEAP-FIRST (budget → preflight →
@@ -198,9 +198,9 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 ## Conventions
 
 - Table-driven tests, plain `testing`; sentinels in `internal/task/errors.go`.
-- **No absolute verification phrases**: record "verified <date> by <method>"
-  plus the PASS history, never "nothing here rests on a subagent summary" — the
-  2026-11-01 note said exactly that while every fact came through one.
+- **No absolute verification phrases**: write "verified <date> by <method>" plus
+  the PASS history, never "nothing here rests on a subagent summary" — the
+  2026-11-01 note said that while every fact came through one.
 - **Claims carry citations** (gate run or SHA; never a running gate);
   filter-scope claims cite file:line or a pin.
 - **Verify-window battery**: cheap HEAD gates (check-doc-refs, root
@@ -323,18 +323,17 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   floors + flake tarball PINNED IN LOCKSTEP (1.27.3); NEVER lower a `go`
   directive (`check-go-mods.sh`).
 - **`fetch` empty ≠ URL dead**: an empty body is a tool mismatch — retry with
-  `download`, and record the pass in the verification trail.
+  `download` and record the pass in the trail.
 - **Host GOCACHE/GOROOT hazards**: gates run `GOCACHE=/tmp/go-build-cache`
   (host symlink → /nix/store ENOSPCs); "package X is not in std" +
   `$GOMODCACHE/toolchain@…` GOROOT = corrupt extraction (chmod -R u+w + trash).
 - **golangci-lint is advisory** (~1.4k baseline, growth gated by
-  `scripts/lint-baseline.sh --check`); hard gates: vet+gofmt+tests;
-  regen only green after `golangci-lint cache clean`.
-- **gosec**: all findings triaged via `check-gosec.sh`; a new finding is
-  a new class needing fresh triage.
-- **`tq serve`/`tq api` security**: loopback + read-only default;
-  writes CSRF+lockout-guarded; non-loopback needs `--auth-token`
-  (SECURITY.md); no new write endpoints without it.
+  `scripts/lint-baseline.sh --check`); hard gates: vet+gofmt+tests; regen only
+  green after `golangci-lint cache clean`; gosec findings are all triaged via
+  `check-gosec.sh` — a NEW finding is a new class needing fresh triage.
+- **`tq serve`/`tq api` security**: loopback + read-only default; writes
+  CSRF+lockout-guarded; non-loopback needs `--auth-token`; no new write endpoint
+  without it (SECURITY.md).
 - **templ + cmd/tq LSP diagnostics are false positives** — trust the CLI
   gates, never "fix" them.
 - **erraudit**: HARD gate `scripts/check-erraudit.sh` — exact ruled flags live
@@ -348,24 +347,20 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   suppress; the gate keeps `--disable generic_return` only until it lands.
   Wiring: gate + ci-local HARD; CI = `--self-test` only (repo PRIVATE). Bugs
   file at github.com/larsartmann/erraudit.
-- **VendorHash drift**: after go.mod changes run
-  `nix build .#checks.x86_64-linux.vendor-hash`, copy `got:` to flake.nix.
+- **VendorHash drift**: after a go.mod change run
+  `nix build .#checks.x86_64-linux.vendor-hash` and copy `got:` into flake.nix.
 - **readmodel schema drift crash-loops the fold** (planned tables get no
   column migration): `ConvergeProjectionHome` snapshots divergent homes
   aside; crash remedy: quarantine `<db>.readmodel.db*` + restart.
 - **History policy**: NEVER reword/amend/rebase PUSHED commits; no force push.
-- **Kernel ETXTBSY**: fresh-binary execve intermittently fails — route
-  exec sites through `execWithTransientRetry`.
-- **Nix 2.34 flake gotcha**: `outputs = let … in <lambda>` reads as a
-  thunk ("expected a function but got a thunk"); keep the `let` INSIDE
-  the lambda.
+- **Kernel ETXTBSY**: fresh-binary execve intermittently fails — route exec sites
+  through `execWithTransientRetry`.
 - **formatterWithGo drop-day** (flake.nix): `goTarball*` + `formatterWithGo` drop
   together at nixpkgs go ≥ 1.27.3; hashes paired — see the 2026-11-01
   vendorhash/drop-day planning note.
-- **templ-components sibling pins**: pseudo-versions
-  in a dep's root go.mod pass local builds but kill consumer graph loads
-  (Nix FOD) — `grep -r 00010101` the dep
-  before blaming the flake/vendorHash.
+- **templ-components sibling pins**: a pseudo-version in a dep's root go.mod
+  passes local builds but kills consumer graph loads (Nix FOD) — `grep -r 00010101`
+  the dep before blaming the flake/vendorHash.
 - **gofmt gates are SCOPED to non-gitignored files**
   (`executor.ScopedGofmtStage`, doctor `gofmt:<repo>`; recipe in the
   tq-bash-guard deny): unscoped re-plants the vendor-gofmt death class (94% of
