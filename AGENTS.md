@@ -211,19 +211,18 @@ docs/DOMAIN_LANGUAGE.md.
   ROOT build+vet+test -race rc. Re-dispatch: `scripts/redispatch-brief.sh`;
   battery rc TO A FILE (no PIPESTATUS); dated DONE re-verified note;
   `-v` + PASS COUNT for conform `-run`.
-  **Observe-first for pinning work**: before writing header/status/value
-  assertions, CAPTURE the live output (temp observation test or smoke run)
-  and pin what was observed — assertion-first pinning paid an assertion-
-  driven red in three consecutive windows.
+  **Observe-first for pinning work**: CAPTURE the live output (temp
+  observation test or smoke run) and pin what was observed —
+  assertion-first pinning burned three consecutive windows.
 - **Gate receipts**: a report's "N ok / M fail" count is
   `grep -c '^ok:'` over a CAPTURED gate-output file — never counted in
-  context or taken from a summary line.
+  context or from a summary line.
 - **Fleet convention — countable gate summaries are PINNED, not
   advisory**: every countable sibling gate (check-script-syntax,
-  check-go-mods, check-dead-exports, check-guard-wiring; gosec already
-  had it) carries `--self-test` pinning its summary format + a
-  negative-path counter battery via an env hook; wired into ci-local.
-  New countable gates: same contract.
+  check-go-mods, check-dead-exports, check-guard-wiring; gosec too)
+  carries `--self-test` pinning its summary format + a negative-path
+  counter battery via an env hook; wired into ci-local. New gates:
+  same contract.
 - **Crush PreToolUse hooks** (`.crushrc` → `scripts/hooks/`,
   `--self-test`): `tq-bash-guard` (^bash$) denies the paid-trap classes
   (PIPESTATUS, `printf %.0s`, ERE bracket `\t/\d`, unscoped `gofmt`,
@@ -234,9 +233,8 @@ docs/DOMAIN_LANGUAGE.md.
   Hatches in deny messages; force-push hatchless. Smoke rule is
   command-position (git add/grep of smoke paths passes).
 - docs/status reports follow the a)-g) skeleton; indexed on creation
-  (`check-status-index.sh` — its path gate resolves citations
-  docs/status/-relative OR repo-root-relative, prose backticks excluded;
-  daemon bypasses hooks — AMEND MANEUVER for daemon-folded reports); ONE
+  (`check-status-index.sh`; daemon bypasses hooks — AMEND MANEUVER for
+  daemon-folded reports); ONE
   index-row write point (top chronological cluster); CHANGELOG
   append-only; close exit: record `tq verdict` before session end
   (report without verdict = half-closeout).
@@ -247,7 +245,7 @@ docs/DOMAIN_LANGUAGE.md.
   print, fatal to run (a wrong filter once deleted all 334 live rows).
 - **Closeout TICK-AUDIT**: before the FINAL commit of any batch, grep
   TODO_LIST.md for each verbatim batch anchor; finished rows must read
-  `- [x]` (landed + unchecked = paid round-trip — proven).
+  `- [x]` (landed + unchecked = paid round-trip).
 - **Tick-claims cite the tick commit**: "rows N-M ticked/`[x]`" claims
   in index rows + closeout reports cite the tick commit when the ticks
   are not in the report's own commit; WARN gate `check-tick-claims.sh`.
