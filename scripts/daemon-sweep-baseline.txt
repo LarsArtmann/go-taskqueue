@@ -1616,3 +1616,9 @@ c78b852d92aea64ed883436bc56ca2eb112dd37f
 c14066e705b88a3001e81378f09aa6504f3a193b
 07d4841dd3a3c4131d14b050ee3a0b90a435f8c1
 feee6dda3a08c8a5802164c7c40683cffcefd543
+# 2026-10-31 recursion: 187438d7 swept this row-1445 baseline-append itself (content = the five rows above)
+187438d7ea5d1439da49740e18f57a307777bafd
+# 2026-11-01 T16 evidence tail: aa043e21 swept the executor facade alias pair
+# (KnownEvidenceTerms/UnknownEvidenceTerms) required by cmd/tq/main.go of the
+# footer-less 14424324; content verified: cmd/tq dev-workspace build green at HEAD
+aa043e213cf10773fe94f2f98389299f1187495e
