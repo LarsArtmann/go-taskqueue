@@ -68,46 +68,43 @@ docs/DOMAIN_LANGUAGE.md.
 | `internal/journal` | Fact types + append-only Journal |
 | `internal/journal/cqrs` | Read-only go-cqrs-lite adapter (ADR-0014) |
 | `internal/queue` | Store contract, Filter, Queue facade, Waker |
-| `internal/queue/{sqlite,postgres}` | Thin drivers over the v4 adapters; conform: `internal/queue/companion/conform` |
+| `internal/queue/{sqlite,postgres}` | Thin drivers over the v4 adapters; conform suite: `queue/companion/conform` |
 | `internal/queue/{sqlitev4,postgresv4}` | tq Store over the go-cqrs-lite queue engines |
-| `internal/queue/companion` | Shared tq surfaces: reads, watermarks, scores, exclusivity, token finalize (`WithToken`) |
-| `internal/{readmodel,composition}` | S3 projection `<db>.readmodel.db` (`--read-model` ON) + S4 root: `system.New`, `ProjectionRuntime` (model+DLQ+host, `tq serve`) |
-| `internal/retryx` | Shared transient-retry file ops for the Windows sharing-violation class; `RenameTransient` ridden by readmodel snapshots + executor depbump |
+| `internal/queue/companion` | Shared tq surfaces: reads, watermarks, scores, exclusivity, `WithToken` finalize |
+| `internal/{readmodel,composition}` | S3 projection `<db>.readmodel.db` (`--read-model` ON) + S4 root: `system.New`, `ProjectionRuntime` |
+| `internal/retryx` | Shared transient-retry file ops (Windows sharing violations); `RenameTransient` ridden by readmodel snapshots + depbump |
 | `internal/worker` | Claim → heartbeat → execute loop; requeue ladder |
 | `internal/bridge` | papdashboard + cqa bridges → fix tasks |
 | `internal/executor` | sh/HTTP/agent/review/status executors + registry |
 | `internal/harvest` | TODO_LIST.md → tasks; drift audit; prune-stale |
-| `internal/budget` | Daily-cap + session-usage projections per tick |
-| `internal/{dlqfix,review,status}` | DLQ autopsies (`--dlq-fix`, auto-dismiss); review sweeper (`--review-autofix`); done-prompt sweeper (`--status-every`) |
-| `internal/dlqbackoff` | Own module: poisoned-repo DLQ-backoff fold shared by `pool-health`, `tq dlq`, webui |
+| `internal/budget` | Daily-cap + session-usage projections |
+| `internal/{dlqfix,review,status}` | DLQ autopsies (`--dlq-fix`); review sweeper (`--review-autofix`); done-prompt sweeper (`--status-every`) |
+| `internal/dlqbackoff` | Own module: poisoned-repo backoff fold shared by `pool-health`, `tq dlq`, webui |
 | `internal/prioritize` | AI batch scorer (`--prioritize`), priority_scores cache |
 | `internal/depsweep` | Dependency-upgrade sweeper `--dep-sweep` |
 | `internal/watermark` | Durable journal cursor shared by the sweepers |
 | `internal/consumer` | Journal dispatcher, per-subscriber cursors (ADR-0009) |
 | `internal/runactor` | run.Group actors, LIFO shutdown, InterruptOn |
 | `internal/webui` | Live dashboard (`tq serve`): tailer→hub→SSE (ADR-0003) |
-| `internal/httpapi`+`httpauth`/`lockout` | Machine API (`tq api`): token-mandatory, nosniff, lockout, shared bearer + 3-strikes |
+| `internal/httpapi`+`httpauth`/`lockout` | Machine API (`tq api`): token-mandatory, nosniff, lockout, 3-strikes |
 | `internal/incident` | Error reports → fix tasks (ADR-0021) |
 
 ### Store invariants
 
 - **Single serialized writer**: `sqlitev4.Open` = ONE shared `*sql.DB`
-  (MaxOpenConns(1), WAL, busy_timeout) ridden by engine (`usqlite.OpenDB`)
-  AND companion — never a second write pool; never drop the
-  `RowsAffected()` re-checks. The projection home elects separately:
-  the `.fold-lock` flock every folding readmodel Open must win — a
-  loser mounts read-only (no fold, no checkpoint); the stale zero-byte
-  sidecar is steady state (never unlinked).
-- **One deployment description (ADR-0022)**: `config.Deployment` is the
-  only store-opening input — flags resolve via `config.FromFlags` (ONE
-  TQ_SQLITE_SYNC reader), openers take the struct, pragma literals live
-  ONLY in config; ONE engine per sqlite home — no second write pool or
-  pragma copy.
-- **SQLite IO policy**: steady-state handles run at the
-  configured sync tier (NORMAL = checkpoint fsync, lost-tail-tolerant);
-  migrations stay FULL. Claim probes use partial RUNNING-only indexes
-  (companion.Migrate), never project history. Idle worker loops back
-  off (cap `IdlePollMax` 2s).
+  (MaxOpenConns(1), WAL, busy_timeout) ridden by engine AND companion — never a
+  second write pool; never drop the `RowsAffected()` re-checks. The projection
+  home elects separately: the `.fold-lock` flock every folding readmodel Open
+  must win — a loser mounts read-only (no fold, no checkpoint); the stale
+  zero-byte sidecar is steady state (never unlinked).
+- **One deployment description (ADR-0022)**: `config.Deployment` is the only
+  store-opening input — flags resolve via `config.FromFlags` (ONE
+  TQ_SQLITE_SYNC reader), openers take the struct, pragma literals live ONLY in
+  config; ONE engine per sqlite home — no second write pool or pragma copy.
+- **SQLite IO policy**: steady-state handles run at the configured sync tier
+  (NORMAL = checkpoint fsync, lost-tail-tolerant); migrations stay FULL. Claim
+  probes use partial RUNNING-only indexes (companion.Migrate), never project
+  history. Idle worker loops back off (cap `IdlePollMax` 2s).
 - **Task contexts survive pool shutdown** (bounded only by
   `--task-timeout`) — no shared drain deadline.
 - **Facts in the same tx as state**, or it didn't happen.
@@ -237,11 +234,10 @@ docs/DOMAIN_LANGUAGE.md.
   index-row write point (top chronological cluster); CHANGELOG
   append-only; close exit: record `tq verdict` before session end
   (report without verdict = half-closeout).
-- **Dry-run-first for doc/index mutation scripts**: one-off sweeps that
-  touch AGENTS/TODO_LIST/status-index rows ALWAYS print the computed
-  rows (dry-run) before the first real write, and the FIRST filter runs
-  against a copy of the real file shape — a wrong filter is free to
-  print, fatal to run (a wrong filter once deleted all 334 live rows).
+- **Dry-run-first for doc/index mutation scripts**: one-off sweeps touching
+  AGENTS/TODO_LIST/status-index rows print the computed rows first, and the
+  FIRST filter runs against a copy of the real file shape — a wrong filter is
+  free to print, fatal to run (one once deleted all 334 live rows).
 - **Closeout TICK-AUDIT**: before the FINAL commit of any batch, grep
   TODO_LIST.md for each verbatim batch anchor; finished rows must read
   `- [x]` (landed + unchecked = paid round-trip).
@@ -275,13 +271,12 @@ docs/DOMAIN_LANGUAGE.md.
 - **Executor shared seams — never hand-roll**: `decodePayload[T]`,
   `recordRunOutcome`, `executor.Excerpt`, `prepareRepo`, `payloadTimeout`;
   mirror clones gated STRICT by `check-mirror-clones.sh` (shared surface
-  `internal/queue/companion`); art-dupl residuals accepted ONLY where
-  named here; don't add new ones. Templ markup cannot carry Go-comment
-  accepts — the HTML-comment directive form suppresses but SHIPS IN PAGE
-  OUTPUT (upstream ask LarsArtmann/art-dupl#9, still open); the sole
-  templ twin (layout.templ mobile/desktop branch pair) is intentional.
-  `art-dupl:accept` suppresses only within a few lines ABOVE the clone's
-  first line (func-top doc position; inline comment for deeper ones).
+  `internal/queue/companion`); art-dupl residuals accepted ONLY where named
+  here. Templ markup cannot carry Go-comment accepts — the HTML-comment
+  directive suppresses but SHIPS IN PAGE OUTPUT (upstream
+  LarsArtmann/art-dupl#9, open); the sole templ twin (layout.templ
+  mobile/desktop pair) is intentional. `art-dupl:accept` suppresses only a few
+  lines ABOVE the clone's first line (func-top doc position; inline if deeper).
 - POSIX-only suites carry `//go:build unix`; tests hermetic (nix checkPhase
   lacks host tools).
 - Generated `*_templ.go` + minified `app.css` COMMITTED; after template
@@ -344,11 +339,10 @@ docs/DOMAIN_LANGUAGE.md.
 - **erraudit**: HARD gate `scripts/check-erraudit.sh` — exact ruled flags live
   there (`--max` is dev-build-only; CI pin v0.7.0 rejects it, hence the explicit
   decomposition), run from EACH module root (`lint` REJECTS `--modules`/
-  `--violations-only`). `legacy_as` = migrate to `errors.AsType` (done, zero
-  standing); `legacy_is` sentinel sites KEEP `errors.Is` +
-  `//nolint:legacyerrors // <reason>` on the call line (the gate passes
-  `--no-suppress` explicitly; never run `nolint-audit --fix` — it deletes
-  honored tokens). `generic_return` (~197 sites / 24 modules): OWNER-RULED
+  `--violations-only`). `legacy_as` → `errors.AsType` (done); `legacy_is`
+  sentinel sites KEEP `errors.Is` + `//nolint:legacyerrors // <reason>` on the
+  call line (the gate passes `--no-suppress`; never run `nolint-audit --fix` —
+  it deletes honored tokens). `generic_return` (~197 sites / 24 modules): OWNER-RULED
   ADOPT — per-function error types are a migration project, not lint debt to
   suppress; the gate keeps `--disable generic_return` only until it lands.
   Wiring: gate + ci-local HARD; CI = `--self-test` only (repo PRIVATE). Bugs
@@ -365,30 +359,29 @@ docs/DOMAIN_LANGUAGE.md.
 - **Nix 2.34 flake gotcha**: `outputs = let … in <lambda>` reads as a
   thunk ("expected a function but got a thunk"); keep the `let` INSIDE
   the lambda.
-- **formatterWithGo drop-day** (flake.nix): `goTarball*` builds the
-  toolchain from the go.dev tarball (floor > nixpkgs go; sandbox blocks
-  the download) and `formatterWithGo` wraps templ fmt/goimports with it;
-  ALL FOUR blocks drop together when nixpkgs ships go ≥ 1.27.3 — hashes
-  stay paired (`goTarballHash`).
+- **formatterWithGo drop-day** (flake.nix): `goTarball*` builds the toolchain
+  from the go.dev tarball (floor > nixpkgs go; the sandbox blocks the download)
+  and `formatterWithGo` wraps templ fmt/goimports with it; ALL FOUR blocks drop
+  together when nixpkgs ships go ≥ 1.27.3 — hashes stay paired.
 - **templ-components sibling pins**: pseudo-versions
   in a dep's root go.mod pass local builds but kill consumer graph loads
   (Nix FOD) — `grep -r 00010101` the dep
   before blaming the flake/vendorHash.
 - **gofmt gates are SCOPED to non-gitignored files**
-  (`executor.ScopedGofmtStage`, doctor `gofmt:<repo>`; scoped recipe in
-  the tq-bash-guard deny): unscoped re-plants the vendor-gofmt death
-  class (94% of the DLQ) — grep the FULL verify log before attributing.
+  (`executor.ScopedGofmtStage`, doctor `gofmt:<repo>`; recipe in the
+  tq-bash-guard deny): unscoped re-plants the vendor-gofmt death class (94% of
+  the DLQ) — grep the FULL verify log before attributing.
 - **Flakes see only git-tracked files** — `git add` before `nix build`.
 
 ## Relation to other projects
 
 - **go-cqrs-lite IS the platform (ADR-0019)**: adopted in
-  `{sqlitev4,postgresv4}` + `companion`; `internal/journal/cqrs`
-  PROPRIETARY, read-only — never extend or import below root.
-  Facade Open backward-auto-upgrades legacy pre-flip DBs in place
-  (snapshot `<db>.legacy-*.bak`, verify, restore on mismatch; absent
-  feature-era tables tolerated); refuse via `TQ_NO_AUTO_UPGRADE=1`;
-  manual: `go run ./replay` in internal/queue/sqlitev4.
+  `{sqlitev4,postgresv4}` + `companion`; `internal/journal/cqrs` PROPRIETARY,
+  read-only — never extend or import below root. Facade Open
+  backward-auto-upgrades legacy pre-flip DBs in place (snapshot
+  `<db>.legacy-*.bak`, verify, restore on mismatch; absent feature-era tables
+  tolerated); refuse via `TQ_NO_AUTO_UPGRADE=1`; manual: `go run ./replay` in
+  internal/queue/sqlitev4.
 - **PapDashboard bridge**: `--alert-url/--alert-api-key`; dead letters
   raise `alert.triggered`, completions resolve; `NotifyDeadPool` =
   direct dead-pool path; pool detectors add worker-death,
