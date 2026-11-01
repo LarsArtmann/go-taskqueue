@@ -25,7 +25,7 @@ loud_pattern='FAIL|WARN|die |fail "'
 
 # awk: emit "<file>:<loopstart>:<loud 0|1>" for every poll loop found.
 scan_file() {
-	awk -v win="$window_after_done" '
+	awk -v win="$window_after_done" -v loud="$loud_pattern" '
 		/^[[:space:]]*(for|while|until)([[:space:]]|$)/ {
 			if (depth == 0) {
 				start = NR
@@ -35,7 +35,7 @@ scan_file() {
 				next
 			}
 			depth++
-			if (depth > 0 && body && $0 ~ /(FAIL|WARN|die )/) body_loud = 1
+			if (depth > 0 && body && $0 ~ loud) body_loud = 1
 			next
 		}
 		depth > 0 {
@@ -50,7 +50,7 @@ scan_file() {
 			}
 			if (body != "") body = body "\n" $0
 			else body = $0
-			if ($0 ~ /(FAIL|WARN|die |fail "/)/) body_loud = 1
+			if ($0 ~ loud) body_loud = 1
 		}
 	' "$1"
 }
@@ -123,6 +123,15 @@ for _ in $(seq 1 5); do
 done
 echo "moving on"
 EOF
+	# pins: helper-branch — exhaust via the smoke `fail "…"` helper (prints
+	# "FAIL: …" and exits) is loudness, same as `die `
+	cat >"$tmp/helper.sh" <<'EOF'
+for _ in $(seq 1 5); do
+	probe && break
+	sleep 0.1
+done
+[ -n "$x" ] || { fail "never came up"; }
+EOF
 	# pins: exempt-branch — loop with neither sleep nor seq is not a poll loop
 	cat >"$tmp/nonpoll.sh" <<'EOF'
 for f in a b c; do
@@ -130,7 +139,7 @@ for f in a b c; do
 done
 EOF
 	local files out rc=0
-	files="$(printf '%s\n' "$tmp/good.sh" "$tmp/bad.sh" "$tmp/nonpoll.sh")"
+	files="$(printf '%s\n' "$tmp/good.sh" "$tmp/helper.sh" "$tmp/bad.sh" "$tmp/nonpoll.sh")"
 	out="$(TQ_POLL_FILES="$files" "$self_abs" 2>&1)" || rc=$?
 	if [ "$rc" -ne 1 ]; then
 		echo "FAIL: negative battery (want rc=1, got rc=$rc)"
@@ -139,7 +148,7 @@ EOF
 	fi
 	# nonpoll.sh is exempt (no sleep, no seq) and therefore absent from the
 	# counters entirely — its non-detection is pinned by the exact counters.
-	must_mention 'poll-loudness summary: 1 loops ok, 1 failed' "$out" "summary pins exact counters (good ok; bad failed; nonpoll exempt and uncounted)"
+	must_mention 'poll-loudness summary: 2 loops ok, 1 failed' "$out" "summary pins exact counters (good+helper ok; bad failed; nonpoll exempt and uncounted)"
 	must_mention "bad.sh:1 poll loop has no FAIL/WARN" "$out" "silent fixture is named with file:line"
 	# positive-path: only the good fixture
 	rc=0
