@@ -285,6 +285,19 @@ All inherited from §f of the 22:00 report and still valid, none attempted:
 10. **A claim about a mechanism needs the mechanism read, not recalled.** The
     heal-sha generalisation (d2) and the `session-scoped` expectation (d8) were
     both recall errors about code I had written 20 minutes earlier.
+11. **`check-status-index.sh`'s BODY-DATE DRIFT rule punishes the honest header.**
+    A window that spans midnight legitimately names both dates; the check reads
+    the FIRST date token in the body and compares it to the filename date. My
+    header said "2026-11-01 22:20 → 2026-11-02 00:20" and was flagged until I
+    reordered it to name the close date first — that is teaching to the test,
+    not conforming to a rule. The check should accept the filename date anywhere
+    in the header block and print the token it read.
+12. **A concurrent agent's report can turn the gate red inside the same minute.**
+    `2026-11-02_00-25_battery-tail-heal-drifts-citation-peer-closed-green.md`
+    (written 00:27 by another session) trips the same drift rule with
+    "2026-11-01 20:26 → 2026-11-02 00:25", so `check-status-index.sh` is rc=1 at
+    this report's close for a file this window must not touch. Advisory-only in
+    spirit, blocking in practice: the drift finding needs a severity decision.
 
 ---
 
@@ -379,9 +392,12 @@ All inherited from §f of the 22:00 report and still valid, none attempted:
     surfaced — the first green CI since before the window suggests the local
     battery was right and master was simply stale.
 48. Document the `nix build .#checks.…` four-pack (treefmt/module-eval/
-    version-sync/format) as the local equivalent of the CI nix job.
-49. Re-run the worktree smoke 3× in a row to confirm it is not load-flaky now
-    that both its assertions are real.
+    version-sync/format) as the local equivalent of the CI nix job, and re-run
+    the worktree smoke 3× in a row to confirm it is not load-flaky now that both
+    its assertions are real.
+49. Fix the BODY-DATE DRIFT heuristic (§e11): accept a header that names the
+    filename date anywhere in its first lines — a spanning window names both —
+    and print the token it read. It currently flags the honest ordering.
 50. Keep the daemon-sweep baseline shrinking: file a small row to drive the
     1580 grandfathered rows down by policy (report-only reclassification is
     already free; the rest needs a marker commit per sha).
@@ -430,5 +446,14 @@ repeated a prior session's "foreign" label without checking the diff. The report
 records those in §d rather than smoothing them, because the point of this window
 was to make claims checkable, not to make them look clean.
 
-**Nothing is red. Nothing is unverified. 36+ commits pushed, CI green, working
-tree clean, and three decisions are yours.**
+**Gate state at close (measured, not assumed):** dead-sha rc=0, doc-refs rc=0,
+todo-list rc=0, research-note-shape rc=0, daemon-attribution rc=0,
+agents-size / mirror-clones / guard-wiring rc=0, `ci-local.sh` rc=0 earlier on
+this tree minus this report. **`check-status-index.sh` is rc=1 at close** and not
+because of this report: a concurrent session wrote
+`2026-11-02_00-25_battery-tail-heal-drifts-citation-peer-closed-green.md` at
+00:27 whose header names 2026-11-01 first, tripping the same BODY-DATE DRIFT
+heuristic that this report had to word around (§e11/e12). That file is another
+window's live work; repairing it here would race its author, so it is reported
+instead. Everything this window touches is green; 36+ commits pushed, CI green
+twice, working tree clean, and three decisions are yours.
