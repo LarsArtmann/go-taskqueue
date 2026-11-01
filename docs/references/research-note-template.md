@@ -13,6 +13,12 @@ and `docs/research/2026-10-09_turnstone-lessons.md`.
 **Source:** `<org>/<repo>` (<URL>) @ `<pinned-sha-or-tag>` (<language>,
 <license>). _State whether docs-only or code-read; name the exact files read._
 **Companion notes:** <sibling research notes, or "none">.
+**stale_after:** <YYYY-MM-DD>. _An ABSOLUTE date, not a TTL ("stale after six
+months" cannot be evaluated later without doing the arithmetic). Set it to the
+date this note is likely to be wrong — when the source's next major version, or
+tq's next release, is expected to invalidate it. Consumers treat a past
+`stale_after` as "re-read the source before relying on this", never as "delete
+it" (the OKF freshness lesson: an absolute instant, not a relative one)._
 
 ## Why <source> is worth reading
 
@@ -41,7 +47,21 @@ not a gap._
 
 ## Verification trail
 
-- <date>: the citations above were fetched from <urls/method> and read
-  directly; no claim here rests on a subagent summary.
+_Two obligations, and the first one is the one that gets skipped._
+
+- **Acquisition passes.** Record every attempt to obtain the source, in order,
+  with its outcome — including the ones that failed. `fetch` returning an empty
+  body is a TOOL MISMATCH, not a dead URL: retry with `download` and treat the
+  empty result as an acquisition event to write down. A trail that says "the
+  citations were fetched from <urls> and read directly" while every fact came
+  through an intermediary is the 2026-11-01 false-verification failure.
+- **Cite-then-verify.** Write the `file:line` cite, then RE-READ that exact
+  line before committing. Four cites in the 2026-11-01 note were off by one or
+  two lines because the numbers were written from memory of the file, not from
+  a read of it. The mechanical check, run over the files you touched:
+
+  ```bash
+  ./scripts/check-cite-drift.sh docs/research/<your-note>.md
+  ```
 - tq-side claims verified against the working tree the same window:
   `<file:line>`, ….
