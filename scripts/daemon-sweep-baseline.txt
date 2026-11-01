@@ -1638,3 +1638,7 @@ c300fa032c7ce6b37be5b4da2df0e19c9e4f4760
 a8edabd0e5924db6c012b695002c59913fc649be
 34ddc9f4caf55462de1aeee9ebd8c81bd757b523
 6bddb08d7072bc34e6377967f02595b11ab3ab92
+# 2026-11-01 row-1450 pool smoke: mid-edit crush-pool-supervisor smoke sweep (loop-var fix state)
+d5a372e79a11d2b385f315828957c9262a10fed7
+# 2026-11-01 row-1450 pool smoke: final crush-pool-supervisor smoke sweep (superseded content-wise by the footered e44de143 COVERAGE/TODO half)
+4f008d1227affdf5034939b436cfa75f99e53292
