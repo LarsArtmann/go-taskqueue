@@ -89,6 +89,8 @@ the pattern tq's journal detail structs should follow when they grow.
 | 13 | **Additive version growth is the compatibility strategy**                                  | §Compatibility: minor + opt-in + two documented renames with documented fallbacks; a v0.1 bundle "drops in unchanged"   | tq's flag additions are additive with byte-identical behaviour when unset (e.g. `tq verdict --file`, `internal/executor/agent.go`); but module floors are pinned and force lockstep  | **ADOPT the pattern where it is free.** When a journal detail gains a field, make it optional with a documented absence meaning and a fallback read of the old shape — never a required field and never a second writer. See TODO.                       |
 | 14 | **Format, not service: consumers must not need the producer's code**                        | v0.1 article: producible without an SDK, consumable without an integration                                            | tq's machine contracts are already file/JSON: the verdict channel is a JSON file (`cmd/tq/verdict.go`), markers are files under `.tq/` (`internal/harvest/verdicts.go:20`), the journal is SQLite | **ALIGNED — worth stating as a constraint.** Any future "trust signal" must land in a file or a journal fact a non-Go consumer can read, not in a Go-only struct.                                                                                        |
 
+| 15 | **Tolerance is for knowledge surfaces, not execution contracts**                            | §11's tolerance is scoped to *consumers of a knowledge bundle*: a concept that fails to parse costs a missing answer, not a wrong action | tq already draws that line: the fold, the web UI and the detail decoders tolerate unknown types and keys (lessons 1-2), but an `agent` payload whose `v` exceeds what this binary understands fails fast as a permanent error (`internal/executor/agent.go:273`), as does `depbump` (`internal/executor/depbump.go:177`) | **ALIGNED — and this is the boundary OKF does not state.** Do not "make it tolerant" to match §11: a payload drives execution, so misparsing it is a wrong action, not a missing answer. Recorded so the guard work below cannot be over-applied. |
+
 ## What actually transfers, in one paragraph
 
 tq has discovered all five of OKF's trust questions on its own and answered each
@@ -109,6 +111,13 @@ graded by a deterministic checker instead of a paid reader.
   catalog. Its corpus is the journal plus a handful of coordination markers;
   wrapping those in a markdown bundle would add a translation layer OKF itself
   argues against. **Rejected.**
+- **Make every JSON boundary tolerant of unknown fields, per §11.** Rejected for
+  *execution* contracts. `agent` and `depbump` payloads gate on an explicit contract
+  version and reject anything newer (`internal/executor/agent.go:273`,
+  `internal/executor/depbump.go:177`) because a misparsed execution payload runs the
+  wrong action, while a misparsed knowledge row merely renders blank or skips. OKF's
+  rule is aimed at the observation surfaces (the fold, the web UI, detail decoders),
+  and that is exactly where it is adopted here.
 - **Sync OKF bundles as a harvest source.** Tempting (a bundle of concepts
   looks like a TODO list) but `tq harvest` is deliberately bound to one
   machine-consumed shape with strong invariants (one `- [ ]` per line, no
