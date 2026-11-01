@@ -1625,3 +1625,5 @@ aa043e213cf10773fe94f2f98389299f1187495e
 # 2026-11-01 rebase replay: e42d7cd0 is a97b0dc2 rebased onto 9aea94ee (cmd/tq/go.work.sum
 # +1 line, content identical); twin grandfathering side effect
 e42d7cd0a3817717c254afb032e99c23a8f78d98
+# 2026-11-01 recursion: bdb8a148 swept the e42d7cd0 grandfather append itself
+bdb8a14877f30d6668823df1545d32686b1b70d3
