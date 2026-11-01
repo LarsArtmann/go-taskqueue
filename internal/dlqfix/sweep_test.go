@@ -258,7 +258,12 @@ func TestSweeperMintsOneAutopsyPerDeadAgentTask(t *testing.T) {
 	}
 
 	wantEvidence := executor.FailureEvidence{Stage: "verify", ExitCode: 2, Tail: "FAIL: TestShipTheThing"}
-	if payload.Failure != wantEvidence {
+	if payload.Failure.Stage != wantEvidence.Stage ||
+		payload.Failure.ExitCode != wantEvidence.ExitCode ||
+		payload.Failure.Tail != wantEvidence.Tail ||
+		payload.Failure.VerifyStage != "" ||
+		payload.Failure.Class != "" ||
+		len(payload.Failure.FilesChanged) != 0 {
 		t.Fatalf("payload evidence wrong: %+v", payload.Failure)
 	}
 
