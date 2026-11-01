@@ -55,7 +55,10 @@ set -euo pipefail
 if [ "${1:-}" = "--benign-corpus" ]; then
 	self_abs="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 	corpus="${TQ_BENIGN_CORPUS_FILE:-$(dirname "$self_abs")/benign-corpus-bash.txt}"
-	[ -f "$corpus" ] || { echo "FAIL: corpus $corpus missing" >&2; exit 1; }
+	[ -f "$corpus" ] || {
+		echo "FAIL: corpus $corpus missing" >&2
+		exit 1
+	}
 	tmp="$(mktemp -d)"
 	trap 'rm -rf "$tmp"' EXIT
 	# Same sandbox recipe as --self-test: clean repo (advisories A6/A9 off),
@@ -69,7 +72,7 @@ if [ "${1:-}" = "--benign-corpus" ]; then
 	git -C "$tmp/repo" -c user.email=t@t -c user.name=t commit -qm init
 	total=0 bad=0
 	while IFS= read -r line || [ -n "$line" ]; do
-		case "$line" in ''|'#'*) continue ;; esac
+		case "$line" in '' | '#'*) continue ;; esac
 		total=$((total + 1))
 		rc=0
 		out="$(env -u TQ_DB CRUSH_CWD="$tmp/repo" CRUSH_PROJECT_DIR="$tmp/repo" GOCACHE="$tmp/okcache" CRUSH_TOOL_INPUT_COMMAND="$line" bash "$self_abs" 2>&1)" || rc=$?

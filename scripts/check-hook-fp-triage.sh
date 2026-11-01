@@ -40,14 +40,25 @@ if [ "${1:-}" = "--self-test" ]; then
 LOG
 	out="$(TQ_HOOK_FP_LOG="$tmp/deny.log" "$0" 2>&1)"
 	printf '%s' "$out" | grep -q 'hook-deny triage: 3 deny(2 rule) since forever' ||
-		{ echo "SELF-TEST FAIL: summary line not pinned"; printf '%s\n' "$out"; exit 1; }
+		{
+			echo "SELF-TEST FAIL: summary line not pinned"
+			printf '%s\n' "$out"
+			exit 1
+		}
 	printf '%s' "$out" | grep -q 'force-push' ||
-		{ echo "SELF-TEST FAIL: rule breakdown missing"; printf '%s\n' "$out"; exit 1; }
+		{
+			echo "SELF-TEST FAIL: rule breakdown missing"
+			printf '%s\n' "$out"
+			exit 1
+		}
 
 	printf 'junk-not-a-row\n' >"$tmp/bad.log"
 	rc=0
 	TQ_HOOK_FP_LOG="$tmp/bad.log" "$0" >/dev/null 2>&1 || rc=$?
-	[ "$rc" = 1 ] || { echo "SELF-TEST FAIL: malformed row must rc=1"; exit 1; }
+	[ "$rc" = 1 ] || {
+		echo "SELF-TEST FAIL: malformed row must rc=1"
+		exit 1
+	}
 
 	echo "self-test ok: hook-fp-triage summary + rule breakdown + malformed-row negative path pinned"
 	exit 0

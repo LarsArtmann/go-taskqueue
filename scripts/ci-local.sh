@@ -226,20 +226,44 @@ step "dlq-sidecar-citations gate (pre-fix shape sweep)"
 # Soak rule (H8): if either gate proves flaky within 7 days of this wiring,
 # demote it to the advisory lint block — never delete the pin.
 step "tq-bash-guard hook self-test (deny/advise/silent battery)"
-hout="$(./scripts/hooks/tq-bash-guard.sh --self-test)" || { printf '%s\n' "$hout" >&2; exit 1; }
-printf '%s\n' "$hout" | grep -q '^tq-bash-guard self-test ok ([0-9]* cases' || { echo "FAIL: summary not pinned: $hout" >&2; exit 1; }
+hout="$(./scripts/hooks/tq-bash-guard.sh --self-test)" || {
+	printf '%s\n' "$hout" >&2
+	exit 1
+}
+printf '%s\n' "$hout" | grep -q '^tq-bash-guard self-test ok ([0-9]* cases' || {
+	echo "FAIL: summary not pinned: $hout" >&2
+	exit 1
+}
 
 step "tq-bash-guard benign corpus (fleet FP boundary)"
-hout="$(./scripts/hooks/tq-bash-guard.sh --benign-corpus)" || { printf '%s\n' "$hout" >&2; exit 1; }
-printf '%s\n' "$hout" | grep -q '^tq-bash-guard benign corpus ok ([0-9]* commands silent)$' || { echo "FAIL: corpus summary not pinned: $hout" >&2; exit 1; }
+hout="$(./scripts/hooks/tq-bash-guard.sh --benign-corpus)" || {
+	printf '%s\n' "$hout" >&2
+	exit 1
+}
+printf '%s\n' "$hout" | grep -q '^tq-bash-guard benign corpus ok ([0-9]* commands silent)$' || {
+	echo "FAIL: corpus summary not pinned: $hout" >&2
+	exit 1
+}
 
 step "tq-edit-advice hook self-test (per-path advice battery)"
-hout="$(./scripts/hooks/tq-edit-advice.sh --self-test)" || { printf '%s\n' "$hout" >&2; exit 1; }
-printf '%s\n' "$hout" | grep -q '^tq-edit-advice self-test ok ([0-9]* cases' || { echo "FAIL: summary not pinned: $hout" >&2; exit 1; }
+hout="$(./scripts/hooks/tq-edit-advice.sh --self-test)" || {
+	printf '%s\n' "$hout" >&2
+	exit 1
+}
+printf '%s\n' "$hout" | grep -q '^tq-edit-advice self-test ok ([0-9]* cases' || {
+	echo "FAIL: summary not pinned: $hout" >&2
+	exit 1
+}
 
 step "tq-edit-advice benign corpus (silent-path boundary)"
-hout="$(./scripts/hooks/tq-edit-advice.sh --benign-corpus)" || { printf '%s\n' "$hout" >&2; exit 1; }
-printf '%s\n' "$hout" | grep -q '^tq-edit-advice benign corpus ok ([0-9]* paths silent)$' || { echo "FAIL: corpus summary not pinned: $hout" >&2; exit 1; }
+hout="$(./scripts/hooks/tq-edit-advice.sh --benign-corpus)" || {
+	printf '%s\n' "$hout" >&2
+	exit 1
+}
+printf '%s\n' "$hout" | grep -q '^tq-edit-advice benign corpus ok ([0-9]* paths silent)$' || {
+	echo "FAIL: corpus summary not pinned: $hout" >&2
+	exit 1
+}
 
 step "hook-fp triage check self-test (deny-log shape pin)"
 ./scripts/check-hook-fp-triage.sh --self-test

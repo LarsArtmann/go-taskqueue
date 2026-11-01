@@ -237,7 +237,10 @@ start_server
 [ "$(probe_health)" = "200" ] || fail "server health probe failed before the 429 leg"
 RC=0
 routed_run run429.log || RC=$?
-[ "$RC" -ne 0 ] || { cat "$TMP/run429.log"; fail "routed 429 run exited 0 — fast-refuse contract broken"; }
+[ "$RC" -ne 0 ] || {
+	cat "$TMP/run429.log"
+	fail "routed 429 run exited 0 — fast-refuse contract broken"
+}
 grep -qi "rate limit exceeded" "$TMP/run429.log" || {
 	echo "--- run output ---"
 	cat "$TMP/run429.log"
@@ -280,7 +283,10 @@ git -C "$TMP/poolproj/repo" commit -qm seed
 wait_pattern "$TMP/pool.log" "listening on" 45 "pool never started the crush server"
 SRVPATT="crush server --host unix://$PSOCK"
 SRVPID="$(pgrep -f "$SRVPATT" | head -1)"
-[ -n "$SRVPID" ] || { tail -20 "$TMP/pool.log"; fail "no crush server child under the pool"; }
+[ -n "$SRVPID" ] || {
+	tail -20 "$TMP/pool.log"
+	fail "no crush server child under the pool"
+}
 echo "PASS: pool up, server child pid $SRVPID"
 
 pkill -9 -f "$SRVPATT"

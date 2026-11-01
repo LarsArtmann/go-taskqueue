@@ -246,7 +246,10 @@ start_mock() { # <verdict-cmd> <final-text> [stall]
 	python3 "$TMP/mock_provider.py" "$PORT" "$1" "$2" "${3:-0}" "$TMP/mock-requests.log" >"$TMP/mock.log" 2>&1 &
 	MOCK_PID=$!
 	sleep 1
-	kill -0 "$MOCK_PID" 2>/dev/null || { cat "$TMP/mock.log"; fail "mock provider died on startup (port $PORT busy?)"; }
+	kill -0 "$MOCK_PID" 2>/dev/null || {
+		cat "$TMP/mock.log"
+		fail "mock provider died on startup (port $PORT busy?)"
+	}
 }
 
 probe() { # <path> — GET on the scratch socket, de-chunked body on stdout
@@ -316,7 +319,10 @@ rm -f "$REPO/smoke-verdict.json"
 : >"$TMP/mock-requests.log" # truncate, never rm: the mock holds an append handle
 routed_run run1.log
 RC=$?
-[ "$RC" -eq 0 ] || { cat "$TMP/run1.log"; fail "routed run rc=$RC" ; }
+[ "$RC" -eq 0 ] || {
+	cat "$TMP/run1.log"
+	fail "routed run rc=$RC"
+}
 grep -q "Created session for non-interactive run session_id=" "$TMP/run1.log" || fail "no session-id line in routed output (M4)"
 # Zero-spend receipt: every provider call landed on OUR mock (its request
 # log is the traffic record; a real provider would show up as missing
@@ -325,7 +331,10 @@ grep -q "Created session for non-interactive run session_id=" "$TMP/run1.log" ||
 grep -q "roles=\['system', 'user'\]" "$TMP/mock-requests.log" || fail "no title-gen request hit the mock (want the system+user pair)"
 grep -q "please write the verdict file now" "$TMP/mock-requests.log" || fail "the main turn never reached the mock provider"
 echo "PASS: rc 0 + session-id line + all provider traffic on the mock"
-grep -q '"verdict":"ok-routed"' "$REPO/smoke-verdict.json" || { cat "$TMP/run1.log"; fail "verdict file missing/wrong after routed run"; }
+grep -q '"verdict":"ok-routed"' "$REPO/smoke-verdict.json" || {
+	cat "$TMP/run1.log"
+	fail "verdict file missing/wrong after routed run"
+}
 echo "PASS: routed tool-call wrote the verdict file"
 
 echo "== leg: live workspace + M5 shapes during the run"
@@ -344,7 +353,10 @@ sys.exit(0 if ws else 1)' 2>/dev/null; then
 	fi
 	sleep 1
 done
-[ -n "$WS_JSON" ] || { kill "$RUN2_PID" 2>/dev/null || true; fail "no live workspace observed during the routed run — the run never reached the server (routing broken?)"; }
+[ -n "$WS_JSON" ] || {
+	kill "$RUN2_PID" 2>/dev/null || true
+	fail "no live workspace observed during the routed run — the run never reached the server (routing broken?)"
+}
 echo "$WS_JSON" | python3 -c 'import json,sys
 ws = json.load(sys.stdin)
 w = ws[0]
@@ -432,7 +444,10 @@ CRUSHEOF
 start_mock "echo hook-deny-probe > \"$TMP/tool-ran.txt\"" 'mock done' 0
 rm -f "$TMP/hook.log" "$TMP/tool-ran.txt" "$REPO/smoke-verdict.json"
 routed_run run4.log
-[ -s "$TMP/hook.log" ] || { cat "$TMP/run4.log"; fail "hook.log empty — the PreToolUse hook never fired server-side (M3 broken)"; }
+[ -s "$TMP/hook.log" ] || {
+	cat "$TMP/run4.log"
+	fail "hook.log empty — the PreToolUse hook never fired server-side (M3 broken)"
+}
 [ ! -e "$TMP/tool-ran.txt" ] || fail "the marker command EXECUTED — the exit-2 deny did not block it (deny contract changed?)"
 echo "PASS: scratch hook fired server-side and its exit-2 deny blocked the bash call (M3)"
 rm -f "$REPO/.crushrc"
@@ -445,7 +460,10 @@ SERVER_PID=""
 sleep 1
 routed_run run5.log
 RC=$?
-[ "$RC" -eq 0 ] || { cat "$TMP/run5.log"; fail "run after server kill rc=$RC — client did not respawn the server"; }
+[ "$RC" -eq 0 ] || {
+	cat "$TMP/run5.log"
+	fail "run after server kill rc=$RC — client did not respawn the server"
+}
 HEALTH="$(probe /v1/health | head -1)"
 echo "$HEALTH" | grep -q "200" || fail "respawned server health: '$HEALTH'"
 echo "PASS: killed server respawned by the next client; run + health green"

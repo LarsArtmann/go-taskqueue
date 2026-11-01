@@ -71,11 +71,11 @@ row_path_violations() {
 			echo "PATH MISSING: live row cites \`$p\` — no file at docs/status/$p or $p (re-routed or deleted report; repoint or archive the row)"
 			ROW_PATH_FAILS=$((ROW_PATH_FAILS + 1))
 		fi
-	done < <(grep -E '^\| 20[0-9]{2}-' "$index" \
-		| grep -vE '^\| 20[0-9]{2}-.*`archived/' \
-		| grep -oE '`[A-Za-z0-9_./-]+\.md`' \
-		| tr -d '`' \
-		| sort -u)
+	done < <(grep -E '^\| 20[0-9]{2}-' "$index" |
+		grep -vE '^\| 20[0-9]{2}-.*`archived/' |
+		grep -oE '`[A-Za-z0-9_./-]+\.md`' |
+		tr -d '`' |
+		sort -u)
 }
 ROW_PATH_FAILS=0
 ROW_PATH_CHECKED=0
@@ -133,8 +133,8 @@ EOF
 		echo "$path_out"
 		exit 1
 	fi
-	if ! grep -q 'PATH MISSING: live row cites `gone.md`' <<<"$path_out" \
-		|| ! grep -q 'row-paths 3 ok / 1 missing' <<<"$path_out"; then
+	if ! grep -q 'PATH MISSING: live row cites `gone.md`' <<<"$path_out" ||
+		! grep -q 'row-paths 3 ok / 1 missing' <<<"$path_out"; then
 		echo "status-index self-test FAIL: negative path-branch output lacks the pinned PATH MISSING line or summary:"
 		echo "$path_out"
 		exit 1

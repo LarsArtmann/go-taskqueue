@@ -18,10 +18,13 @@ set -euo pipefail
 if [ "${1:-}" = "--benign-corpus" ]; then
 	self_abs="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 	corpus="${TQ_BENIGN_CORPUS_FILE:-$(dirname "$self_abs")/benign-corpus-edit.txt}"
-	[ -f "$corpus" ] || { echo "FAIL: corpus $corpus missing" >&2; exit 1; }
+	[ -f "$corpus" ] || {
+		echo "FAIL: corpus $corpus missing" >&2
+		exit 1
+	}
 	total=0 bad=0
 	while IFS= read -r line || [ -n "$line" ]; do
-		case "$line" in ''|'#'*) continue ;; esac
+		case "$line" in '' | '#'*) continue ;; esac
 		total=$((total + 1))
 		rc=0
 		out="$(cd "$(dirname "$self_abs")/../.." && CRUSH_TOOL_INPUT_FILE_PATH="$line" bash "$self_abs" 2>&1)" || rc=$?
