@@ -1,5 +1,8 @@
 # M26 draft — go-cqrs-lite issue filing (solicited, f-list)
 
+> **FILED 2026-10-07 as go-cqrs-lite#56** (v0.3.3 window; voice checker
+> clean). Draft retired — the filed issue is the source of truth.
+
 Title: `event.Subscriber has no shutdown hook — "smallest interface" consumers can't stop their goroutines`
 
 Body:

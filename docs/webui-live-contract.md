@@ -11,10 +11,28 @@ below.
 ## Fragment ids
 
 Streamed fragments target exactly these container ids:
-`frag-filters`, `frag-stats`, `frag-table`, `frag-dlq`, plus the
-task-scoped `frag-detail` / `frag-timeline` on detail pages. The filter
-auto-submit path (`FRAG_IDS`) and the SSE `frag` events both address the
-same ids; a rename here is a contract break, not a refactor.
+`frag-filters`, `frag-stats`, `frag-table`, `frag-dlq`,
+`frag-questions`, plus the task-scoped `frag-detail` / `frag-timeline`
+on detail pages. The filter auto-submit path (`FRAG_IDS`) and the SSE
+`frag` events both address the same ids; a rename here is a contract
+break, not a refactor.
+
+## Questions pane (row 1445, 2026-11-01)
+
+The amber questions section renders ONLY when a parked `tq ask` question
+waits (empty pane = nothing in the DOM — the section never occupies
+space idle). Rows derive from parked tasks' unanswered
+`task.question-asked` facts (newest-first, cap 20, the same ref-pairing
+as `buildQuestionView`). Swap-guard interplay:
+
+- the answer box is an `input` inside `frag-questions` — a focused box
+  makes the fragment busy (typing never loses text to a swap);
+- `frag-questions` rides the same FRAG_IDS auto-submit + SSE path as the
+  other fragments;
+- answering POSTs `/task/{id}/answer` through `writeBindings`
+  (AllowWrites + CSRF + lockout + token rails; 409 stale-ref, 400
+  missing, 303 back) and the AnswerPoller routes the answer home — the
+  pane clears on the next snapshot, not optimistically.
 
 ## Swap-guard (busy deferral)
 

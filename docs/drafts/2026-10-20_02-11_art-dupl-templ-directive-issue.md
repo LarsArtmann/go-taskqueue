@@ -1,5 +1,9 @@
 # art-dupl issue draft — templ markup can't carry suppression markers without shipping them
 
+> **FILED 2026-10-20 as LarsArtmann/art-dupl#9** (premise re-verified and
+> NARROWED before filing; still open upstream 2026-10-28). Draft retired —
+> the filed issue is the source of truth.
+
 Title: `templ: suppression directives force rendered-output markup`
 
 ## Symptom
