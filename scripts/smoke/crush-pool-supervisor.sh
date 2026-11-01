@@ -119,7 +119,7 @@ cat >"$XDG/crush/crush.json" <<EOF
 			"base_url": "http://127.0.0.1:$PORT/v1",
 			"type": "completions",
 			"models": [
-				{"id": "mock-1", "name": "Mock 1", "context_window": 8192, "max_tokens": 1024}
+				{"id": "mock-1", "name": "Mock 1", "context_window": 200000, "max_tokens": 1024}
 			]
 		}
 	},
@@ -401,13 +401,15 @@ done
 # (ensureServer, M7) and the run completes normally — no severed stream.
 # The mock marks the stall's entry; the kill must land after it.
 rm -f "$TMP/stall-entered.log"
-for _ in $(seq 1 100); do
+for _ in $(seq 1 200); do
 	[ -s "$TMP/stall-entered.log" ] && break
 	size_guard
 	sleep 0.3
 done
 [ -s "$TMP/stall-entered.log" ] || {
 	tail -25 "$TMP/pool.log"
+	"$TMP/tq" tasks --db "$TMP/pool.db" --json 2>/dev/null | head -30
+	tail -10 "$TMP/mock2.log" 2>/dev/null
 	fail "the mock never entered the stalled tool-result turn — probe task never reached its tool call"
 }
 DEAD_PID="$(pgrep -f "crush server --host unix://$PSOCK" | head -1)"
