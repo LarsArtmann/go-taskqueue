@@ -397,6 +397,7 @@ printf -- '- [ ] smoke probe: write the verdict file now\n' >"$TMP/poolproj/repo
 git -C "$TMP/poolproj/repo" add -A
 git -C "$TMP/poolproj/repo" commit -qm "open the mid-run kill probe item"
 # taskq.py: one filter helper for both polls (running-id, then full state)
+# pins: the running-id + status/attempts state poll assertions (both legs)
 cat >"$TMP/taskq.py" <<'PYEOF'
 import json
 import sys
@@ -537,6 +538,7 @@ esac
 echo "PASS: routed run recorded its verdict via the baked rail (file -> facts)"
 
 echo "== leg: operator cancel reaches the routed client + the server reaps (V2.15)"
+# pins: the busy-session reap assertion (no is_busy session over the repo post-cancel)
 cat >"$TMP/busy.py" <<'PYEOF'
 import http.client, json, socket, sys
 
