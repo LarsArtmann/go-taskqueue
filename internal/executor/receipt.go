@@ -20,6 +20,11 @@ import (
 // the full gate output keeps living in the writeVerifyEvidence sidecar. This
 // is the bounded summary — the part that must survive log rotation, because
 // the counts are exactly what a report quotes.
+//
+// Measured when this landed (2026-11-01): 34 living status reports carry 59
+// hand-derived "N ok / M fail" receipts, and 26 files say the words
+// `grep -c '^ok:'` outright. Each of those was a number a paid session counted
+// in context; ParseVerifyCounts makes the same number an observation.
 type VerifyReceipt struct {
 	// Command is the command that ACTUALLY ran, after verifyFor's
 	// resolution (.tq-verify > payload > auto-detect). AgentResult used to
