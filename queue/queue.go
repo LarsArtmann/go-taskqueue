@@ -64,6 +64,7 @@ const (
 	RequeueClassRateLimitGate = internalqueue.RequeueClassRateLimitGate
 	RequeueClassQuestion      = internalqueue.RequeueClassQuestion
 	RequeueClassBudget        = internalqueue.RequeueClassBudget
+	RequeueClassCrushServer   = internalqueue.RequeueClassCrushServer
 	RequeueClassUnknown       = internalqueue.RequeueClassUnknown
 )
 

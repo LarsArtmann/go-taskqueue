@@ -75,7 +75,14 @@ type (
 	RateLimitError       = internalexecutor.RateLimitError
 	VerifyGateError      = internalexecutor.VerifyGateError
 	VerifyGateClass      = internalexecutor.VerifyGateClass
+	CrushServerDeathError = internalexecutor.CrushServerDeathError
 )
+
+// Shared crush-server death detection (crushdeath.go): the error code the
+// classifier keys on and the two-sided output/error matcher.
+const CrushServerDeathCode = internalexecutor.CrushServerDeathCode
+
+var DetectCrushServerDeath = internalexecutor.DetectCrushServerDeath
 
 // Verify-gate failure classes (see VerifyGateError).
 const (
@@ -219,6 +226,7 @@ var (
 	SecretHits               = internalexecutor.SecretHits
 	SetFailureEvidence       = internalexecutor.SetFailureEvidence
 	SetVerifyFailureEvidence = internalexecutor.SetVerifyFailureEvidence
+	EnrichFailureEvidenceFiles = internalexecutor.EnrichFailureEvidenceFiles
 	SetResultDetail          = internalexecutor.SetResultDetail
 	StaleVerifyReasons       = internalexecutor.StaleVerifyReasons
 	SweepSidecars            = internalexecutor.SweepSidecars
