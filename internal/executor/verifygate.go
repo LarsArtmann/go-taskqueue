@@ -117,6 +117,7 @@ func IsEnvironmentalDeath(lastError string) bool {
 	for _, marker := range []string{
 		"[" + EnvStreakCode + "]",
 		"[" + string(VerifyGateEnvCode) + "]",
+		"[" + CrushServerDeathCode + "]",
 		"agent verify gate environmental",
 		"agent verify gate dead",
 		"agent verify gate slow",

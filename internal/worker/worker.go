@@ -304,6 +304,10 @@ func staysOnLadder(execErr error) bool {
 		return gate.Class != executor.VerifyGateEnvironmental
 	}
 
+	if _, ok := errors.AsType[*executor.CrushServerDeathError](execErr); ok {
+		return true
+	}
+
 	if _, ok := errors.AsType[*executor.RateLimitError](execErr); ok {
 		return true
 	}
@@ -892,6 +896,29 @@ func (p *Pool) execute(ctx context.Context, t task.Task, claim queue.Claim) {
 			}
 
 			p.log.Warn("provider rate limited; requeued without attempt burn", attrs...)
+		}
+
+		return
+	}
+
+	if death, ok := errors.AsType[*executor.CrushServerDeathError](execErr); ok {
+		// Shared crush-server death around a routed run (severed events
+		// stream, unreachable socket): pool infrastructure, never the
+		// task's verdict. Requeue WITHOUT burning an attempt on the
+		// escalating ladder — but EXEMPT from the env-streak breaker: the
+		// server supervisor restarts in seconds, and a sustained outage
+		// must park its tasks instead of spending their attempts (paid
+		// turns; same exemption class as dirty-tree co-tenancy).
+		delay, streak := p.preflightDelay(t.ID)
+
+		if err := p.persistOutcome(terminalCtx, t.ID, func(c context.Context) error {
+			return p.store.Requeue(c, t.ID, claim, death.Error(), delay, false, queue.RequeueClassCrushServer, "")
+		}); err != nil {
+			p.log.Error("crush-server requeue failed", "task", t.ID, "err", err)
+		} else if p.preflightShouldLog(t.ID) {
+			p.log.Warn("crush server died around the routed run; requeued without attempt burn",
+				"task", t.ID, "retry after", delay, "consecutive", streak,
+				"code", executor.CrushServerDeathCode, "reason", death.Error())
 		}
 
 		return

@@ -739,6 +739,74 @@ func TestUnknownTaskTypeDeadLettersImmediately(t *testing.T) {
 	}
 }
 
+// TestCrushServerDeathRequeuesWithoutAttemptBurn pins the crash-domain
+// insurance (V2.9): a *CrushServerDeathError (shared server died around a
+// routed run) requeues WITHOUT burning an attempt — MaxAttempts=1 must
+// survive an outage — and the task completes from the same budget once
+// the supervisor's restart landed (executor healthy again).
+func TestCrushServerDeathRequeuesWithoutAttemptBurn(t *testing.T) {
+	store := testStore(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	reg := executor.NewRegistry()
+
+	var (
+		healthy atomic.Bool
+		ran     atomic.Int32
+	)
+
+	reg.RegisterFunc("agent", func(context.Context, task.Task) error {
+		if !healthy.Load() {
+			return &executor.CrushServerDeathError{Cause: errors.New("Events stream ended")}
+		}
+
+		ran.Add(1)
+
+		return nil
+	})
+
+	enq, _ := store.Enqueue(ctx, task.New{Type: "agent", MaxAttempts: 1})
+
+	pool := New(store, Config{
+		Concurrency: 1, PollInterval: 5 * time.Millisecond, TaskTimeout: 2 * time.Second,
+		PreflightBackoff: 120 * time.Millisecond,
+		Executors:        reg,
+	}, quietLog())
+	go func() { _ = pool.Start(ctx) }()
+
+	deadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) {
+		got, _ := store.Get(context.Background(), enq.ID)
+		if got.LastError != "" && got.Status == task.Pending && got.Attempts == 0 {
+			break
+		}
+
+		time.Sleep(5 * time.Millisecond)
+	}
+
+	first, _ := store.Get(context.Background(), enq.ID)
+	if first.Status != task.Pending || first.Attempts != 0 {
+		t.Fatalf("after crush-server death: status=%s attempts=%d, want pending/0", first.Status, first.Attempts)
+	}
+
+	// The supervisor's restart ladder landed: the same task completes
+	// without any rescue.
+	healthy.Store(true)
+
+	got := waitFor(t, ctx, store, enq.ID, task.Completed)
+	if got.Status != task.Completed {
+		t.Fatalf("status = %s, want completed", got.Status)
+	}
+
+	if ran.Load() != 1 {
+		t.Fatalf("executor completed %d healthy passes, want exactly 1 (the death pass requeued before any verdict)", ran.Load())
+	}
+
+	cancel()
+}
+
 // TestPreflightRequeuesWithoutAttemptBurn pins the preflight contract:
 // a *PreflightError must NOT dead-letter, NOT burn an attempt, and NOT
 // retry immediately — the task goes back to pending and is claimable again

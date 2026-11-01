@@ -378,7 +378,21 @@ func (e *AgentExecutor) Execute(ctx context.Context, t task.Task) error {
 		// so the fact carries its own excerpt.
 		SetFailureEvidence(ctx, "agent", err, tailBytes([]byte(output), EvidenceTailBytes))
 
+		// Routed runs severed by the shared server dying (dial failures,
+		// failed respawn) classify as environmental: requeue, no burn.
+		if e.CrushServer != "" && DetectCrushServerDeath(output, err.Error()) {
+			return &CrushServerDeathError{Cause: err}
+		}
+
 		return err
+	}
+
+	// The rc-0 lie: a MID-RUN server death leaves the client exiting 0
+	// with only a severed-events WARN in the output (observed v0.99.0) —
+	// no work happened, but the verify leg below would judge the task on
+	// an empty run. Classify before any verdict path.
+	if e.CrushServer != "" && DetectCrushServerDeath(output, "") {
+		return &CrushServerDeathError{}
 	}
 
 	tail, verifyStage, err := runVerify(runCtx, t.ID, runDir, &p, e.ReresolveVerify, baseRev)
