@@ -50,16 +50,15 @@ case "$prompt" in
 	*"status reporter"*)
 		mkdir -p docs/status
 		printf '# rewind smoke report\n' >"$REPORT_PATH"
-		printf 'test -f TODO_LIST.md\n' >.tq-verify
 		git add -A
 		git commit -qm "docs: rewind smoke report"
 		printf '%s\n' "TQ_RESULT: {\"report\":\"$REPORT_PATH\"}"
 		;;
 	*)
+		# Work branch stays commit-free (a nothing-to-commit git exit 1
+		# burns all three attempts and dead-letters the task — the exact
+		# failure this smoke's first cut died to).
 		printf 'did the work\n'
-		printf 'test -f TODO_LIST.md\n' >.tq-verify
-		git add -A
-		git commit -qm "work done"
 		;;
 esac
 EOF

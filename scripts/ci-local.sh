@@ -599,6 +599,9 @@ step "web UI css drift (committed app.css must equal the tailwind rebuild)"
 step "status-loop live smoke"
 ./scripts/smoke/status-loop.sh
 
+step "status-rewind live smoke (watermarks set 0 -> re-sweep -> done-guard skips)"
+./scripts/smoke/status-rewind.sh
+
 step "dogfood-once live smoke (stub agent; TQ_DOGFOOD=1 adds the real-agent proof)"
 ./scripts/smoke/dogfood-once.sh
 
