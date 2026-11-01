@@ -1129,9 +1129,9 @@ func appendRSSSample(path string, tsMS, kb int64) {
 		return
 	}
 
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
-	fmt.Fprintf(f, "%d %d\n", tsMS, kb)
+	_, _ = fmt.Fprintf(f, "%d %d\n", tsMS, kb)
 }
 
 // procRSSKB reads a process's VmRSS from /proc/<pid>/status (kB). Linux

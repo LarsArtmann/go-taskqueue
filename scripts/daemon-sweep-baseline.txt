@@ -1674,3 +1674,24 @@ a140724a67d76c1795bd919e9bfc581192225979
 a4cf2262e19ea93ab2ee9d3c654b08112ccfe891
 # 2026-11-01 pins-attribution fixes mid-write + final (7927fef8)
 7927fef840624acefd0e7d27c25c690d2e8a963b
+# 2026-11-01 OKF-lessons window (undispatched agent session: research note, forward-compat pins,
+# Pareto plan). GRANDFATHERED DELIBERATELY, not healed: heal-daemon-sweep.sh requires a
+# Task-Queue-ID to attach and an undispatched session has none to invent. Each sweep touched only
+# this session's own artifacts. Pushing freezes them, so this records the decision rather than
+# leaving the gate red on debt no future session can cure.
+#   25ca0834
+25ca0834208bf540ff297dcc04078f3cfdbaa2eb
+#   5083b011
+5083b01182549d07c24287b7090e80aa91b921bf
+#   6fcbdaff
+6fcbdaffd37a7b5560c374b01eeda724782a9a33
+#   1baadc87
+1baadc8728b161ecf3592a06a3d7120acf76de89
+#   8060e10d
+8060e10d509a7b4b7ce26930b68ebdd2fdef919b
+#   a3dc773a
+a3dc773a730f0e5a7ca7856cb2b815ec525f66e8
+#   fe62b87b
+fe62b87b52507cffefb824137398befd5e0413ea
+#   0998e88b
+0998e88bca638f29f0a5f431df1a4f95f1aec2cb

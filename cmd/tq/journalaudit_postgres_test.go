@@ -20,6 +20,16 @@ import (
 // the postgres conformance suites (TQ_TEST_POSTGRES; per-test schema so
 // the battery cannot see each other's rows) — skips cleanly when unset.
 
+// dsnQuerySep returns the separator a search_path parameter needs: "&" when
+// the DSN already carries a query string, "?" otherwise.
+func dsnQuerySep(base string) string {
+	if strings.Contains(base, "?") {
+		return "&"
+	}
+
+	return "?"
+}
+
 func postgresDriftStore(t *testing.T) (*postgres.Store, string, string) {
 	t.Helper()
 
@@ -52,12 +62,7 @@ func postgresDriftStore(t *testing.T) (*postgres.Store, string, string) {
 		_ = admin.Close()
 	})
 
-	dsn := base
-	if strings.Contains(base, "?") {
-		dsn = base + "&search_path=" + schema
-	} else {
-		dsn = base + "?search_path=" + schema
-	}
+	dsn := base + dsnQuerySep(base) + "search_path=" + schema
 
 	store, err := postgres.Open(context.Background(), dsn, 0)
 	if err != nil {
@@ -125,12 +130,7 @@ func TestJournalDriftNoDriftOverFullLifecyclePostgres(t *testing.T) {
 func seedDriftPostgres(t *testing.T, base, schema string) {
 	t.Helper()
 
-	dsn := base
-	if strings.Contains(base, "?") {
-		dsn = base + "&search_path=" + schema
-	} else {
-		dsn = base + "?search_path=" + schema
-	}
+	dsn := base + dsnQuerySep(base) + "search_path=" + schema
 
 	db, err := sql.Open("pgx", dsn)
 	if err != nil {
