@@ -17,6 +17,10 @@ dependency. Nothing in this note proposes importing code.
 **Companion notes:** `docs/research/2026-10-09_turnstone-lessons.md` is the
 closest precedent (a layer-adjacent source whose written invariants became a
 tq checklist) and supplies the shape of this note.
+**stale_after:** 2027-05-01. OKF is at v0.2 and its own changelog already moved
+once (v0.1 → v0.2 added the whole trust-signal family in six weeks); a v0.3 that
+touches `verified`/`stale_after`/§11 would invalidate lessons 1, 5 and 6, so
+re-read the SPEC before reusing those rows.
 
 ## Why OKF is worth reading
 

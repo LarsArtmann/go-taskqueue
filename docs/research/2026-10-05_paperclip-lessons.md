@@ -3,6 +3,7 @@
 **Date:** 2026-10-05 (source verification window; research window 2026-10-03/04).
 **Provenance:** the 2026-10-04 research window (`docs/status/2026-10-04_03-11_paperclip-lessons-budget-gate-window.md`) trusted an AI fetch subagent for the paperclip-side file:line claims; this note closes that gap — the three load-bearing citations below were opened at source (`gh api repos/paperclipai/paperclip`) before anything was written. The marketing-level competitive assessment lives in `docs/research/2026-10-03_paperclip-competitive-analysis.md`; this note is the engineering comparison.
 **Source of the plan:** `docs/planning/2026-10-04_23-59_paperclip-aftermath-budget-visibility-pareto-plan.md` maps every idea below to an M-task.
+**stale_after:** 2027-04-01. The citations pin paperclip `@master` at the 2026-10-05 window, so the file paths are the part most likely to rot; re-open the three cited files before reusing any row.
 
 ## Source-verified citations
 

@@ -757,6 +757,17 @@ step "cite-drift self-test (gate semantics pin)"
 step "cite-drift citation check"
 ./scripts/check-cite-drift.sh
 
+# Research-note shape gate (2026-11-01 OKF window): every template-era note in
+# docs/research/ carries a source-verified citation TABLE and a non-empty
+# Verification trail — the two sections whose absence made the OKF note
+# unverifiable while it claimed to be verified. Notes predating the template are
+# grandfathered in scripts/research-note-shape-grandfathered.txt.
+step "research-note shape self-test (gate semantics pin)"
+./scripts/check-research-note-shape.sh --self-test
+
+step "research-note shape check"
+./scripts/check-research-note-shape.sh
+
 # Daemon-commit attribution gate (task 000001a109757cf3d260a0de4e2700000000,
 # 00-55 report f2): a footer-less auto-commit sweep that touched files
 # outside docs/status/ fails the gate unless its sha is baselined in

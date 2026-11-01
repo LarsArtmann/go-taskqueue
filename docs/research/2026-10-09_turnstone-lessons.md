@@ -8,6 +8,7 @@ claims below were read at source (the six files in the citations table), not fro
 (`docs/research/2026-10-03_paperclip-competitive-analysis.md`,
 `docs/research/2026-10-05_paperclip-lessons.md`) is the format precedent. Turnstone is
 not a competitor — it is the layer _below_ tq (see "tq is the loop").
+**stale_after:** 2027-04-01. The source is pinned at `ad95c3c`; the note stays useful as long as tq's loop shape does, and its citations need re-opening if turnstone moves past `ad95c3c` in a way that changes HYPOTHESIS.md.
 
 ## Why turnstone is worth reading
 

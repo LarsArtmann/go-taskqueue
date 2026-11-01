@@ -1,0 +1,11 @@
+# Notes that PREDATE the research-note template (docs/references/research-note-template.md).
+# Skipped entirely by scripts/check-research-note-shape.sh: a shape retrofit of an
+# older analysis is archaeology, not maintenance. New notes NEVER belong here.
+
+# 2026-10-03 competitive analysis: a side-by-side positioning matrix, written two days
+# before the template existed; its evidence is the observed product surface, not file:line cites.
+2026-10-03_paperclip-competitive-analysis.md
+
+# 2026-10-16 crush client/server review: an architecture review with numbered sections and
+# open questions, again pre-template; its citations are conversational, not tabular.
+2026-10-16_03-52_crush-client-server-mode-review.md
