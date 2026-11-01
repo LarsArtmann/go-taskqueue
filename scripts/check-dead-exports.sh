@@ -103,7 +103,9 @@ kept=0
 sigfile="$(mktemp)"
 declfile="$(mktemp)"
 deadfile="$(mktemp)"
-trap 'rm -f "$sigfile" "$declfile" "$deadfile"' EXIT
+namesfile="$(mktemp)"
+hitsfile="$(mktemp)"
+trap 'rm -f "$sigfile" "$declfile" "$deadfile" "$namesfile" "$hitsfile"' EXIT
 
 funcsig_rx='^(func|type|var|const) ([A-Z][A-Za-z0-9_]*)[( ]'
 blocksig_rx='^\t([A-Z][A-Za-z0-9_]*)[ =]'
@@ -158,19 +160,47 @@ eval "$files_cmd" |
 		}
 	' >"$sigfile"
 
-while IFS=$'\t' read -r file name; do
-	[ -n "$name" ] || continue
-	pkg_dir="$(dirname "$file")"
-	# Substring search across all Go files, excluding the declaring
-	# package's own directory. Exclude _test.go for declarations above
-	# already, but usages IN tests of other packages count as importers.
-	hits="$(rg -l --no-ignore -g '*.go' -g "!${pkg_dir}/**" -F "$name" . || true)"
-	if [ -z "$hits" ]; then
-		printf '%s\t%s\n' "$file" "$name" >>"$deadfile"
-	else
-		alive=$((alive + 1))
-	fi
-done <"$declfile"
+# One-sweep importer map (2026-11-01 perf fix): the old per-symbol
+# whole-tree `rg` rescan was O(symbols × tree) and, once vendor/ grew
+# past a hundred MB of vendored Go (--no-ignore pulled it in), turned
+# this advisory gate from seconds into hours (battery-15 stall). ONE rg
+# sweep now emits every fixed-string occurrence as "path:match"; awk
+# folds them into unique name<TAB>path pairs and ONE join pass decides
+# alive/dead per declaration. vendor/, .git/, .crush/ and .tq-verify/
+# are excluded — vendored copies duplicate in-repo sources and scratch
+# trees are not importers of internal symbols — so the exclusion can
+# only surface genuinely dead symbols, never flag live ones. Substring
+# semantics unchanged (methodology note above).
+cut -f2 "$declfile" | sort -u >"$namesfile"
+: >"$hitsfile"
+if [ -s "$namesfile" ]; then
+	rg -o --no-ignore -g '*.go' -g '!vendor/**' -g '!.git/**' -g '!.crush/**' -g '!.tq-verify/**' \
+		-F -f "$namesfile" . 2>/dev/null |
+		awk -F: '
+			/^[^:]+\.go:[^:]+$/ {
+				path = $1
+				sub(/^\.\//, "", path)
+				if (!($2 SUBSEP path in seen)) { seen[$2 SUBSEP path]; print $2 "\t" path }
+			}
+		' >>"$hitsfile" || true
+fi
+
+# Alive = at least one occurrence OUTSIDE the declaring directory (usages
+# in tests of other packages count; declarations were test-excluded).
+decl_total="$(awk -F'\t' 'NF >= 2 && $2 != "" { n++ } END { print n + 0 }' "$declfile")"
+awk -F'\t' -v OFS='\t' '
+	NR == FNR { hits[$1] = hits[$1] $2 "\n"; next }
+	{
+		if ($2 == "") next
+		dir = $1
+		sub(/\/[^\/]*$/, "", dir)
+		n = split(hits[$2], occ, "\n")
+		for (i = 1; i <= n; i++)
+			if (occ[i] != "" && index(occ[i], dir "/") != 1) next
+		print $1, $2
+	}
+' "$hitsfile" "$declfile" >"$deadfile"
+alive=$((decl_total - $(grep -c . "$deadfile" || true)))
 
 # Second pass: annotate the structurally-alive class. A flagged name that
 # appears (word-delimited) in the signature of a DIFFERENT EXPORTED func of
@@ -187,7 +217,7 @@ while IFS=$'\t' read -r file name; do
 	done
 	if [ -z "$note" ]; then
 		while IFS=$'\t' read -r sfile sname ssig; do
-			[ "$(dirname "$sfile")" = "$(dirname "$file")" ] || continue
+			[ "${sfile%/*}" = "${file%/*}" ] || continue
 			[ "$sname" != "$name" ] || continue
 			case "$sname" in [A-Z]*) ;; *) continue ;; esac
 			grep -Eq "(^|[^A-Za-z0-9_])${name}([^A-Za-z0-9_]|$)" <<<"$ssig" || continue

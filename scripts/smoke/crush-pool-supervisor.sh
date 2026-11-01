@@ -348,7 +348,7 @@ else:
 PYEOF
 RUNNING_ID=""
 for _ in $(seq 1 150); do
-	RUNNING_ID="$(("$TMP/tq" --db "$TMP/pool.db" tasks --json 2>/dev/null || echo '[]') \
+	RUNNING_ID="$(("$TMP/tq" tasks --db "$TMP/pool.db" --json 2>/dev/null || echo '[]') \
 		| python3 "$TMP/taskq.py" running-id)"
 	[ -n "$RUNNING_ID" ] && break
 	size_guard
@@ -356,7 +356,8 @@ for _ in $(seq 1 150); do
 done
 [ -n "$RUNNING_ID" ] || {
 	tail -25 "$TMP/pool.log"
-	fail "no task reached running — harvest never minted the probe item"
+	"$TMP/tq" tasks --db "$TMP/pool.db" --json 2>/dev/null | head -40
+	fail "no task reached running — harvest never minted the probe item (or it died before this poll caught it)"
 }
 DEAD_PID="$(pgrep -f "crush server --host unix://$PSOCK" | head -1)"
 [ -n "$DEAD_PID" ] || fail "no server process to kill mid-run"
@@ -366,7 +367,7 @@ wait_pattern "$TMP/pool.log" "crush server died around the routed run" 45 \
 echo "PASS: severed mid-run turn classified (crush-server death, no burn)"
 STATE=""
 for _ in $(seq 1 100); do
-	STATE="$(("$TMP/tq" --db "$TMP/pool.db" tasks --json 2>/dev/null || echo '[]') \
+	STATE="$(("$TMP/tq" tasks --db "$TMP/pool.db" --json 2>/dev/null || echo '[]') \
 		| python3 "$TMP/taskq.py" "$RUNNING_ID")"
 	case "$STATE" in
 		"pending 0 "*"crush-server"*) break ;;
