@@ -1670,3 +1670,7 @@ eebb838345a41e85f6633d0ecd6e3f38b0b43d9c
 b2c611bba044f708331f8e2067e53ebf1cb3682a
 # 2026-11-01 poll-loudness exhaust fix (crush-pool-supervisor.sh)
 a140724a67d76c1795bd919e9bfc581192225979
+# 2026-11-01 pins-attribution fixes mid-write + final (a4cf2262)
+a4cf2262e19ea93ab2ee9d3c654b08112ccfe891
+# 2026-11-01 pins-attribution fixes mid-write + final (7927fef8)
+7927fef840624acefd0e7d27c25c690d2e8a963b
