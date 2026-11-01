@@ -1654,3 +1654,5 @@ e7838543692811d067d7cf141534a5de439429af
 26d1c640419ba29df1c84c7f230e25a8936fbcd0
 # 2026-11-01 row-462 postgres seeded-drift test mid-write
 e4420d2d0dc47f4dea85748cafdde7a5057577bd
+# 2026-11-01 row-843 warn fix + test landing (httpapi.go switch + httpapi_test.go stub)
+b56b65ea58a253828beda1005d2cb7c3fb5f1481
