@@ -1622,3 +1622,6 @@ feee6dda3a08c8a5802164c7c40683cffcefd543
 # (KnownEvidenceTerms/UnknownEvidenceTerms) required by cmd/tq/main.go of the
 # footer-less 14424324; content verified: cmd/tq dev-workspace build green at HEAD
 aa043e213cf10773fe94f2f98389299f1187495e
+# 2026-11-01 rebase replay: e42d7cd0 is a97b0dc2 rebased onto 9aea94ee (cmd/tq/go.work.sum
+# +1 line, content identical); twin grandfathering side effect
+e42d7cd0a3817717c254afb032e99c23a8f78d98
