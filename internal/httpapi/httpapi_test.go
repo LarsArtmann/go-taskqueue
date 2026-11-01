@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -1211,4 +1213,41 @@ func TestHealthzCarriesProjectionSection(t *testing.T) {
 			t.Error("engines empty, want the projection engine snapshot")
 		}
 	})
+}
+
+// wmErrorStore fails Watermark reads AFTER the first (transient class:
+// readmodel.Open's cursor load succeeds, the replay guard's later read
+// blows up — the exact window the loud-skip contract covers).
+type wmErrorStore struct {
+	queue.Store
+	calls int
+}
+
+func (w *wmErrorStore) Watermark(ctx context.Context, consumer string) (int64, bool, error) {
+	w.calls++
+	if w.calls > 1 {
+		return 0, false, errors.New("watermark read boom")
+	}
+	return w.Store.Watermark(ctx, consumer)
+}
+
+// TestUseReadModelWarnsWhenReplayGuardSkips pins the loud-skip contract
+// (row 843): a failing watermark read must WARN — the guard silently
+// skipping is exactly the host-resumes-past-missing-rows hazard it
+// exists to prevent — while UseReadModel still degrades to success.
+func TestUseReadModelWarnsWhenReplayGuardSkips(t *testing.T) {
+	srv, _ := newTestAPI(t)
+
+	var logs bytes.Buffer
+	srv.log = slog.New(slog.NewTextHandler(&logs, &slog.HandlerOptions{Level: slog.LevelWarn}))
+	srv.store = wmErrorStore{Store: srv.store}
+
+	d := config.SQLite(filepath.Join(t.TempDir(), "queue.db"))
+	if err := srv.UseReadModel(context.Background(), d); err != nil {
+		t.Fatalf("use read model: %v", err)
+	}
+
+	if !strings.Contains(logs.String(), "replay guard skipped") {
+		t.Fatalf("expected the replay-guard-skip warn, got: %s", logs.String())
+	}
 }

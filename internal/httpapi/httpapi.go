@@ -132,11 +132,18 @@ func (s *Server) UseReadModel(ctx context.Context, d config.Deployment) error {
 	// CatchUp re-folds the journal through the same fold, converges the
 	// home, and re-seals the checkpoint the host then resumes from (the
 	// folds are idempotent upserts).
-	if wm, exists, wmErr := s.store.Watermark(
-		ctx,
-		readmodel.CursorConsumer,
-	); wmErr == nil && exists && wm > 0 &&
-		m.JournalCursor() == 0 {
+	wm, exists, wmErr := s.store.Watermark(ctx, readmodel.CursorConsumer)
+	switch {
+	case wmErr != nil:
+		// Loud by contract (the guard silently skipping IS the hazard it
+		// exists to prevent): a watermark read failure must surface, not
+		// degrade into the host-resumes-past-missing-rows class.
+		s.log.Warn(
+			"httpapi: watermark read failed; replay guard skipped — a replayed projection home may resume past missing rows",
+			"consumer", readmodel.CursorConsumer,
+			"err", wmErr,
+		)
+	case exists && wm > 0 && m.JournalCursor() == 0:
 		if err := m.CatchUp(ctx); err != nil {
 			_ = m.Close()
 
