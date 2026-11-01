@@ -320,6 +320,16 @@ VENDOR_SYNC_SELF_TEST=1 ./scripts/check-gomod-vendor-sync.sh
 step "dep-bump drift (go mod vendor + per-module tidy vs committed tree)"
 ./scripts/check-gomod-vendor-sync.sh
 
+# vendorHash drift (T22): the flake pin vs the module graph, realized via
+# the FAST go-modules FOD (seconds, not a full build); drift prints the
+# got->flake.nix recipe. Self-test pins the drift branch + recipe + ok
+# summary (countable-gate convention); the real gate skips nix-less hosts.
+step "vendor-hash drift self-test (drift branch + recipe + ok summary pins)"
+./scripts/check-vendor-hash.sh --self-test
+
+step "vendor-hash drift (flake pin vs module graph; skips nix-less hosts)"
+./scripts/check-vendor-hash.sh
+
 step "facade parity (ADR-0016: facades mirror internal exports)"
 ./scripts/check-facade-parity.sh
 

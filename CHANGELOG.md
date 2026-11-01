@@ -104,6 +104,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   rate-limit text; the signature rides the agent-stream error, not the
   env channel) and the keeper/supervisor restart ladder live (kill -9
   → restart line + new pid; SIGTERM pool → clean exit, no orphan).
+- scripts/check-vendor-hash.sh: vendorHash drift detector — realizes
+  only the go-modules FOD (seconds), prints the got→flake.nix copy
+  recipe on drift, --self-test pins the drift branch per the countable
+  convention; drop-day watch + provenance runbook in
+  docs/planning/2026-11-01_03-30_vendorhash-drift-and-drop-day-watch.md.
 - scripts/smoke/crush-server-route.sh: the crush client/server route's
   wire legs end-to-end against an isolated scratch server + mock
   provider (zero spend) — isolation gate, health, routed verdict
