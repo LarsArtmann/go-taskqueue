@@ -257,5 +257,15 @@ smokes pin every one of them.
   1-byte output) — routed turns now always run `--verbose` and the
   closeout's rc-0 path classifies too (unit-pinned in
   TestAgentCrushServerSeam; CHANGELOG Fixed row).
+- **V2.15 + V2.18 GREEN (2026-11-01 19:45, run14)**: the pool smoke now
+  runs FIVE legs, all green. V2.18 (routed verdict bridge): the mock
+  regexes the rail path out of the baked prompt and runs the REAL
+  `tq verdict --file` server-side (tq rides the pool PATH) — the task
+  completes with the verdict in its facts. V2.15 (operator cancel):
+  `tq cancel --force` on a stalled routed turn stops the run at the
+  worker's heartbeat, the client exits, the server reaps the turn, the
+  task lands cancelled — the smoke pool runs `--lease 20s` (5s
+  heartbeats) because the 5m default lease makes cancel observation
+  slower than a smoke window (run13 lesson).
 - **Env-gap residue**: unchanged (crush#4210 open). Canary holds green-red
   per the route smoke; flip ritual = V3.6 note in the smoke header.

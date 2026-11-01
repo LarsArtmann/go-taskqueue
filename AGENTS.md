@@ -111,7 +111,7 @@ docs/DOMAIN_LANGUAGE.md.
   configured sync tier (NORMAL = checkpoint fsync, lost-tail-tolerant);
   migrations stay FULL. Claim probes use partial RUNNING-only indexes
   (companion.Migrate), never project history. Idle worker loops back
-  off (cap `IdlePollMax` 2s, reset on claim/wake).
+  off (cap `IdlePollMax` 2s).
 - **Task contexts survive pool shutdown** (bounded only by
   `--task-timeout`) — no shared drain deadline.
 - **Facts in the same tx as state**, or it didn't happen.
@@ -135,8 +135,10 @@ docs/DOMAIN_LANGUAGE.md.
   invisible; hook rejects), files via `git diff-tree`, usage via
   go-crush-data. No stdout self-report.
 - **Verdict channel**: paid turns record via `tq verdict '<json>'` into
-  `$TQ_RESULT_FILE` (file > stdout, last-wins); prompts also bake the rail
-  `tq verdict --file <path> '<json>'` (always-on, never drop, routing-safe).
+  `$TQ_RESULT_FILE` (file > stdout, last-wins); prompts bake the
+  `--file` rails (verdict + ask — routed bash tools see only SERVER
+  env, crush#4210; never drop). `-H` sans CRUSH_CLIENT_SERVER=1 is
+  silently LOCAL (R4).
 - **Batched harvest** (`--batch-items`, default 3): N adjacent
   same-section items → one task (dedup `batch:` + SORTED-key hash;
   gates see ONE task); direct `tq enqueue` forbidden — work prompts
@@ -190,8 +192,7 @@ docs/DOMAIN_LANGUAGE.md.
   the DLQ by the failed fact's Stage/VerifyStage/Class plus the
   gate-env/gate-dead/gate-slow aliases — comma-separated terms with
   `!`-negation; `tq show` renders a `failure` JSON section; `tq dlq`
-  rows + webui timeline lines carry an `evidence=` suffix; the webui
-  DLQ filter shares the semantics.
+  rows + webui timeline lines carry an `evidence=` suffix.
   Matcher: `executor.MatchesEvidenceStageSet` (ONE copy, no second).
 - **prune-stale**: cancels PENDING tasks whose item is `[x]` or gone;
   pools sweep once at start.
