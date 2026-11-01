@@ -9,8 +9,8 @@ companion legs, and closed the T22/T23/T24/T25/T27 batches.**
 
 ## a) Work commits (this session, footered; sweeps grandfathered)
 
-- `594adec3` twin reconciliation (rebase dropped local 631e7e08 vs origin
-  9aea94ee, identical patches) + `bdb8a148`/`594adec3` grandfather tails
+- `594adec3` twin reconciliation (rebase dropped local 631e7e08→9aea94ee,
+  identical patches) + `bdb8a148`/`594adec3` grandfather tails
 - `ef04b683` planning doc E7 — v0.99.0 HTTP envelope captured live
 - `e44de143` crush-pool-supervisor smoke + row-1450 tick (+COVERAGE)
 - `e48fae38` ci-local wiring: postgres-conform (the CI-red orphan) + both

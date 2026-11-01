@@ -57,8 +57,8 @@
    round-trip (server env → workspace tool), 429 fast-refuse signature
    (mock 429 mode → routed run error surface), keeper/supervisor restart
    ladder + pool clean exit, scratch size-guard, COVERAGE.md row, tick.
-3. **Local/origin divergence** — local 631e7e08 is a same-subject twin of
-   origin 9aea94ee (a concurrent agent grandfathered the same sweep);
+3. **Local/origin divergence** — local 631e7e08→9aea94ee is a same-subject
+   twin of the origin commit (a concurrent agent grandfathered the same sweep);
    needs a rebase reconcile (no force push; the twin should drop empty or
    conflict trivially on the baseline file).
 
@@ -140,8 +140,8 @@
    intended; it retroactively answers the prior report's push-authority
    question (the system pushes regardless), but it also means any local
    red tree can hit CI within minutes.
-2. **Concurrent-agent twin commits** (local 631e7e08 vs origin 9aea94ee,
-   same subject, different shas): reconcile locally by
+2. **Concurrent-agent twin commits** (local 631e7e08→9aea94ee, same subject,
+   different shas): reconcile locally by
    rebase-and-drop-empty, or do you want the heal tooling extended for
    this twin class?
 3. **Carried from 01-54 §g2**: the 3 accidental real provider calls

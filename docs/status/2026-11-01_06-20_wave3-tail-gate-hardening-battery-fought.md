@@ -10,8 +10,8 @@ red); CI green through the window; tree clean at fb8d0a67.**
 
 ## a) Work commits (04:33→STOP)
 
-- `ef3fd1f8`/`9eaf55d6` wave-3 closeout report + index row (report file
-  rode sweep b2c611bb, grandfathered)
+- ef3fd1f8→9eaf55d6 wave-3 closeout report + index row (report file
+  rode sweep b2c611bb→f0c4560e, grandfathered)
 - `1567bb18` windows-red cures (unix tag, CloseReadModel, treefmt) —
   CI run 41268814541 turned GREEN on this tree
 - `a140724a`+`8114de1f` poll-loudness exhaust paths on
