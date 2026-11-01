@@ -153,6 +153,35 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   skipped, unknown detail keys ignored, corruption still rejected) and
   `internal/executor/payload_test.go` (unknown payload keys ignored,
   plus a counterfactual proving the pin bites under a strict decoder).
+- verify receipt + attester (2026-11-01): every gate run now records WHICH
+  gate ran (`executor.VerifyReceipt`: command, rc, HEAD at gate time, and the
+  `^ok:`/`^FAIL` tallies the closeouts used to hand-grep) on BOTH the success
+  and failure details, and a deterministic, model-free `AttestVerify` grades it
+  against the pinned declarations and the claimed HEAD — refusing the receipt
+  (`head-mismatch` / `command-mismatch` / `count-mismatch`) instead of
+  annotating it. Surfaces: `tq show` renders a `verify` section, `tq dlq` rows
+  carry `verify=<verdict>`. Repo-internal for now: no operator flag, no schema
+  requirement, absent = unverified. Extends the existing evidence shapes — no
+  parallel format, no second writer.
+- doc-honesty gates (2026-11-01): `scripts/check-cite-drift.sh` re-reads every
+  living-doc `path:NNN` claim (missing file, line past EOF, or an anchor unique
+  in the file that is nowhere near the cited line) with a baselined set of six
+  pre-existing drifts; `scripts/check-research-note-shape.sh` requires a
+  citations TABLE and a non-empty Verification trail in every template-era
+  research note (two pre-template notes grandfathered). Both carry
+  `--self-test` and are wired into `ci-local.sh`.
+- five trust words in `docs/DOMAIN_LANGUAGE.md` (provenance, trust, freshness,
+  lifecycle, attestation) with the tq mechanism beside each and the two rules
+  they exist to make obvious; the research-note template gains the acquisition-
+  pass + cite-then-verify obligations and an ABSOLUTE `stale_after` field.
+- dprint now excludes the generated, minified `internal/webui/static/app.css`
+  and `*_templ.go`: a formatter run had prettified the stylesheet to 8,154 lines
+  and shipped CSS that no longer matched a rebuild.
+- `internal/{queue,journal/cqrs,readmodel}` forward-compat pins: unknown keys
+  ignored, malformed detail skipped (or refused at marshal, which is byte
+  validity rather than a key whitelist), each of the eight ledgerless fact
+  families skipped BY NAME, and a payload type-mismatch case with a canary for a
+  future strict-by-default Go.
 - dead-exports gate (2026-11-01): importer scan rewritten from
   per-symbol whole-tree sweeps (O(symbols × tree), hours under the
   grown vendor/) to ONE identifier-token sweep + awk containment join
