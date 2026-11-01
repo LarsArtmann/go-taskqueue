@@ -250,9 +250,13 @@ func (e *AgentExecutor) enrichCloseoutFacts(ctx context.Context, repoDir string,
 }
 
 // resolveCrushSession picks the run's session: the stdout-extracted id
-// when it matches, else the newest summary whose created_at falls in the
-// run's start window (± the unix-second granularity and the crush-side
-// session-create lag).
+// when it matches (trust stdout when present — a window-picked different
+// session would split-brain SessionID against the usage block), else —
+// ONLY when stdout gave nothing — the newest summary whose created_at
+// falls in the run's start window (± the unix-second granularity and the
+// crush-side session-create lag). An extracted id that matches nothing
+// resolves nil: enriching from a guess while SessionID says otherwise
+// would lie twice.
 func resolveCrushSession(summaries []crushSessionSummary, extractedID string, runStart time.Time) *crushSessionSummary {
 	if extractedID != "" {
 		for i := range summaries {
@@ -260,6 +264,7 @@ func resolveCrushSession(summaries []crushSessionSummary, extractedID string, ru
 				return &summaries[i]
 			}
 		}
+		return nil
 	}
 	windowStart := runStart.Add(-15 * time.Second).Unix()
 	windowEnd := time.Now().Add(5 * time.Second).Unix()

@@ -128,7 +128,9 @@ func TestResolveCrushSession(t *testing.T) {
 	if got := resolveCrushSession(summaries, "", now); got == nil || got.ID != "fresh" {
 		t.Fatalf("window match must pick the newest in-window session: %+v", got)
 	}
-	if got := resolveCrushSession(summaries, "", now.Add(-2*time.Hour)); got != nil {
+	if got := resolveCrushSession([]crushSessionSummary{
+		{ID: "ancient", CreatedAt: now.Add(-time.Minute).Unix()},
+	}, "", now); got != nil {
 		t.Fatalf("no in-window session must resolve nil: %+v", got)
 	}
 	if got := resolveCrushSession(summaries, "missing", now); got != nil {
