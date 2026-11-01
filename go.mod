@@ -63,8 +63,8 @@ require (
 	github.com/larsartmann/go-taskqueue/internal/queue/postgresv4 v0.4.0 // indirect
 	github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4 v0.4.0 // indirect
 	github.com/larsartmann/go-taskqueue/internal/retryx v0.3.4 // indirect
-	github.com/larsartmann/templ-components/datastar v1.24.0 // indirect
-	github.com/larsartmann/templ-components/htmx v1.24.0 // indirect
+	github.com/larsartmann/templ-components/datastar v1.25.0 // indirect
+	github.com/larsartmann/templ-components/htmx v1.25.0 // indirect
 	github.com/lithammer/shortuuid/v3 v3.0.7 // indirect
 	github.com/mattn/go-colorable v0.1.16 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
@@ -102,7 +102,7 @@ require (
 )
 
 require (
-	github.com/a-h/templ v0.3.1070
+	github.com/a-h/templ v0.3.1100
 	github.com/dustin/go-humanize v1.1.0
 	github.com/larsartmann/go-cqrs-lite/event/v4 v4.15.2
 	github.com/larsartmann/go-datastar/static v0.6.1
@@ -122,9 +122,9 @@ require (
 	github.com/larsartmann/go-taskqueue/internal/readmodel v0.4.1
 	github.com/larsartmann/go-taskqueue/internal/task v0.3.4
 	github.com/larsartmann/go-taskqueue/internal/worker v0.4.0
-	github.com/larsartmann/templ-components v1.24.0
-	github.com/larsartmann/templ-components/icons v1.24.0
-	github.com/larsartmann/templ-components/utils v1.24.0
+	github.com/larsartmann/templ-components v1.25.0
+	github.com/larsartmann/templ-components/icons v1.25.0
+	github.com/larsartmann/templ-components/utils v1.25.0
 	golang.org/x/sync v0.24.0
 )
 
