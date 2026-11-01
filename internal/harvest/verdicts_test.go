@@ -265,7 +265,10 @@ func TestRedispatchCheckNonTerminalVerdictMarkerDoesNotBlock(t *testing.T) {
 // constant and the CV-side self-test leg must move in the same wave.
 func TestDefaultClaimLiveWindowMatchesTQClaim(t *testing.T) {
 	if defaultClaimLiveWindow != 6*time.Hour {
-		t.Fatalf("defaultClaimLiveWindow = %v, want 6h — mirror of tq-claim.sh TQ_STALE_AFTER default 21600s; move BOTH in one wave", defaultClaimLiveWindow)
+		t.Fatalf(
+			"defaultClaimLiveWindow = %v, want 6h — mirror of tq-claim.sh TQ_STALE_AFTER default 21600s; move BOTH in one wave",
+			defaultClaimLiveWindow,
+		)
 	}
 
 	if defaultClaimLiveWindow != 21600*time.Second {

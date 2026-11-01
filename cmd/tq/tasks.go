@@ -125,7 +125,9 @@ func cmdTasks(args []string) error {
 	tasks := []task.Task{}
 
 	needFacts := *parkedClass != "" || *parked
+
 	var facts []journal.Fact
+
 	if needFacts {
 		var err error
 		if facts, err = store.LastFacts(ctx, factTailLimit); err != nil {
@@ -191,9 +193,11 @@ func cmdTasks(args []string) error {
 		}
 	}
 
-	var providers map[string]string
-	var evidenceRows map[string]string
-	var requeueClasses map[string]string
+	var (
+		providers      map[string]string
+		evidenceRows   map[string]string
+		requeueClasses map[string]string
+	)
 
 	if *parked {
 		providers = latestRequeueProvider(facts)
@@ -213,7 +217,11 @@ func cmdTasks(args []string) error {
 		if providers != nil {
 			rows := make([]parkedTaskRow, len(tasks))
 			for i, t := range tasks {
-				rows[i] = parkedTaskRow{Task: t, Provider: providers[t.ID.String()], RequeueClass: requeueClasses[t.ID.String()]}
+				rows[i] = parkedTaskRow{
+					Task:         t,
+					Provider:     providers[t.ID.String()],
+					RequeueClass: requeueClasses[t.ID.String()],
+				}
 			}
 
 			if *jsonEnvelope {
@@ -258,6 +266,7 @@ func cmdTasks(args []string) error {
 // additive.
 type parkedTaskRow struct {
 	task.Task
+
 	Provider     string `json:"provider,omitempty"`
 	RequeueClass string `json:"requeue_class,omitempty"`
 }

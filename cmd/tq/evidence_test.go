@@ -97,7 +97,14 @@ func TestEvidenceStageSetMatches(t *testing.T) {
 			}
 
 			if got := executor.MatchesEvidenceStageSet(evidence, lastError, tt.spec); got != tt.match {
-				t.Fatalf("MatchesEvidenceStageSet(%+v, %q, %q) = %v, want %v", evidence, lastError, tt.spec, got, tt.match)
+				t.Fatalf(
+					"MatchesEvidenceStageSet(%+v, %q, %q) = %v, want %v",
+					evidence,
+					lastError,
+					tt.spec,
+					got,
+					tt.match,
+				)
 			}
 		})
 	}
@@ -153,7 +160,16 @@ func TestRequeuesCarryNoFailureEvidence(t *testing.T) {
 				t.Fatalf("claim: %v", err)
 			}
 
-			if err := store.Requeue(ctx, enq.ID, claim, "not the task's fault", 15*time.Minute, false, tc.class, tc.provider); err != nil {
+			if err := store.Requeue(
+				ctx,
+				enq.ID,
+				claim,
+				"not the task's fault",
+				15*time.Minute,
+				false,
+				tc.class,
+				tc.provider,
+			); err != nil {
 				t.Fatalf("requeue: %v", err)
 			}
 
@@ -260,7 +276,10 @@ func TestCmdDLQEvidenceStageFilter(t *testing.T) {
 		VerifyStage: executor.VerifyStageE2ETimeout,
 		Tail:        "panic: test timed out after 10m0s",
 	})
-	gateDeadID := seedDead(`agent verify gate dead ("gofmt"): failure is pre-existing`, executor.FailureEvidence{Stage: "verify"})
+	gateDeadID := seedDead(
+		`agent verify gate dead ("gofmt"): failure is pre-existing`,
+		executor.FailureEvidence{Stage: "verify"},
+	)
 	plainID := seedDead("boom", nil)
 
 	if err := store.Close(); err != nil {
@@ -275,7 +294,8 @@ func TestCmdDLQEvidenceStageFilter(t *testing.T) {
 		}
 	})
 
-	if !strings.Contains(out, timeoutID.String()) || strings.Contains(out, gateDeadID.String()) || strings.Contains(out, plainID.String()) {
+	if !strings.Contains(out, timeoutID.String()) || strings.Contains(out, gateDeadID.String()) ||
+		strings.Contains(out, plainID.String()) {
 		t.Fatalf("--evidence-stage e2e-timeout picked wrong tasks:\n%s", out)
 	}
 
@@ -285,7 +305,8 @@ func TestCmdDLQEvidenceStageFilter(t *testing.T) {
 		}
 	})
 
-	if !strings.Contains(out, gateDeadID.String()) || strings.Contains(out, timeoutID.String()) || strings.Contains(out, plainID.String()) {
+	if !strings.Contains(out, gateDeadID.String()) || strings.Contains(out, timeoutID.String()) ||
+		strings.Contains(out, plainID.String()) {
 		t.Fatalf("--evidence-stage gate-dead picked wrong tasks:\n%s", out)
 	}
 
@@ -297,7 +318,8 @@ func TestCmdDLQEvidenceStageFilter(t *testing.T) {
 		}
 	})
 
-	if !strings.Contains(out, timeoutID.String()) || strings.Contains(out, gateDeadID.String()) || strings.Contains(out, plainID.String()) {
+	if !strings.Contains(out, timeoutID.String()) || strings.Contains(out, gateDeadID.String()) ||
+		strings.Contains(out, plainID.String()) {
 		t.Fatalf("--evidence-stage verify,!gate-dead picked wrong tasks:\n%s", out)
 	}
 }

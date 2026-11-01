@@ -60,6 +60,7 @@ func TestDoctorPaidNoopsHealthyWhenOutputAttributed(t *testing.T) {
 	if len(results) != 1 {
 		t.Fatalf("want 1 paid-noops result, got %d: %+v", len(results), results)
 	}
+
 	if results[0].Status != checkOK {
 		t.Fatalf("want ok, got %s (%s)", results[0].Status, results[0].Detail)
 	}
@@ -89,9 +90,11 @@ func TestDoctorPaidNoopsFlagsZeroOutputCompletions(t *testing.T) {
 	if r.Status != checkWarn {
 		t.Fatalf("want warn, got %s (%s)", r.Status, r.Detail)
 	}
+
 	if len(r.Items) != 3 {
 		t.Fatalf("want 3 flagged items, got %d: %+v", len(r.Items), r.Items)
 	}
+
 	for _, item := range r.Items {
 		if !strings.Contains(item, "no completion detail") &&
 			!strings.Contains(item, "no commits, no files, no preflight-done") &&
@@ -122,11 +125,20 @@ func TestRunGateBoardReportsRedAndGreen(t *testing.T) {
 	dir := t.TempDir()
 
 	pass := filepath.Join(dir, "check-pass.sh")
-	if err := os.WriteFile(pass, []byte("#!/usr/bin/env bash\necho 'pass summary: 3 checks ok, 0 failed'\n"), 0o755); err != nil {
+	if err := os.WriteFile(
+		pass,
+		[]byte("#!/usr/bin/env bash\necho 'pass summary: 3 checks ok, 0 failed'\n"),
+		0o755,
+	); err != nil {
 		t.Fatalf("write pass: %v", err)
 	}
+
 	fail := filepath.Join(dir, "check-fail.sh")
-	if err := os.WriteFile(fail, []byte("#!/usr/bin/env bash\necho 'FAIL: something broke' >&2\necho 'fail summary: 2 ok, 1 failed'\nexit 1\n"), 0o755); err != nil {
+	if err := os.WriteFile(
+		fail,
+		[]byte("#!/usr/bin/env bash\necho 'FAIL: something broke' >&2\necho 'fail summary: 2 ok, 1 failed'\nexit 1\n"),
+		0o755,
+	); err != nil {
 		t.Fatalf("write fail: %v", err)
 	}
 
@@ -134,15 +146,19 @@ func TestRunGateBoardReportsRedAndGreen(t *testing.T) {
 	if r.Name != "gate-board" {
 		t.Fatalf("want gate-board name, got %q", r.Name)
 	}
+
 	if r.Status != checkWarn {
 		t.Fatalf("want warn (one red), got %s (%s)", r.Status, r.Detail)
 	}
+
 	if len(r.Items) != 2 {
 		t.Fatalf("want 2 rows, got %+v", r.Items)
 	}
+
 	if !strings.Contains(r.Items[0], "GREEN") || !strings.Contains(r.Items[0], "pass summary") {
 		t.Fatalf("passing gate row wrong: %q", r.Items[0])
 	}
+
 	if !strings.Contains(r.Items[1], "RED") || !strings.Contains(r.Items[1], "fail summary") {
 		t.Fatalf("failing gate row wrong: %q", r.Items[1])
 	}

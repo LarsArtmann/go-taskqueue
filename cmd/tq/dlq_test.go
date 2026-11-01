@@ -37,7 +37,13 @@ func TestParseAgentPoolOptionsDLQFixFlag(t *testing.T) {
 
 // seedDeadTask enqueues, claims and fails one task so it lands Dead with
 // the given failure detail (nil = no evidence JSON on the failed fact).
-func seedDeadTask(t *testing.T, store *sqlite.Store, project string, failReason string, evidence executor.FailureEvidence) task.Task {
+func seedDeadTask(
+	t *testing.T,
+	store *sqlite.Store,
+	project string,
+	failReason string,
+	evidence executor.FailureEvidence,
+) task.Task {
 	t.Helper()
 
 	ctx := context.Background()
@@ -307,7 +313,10 @@ func TestCmdDLQCrossLinksPoisonedBackoff(t *testing.T) {
 
 		defer store.Close()
 
-		enq, err := store.Enqueue(ctx, task.New{Project: project, Type: "sh", Payload: []byte(`"true"`), MaxAttempts: 1})
+		enq, err := store.Enqueue(
+			ctx,
+			task.New{Project: project, Type: "sh", Payload: []byte(`"true"`), MaxAttempts: 1},
+		)
 		if err != nil {
 			t.Fatalf("enqueue: %v", err)
 		}
@@ -353,7 +362,10 @@ func TestCmdDLQCrossLinksPoisonedBackoff(t *testing.T) {
 			t.Fatalf("open seed store: %v", err)
 		}
 
-		done, err := store.Enqueue(ctx, task.New{Project: "mixed", Type: "sh", Payload: []byte(`"true"`), MaxAttempts: 1})
+		done, err := store.Enqueue(
+			ctx,
+			task.New{Project: "mixed", Type: "sh", Payload: []byte(`"true"`), MaxAttempts: 1},
+		)
 		if err != nil {
 			t.Fatalf("enqueue completed: %v", err)
 		}

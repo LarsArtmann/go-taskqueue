@@ -273,11 +273,13 @@ func (s *Server) handleTaskDetail(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleAgentLive(w http.ResponseWriter, r *http.Request) {
 	if s.cfg.CrushServer == "" {
 		http.Error(w, errAgentFeedDisabled.Error(), http.StatusServiceUnavailable)
+
 		return
 	}
 
 	if _, ok := w.(http.Flusher); !ok {
 		http.Error(w, "streaming not supported", http.StatusInternalServerError)
+
 		return
 	}
 

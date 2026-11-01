@@ -699,7 +699,10 @@ func TestFailureSummarySplitsEnvStreakBurns(t *testing.T) {
 	t.Parallel()
 
 	facts := []journal.Fact{
-		{Type: journal.Failed, Error: "environmental requeue streak burned the attempt [env-streak]: streak 3: preflight refusal"},
+		{
+			Type:  journal.Failed,
+			Error: "environmental requeue streak burned the attempt [env-streak]: streak 3: preflight refusal",
+		},
 		{Type: journal.Failed, Error: "exit status 3"},
 		{Type: journal.Completed},
 	}

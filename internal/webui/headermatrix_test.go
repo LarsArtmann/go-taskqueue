@@ -325,11 +325,13 @@ func TestServeHeaderMatrix429Lockout(t *testing.T) {
 	first.Body.Close()
 
 	var csrf string
+
 	for _, c := range first.Cookies() {
 		if c.Name == tqCSRFCookie {
 			csrf = c.Value
 		}
 	}
+
 	if csrf == "" {
 		t.Fatal("no CSRF cookie issued on page GET")
 	}
@@ -341,6 +343,7 @@ func TestServeHeaderMatrix429Lockout(t *testing.T) {
 		if err != nil {
 			t.Fatalf("new request: %v", err)
 		}
+
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		req.AddCookie(&http.Cookie{Name: tqCSRFCookie, Value: csrf})
 
@@ -368,7 +371,9 @@ func TestServeHeaderMatrix429Lockout(t *testing.T) {
 		t.Fatalf("status = %d, want 429 after CSRF lockout", resp.StatusCode)
 	}
 
-	serve429Row.surface().withContentType("text/plain; charset=utf-8").check(t, resp.Header, "POST /task/x/cancel (429)")
+	serve429Row.surface().
+		withContentType("text/plain; charset=utf-8").
+		check(t, resp.Header, "POST /task/x/cancel (429)")
 }
 
 func TestServeHeaderMatrixHealthPage(t *testing.T) {
@@ -392,11 +397,13 @@ func TestServeHeaderMatrixHealthProbes(t *testing.T) {
 		if path == HealthDashboardPath || path == HealthSDKPath {
 			continue // pinned by their own TestServeHeaderMatrix* functions
 		}
+
 		if path == HealthSSEPath {
 			// The SSE stream 503s without a live hub; its headers are
 			// pinned by the SSE subtest, not the plain-GET matrix.
 			continue
 		}
+
 		resp := getContextGET(t, server.URL+path)
 		resp.Body.Close()
 
@@ -427,7 +434,9 @@ func TestServeHeaderMatrixSDKBundle(t *testing.T) {
 	withCache := mergeRow(serveHealthRow, matrixHeaders{
 		"cache-control": eq("public, max-age=86400"),
 	})
-	withCache.surface().withContentType("text/javascript; charset=utf-8").check(t, resp.Header, "GET /health/datastar.js")
+	withCache.surface().
+		withContentType("text/javascript; charset=utf-8").
+		check(t, resp.Header, "GET /health/datastar.js")
 }
 
 // TestServeHeaderMatrixRouteCoverage is the meta-guard over the route
@@ -448,9 +457,11 @@ func TestServeHeaderMatrixRouteCoverage(t *testing.T) {
 	for _, binding := range s.routeBindings() {
 		boundPaths = append(boundPaths, binding.pattern)
 	}
+
 	for _, binding := range s.healthBindings() {
 		boundPaths = append(boundPaths, binding.pattern)
 	}
+
 	slices.Sort(boundPaths)
 
 	for _, pattern := range boundPaths {
@@ -459,7 +470,10 @@ func TestServeHeaderMatrixRouteCoverage(t *testing.T) {
 
 			want, ok := expectations[pattern]
 			if !ok {
-				t.Fatalf("route %q has no TestServeHeaderMatrixRouteCoverage expectation — pin its matrix row in serveRouteExpectations before shipping the binding", pattern)
+				t.Fatalf(
+					"route %q has no TestServeHeaderMatrixRouteCoverage expectation — pin its matrix row in serveRouteExpectations before shipping the binding",
+					pattern,
+				)
 			}
 
 			resp := getContextGET(t, server.URL+serveRouteURL(pattern))
@@ -499,15 +513,31 @@ func serveRouteExpectations() map[string]serveRouteExpectation {
 		// SSE endpoints stream (Cache-Control no-cache from the SSE
 		// writer; the per-task stream 503s without a live hub and
 		// omits it, so its absence is conditional there).
-		"/api/events":       {with(serveDashboardRow, matrixHeaders{"cache-control": eq("no-cache")}).surface().withContentType("text/event-stream"), 0},
-		"/task/{id}/events": {serveDashboardRow.surface("cache-control").withContentType("text/html; charset=utf-8"), 0},
+		"/api/events": {
+			with(
+				serveDashboardRow,
+				matrixHeaders{"cache-control": eq("no-cache")},
+			).surface().
+				withContentType("text/event-stream"),
+			0,
+		},
+		"/task/{id}/events": {
+			serveDashboardRow.surface("cache-control").withContentType("text/html; charset=utf-8"),
+			0,
+		},
 		// The L2 agent pane 503s without a configured crush server (the
 		// feed is opt-in): plain http.Error response, no SSE headers.
-		"/agents/live": {serveDashboardRow.surface("cache-control").withContentType("text/plain; charset=utf-8"), http.StatusServiceUnavailable},
+		"/agents/live": {
+			serveDashboardRow.surface("cache-control").withContentType("text/plain; charset=utf-8"),
+			http.StatusServiceUnavailable,
+		},
 		// Health surface routes carry the health override set.
 		HealthDashboardPath: {serveHealthRow.surface().withContentType("text/html; charset=utf-8"), http.StatusOK},
 		HealthSSEPath:       {probes.withContentType("text/plain; charset=utf-8"), 0},
-		HealthSDKPath:       {serveFaviconRow.surface().withContentType("text/javascript; charset=utf-8"), http.StatusOK},
+		HealthSDKPath: {
+			serveFaviconRow.surface().withContentType("text/javascript; charset=utf-8"),
+			http.StatusOK,
+		},
 		HealthFaviconPath:   {serveFaviconRow.surface().withContentType("image/svg+xml"), http.StatusOK},
 		HealthLivenessPath:  {probes, http.StatusOK},
 		HealthReadinessPath: {probes, http.StatusOK},
@@ -554,11 +584,13 @@ func TestAPIHeaderMatrix(t *testing.T) {
 	apiRows := with(authed, unauthed, locked)
 
 	apiHeaders := []string{}
+
 	for name := range serveColumn {
 		if _, owned := apiRows[name]; !owned {
 			apiHeaders = append(apiHeaders, name)
 		}
 	}
+
 	slices.Sort(apiHeaders)
 
 	t.Run("authenticated response", func(t *testing.T) {
@@ -571,6 +603,7 @@ func TestAPIHeaderMatrix(t *testing.T) {
 		if rec.Code != http.StatusOK {
 			t.Fatalf("status = %d, want 200", rec.Code)
 		}
+
 		authed.surface().withContentType("application/json").check(t, rec.Header(), "GET /api/v1/stats")
 	})
 
@@ -583,6 +616,7 @@ func TestAPIHeaderMatrix(t *testing.T) {
 		if rec.Code != http.StatusUnauthorized {
 			t.Fatalf("status = %d, want 401", rec.Code)
 		}
+
 		unauthed.surface().withContentType("application/json").check(t, rec.Header(), "GET /api/v1/healthz (401)")
 
 		for _, name := range apiHeaders {
@@ -614,6 +648,7 @@ func TestAPIHeaderMatrix(t *testing.T) {
 		if rec.Code != http.StatusTooManyRequests {
 			t.Fatalf("status = %d, want 429 after lockout", rec.Code)
 		}
+
 		locked.surface().withContentType("application/json").check(t, rec.Header(), "GET /api/v1/healthz (429)")
 	})
 }
@@ -623,6 +658,7 @@ func TestAPIHeaderMatrix(t *testing.T) {
 // broken headers.
 type failingTB struct {
 	testing.TB
+
 	failures []string
 }
 
@@ -646,20 +682,44 @@ func TestMatrixCheckNegativePath(t *testing.T) {
 		header http.Header
 	}{
 		{
-			name:   "clean fixture passes",
-			header: http.Header{"Content-Security-Policy": []string{`default-src 'none'; frame-ancestors 'none'; form-action 'self'`}, "X-Content-Type-Options": []string{"nosniff"}, "X-Frame-Options": []string{"DENY"}, "Referrer-Policy": []string{"no-referrer"}, "Permissions-Policy": []string{"camera=(), microphone=(), geolocation=()"}},
+			name: "clean fixture passes",
+			header: http.Header{
+				"Content-Security-Policy": []string{`default-src 'none'; frame-ancestors 'none'; form-action 'self'`},
+				"X-Content-Type-Options":  []string{"nosniff"},
+				"X-Frame-Options":         []string{"DENY"},
+				"Referrer-Policy":         []string{"no-referrer"},
+				"Permissions-Policy":      []string{"camera=(), microphone=(), geolocation=()"},
+			},
 		},
 		{
-			name:   "broken CSP value fails",
-			header: http.Header{"Content-Security-Policy": []string{`default-src 'self'`}, "X-Content-Type-Options": []string{"nosniff"}, "X-Frame-Options": []string{"DENY"}, "Referrer-Policy": []string{"no-referrer"}, "Permissions-Policy": []string{"camera=(), microphone=(), geolocation=()"}},
+			name: "broken CSP value fails",
+			header: http.Header{
+				"Content-Security-Policy": []string{`default-src 'self'`},
+				"X-Content-Type-Options":  []string{"nosniff"},
+				"X-Frame-Options":         []string{"DENY"},
+				"Referrer-Policy":         []string{"no-referrer"},
+				"Permissions-Policy":      []string{"camera=(), microphone=(), geolocation=()"},
+			},
 		},
 		{
-			name:   "missing strict member fails",
-			header: http.Header{"Content-Security-Policy": []string{`default-src 'none'; frame-ancestors 'none'; form-action 'self'`}, "X-Content-Type-Options": []string{"nosniff"}, "Referrer-Policy": []string{"no-referrer"}, "Permissions-Policy": []string{"camera=(), microphone=(), geolocation=()"}},
+			name: "missing strict member fails",
+			header: http.Header{
+				"Content-Security-Policy": []string{`default-src 'none'; frame-ancestors 'none'; form-action 'self'`},
+				"X-Content-Type-Options":  []string{"nosniff"},
+				"Referrer-Policy":         []string{"no-referrer"},
+				"Permissions-Policy":      []string{"camera=(), microphone=(), geolocation=()"},
+			},
 		},
 		{
-			name:   "unlisted header fails",
-			header: http.Header{"Content-Security-Policy": []string{`default-src 'none'; frame-ancestors 'none'; form-action 'self'`}, "X-Content-Type-Options": []string{"nosniff"}, "X-Frame-Options": []string{"DENY"}, "Referrer-Policy": []string{"no-referrer"}, "Permissions-Policy": []string{"camera=(), microphone=(), geolocation=()"}, "X-Powered-By": []string{"broken"}},
+			name: "unlisted header fails",
+			header: http.Header{
+				"Content-Security-Policy": []string{`default-src 'none'; frame-ancestors 'none'; form-action 'self'`},
+				"X-Content-Type-Options":  []string{"nosniff"},
+				"X-Frame-Options":         []string{"DENY"},
+				"Referrer-Policy":         []string{"no-referrer"},
+				"Permissions-Policy":      []string{"camera=(), microphone=(), geolocation=()"},
+				"X-Powered-By":            []string{"broken"},
+			},
 		},
 	}
 
@@ -745,6 +805,7 @@ func TestSecurityDocMatrixMatchesGoMatrix(t *testing.T) {
 	}
 
 	goNames := map[string]bool{}
+
 	for _, row := range matrixRows {
 		for name := range row {
 			goNames[name] = true
@@ -753,7 +814,10 @@ func TestSecurityDocMatrixMatchesGoMatrix(t *testing.T) {
 
 	for name := range docNames {
 		if !goNames[name] {
-			t.Errorf("SECURITY.md matrix header %q has no Go matrix row — add it to matrixRows in headermatrix_test.go", name)
+			t.Errorf(
+				"SECURITY.md matrix header %q has no Go matrix row — add it to matrixRows in headermatrix_test.go",
+				name,
+			)
 		}
 	}
 

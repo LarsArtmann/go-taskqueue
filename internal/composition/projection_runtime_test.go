@@ -147,7 +147,9 @@ func TestProjectionRuntimeCloseIdempotent(t *testing.T) {
 	}
 
 	if rt.Host == nil {
-		t.Skip("fixture lost the fold-lock election — idempotency below still holds, but the folder shape is pinned by TestNewProjectionRuntime")
+		t.Skip(
+			"fixture lost the fold-lock election — idempotency below still holds, but the folder shape is pinned by TestNewProjectionRuntime",
+		)
 	}
 
 	if err := rt.Close(); err != nil {

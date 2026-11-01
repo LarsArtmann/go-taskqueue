@@ -166,7 +166,10 @@ func TestDeadlinesLatestStandingDeadWins(t *testing.T) {
 		t.Fatalf("deadline = %v, want the LATER dead letter's %v", got, base.Add(5*time.Minute).Add(window))
 	}
 
-	laterDismissed := append(facts, journal.Fact{TaskID: "t-late", Type: journal.Cancelled, Time: base.Add(6 * time.Minute)})
+	laterDismissed := append(
+		facts,
+		journal.Fact{TaskID: "t-late", Type: journal.Cancelled, Time: base.Add(6 * time.Minute)},
+	)
 
 	deadlines = Deadlines(laterDismissed, projects, now, window)
 

@@ -141,6 +141,7 @@ func seedDriftPostgres(t *testing.T, base, schema string) {
 		`UPDATE tasks SET status = 'completed', attempts = 99, priority = 42, dedup_key = 'seeded'`,
 	); err != nil {
 		_ = db.Close()
+
 		t.Fatalf("seed drift: %v", err)
 	}
 

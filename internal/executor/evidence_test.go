@@ -195,7 +195,14 @@ func TestMatchesEvidenceStageTable(t *testing.T) {
 			t.Parallel()
 
 			if got := MatchesEvidenceStage(tt.evidence, tt.lastError, tt.want); got != tt.match {
-				t.Fatalf("MatchesEvidenceStage(%+v, %q, %q) = %v, want %v", tt.evidence, tt.lastError, tt.want, got, tt.match)
+				t.Fatalf(
+					"MatchesEvidenceStage(%+v, %q, %q) = %v, want %v",
+					tt.evidence,
+					tt.lastError,
+					tt.want,
+					got,
+					tt.match,
+				)
 			}
 		})
 	}

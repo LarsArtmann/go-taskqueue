@@ -64,7 +64,10 @@ func TestFailureEvidenceSummaryComposes(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		if got, want := c.evidence.SummaryWithError(c.lastError), c.evidence.Summary(); c.evidence.Class != "" && got != want {
+		if got, want := c.evidence.SummaryWithError(
+			c.lastError,
+		), c.evidence.Summary(); c.evidence.Class != "" &&
+			got != want {
 			t.Fatalf("structured class must render exactly Summary: got %q want %q", got, want)
 		}
 	}

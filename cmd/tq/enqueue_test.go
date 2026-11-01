@@ -23,8 +23,11 @@ import (
 // flake, root-caused 2026-10-30: decode died on a trailing bare ID).
 func enqueueQuietly(t *testing.T, args []string) error {
 	t.Helper()
+
 	var err error
+
 	captureStdout(t, func() { err = cmdEnqueue(args) })
+
 	return err
 }
 
@@ -109,6 +112,7 @@ func TestCmdEnqueueWaitStreamsFacts(t *testing.T) {
 
 		go func() {
 			var enqErr error
+
 			captureStdoutFn(func() {
 				enqErr = cmdEnqueue([]string{
 					"--type", "sh",
@@ -118,6 +122,7 @@ func TestCmdEnqueueWaitStreamsFacts(t *testing.T) {
 					"--timeout", "15s",
 				})
 			})
+
 			done <- enqErr
 		}()
 

@@ -99,7 +99,6 @@ func TestReportBodiesCarryNoSecretShapedStrings(t *testing.T) {
 	}
 
 	for _, surface := range surfaces {
-		surface := surface
 		t.Run(surface.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -189,7 +188,8 @@ func TestReportSecretGateDetectsShapesAndSparesBenign(t *testing.T) {
 			t.Errorf("offense %d is not redacted: %s", i, offense)
 		}
 
-		if strings.Contains(offense, "task-000001a0") || strings.Contains(strings.ToLower(offense), "smoketest") || strings.Contains(offense, "sk-12345678901234567890") {
+		if strings.Contains(offense, "task-000001a0") || strings.Contains(strings.ToLower(offense), "smoketest") ||
+			strings.Contains(offense, "sk-12345678901234567890") {
 			t.Errorf("offense %d flags a benign class: %s", i, offense)
 		}
 

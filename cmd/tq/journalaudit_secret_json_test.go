@@ -56,7 +56,10 @@ func TestDriftReportSecretEvidenceJSON(t *testing.T) {
 	}
 
 	got := string(blob)
-	if !strings.Contains(got, `"secret_evidence":[{"seq":7,"taskId":"task-9","type":"task.dead","field":"detail","count":2}]`) {
+	if !strings.Contains(
+		got,
+		`"secret_evidence":[{"seq":7,"taskId":"task-9","type":"task.dead","field":"detail","count":2}]`,
+	) {
 		t.Fatalf("secret_evidence wire shape drifted: %s", got)
 	}
 }

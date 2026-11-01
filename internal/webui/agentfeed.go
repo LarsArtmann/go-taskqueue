@@ -71,10 +71,12 @@ func (f *AgentFeed) Shutdown(ctx context.Context) error {
 // unix:// URL form both reduce to the raw socket path).
 func crushUnixClient(socket string) *http.Client {
 	socket = strings.TrimPrefix(socket, "unix://")
+
 	return &http.Client{
 		Transport: &http.Transport{
 			DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
 				var d net.Dialer
+
 				return d.DialContext(ctx, "unix", socket)
 			},
 		},
@@ -168,9 +170,11 @@ func distillFrame(frame string) (kind, line string) {
 		if err := json.Unmarshal([]byte(frame), &envelope); err != nil || envelope.Part.ToolCall.Name == "" {
 			return "tool", excerpt(frame)
 		}
+
 		if envelope.Part.ToolCall.Command != "" {
 			return "tool", envelope.Part.ToolCall.Name + " " + excerpt(envelope.Part.ToolCall.Command)
 		}
+
 		return "tool", envelope.Part.ToolCall.Name + " " + excerpt(string(envelope.Part.ToolCall.Input))
 	case strings.Contains(frame, `"tool_result"`):
 		return "result", excerpt(frame)
@@ -209,6 +213,7 @@ func excerpt(s string) string {
 // after a successful attach, never before it.
 func attachWorkspace(ctx context.Context, client *http.Client, feed *AgentFeed, ws crushWorkspace, clientID string) {
 	key := ws.key()
+
 	label := ws.Path
 	if label == "" {
 		label = key
@@ -220,10 +225,12 @@ func attachWorkspace(ctx context.Context, client *http.Client, feed *AgentFeed, 
 		}
 
 		url := fmt.Sprintf("http://crush/v1/workspaces/%s/events?client_id=%s", key, clientID)
+
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 		if err != nil {
 			return
 		}
+
 		req.Header.Set("Accept", "text/event-stream")
 
 		resp, err := client.Do(req)
@@ -231,25 +238,31 @@ func attachWorkspace(ctx context.Context, client *http.Client, feed *AgentFeed, 
 			if ctx.Err() != nil {
 				return
 			}
+
 			select {
 			case <-ctx.Done():
 				return
 			case <-time.After(time.Second):
 			}
+
 			continue
 		}
 
 		if resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusGone {
 			_ = resp.Body.Close()
+
 			return // workspace reaped: normal end of life
 		}
+
 		if resp.StatusCode != http.StatusOK {
 			_ = resp.Body.Close()
+
 			select {
 			case <-ctx.Done():
 				return
 			case <-time.After(2 * time.Second):
 			}
+
 			continue
 		}
 
@@ -259,6 +272,7 @@ func attachWorkspace(ctx context.Context, client *http.Client, feed *AgentFeed, 
 		if ctx.Err() != nil {
 			return
 		}
+
 		select {
 		case <-ctx.Done():
 			return
@@ -309,18 +323,22 @@ func RunAgentFeed(ctx context.Context, socket string, feed *AgentFeed, log *slog
 			if ctx.Err() != nil {
 				return nil
 			}
+
 			log.Warn("agent feed: crush server unreachable", "socket", socket, "err", err.Error())
 		}
 
 		seen := map[string]struct{}{}
+
 		for _, ws := range workspaces {
 			key := ws.key()
 			if key == "" {
 				continue
 			}
+
 			seen[key] = struct{}{}
 
 			mu.Lock()
+
 			_, attached := live[key]
 			if !attached {
 				live[key] = struct{}{}

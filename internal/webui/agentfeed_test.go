@@ -3,7 +3,6 @@ package webui
 import (
 	"bufio"
 	"context"
-	"io"
 	"log/slog"
 	"net"
 	"net/http"
@@ -28,15 +27,19 @@ func fakeCrushServer(t *testing.T, frames ...string) string {
 	mux.HandleFunc("/v1/workspaces/ws-1/events", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
 		fl := w.(http.Flusher)
+
 		for _, f := range frames {
 			select {
 			case <-r.Context().Done():
 				return
 			case <-time.After(10 * time.Millisecond):
 			}
+
 			_, _ = w.Write([]byte("data: " + f + "\n\n"))
+
 			fl.Flush()
 		}
+
 		<-r.Context().Done()
 	})
 
@@ -44,10 +47,12 @@ func fakeCrushServer(t *testing.T, frames ...string) string {
 	if err != nil {
 		t.Fatalf("unix listen: %v", err)
 	}
+
 	t.Cleanup(func() { _ = ln.Close() })
 
 	srv := &http.Server{Handler: mux, ReadHeaderTimeout: 5 * time.Second}
 	go func() { _ = srv.Serve(ln) }()
+
 	t.Cleanup(func() { _ = srv.Close() })
 
 	return "unix://" + ln.Addr().String()
@@ -96,6 +101,7 @@ func TestDistillFrame(t *testing.T) {
 		if kind != tc.wantKind {
 			t.Fatalf("distillFrame(%s) kind = %q, want %q", tc.frame, kind, tc.wantKind)
 		}
+
 		if tc.wantIn != "" && !strings.Contains(line, tc.wantIn) {
 			t.Fatalf("distillFrame(%s) line = %q, want containing %q", tc.frame, line, tc.wantIn)
 		}
@@ -106,6 +112,7 @@ func TestDistillFrameExcerptCapsLongLines(t *testing.T) {
 	t.Parallel()
 
 	long := strings.Repeat("x", 500)
+
 	_, line := distillFrame(`{"type":"tool_result","output":"` + long + `"}`)
 	if len(line) > 220 {
 		t.Fatalf("excerpt cap failed: %d bytes", len(line))
@@ -121,12 +128,12 @@ func TestRunAgentFeedAttachesAndStreams(t *testing.T) {
 	feed := NewAgentFeed()
 	sub := feed.Subscribe()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	go func() { _ = RunAgentFeed(ctx, socket, feed, discardLogger()) }()
 
 	deadline := time.After(10 * time.Second)
+
 	var got []AgentEvent
 
 	for len(got) < 2 {
@@ -158,6 +165,7 @@ func TestHandleAgentLiveDisabledServes503(t *testing.T) {
 	if rec.Code != http.StatusServiceUnavailable {
 		t.Fatalf("status = %d, want 503", rec.Code)
 	}
+
 	if !strings.Contains(rec.Body.String(), "agent feed disabled") {
 		t.Fatalf("body = %q, want disabled reason", rec.Body.String())
 	}
@@ -179,10 +187,12 @@ func TestHandleAgentLiveStreamsEvents(t *testing.T) {
 	defer cancel()
 
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, srv.URL+"/agents/live", nil)
+
 	resp, err := srv.Client().Do(req)
 	if err != nil {
 		t.Fatalf("GET /agents/live: %v", err)
 	}
+
 	defer func() { _ = resp.Body.Close() }()
 
 	scanner := bufio.NewScanner(resp.Body)
@@ -192,6 +202,7 @@ func TestHandleAgentLiveStreamsEvents(t *testing.T) {
 			return // event streamed live; ctx cancel tears down
 		}
 	}
+
 	t.Fatal("no agent event streamed before timeout")
 }
 
@@ -214,5 +225,5 @@ func TestDecodeWorkspacesBodyBothShapes(t *testing.T) {
 }
 
 func discardLogger() *slog.Logger {
-	return slog.New(slog.NewTextHandler(io.Discard, nil))
+	return slog.New(slog.DiscardHandler)
 }

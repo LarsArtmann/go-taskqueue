@@ -140,8 +140,10 @@ func (s *Server) UseReadModel(ctx context.Context, d config.Deployment) error {
 		// degrade into the host-resumes-past-missing-rows class.
 		s.log.Warn(
 			"httpapi: watermark read failed; replay guard skipped — a replayed projection home may resume past missing rows",
-			"consumer", readmodel.CursorConsumer,
-			"err", wmErr,
+			"consumer",
+			readmodel.CursorConsumer,
+			"err",
+			wmErr,
 		)
 	case exists && wm > 0 && m.JournalCursor() == 0:
 		if err := m.CatchUp(ctx); err != nil {

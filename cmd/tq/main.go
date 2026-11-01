@@ -1150,6 +1150,7 @@ func cmdAgentPool(args []string) error {
 	// client never races a missing socket; the flag's rollback is unset.
 	if poolOpts.crushServer != "" {
 		serverBin := agentExec.Binary()
+
 		g.Go("crush-server", func(ctx context.Context) error {
 			return runCrushServerActor(ctx, serverBin, poolOpts.crushServer)
 		})
@@ -2084,7 +2085,11 @@ func cmdStats(args []string) error {
 		// stderr logs.
 		if m.ReadOnly() {
 			health := m.ProjectionHealth(ctx)
-			fmt.Fprintf(os.Stderr, "projection: read-only mount (fold lock held elsewhere), cursor %d fact(s) behind the journal head\n", health.Lag)
+			fmt.Fprintf(
+				os.Stderr,
+				"projection: read-only mount (fold lock held elsewhere), cursor %d fact(s) behind the journal head\n",
+				health.Lag,
+			)
 		}
 	} else {
 		var err error
@@ -2574,8 +2579,10 @@ func cmdShow(args []string) error {
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "  ")
 
-	var commitView any
-	var failureView *failureEvidenceView
+	var (
+		commitView  any
+		failureView *failureEvidenceView
+	)
 
 	if *commits {
 		commitView = commitsForTask(t)
@@ -3146,10 +3153,16 @@ func cmdDLQ(args []string) error {
 		false,
 		"emit one JSON summary object ({count,total,evidence_read}) then one JSON object per dead task, instead of the text rows; machine row counting (smokes) reads count instead of grepping row text",
 	)
-	dlqBackoff := fs.Duration("dlq-backoff", 0,
-		"cross-link rows whose repo is in poisoned-repo DLQ backoff, mirroring `tq pool-health`; defaults to the pool config file's dlq-backoff (see --config), else 0 = off")
-	configPath := fs.String("config", os.Getenv("TQ_POOL_CONFIG"),
-		"pool config file whose dlq-backoff seeds the --dlq-backoff default (other keys are ignored; $TQ_POOL_CONFIG; falls back to the bootstrap default ~/.config/tq/pool.conf when it exists)")
+	dlqBackoff := fs.Duration(
+		"dlq-backoff",
+		0,
+		"cross-link rows whose repo is in poisoned-repo DLQ backoff, mirroring `tq pool-health`; defaults to the pool config file's dlq-backoff (see --config), else 0 = off",
+	)
+	configPath := fs.String(
+		"config",
+		os.Getenv("TQ_POOL_CONFIG"),
+		"pool config file whose dlq-backoff seeds the --dlq-backoff default (other keys are ignored; $TQ_POOL_CONFIG; falls back to the bootstrap default ~/.config/tq/pool.conf when it exists)",
+	)
 
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
@@ -3215,16 +3228,23 @@ func cmdDLQ(args []string) error {
 		}
 	} else {
 		evidenceRead = false
-		fmt.Fprintf(os.Stderr,
+
+		fmt.Fprintf(
+			os.Stderr,
 			"evidence read skipped: %d dead tasks exceeds the %d-row cap; rows render without evidence= (narrow with --evidence-stage)\n",
-			len(tasks), dlqEvidenceReadCap)
+			len(tasks),
+			dlqEvidenceReadCap,
+		)
 	}
 
 	if *evidenceStage != "" {
 		if unknown := executor.UnknownEvidenceTerms(*evidenceStage); len(unknown) > 0 {
-			fmt.Fprintf(os.Stderr,
+			fmt.Fprintf(
+				os.Stderr,
 				"warning: --evidence-stage term(s) match no known stage/verify-stage/alias: %s — a typo silently matches nothing (known terms: %s)\n",
-				strings.Join(unknown, ", "), strings.Join(executor.KnownEvidenceTerms(), ", "))
+				strings.Join(unknown, ", "),
+				strings.Join(executor.KnownEvidenceTerms(), ", "),
+			)
 		}
 
 		filtered := make([]task.Task, 0, len(tasks))
@@ -3918,8 +3938,12 @@ func cmdAPI(args []string) error {
 	// The lockout policy line (row 205): misconfigured producers hit the
 	// 429 + Retry-After surface without reading the source — the startup
 	// banner names the exact knobs, and every lock also WARNs to stderr.
-	fmt.Fprintf(os.Stderr, "tq: auth lockout: %d failed attempts lock the client IP for %s (429 + Retry-After; resets on a valid token)\n",
-		lockout.DefaultMaxHits, lockout.DefaultLockout)
+	fmt.Fprintf(
+		os.Stderr,
+		"tq: auth lockout: %d failed attempts lock the client IP for %s (429 + Retry-After; resets on a valid token)\n",
+		lockout.DefaultMaxHits,
+		lockout.DefaultLockout,
+	)
 
 	return server.ListenAndServe(ctx, *addr)
 }
@@ -4035,9 +4059,11 @@ func cmdVersion(args []string) error {
 		revSuffix = rev[i:]
 		rev = rev[:i]
 	}
+
 	if len(rev) > 12 {
 		rev = rev[:12]
 	}
+
 	rev += revSuffix
 
 	vcs := ""
@@ -4125,10 +4151,16 @@ func cmdServe(args []string) error {
 		fs,
 		"serve the aggregate reads and live notifications from the ADR-0019 S3 metaengine projection (<db>.readmodel.db); default ON — --read-model=false falls back to the hand journal tailer (row-rich views stay store-backed either way)",
 	)
-	dlqBackoff := fs.Duration("dlq-backoff", 0,
-		"surface repos in poisoned-repo DLQ backoff on the dashboard (nowband chip + panel above the dead-letter queue), mirroring `tq pool-health`; defaults to the pool config file's dlq-backoff (see --config), else 0 = off")
-	configPath := fs.String("config", os.Getenv("TQ_POOL_CONFIG"),
-		"pool config file whose dlq-backoff seeds the --dlq-backoff default (other keys are ignored; $TQ_POOL_CONFIG; falls back to the bootstrap default ~/.config/tq/pool.conf when it exists)")
+	dlqBackoff := fs.Duration(
+		"dlq-backoff",
+		0,
+		"surface repos in poisoned-repo DLQ backoff on the dashboard (nowband chip + panel above the dead-letter queue), mirroring `tq pool-health`; defaults to the pool config file's dlq-backoff (see --config), else 0 = off",
+	)
+	configPath := fs.String(
+		"config",
+		os.Getenv("TQ_POOL_CONFIG"),
+		"pool config file whose dlq-backoff seeds the --dlq-backoff default (other keys are ignored; $TQ_POOL_CONFIG; falls back to the bootstrap default ~/.config/tq/pool.conf when it exists)",
+	)
 	crushServer := fs.String(
 		"crush-server",
 		"",

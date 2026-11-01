@@ -435,6 +435,7 @@ func doctorPaidNoops(ctx context.Context, store queue.Store) []checkResult {
 	const name = "paid-noops"
 
 	var noops []string
+
 	for _, typ := range paidTaskTypes {
 		completed := task.Completed
 		typRef := typ
@@ -452,15 +453,22 @@ func doctorPaidNoops(ctx context.Context, store queue.Store) []checkResult {
 	}
 
 	if len(noops) == 0 {
-		return []checkResult{{Name: name, Status: checkOK, Detail: "no completed paid tasks with zero attributable output"}}
+		return []checkResult{
+			{Name: name, Status: checkOK, Detail: "no completed paid tasks with zero attributable output"},
+		}
 	}
 
-	return []checkResult{{
-		Name:   name,
-		Status: checkWarn,
-		Detail: fmt.Sprintf("%d completed paid task(s) attribute ZERO output — paid turns that produced nothing (tq show <id> for the trail)", len(noops)),
-		Items:  noops,
-	}}
+	return []checkResult{
+		{
+			Name:   name,
+			Status: checkWarn,
+			Detail: fmt.Sprintf(
+				"%d completed paid task(s) attribute ZERO output — paid turns that produced nothing (tq show <id> for the trail)",
+				len(noops),
+			),
+			Items: noops,
+		},
+	}
 }
 
 // paidTaskNoop reports whether one completed paid task's completion fact
@@ -472,13 +480,16 @@ func paidTaskNoop(ctx context.Context, store queue.Store, t task.Task) (string, 
 	}
 
 	var completion journal.Fact
+
 	found := false
+
 	for _, f := range trail {
 		if f.Type == journal.Completed && len(f.Detail) > 0 {
 			completion = f
 			found = true
 		}
 	}
+
 	if !found {
 		return "no completion detail", true
 	}
@@ -489,6 +500,7 @@ func paidTaskNoop(ctx context.Context, store queue.Store, t task.Task) (string, 
 		if json.Unmarshal(completion.Detail, &res) != nil {
 			return "undecodable agent detail", true
 		}
+
 		if len(res.Commits) == 0 && len(res.FilesChanged) == 0 && res.CommitSHA == "" && res.PreflightDone == "" {
 			return "no commits, no files, no preflight-done", true
 		}
@@ -497,6 +509,7 @@ func paidTaskNoop(ctx context.Context, store queue.Store, t task.Task) (string, 
 		if json.Unmarshal(completion.Detail, &res) != nil {
 			return "undecodable review detail", true
 		}
+
 		if res.Verdict == "" {
 			return "no verdict", true
 		}
@@ -505,6 +518,7 @@ func paidTaskNoop(ctx context.Context, store queue.Store, t task.Task) (string, 
 		if json.Unmarshal(completion.Detail, &res) != nil {
 			return "undecodable status detail", true
 		}
+
 		if res.Report == "" && res.NextItems == 0 {
 			return "no report", true
 		}
@@ -513,6 +527,7 @@ func paidTaskNoop(ctx context.Context, store queue.Store, t task.Task) (string, 
 		if json.Unmarshal(completion.Detail, &res) != nil {
 			return "undecodable prioritize detail", true
 		}
+
 		if len(res.Verdicts) == 0 {
 			return "no verdicts", true
 		}
@@ -521,6 +536,7 @@ func paidTaskNoop(ctx context.Context, store queue.Store, t task.Task) (string, 
 		if json.Unmarshal(completion.Detail, &res) != nil {
 			return "undecodable dlqfix detail", true
 		}
+
 		if res.Verdict == "" {
 			return "no verdict", true
 		}
@@ -578,20 +594,25 @@ func runGateBoard(ctx context.Context, scriptsDir string, scripts []string) chec
 	}
 
 	var items []string
+
 	red := 0
 
 	for _, script := range scripts {
 		gateCtx, cancel := context.WithTimeout(ctx, doctorGateTimeout)
 		out, err := exec.CommandContext(gateCtx, "bash", filepath.Join(scriptsDir, script)).CombinedOutput()
+
 		cancel()
 
 		tail := gateBoardTail(string(out))
+
 		switch {
 		case errors.Is(gateCtx.Err(), context.DeadlineExceeded):
 			red++
+
 			items = append(items, script+": RED — timed out after "+doctorGateTimeout.String())
 		case err != nil:
 			red++
+
 			items = append(items, script+": RED ("+tail+")")
 		default:
 			items = append(items, script+": GREEN — "+tail)
@@ -599,7 +620,12 @@ func runGateBoard(ctx context.Context, scriptsDir string, scripts []string) chec
 	}
 
 	status := checkOK
-	detail := fmt.Sprintf("%d/%d countable gates green at HEAD (full run: scripts/ci-local.sh)", len(items)-red, len(items))
+
+	detail := fmt.Sprintf(
+		"%d/%d countable gates green at HEAD (full run: scripts/ci-local.sh)",
+		len(items)-red,
+		len(items),
+	)
 	if red > 0 {
 		status = checkWarn
 		detail = fmt.Sprintf("%d/%d countable gates RED at HEAD (full run: scripts/ci-local.sh)", red, len(items))
@@ -613,9 +639,11 @@ func runGateBoard(ctx context.Context, scriptsDir string, scripts []string) chec
 func gateBoardTail(out string) string {
 	lines := strings.Split(strings.TrimRight(out, "\n"), "\n")
 	tail := ""
+
 	for _, line := range slices.Backward(lines) {
 		if s := strings.TrimSpace(line); s != "" {
 			tail = s
+
 			break
 		}
 	}

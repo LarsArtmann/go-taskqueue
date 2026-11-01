@@ -41,8 +41,12 @@ func TestAuditProbeSharedFixture(t *testing.T) {
 	t.Parallel()
 
 	if hits := SecretHits(fakeAuditProbe); hits != 1 {
-		t.Errorf("SecretHits(fakeAuditProbe) = %d, want 1 — the journal-drift.sh phase-5 fixture drifted from the pattern table", hits)
+		t.Errorf(
+			"SecretHits(fakeAuditProbe) = %d, want 1 — the journal-drift.sh phase-5 fixture drifted from the pattern table",
+			hits,
+		)
 	}
+
 	if redacted := RedactSecrets(fakeAuditProbe); strings.Contains(redacted, fakeAuditProbe) {
 		t.Errorf("RedactSecrets left the shared audit probe intact: %q", redacted)
 	}
@@ -169,7 +173,12 @@ func TestSecretPatternSamplesNamePinned(t *testing.T) {
 	for i, pin := range secretPatternNamePins {
 		src := secretPatterns[i].String()
 		if !strings.Contains(src, pin) {
-			t.Errorf("secretPatterns[%d] = %q lacks its alignment pin %q — secretPatterns was reordered; re-align secretPatternSamples and these pins in the same change", i, src, pin)
+			t.Errorf(
+				"secretPatterns[%d] = %q lacks its alignment pin %q — secretPatterns was reordered; re-align secretPatternSamples and these pins in the same change",
+				i,
+				src,
+				pin,
+			)
 		}
 	}
 }

@@ -50,9 +50,11 @@ func TestCrushWireShapesParse(t *testing.T) {
 	if err := json.Unmarshal([]byte(crushSessionsFixture), &sessions); err != nil {
 		t.Fatalf("sessions fixture: %v", err)
 	}
+
 	if len(sessions) != 1 || sessions[0].ID != "986871b8-f118-461a-8175-390db4688c9a" {
 		t.Fatalf("sessions parse: %+v", sessions)
 	}
+
 	if sessions[0].PromptTokens != 16764 || sessions[0].CompletionTokens != 29 || sessions[0].MessageCount != 4 {
 		t.Fatalf("usage members: %+v", sessions[0])
 	}
@@ -61,6 +63,7 @@ func TestCrushWireShapesParse(t *testing.T) {
 	if err := json.Unmarshal([]byte(crushMessagesFixture), &messages); err != nil {
 		t.Fatalf("messages fixture: %v", err)
 	}
+
 	if len(messages) != 3 || len(messages[1].Parts) != 2 || messages[1].Parts[0].Type != "tool_call" {
 		t.Fatalf("messages parse: %+v", messages)
 	}
@@ -78,6 +81,7 @@ func TestToolCallFacts(t *testing.T) {
 	if len(facts) != 1 {
 		t.Fatalf("want 1 fact, got %d: %+v", len(facts), facts)
 	}
+
 	want := ToolCallFact{
 		Name:             "bash",
 		Description:      "write the verdict file",
@@ -96,7 +100,12 @@ func TestToolCallFactsUnpairedAndRedacted(t *testing.T) {
 	messages := []crushMessage{{
 		Role: "assistant",
 		Parts: []crushPart{
-			{Type: "tool_call", Data: jsontext.Value(`{"id":"c2","name":"bash","input":"{\"command\":\"echo sk-live-0123456789abcdef\"}","finished":false}`)},
+			{
+				Type: "tool_call",
+				Data: jsontext.Value(
+					`{"id":"c2","name":"bash","input":"{\"command\":\"echo sk-live-0123456789abcdef\"}","finished":false}`,
+				),
+			},
 			{Type: "tool_call", Data: jsontext.Value(`{"id":"","name":"bash","input":"{}"}`)}, // empty id: dropped
 		},
 	}}
@@ -105,9 +114,11 @@ func TestToolCallFactsUnpairedAndRedacted(t *testing.T) {
 	if len(facts) != 1 {
 		t.Fatalf("want the one id-bearing call, got %d", len(facts))
 	}
+
 	if facts[0].IsError || facts[0].DurationMS != 0 {
 		t.Fatalf("unpaired fact must stay zero-valued on result half: %+v", facts[0])
 	}
+
 	if want := RedactSecrets("echo sk-live-0123456789abcdef"); facts[0].Command != want {
 		t.Fatalf("command not redacted: %q", facts[0].Command)
 	}
@@ -125,14 +136,17 @@ func TestResolveCrushSession(t *testing.T) {
 	if got := resolveCrushSession(summaries, "old", now); got == nil || got.ID != "old" {
 		t.Fatalf("extracted id must win: %+v", got)
 	}
+
 	if got := resolveCrushSession(summaries, "", now); got == nil || got.ID != "fresh" {
 		t.Fatalf("window match must pick the newest in-window session: %+v", got)
 	}
+
 	if got := resolveCrushSession([]crushSessionSummary{
 		{ID: "ancient", CreatedAt: now.Add(-time.Minute).Unix()},
 	}, "", now); got != nil {
 		t.Fatalf("no in-window session must resolve nil: %+v", got)
 	}
+
 	if got := resolveCrushSession(summaries, "missing", now); got != nil {
 		t.Fatalf("unknown extracted id with no window fallback must stay nil (stdout value untouched): %+v", got)
 	}
@@ -149,10 +163,12 @@ func TestEnrichCloseoutFactsAgainstLiveServer(t *testing.T) {
 
 	dir := t.TempDir()
 	sock := filepath.Join(dir, "crush.sock")
+
 	listener, err := net.Listen("unix", sock)
 	if err != nil {
 		t.Skipf("unix listen: %v", err)
 	}
+
 	t.Cleanup(func() { listener.Close() })
 
 	mux := http.NewServeMux()
@@ -167,13 +183,17 @@ func TestEnrichCloseoutFactsAgainstLiveServer(t *testing.T) {
 	mux.HandleFunc("GET /v1/workspaces/{id}/sessions/{sid}/messages", func(w http.ResponseWriter, r *http.Request) {
 		if r.PathValue("sid") != "986871b8-f118-461a-8175-390db4688c9a" {
 			http.NotFound(w, r)
+
 			return
 		}
+
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(crushMessagesFixture))
 	})
+
 	server := &http.Server{Handler: mux}
 	go server.Serve(listener)
+
 	t.Cleanup(func() { server.Close() })
 
 	e := &AgentExecutor{CrushServer: "unix://" + sock}
@@ -185,9 +205,11 @@ func TestEnrichCloseoutFactsAgainstLiveServer(t *testing.T) {
 	if result.SessionID != "986871b8-f118-461a-8175-390db4688c9a" {
 		t.Fatalf("session id not resolved from the window: %+v", result.sessionUsage)
 	}
+
 	if result.SessionPromptTokens != 16764 || result.SessionCompletionTokens != 29 || result.SessionMessageCount != 4 {
 		t.Fatalf("usage not filled from the summary: %+v", result.sessionUsage)
 	}
+
 	if len(result.ToolCalls) != 1 || result.ToolCalls[0].Name != "bash" || result.ToolCalls[0].DurationMS != 100 {
 		t.Fatalf("tool inventory: %+v", result.ToolCalls)
 	}

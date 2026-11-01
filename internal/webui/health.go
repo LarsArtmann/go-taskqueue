@@ -218,8 +218,10 @@ func (p *queueProber) evaluate(now time.Time) {
 	}
 
 	if p.foldFollower != nil && p.foldFollower.Load() {
-		checks["projection"] = mkCheck(health.StatusWarn,
-			"fold: follower — read-only projection mount (the fold lock is held by another serve): this dashboard's model is frozen at mount and its SSE stream will not fire; trust the lock-holding dashboard, or restart this serve once the lock frees")
+		checks["projection"] = mkCheck(
+			health.StatusWarn,
+			"fold: follower — read-only projection mount (the fold lock is held by another serve): this dashboard's model is frozen at mount and its SSE stream will not fire; trust the lock-holding dashboard, or restart this serve once the lock frees",
+		)
 	}
 
 	p.finishEval(now, checks)

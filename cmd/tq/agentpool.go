@@ -982,6 +982,7 @@ func runCrushServerActor(ctx context.Context, bin, socket string) error {
 	if !strings.Contains(host, "://") {
 		host = "unix://" + host
 	}
+
 	if dir := filepath.Dir(socket); dir != "" && dir != "." && !strings.Contains(dir, "://") {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			return fmt.Errorf("crush-server: create socket dir %s: %w", dir, err)
@@ -989,7 +990,9 @@ func runCrushServerActor(ctx context.Context, bin, socket string) error {
 	}
 
 	keeperStop := make(chan struct{})
+
 	keeperDone := make(chan struct{})
+
 	go crushKeeper(ctx, socket, keeperStop, keeperDone)
 	defer func() {
 		close(keeperStop)
@@ -1013,6 +1016,7 @@ func runCrushServerActor(ctx context.Context, bin, socket string) error {
 		}
 
 		err := cmd.Run()
+
 		if ctx.Err() != nil {
 			return nil // pool shutdown: the server dying with us is the design
 		}
@@ -1042,6 +1046,7 @@ func crushKeeper(ctx context.Context, socket string, stop <-chan struct{}, done 
 		Transport: &http.Transport{
 			DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
 				d := net.Dialer{}
+
 				return d.DialContext(ctx, "unix", path)
 			},
 		},

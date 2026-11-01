@@ -1220,6 +1220,7 @@ func TestHealthzCarriesProjectionSection(t *testing.T) {
 // blows up — the exact window the loud-skip contract covers).
 type wmErrorStore struct {
 	queue.Store
+
 	calls int
 }
 
@@ -1228,6 +1229,7 @@ func (w *wmErrorStore) Watermark(ctx context.Context, consumer string) (int64, b
 	if w.calls > 1 {
 		return 0, false, errors.New("watermark read boom")
 	}
+
 	return w.Store.Watermark(ctx, consumer)
 }
 
@@ -1239,6 +1241,7 @@ func TestUseReadModelWarnsWhenReplayGuardSkips(t *testing.T) {
 	srv, _ := newTestAPI(t)
 
 	var logs bytes.Buffer
+
 	srv.log = slog.New(slog.NewTextHandler(&logs, &slog.HandlerOptions{Level: slog.LevelWarn}))
 	srv.store = &wmErrorStore{Store: srv.store}
 

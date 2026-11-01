@@ -33,6 +33,7 @@ func TestParkedRowsCarryEvidenceSuffix(t *testing.T) {
 	}}
 
 	summaries := latestFailureEvidenceSummary(facts)
+
 	const want = "verify exit=1 alias=gate-env"
 	if got := summaries[id.String()]; got != want {
 		t.Fatalf("latestFailureEvidenceSummary = %q, want %q", got, want)

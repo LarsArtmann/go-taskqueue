@@ -360,12 +360,19 @@ func TestAgentCrushServerSeam(t *testing.T) {
 			}
 
 			repo := t.TempDir()
-			if err := os.WriteFile(filepath.Join(repo, ".crushrc"), []byte("permissions allow view\n"), 0o644); err != nil {
+			if err := os.WriteFile(
+				filepath.Join(repo, ".crushrc"),
+				[]byte("permissions allow view\n"),
+				0o644,
+			); err != nil {
 				t.Fatal(err)
 			}
 
 			e := &AgentExecutor{Bin: bin, CrushServer: tc.server}
-			if err := e.Execute(context.Background(), agentTaskT(t, AgentPayload{Repo: repo, Prompt: "hi"})); err != nil {
+			if err := e.Execute(
+				context.Background(),
+				agentTaskT(t, AgentPayload{Repo: repo, Prompt: "hi"}),
+			); err != nil {
 				t.Fatalf("Execute: %v", err)
 			}
 
@@ -373,13 +380,16 @@ func TestAgentCrushServerSeam(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+
 			argv := strings.Split(strings.TrimRight(string(raw), "\n"), "\n")
 			hasHost := false
+
 			for i, a := range argv {
 				if a == "-H" && i+1 < len(argv) && argv[i+1] == tc.server {
 					hasHost = true
 				}
 			}
+
 			if hasHost != tc.wantArg {
 				t.Fatalf("argv %v: -H %s presence = %v, want %v", argv, tc.server, hasHost, tc.wantArg)
 			}
@@ -388,7 +398,9 @@ func TestAgentCrushServerSeam(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+
 			wantEnv := "CRUSH_CLIENT_SERVER=1"
+
 			hasEnv := strings.Contains(string(envRaw), wantEnv)
 			if hasEnv != tc.wantArg {
 				t.Fatalf("env has %q = %v, want %v", wantEnv, hasEnv, tc.wantArg)

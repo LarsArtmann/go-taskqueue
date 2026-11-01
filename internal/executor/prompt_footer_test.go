@@ -40,7 +40,11 @@ func TestPromptsFooterLastContract(t *testing.T) {
 				"invisible to git trailers",
 			} {
 				if !strings.Contains(collapsed, want) {
-					t.Errorf("%s prompt lost the footer-placement phrase %q — template-copied commits will re-mint the footer-above-attribution defect", name, want)
+					t.Errorf(
+						"%s prompt lost the footer-placement phrase %q — template-copied commits will re-mint the footer-above-attribution defect",
+						name,
+						want,
+					)
 				}
 			}
 		})

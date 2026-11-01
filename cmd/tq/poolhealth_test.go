@@ -120,7 +120,16 @@ func TestPoolHealthDirtyTreeOwnLane(t *testing.T) {
 				delay = time.Hour
 			}
 
-			if err := store.Requeue(ctx, claimed.ID, claim, reason, delay, false, queue.RequeueClassPreflight, ""); err != nil {
+			if err := store.Requeue(
+				ctx,
+				claimed.ID,
+				claim,
+				reason,
+				delay,
+				false,
+				queue.RequeueClassPreflight,
+				"",
+			); err != nil {
 				t.Fatalf("Requeue: %v", err)
 			}
 		}
@@ -585,6 +594,7 @@ func TestPoolHealthDLQBackoffFromPoolConfig(t *testing.T) {
 
 	write := func(t *testing.T, body string) {
 		t.Helper()
+
 		if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
 			t.Fatalf("write config: %v", err)
 		}
@@ -649,9 +659,11 @@ func TestApplyPoolHealthConfigDefault(t *testing.T) {
 
 	writeConfig := func(t *testing.T, path, body string) {
 		t.Helper()
+
 		if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 			t.Fatalf("mkdir: %v", err)
 		}
+
 		if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
 			t.Fatalf("write config: %v", err)
 		}
@@ -665,6 +677,7 @@ func TestApplyPoolHealthConfigDefault(t *testing.T) {
 		if err := applyPoolHealthConfigDefault(config, fs, dlqBackoff); err != nil {
 			t.Fatalf("apply: %v", err)
 		}
+
 		if *dlqBackoff != 45*time.Minute {
 			t.Fatalf("backoff = %v, want 45m from config", *dlqBackoff)
 		}
@@ -673,9 +686,11 @@ func TestApplyPoolHealthConfigDefault(t *testing.T) {
 		if err := fs.Parse([]string{"-dlq-backoff=5m"}); err != nil {
 			t.Fatalf("parse: %v", err)
 		}
+
 		if err := applyPoolHealthConfigDefault(config, fs, dlqBackoff); err != nil {
 			t.Fatalf("apply: %v", err)
 		}
+
 		if *dlqBackoff != 5*time.Minute {
 			t.Fatalf("backoff = %v, want the explicit 5m to win over config", *dlqBackoff)
 		}
@@ -688,6 +703,7 @@ func TestApplyPoolHealthConfigDefault(t *testing.T) {
 		if err := applyPoolHealthConfigDefault("", fs, dlqBackoff); err != nil {
 			t.Fatalf("apply: %v", err)
 		}
+
 		if *dlqBackoff != 0 {
 			t.Fatalf("backoff = %v, want 0 without any config file", *dlqBackoff)
 		}
@@ -702,6 +718,7 @@ func TestApplyPoolHealthConfigDefault(t *testing.T) {
 		if err := applyPoolHealthConfigDefault("", fs, dlqBackoff); err != nil {
 			t.Fatalf("apply: %v", err)
 		}
+
 		if got := defaultPoolConfigPath(); got == "" {
 			t.Fatalf("defaultPoolConfigPath unresolved (no home dir) — cannot exercise the fallback here")
 		} else if *dlqBackoff != 2*time.Hour {

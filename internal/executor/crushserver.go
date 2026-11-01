@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json/jsontext"
 	"encoding/json/v2"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -114,12 +115,14 @@ type crushServerClient struct {
 
 func newCrushServerClient(socket string) *crushServerClient {
 	socket = strings.TrimPrefix(socket, "unix://")
+
 	return &crushServerClient{
 		http: &http.Client{
 			Timeout: crushServerHTTPTimeout,
 			Transport: &http.Transport{
 				DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
 					d := net.Dialer{}
+
 					return d.DialContext(ctx, "unix", socket)
 				},
 			},
@@ -140,21 +143,27 @@ func (c *crushServerClient) registerWorkspace(ctx context.Context, repoDir strin
 	}, &body); err != nil {
 		return "", err
 	}
+
 	if body.ID == "" {
-		return "", fmt.Errorf("crush server returned no workspace id")
+		return "", errors.New("crush server returned no workspace id")
 	}
+
 	return body.ID, nil
 }
 
 func (c *crushServerClient) sessions(ctx context.Context, workspaceID string) ([]crushSessionSummary, error) {
 	var out []crushSessionSummary
+
 	err := c.getJSON(ctx, "/v1/workspaces/"+workspaceID+"/sessions", &out)
+
 	return out, err
 }
 
 func (c *crushServerClient) messages(ctx context.Context, workspaceID, sessionID string) ([]crushMessage, error) {
 	var out []crushMessage
+
 	err := c.getJSON(ctx, "/v1/workspaces/"+workspaceID+"/sessions/"+sessionID+"/messages", &out)
+
 	return out, err
 }
 
@@ -163,14 +172,17 @@ func (c *crushServerClient) getJSON(ctx context.Context, path string, dst any) e
 	if err != nil {
 		return err
 	}
+
 	resp, err := c.http.Do(req)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
+
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("crush server %s: %s", path, resp.Status)
 	}
+
 	return json.UnmarshalRead(resp.Body, dst)
 }
 
@@ -179,19 +191,24 @@ func (c *crushServerClient) postJSON(ctx context.Context, path string, body, dst
 	if err != nil {
 		return err
 	}
+
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "http://crush"+path, bytes.NewReader(payload))
 	if err != nil {
 		return err
 	}
+
 	req.Header.Set("Content-Type", "application/json")
+
 	resp, err := c.http.Do(req)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
+
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("crush server %s: %s", path, resp.Status)
 	}
+
 	return json.UnmarshalRead(resp.Body, dst)
 }
 
@@ -202,7 +219,12 @@ func (c *crushServerClient) postJSON(ctx context.Context, path string, body, dst
 // per-tool-call inventory from the message parts. Routed runs only
 // (e.CrushServer set); every failure degrades silently to whatever the
 // stdout derivation already produced.
-func (e *AgentExecutor) enrichCloseoutFacts(ctx context.Context, repoDir string, result *AgentResult, runStart time.Time) {
+func (e *AgentExecutor) enrichCloseoutFacts(
+	ctx context.Context,
+	repoDir string,
+	result *AgentResult,
+	runStart time.Time,
+) {
 	if e.CrushServer == "" {
 		return
 	}
@@ -227,15 +249,19 @@ func (e *AgentExecutor) enrichCloseoutFacts(ctx context.Context, repoDir string,
 	if result.SessionID == "" {
 		result.SessionID = session.ID
 	}
+
 	if result.SessionPromptTokens == 0 {
 		result.SessionPromptTokens = session.PromptTokens
 	}
+
 	if result.SessionCompletionTokens == 0 {
 		result.SessionCompletionTokens = session.CompletionTokens
 	}
+
 	if result.SessionCostUSD == 0 {
 		result.SessionCostUSD = session.CostUSD
 	}
+
 	if result.SessionMessageCount == 0 {
 		result.SessionMessageCount = session.MessageCount
 	}
@@ -244,6 +270,7 @@ func (e *AgentExecutor) enrichCloseoutFacts(ctx context.Context, repoDir string,
 	if err != nil {
 		return // usage block landed; the tool inventory is optional
 	}
+
 	if facts := toolCallFacts(messages); len(facts) > 0 {
 		result.ToolCalls = facts
 	}
@@ -264,15 +291,19 @@ func resolveCrushSession(summaries []crushSessionSummary, extractedID string, ru
 				return &summaries[i]
 			}
 		}
+
 		return nil
 	}
+
 	windowStart := runStart.Add(-15 * time.Second).Unix()
+
 	windowEnd := time.Now().Add(5 * time.Second).Unix()
 	for i := range summaries {
 		if summaries[i].CreatedAt >= windowStart && summaries[i].CreatedAt <= windowEnd {
 			return &summaries[i]
 		}
 	}
+
 	return nil
 }
 
@@ -285,7 +316,9 @@ func toolCallFacts(messages []crushMessage) []ToolCallFact {
 	type pair struct {
 		fact ToolCallFact
 	}
+
 	byCallID := map[string]*pair{}
+
 	var order []string
 
 	for _, msg := range messages {
@@ -296,11 +329,13 @@ func toolCallFacts(messages []crushMessage) []ToolCallFact {
 				if json.Unmarshal(part.Data, &data) != nil || data.ID == "" {
 					continue
 				}
+
 				fact := ToolCallFact{Name: data.Name}
 				if input := decodeCrushToolInput(data.Input); input.Command != "" || input.Description != "" {
 					fact.Command = RedactSecrets(input.Command)
 					fact.Description = input.Description
 				}
+
 				byCallID[data.ID] = &pair{fact: fact}
 				order = append(order, data.ID)
 			case "tool_result":
@@ -308,11 +343,14 @@ func toolCallFacts(messages []crushMessage) []ToolCallFact {
 				if json.Unmarshal(part.Data, &data) != nil {
 					continue
 				}
+
 				p, ok := byCallID[data.ToolCallID]
 				if !ok {
 					continue
 				}
+
 				p.fact.IsError = data.IsError
+
 				var meta crushToolResultMetadata
 				if json.Unmarshal([]byte(data.Metadata), &meta) == nil {
 					p.fact.DurationMS = meta.EndTime - meta.StartTime
@@ -326,6 +364,7 @@ func toolCallFacts(messages []crushMessage) []ToolCallFact {
 	for _, id := range order {
 		facts = append(facts, byCallID[id].fact)
 	}
+
 	return facts
 }
 
@@ -333,7 +372,9 @@ func toolCallFacts(messages []crushMessage) []ToolCallFact {
 // ..., "description": ...}); a non-JSON input leaves the zero value.
 func decodeCrushToolInput(input string) crushToolCallInput {
 	var parsed crushToolCallInput
+
 	_ = json.Unmarshal([]byte(input), &parsed)
+
 	return parsed
 }
 
@@ -344,8 +385,10 @@ func randomClientID() string {
 	if _, err := rand.Read(b[:]); err != nil {
 		return "tq-executor"
 	}
+
 	b[6] = (b[6] & 0x0f) | 0x40
 	b[8] = (b[8] & 0x3f) | 0x80
 	s := hex.EncodeToString(b[:])
+
 	return s[0:8] + "-" + s[8:12] + "-" + s[12:16] + "-" + s[16:20] + "-" + s[20:32]
 }

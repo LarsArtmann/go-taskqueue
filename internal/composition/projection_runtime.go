@@ -68,6 +68,7 @@ func NewProjectionRuntime(
 	for _, opt := range opts {
 		opt(&rcfg)
 	}
+
 	modelPath := readmodel.PathFor(cfg.DBPath)
 
 	lock, err := readmodel.AcquireFoldLock(modelPath, rcfg.foldLockWait)

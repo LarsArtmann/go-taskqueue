@@ -654,7 +654,9 @@ func cmdJournalAudit(ctx context.Context, store queue.Store, asJSON bool, taskID
 	if f := report.Failures; f.Total > 0 && f.EnvStreakBurns > 0 {
 		fmt.Printf(
 			"failures: %d total, %d env-streak breaker burn(s) — sustained environmental requeues escalated to an attempt burn, NOT judged execution failures\n",
-			f.Total, f.EnvStreakBurns)
+			f.Total,
+			f.EnvStreakBurns,
+		)
 	}
 
 	if f := report.Failures; len(f.ByVerifyStage) > 0 {

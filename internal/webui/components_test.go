@@ -442,10 +442,12 @@ func TestDetailFactsSurfacesFailureEvidence(t *testing.T) {
 	now := time.Now()
 	lines := detailFacts(now, []journalFactView{
 		{
-			Seq:    2,
-			Type:   journal.Failed,
-			Owner:  "w1",
-			Detail: jsontext.Value(`{"stage":"verify","verify_stage":"e2e-timeout","class":"environment","exit_code":2,"tail":"panic: test timed out"}`),
+			Seq:   2,
+			Type:  journal.Failed,
+			Owner: "w1",
+			Detail: jsontext.Value(
+				`{"stage":"verify","verify_stage":"e2e-timeout","class":"environment","exit_code":2,"tail":"panic: test timed out"}`,
+			),
 		},
 		{
 			Seq:    3,

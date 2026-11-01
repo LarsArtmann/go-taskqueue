@@ -133,7 +133,12 @@ func isHarvestEnqueue(meta poolTaskMeta) bool {
 // (DismissDead emits the Cancelled fact for that task). The derivation
 // itself lives in the dlqbackoff package, shared with `tq dlq` rows and
 // the webui dashboard so all three surfaces read the same journal truth.
-func poolHealthFrom(facts []journal.Fact, meta map[task.ID]poolTaskMeta, since, now time.Time, dlqBackoff time.Duration) PoolHealthReport {
+func poolHealthFrom(
+	facts []journal.Fact,
+	meta map[task.ID]poolTaskMeta,
+	since, now time.Time,
+	dlqBackoff time.Duration,
+) PoolHealthReport {
 	repos := make(map[string]*RepoHealth)
 
 	repoFor := func(id task.ID) *RepoHealth {
@@ -263,7 +268,8 @@ func poolHealthFrom(facts []journal.Fact, meta map[task.ID]poolTaskMeta, since, 
 			r.Verdict = poolVerdictWarn
 			r.Warnings = append(r.Warnings, fmt.Sprintf(
 				"dirty tree streak %d: the repo tree has stayed dirty across a full day of parks — clean or stash the foreign changes (no attempt burn, but the work is stuck behind them)",
-				r.DirtyTreeStreak))
+				r.DirtyTreeStreak,
+			))
 		}
 
 		if r.Enqueued > 0 && r.Completed+r.Failed+r.Dead == 0 {
@@ -303,7 +309,13 @@ func poolHealthFrom(facts []journal.Fact, meta map[task.ID]poolTaskMeta, since, 
 // poolHealth drains the journal, joins the task identities, and folds.
 // window and now give the fold its clock (poolHealthFrom stays pure);
 // dlqBackoff > 0 turns on the poisoned-repo backoff surface.
-func poolHealth(ctx context.Context, store queue.Store, window time.Duration, now time.Time, dlqBackoff time.Duration) (PoolHealthReport, error) {
+func poolHealth(
+	ctx context.Context,
+	store queue.Store,
+	window time.Duration,
+	now time.Time,
+	dlqBackoff time.Duration,
+) (PoolHealthReport, error) {
 	facts, err := drainAllFacts(ctx, store)
 	if err != nil {
 		return PoolHealthReport{}, err
@@ -390,11 +402,13 @@ func applyPoolHealthConfigDefault(configPath string, fs *flag.FlagSet, dlqBackof
 	}
 
 	explicit := false
+
 	fs.Visit(func(f *flag.Flag) {
 		if f.Name == "dlq-backoff" {
 			explicit = true
 		}
 	})
+
 	if !explicit {
 		*dlqBackoff = fromConfig
 	}
@@ -408,11 +422,17 @@ func cmdPoolHealth(args []string) error {
 	fs := flag.NewFlagSet("pool-health", flag.ExitOnError)
 	since := fs.Duration("since", 168*time.Hour,
 		"lookback window for outcome counts (skip streaks and DLQ backoff always scan the whole journal)")
-	dlqBackoff := fs.Duration("dlq-backoff", 0,
-		"surface each repo's poisoned-repo DLQ backoff, mirroring the harvest pool's --dlq-backoff; defaults to the pool config file's dlq-backoff (see --config), else 0 = off")
+	dlqBackoff := fs.Duration(
+		"dlq-backoff",
+		0,
+		"surface each repo's poisoned-repo DLQ backoff, mirroring the harvest pool's --dlq-backoff; defaults to the pool config file's dlq-backoff (see --config), else 0 = off",
+	)
 	asJSON := fs.Bool("json", false, "JSON output of the pool-health report")
-	configPath := fs.String("config", os.Getenv("TQ_POOL_CONFIG"),
-		"pool config file whose dlq-backoff seeds the --dlq-backoff default (other keys are ignored; $TQ_POOL_CONFIG; falls back to the bootstrap default ~/.config/tq/pool.conf when it exists)")
+	configPath := fs.String(
+		"config",
+		os.Getenv("TQ_POOL_CONFIG"),
+		"pool config file whose dlq-backoff seeds the --dlq-backoff default (other keys are ignored; $TQ_POOL_CONFIG; falls back to the bootstrap default ~/.config/tq/pool.conf when it exists)",
+	)
 	db := dbFlag(fs)
 
 	if err := fs.Parse(args); err != nil {

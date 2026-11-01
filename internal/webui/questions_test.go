@@ -44,12 +44,23 @@ func parkOnQuestionWebui(t *testing.T, s *sqlite.Store, ref, question string) ta
 	if err := s.AppendFact(ctx, journal.Fact{
 		TaskID: tk.ID.String(),
 		Type:   journal.QuestionAsked,
-		Detail: []byte(`{"ref":"` + ref + `","type":"confirmation","question":"` + question + `","options":["ship it","hold"]}`),
+		Detail: []byte(
+			`{"ref":"` + ref + `","type":"confirmation","question":"` + question + `","options":["ship it","hold"]}`,
+		),
 	}); err != nil {
 		t.Fatalf("append asked fact: %v", err)
 	}
 
-	if err := s.Requeue(ctx, tk.ID, claim, "question pending: "+ref, time.Hour, false, queue.RequeueClassQuestion, ""); err != nil {
+	if err := s.Requeue(
+		ctx,
+		tk.ID,
+		claim,
+		"question pending: "+ref,
+		time.Hour,
+		false,
+		queue.RequeueClassQuestion,
+		"",
+	); err != nil {
 		t.Fatalf("park requeue: %v", err)
 	}
 
@@ -75,11 +86,16 @@ func TestOpenQuestionsDerivation(t *testing.T) {
 	if got.TaskID != tk.ID || got.Ref != "q-1" || got.Question != "Ship as v3 now?" {
 		t.Fatalf("row = %+v", got)
 	}
+
 	if got.Type != queue.QuestionTypeConfirmation || len(got.Options) != 2 {
 		t.Fatalf("row type/options = %q/%v", got.Type, got.Options)
 	}
 
-	if err := s.RecordAnswer(ctx, tk.ID, queue.AnswerRecord{Ref: "q-1", Answer: "ship it", AnsweredAt: time.Now()}); err != nil {
+	if err := s.RecordAnswer(
+		ctx,
+		tk.ID,
+		queue.AnswerRecord{Ref: "q-1", Answer: "ship it", AnsweredAt: time.Now()},
+	); err != nil {
 		t.Fatalf("RecordAnswer: %v", err)
 	}
 
@@ -103,7 +119,9 @@ func TestQuestionsPaneRendersAnswerForm(t *testing.T) {
 	}
 
 	var sb strings.Builder
-	if err := QuestionsPane(data).Render(context.WithValue(context.Background(), csrfCtxKey{}, "tok"), &sb); err != nil {
+	if err := QuestionsPane(
+		data,
+	).Render(context.WithValue(context.Background(), csrfCtxKey{}, "tok"), &sb); err != nil {
 		t.Fatalf("render pane: %v", err)
 	}
 
@@ -113,18 +131,23 @@ func TestQuestionsPaneRendersAnswerForm(t *testing.T) {
 			t.Fatalf("pane missing %q", want)
 		}
 	}
+
 	if !strings.Contains(html, `action="/task/`+tk.ID.String()+`/answer"`) {
 		t.Fatalf("pane missing answer action: %s", html)
 	}
+
 	if !strings.Contains(html, `name="ref" value="q-1"`) {
 		t.Fatalf("pane missing hidden ref: %s", html)
 	}
+
 	if !strings.Contains(html, `name="csrf" value="tok"`) {
 		t.Fatalf("pane missing csrf field: %s", html)
 	}
 
 	data.AllowWrites = false
+
 	sb.Reset()
+
 	if err := QuestionsPane(data).Render(context.Background(), &sb); err != nil {
 		t.Fatalf("render read-only pane: %v", err)
 	}
@@ -133,11 +156,13 @@ func TestQuestionsPaneRendersAnswerForm(t *testing.T) {
 	if strings.Contains(readOnly, "<form") {
 		t.Fatalf("read-only pane must not carry a form: %s", readOnly)
 	}
+
 	if !strings.Contains(readOnly, "--allow-writes") {
 		t.Fatalf("read-only pane missing the CLI hint: %s", readOnly)
 	}
 
 	sb.Reset()
+
 	if err := QuestionsPane(DashboardData{Now: time.Now()}).Render(context.Background(), &sb); err != nil {
 		t.Fatalf("render empty pane: %v", err)
 	}
@@ -154,11 +179,13 @@ func TestRenderFragmentsCarryQuestionsPane(t *testing.T) {
 	frags := renderFragments(context.Background(), DashboardData{})
 
 	found := false
+
 	for _, f := range frags {
 		if f.ID == fragQuestions {
 			found = true
 		}
 	}
+
 	if !found {
 		t.Fatalf("renderFragments missing %s: %+v", fragQuestions, frags)
 	}
@@ -223,9 +250,11 @@ func TestWriteFlowAnswerQuestion(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
+
 	if !strings.Contains(string(got.Payload), `"answered"`) || !strings.Contains(string(got.Payload), "ship it") {
 		t.Fatalf("payload after answer = %s, want answered ship it", got.Payload)
 	}
+
 	if got.NotBefore.After(time.Now().Add(time.Minute)) {
 		t.Fatalf("park not cleared: not_before = %v (still ~an hour out)", got.NotBefore)
 	}
@@ -236,11 +265,13 @@ func TestWriteFlowAnswerQuestion(t *testing.T) {
 	}
 
 	answered := false
+
 	for _, f := range facts {
 		if f.Type == journal.QuestionAnswered && strings.Contains(string(f.Detail), "ship it") {
 			answered = true
 		}
 	}
+
 	if !answered {
 		t.Fatalf("no question-answered fact carrying the answer: %v", facts)
 	}
@@ -260,8 +291,10 @@ func TestWriteFlowAnswerQuestion(t *testing.T) {
 // attach. The fake server records every workspace-scoped request path in
 // arrival order and the test asserts the events attach leads the log.
 func TestAgentFeedAttachesBeforeAnyOtherCall(t *testing.T) {
-	var mu sync.Mutex
-	var calls []string
+	var (
+		mu    sync.Mutex
+		calls []string
+	)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v1/workspaces", func(w http.ResponseWriter, _ *http.Request) {
@@ -270,6 +303,7 @@ func TestAgentFeedAttachesBeforeAnyOtherCall(t *testing.T) {
 	})
 	mux.HandleFunc("/v1/workspaces/", func(w http.ResponseWriter, r *http.Request) {
 		mu.Lock()
+
 		calls = append(calls, r.URL.Path)
 		mu.Unlock()
 
@@ -291,16 +325,17 @@ func TestAgentFeedAttachesBeforeAnyOtherCall(t *testing.T) {
 
 	srv := &http.Server{Handler: mux, ReadHeaderTimeout: 5 * time.Second}
 	go func() { _ = srv.Serve(ln) }()
+
 	t.Cleanup(func() { _ = srv.Close() })
 
 	feed := NewAgentFeed()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	go func() { _ = RunAgentFeed(ctx, "unix://"+ln.Addr().String(), feed, discardLogger()) }()
 
 	deadline := time.Now().Add(10 * time.Second)
+
 	for {
 		mu.Lock()
 		n := len(calls)
@@ -321,6 +356,9 @@ func TestAgentFeedAttachesBeforeAnyOtherCall(t *testing.T) {
 	defer mu.Unlock()
 
 	if !strings.HasSuffix(calls[0], "/events") {
-		t.Fatalf("first workspace-scoped call = %q, want the events attach (M6: attach BEFORE current-session)", calls[0])
+		t.Fatalf(
+			"first workspace-scoped call = %q, want the events attach (M6: attach BEFORE current-session)",
+			calls[0],
+		)
 	}
 }

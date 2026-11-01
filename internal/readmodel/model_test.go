@@ -7,9 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	_ "modernc.org/sqlite" // the driver the projection-home engine rides (probe opens it directly)
-
 	"github.com/larsartmann/go-taskqueue/internal/config"
+	_ "modernc.org/sqlite" // the driver the projection-home engine rides (probe opens it directly)
 )
 
 func TestProjectionHomeCallerPragmasHonorSyncEnv(t *testing.T) {

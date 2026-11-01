@@ -444,6 +444,7 @@ func openQuestions(ctx context.Context, store queue.Store) []QuestionView {
 // preserved for same-task multi-asks.
 func unansweredQuestions(id task.ID, facts []journal.Fact) []QuestionView {
 	answered := make(map[string]struct{})
+
 	var asks []QuestionView
 
 	for _, fact := range facts {
@@ -478,6 +479,7 @@ func unansweredQuestions(id task.ID, facts []journal.Fact) []QuestionView {
 	}
 
 	var open []QuestionView
+
 	for _, v := range asks {
 		if _, done := answered[v.Ref]; done {
 			continue

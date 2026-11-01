@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -34,7 +35,7 @@ func TestProjectionPumpRunNilHostParksUntilDone(t *testing.T) {
 
 	select {
 	case err := <-returned:
-		if err != context.Canceled {
+		if !errors.Is(err, context.Canceled) {
 			t.Fatalf("Run returned %v after cancellation, want context.Canceled", err)
 		}
 	case <-time.After(2 * time.Second):

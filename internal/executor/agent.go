@@ -207,6 +207,7 @@ func (e *AgentExecutor) binary() string {
 	if e.Bin != "" {
 		return e.Bin
 	}
+
 	if b := os.Getenv("TQ_AGENT_BIN"); b != "" {
 		return b
 	}
@@ -369,6 +370,7 @@ func (e *AgentExecutor) Execute(ctx context.Context, t task.Task) error {
 	}
 
 	runStart := time.Now()
+
 	output, err := e.runAgent(runCtx, runDir, &p, t.ID)
 	if err != nil {
 		// Forensics for the task.failed fact: exit code + output tail. The
@@ -713,6 +715,7 @@ func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPa
 		// L1 seam: thin-client mode against the pool's shared crush server.
 		args = append(args, "-H", e.CrushServer)
 	}
+
 	if p.Model != "" {
 		args = append(args, "--model", p.Model)
 	}
@@ -941,10 +944,12 @@ func (e *AgentExecutor) runCloseoutTurn(
 	questionPath string,
 ) error {
 	closeout := strings.ReplaceAll(e.CloseoutPrompt, "{{TASK_ID}}", id.String())
+
 	closeoutArgs := []string{"run", "--quiet", "--cwd", repoDir}
 	if e.CrushServer != "" {
 		closeoutArgs = append(closeoutArgs, "-H", e.CrushServer)
 	}
+
 	closeoutArgs = append(closeoutArgs, "--session", session, "--", closeout)
 
 	closeoutOnce := func() (*bytes.Buffer, error) {
@@ -955,6 +960,7 @@ func (e *AgentExecutor) runCloseoutTurn(
 		if e.CrushServer != "" {
 			closeoutEnv = append(closeoutEnv, crushClientServerEnv+"=1")
 		}
+
 		if verdictPath != "" {
 			cmd.Env = append(closeoutEnv, verdictFileEnv+"="+verdictPath)
 		}

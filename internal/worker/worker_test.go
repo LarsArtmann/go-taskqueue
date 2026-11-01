@@ -1487,7 +1487,10 @@ func TestDirtyTreePreflightNeverBurnsAttempt(t *testing.T) {
 	reg := executor.NewRegistry()
 	reg.RegisterFunc("dirty", func(context.Context, task.Task) error {
 		return &executor.PreflightError{
-			Cause: fmt.Errorf("agent: repo /r has uncommitted changes; refusing to run agent: %w", executor.ErrDirtyTree),
+			Cause: fmt.Errorf(
+				"agent: repo /r has uncommitted changes; refusing to run agent: %w",
+				executor.ErrDirtyTree,
+			),
 		}
 	})
 
@@ -2107,6 +2110,7 @@ func TestDonePreflightAfterLeaseReclaimCompletesWithoutRerun(t *testing.T) {
 	go func() { _ = pool.Start(ctx) }()
 
 	got := waitFor(t, ctx, store, enq.ID, task.Completed)
+
 	cancel()
 
 	if ran.Load() != 1 {
@@ -2128,7 +2132,15 @@ func TestDonePreflightAfterLeaseReclaimCompletesWithoutRerun(t *testing.T) {
 		for _, f := range facts {
 			types = append(types, string(f.Type))
 		}
-		t.Fatalf("no release fact: err=%v facts=%v attempts=%d status=%s ran=%d", ferr, types, got.Attempts, got.Status, ran.Load())
+
+		t.Fatalf(
+			"no release fact: err=%v facts=%v attempts=%d status=%s ran=%d",
+			ferr,
+			types,
+			got.Attempts,
+			got.Status,
+			ran.Load(),
+		)
 	}
 
 	var detail journal.ReleasedDetail
