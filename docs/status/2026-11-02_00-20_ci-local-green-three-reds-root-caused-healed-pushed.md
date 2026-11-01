@@ -446,14 +446,20 @@ repeated a prior session's "foreign" label without checking the diff. The report
 records those in §d rather than smoothing them, because the point of this window
 was to make claims checkable, not to make them look clean.
 
-**Gate state at close (measured, not assumed):** dead-sha rc=0, doc-refs rc=0,
-todo-list rc=0, research-note-shape rc=0, daemon-attribution rc=0,
-agents-size / mirror-clones / guard-wiring rc=0, `ci-local.sh` rc=0 earlier on
-this tree minus this report. **`check-status-index.sh` is rc=1 at close** and not
-because of this report: a concurrent session wrote
-`2026-11-02_00-25_battery-tail-heal-drifts-citation-peer-closed-green.md` at
-00:27 whose header names 2026-11-01 first, tripping the same BODY-DATE DRIFT
-heuristic that this report had to word around (§e11/e12). That file is another
-window's live work; repairing it here would race its author, so it is reported
-instead. Everything this window touches is green; 36+ commits pushed, CI green
-twice, working tree clean, and three decisions are yours.
+**Gate state at close (measured, and it moved while I measured it):**
+
+| check | 00:32 result |
+| --- | --- |
+| `check-doc-refs.sh` | ok |
+| `check-todo-list.sh` | ok |
+| `check-research-note-shape.sh` | ok |
+| `check-daemon-attribution.sh` | ok (1580 baselined, 0 new) |
+| `check-agents-size.sh` / `check-mirror-clones.sh` / `check-guard-wiring.sh` | ok / 0 groups / 88 wired |
+| `check-status-index.sh` | ok (was rc=1 at 00:29 on a concurrent report's header, which its author fixed at 00:31) |
+| `check-dead-sha-refs.sh` | **rc=1 at 00:32** — but only on a fresh (now-unreachable) sha inside the concurrent session's `2026-11-02_00-25_battery-tail-heal-drifts-citation-peer-closed-green.md:11` and its index row; that file is its author's live work (mtime 00:31:03), and repairing it from here would race the writer |
+| `ci-local.sh` | rc=0 earlier on this tree minus this report |
+
+Every gate that reads a file THIS window wrote is green. The one red at 00:32 is
+another window's heal residue, which is exactly the class this session spent its
+time curing in its own files. 36+ commits pushed, CI green twice, working tree
+clean, and three decisions are yours.
