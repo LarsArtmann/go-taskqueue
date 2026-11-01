@@ -110,6 +110,7 @@ if [ "${1:-}" = "--self-test" ]; then
 	mkdir -p "$tmp/notes"
 	local_dir="$tmp/notes"
 
+	# pins: the positive control (full shape: heading + citations table + trail)
 	cat >"$local_dir/good.md" <<'EOF'
 # Thing lessons for go-taskqueue
 
@@ -124,6 +125,7 @@ if [ "${1:-}" = "--self-test" ]; then
 - downloaded the sources directly; no intermediary summary
 EOF
 
+	# pins: the missing-citations-heading negative path
 	cat >"$local_dir/no-heading.md" <<'EOF'
 # Thing lessons
 
@@ -132,6 +134,7 @@ EOF
 - read it
 EOF
 
+	# pins: the prose-instead-of-table negative path
 	cat >"$local_dir/no-table.md" <<'EOF'
 # Thing lessons
 
@@ -144,6 +147,7 @@ Prose instead of a table.
 - read it
 EOF
 
+	# pins: the empty-verification-trail negative path
 	cat >"$local_dir/empty-trail.md" <<'EOF'
 # Thing lessons
 
@@ -157,6 +161,7 @@ EOF
 
 EOF
 
+	# pins: the legacy-shape grandfathering path (listed in grand.txt)
 	cat >"$local_dir/legacy.md" <<'EOF'
 # An old analysis with a different shape
 EOF

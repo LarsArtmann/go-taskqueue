@@ -220,6 +220,7 @@ if [ "${1:-}" = "--self-test" ]; then
 	trap 'rm -rf "$tmp"' EXIT
 	mkdir -p "$tmp/pkg"
 	# The anchor lives on line 5; cite 5 (in window) and 30 (drift).
+	# pins: the in-window cite (line 5) vs the drifted cite (line 30) branches
 	cat >"$tmp/pkg/anchor.go" <<'EOF'
 package pkg
 
