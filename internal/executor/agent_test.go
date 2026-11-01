@@ -1083,12 +1083,12 @@ printf 'TQ_RESULT: {"files_changed":["x.go"]}\n'
 		t.Fatalf("want 2 agent invocations (work + closeout), got %d: %q", len(blocks), blocks)
 	}
 
-	work := strings.Split(strings.TrimRight(blocks[0], "\n"), "\n")
+	work := strings.Split(strings.TrimSpace(blocks[0]), "\n")
 	if len(work) == 0 || !strings.Contains(work[0], "--verbose") || strings.Contains(work[0], "--session") {
 		t.Fatalf("work turn must run verbose without --session: %q", blocks[0])
 	}
 
-	closeout := strings.Split(strings.TrimRight(blocks[1], "\n"), "\n")
+	closeout := strings.Split(strings.TrimSpace(blocks[1]), "\n")
 	if len(closeout) == 0 || !strings.Contains(closeout[0], "--session sess-1234") || !strings.Contains(closeout[0], "closeout review ") {
 		t.Fatalf("closeout turn must resume the extracted session with the resolved prompt: %q", blocks[1])
 	}
