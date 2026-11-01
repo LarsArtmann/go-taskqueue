@@ -245,5 +245,17 @@ smokes pin every one of them.
   passed `-H <bare-path>` — crush rejects scheme-less hosts ("Invalid
   host URL"); `crushHostFlag` now normalizes (unit-pinned 3-way). The
   pool smoke's mid-run kill leg is the E2E that caught it.
+- **V2.10 GREEN (2026-11-01 19:35, run12)**: three legs pass — routed
+  429, keeper/supervisor, mid-run kill no-burn. Two root causes closed
+  after six red runs: (1) a marker-rm race (claim-wake arms the mock's
+  tool stall <1s after the item commit — the script's later `rm -f`
+  erased the marker and the poll waited for a stall that already
+  happened; the run9 artifact's "completed exactly MOCK_STALL after
+  enqueue" timing was the tell), and (2) the REAL classifier bug:
+  routed work/closeout turns ran `crush run --quiet`, which suppresses
+  the severed-stream WARN entirely (observed: quiet severed run = rc 0,
+  1-byte output) — routed turns now always run `--verbose` and the
+  closeout's rc-0 path classifies too (unit-pinned in
+  TestAgentCrushServerSeam; CHANGELOG Fixed row).
 - **Env-gap residue**: unchanged (crush#4210 open). Canary holds green-red
   per the route smoke; flip ritual = V3.6 note in the smoke header.

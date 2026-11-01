@@ -119,6 +119,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- **routed turns ran quiet, hiding mid-run server deaths** (2026-11-01):
+  a `--crush-server` work or closeout turn ran `crush run --quiet`,
+  which suppresses the severed-stream WARN — a server death mid-run
+  exited 0 with a 1-byte output and the task COMPLETED on the silence.
+  Routed turns (work and closeout) now always run `--verbose`, the only
+  mode that emits the WARN the death classifier matches; caught live by
+  the pool smoke's mid-run kill leg.
 - **readmodel same-status transitions drained counters** (2026-10-31):
   `transitionDelta` / `projectTransitionDelta` netted -1 for
   from==next facts (same-status transitions), silently draining
