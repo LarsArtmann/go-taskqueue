@@ -193,6 +193,10 @@ class Handler(BaseHTTPRequestHandler):
         if any(m.get("role") == "tool" for m in messages):
             stall = float(os.environ.get("MOCK_STALL", "0"))
             if stall > 0:
+                marker = os.environ.get("MOCK_STALL_MARKER", "")
+                if marker:
+                    with open(marker, "a") as fh:
+                        fh.write("stall\n")
                 time.sleep(stall)
             delta = {"role": "assistant", "content": "mock done"}
         elif "verdict" in last_user.lower() and not is_template:
@@ -342,7 +346,8 @@ echo "== leg: server death MID-RUN requeues the routed task without attempt burn
 # window. The severed client exits 0 with the WARN line; the executor's
 # DetectCrushServerDeath classifies it; the worker requeues (class
 # crush-server): task PENDING, attempts 0, last error carries the marker.
-MOCK_429=0 MOCK_STALL=25 python3 "$TMP/mock_crush_pool.py" "$PORT" >"$TMP/mock2.log" 2>&1 &
+MOCK_429=0 MOCK_STALL=25 MOCK_STALL_MARKER="$TMP/stall-entered.log" \
+	python3 "$TMP/mock_crush_pool.py" "$PORT" >"$TMP/mock2.log" 2>&1 &
 sleep 1
 printf -- '- [ ] smoke probe: write the verdict file now\n' >"$TMP/poolproj/repo/TODO_LIST.md"
 git -C "$TMP/poolproj/repo" add -A
@@ -386,6 +391,20 @@ done
 	tail -25 "$TMP/pool.log"
 	"$TMP/tq" tasks --db "$TMP/pool.db" --json 2>/dev/null | head -40
 	fail "no task reached running — harvest never minted the probe item (or it died before this poll caught it)"
+}
+# Kill INSIDE the stalled tool-result turn, not at claim time: a kill
+# before the first provider round lets the client respawn the server
+# (ensureServer, M7) and the run completes normally — no severed stream.
+# The mock marks the stall's entry; the kill must land after it.
+rm -f "$TMP/stall-entered.log"
+for _ in $(seq 1 100); do
+	[ -s "$TMP/stall-entered.log" ] && break
+	size_guard
+	sleep 0.3
+done
+[ -s "$TMP/stall-entered.log" ] || {
+	tail -25 "$TMP/pool.log"
+	fail "the mock never entered the stalled tool-result turn — probe task never reached its tool call"
 }
 DEAD_PID="$(pgrep -f "crush server --host unix://$PSOCK" | head -1)"
 [ -n "$DEAD_PID" ] || fail "no server process to kill mid-run"
