@@ -186,10 +186,14 @@ class Handler(BaseHTTPRequestHandler):
         length = int(self.headers.get("Content-Length", "0"))
         req = json.loads(self.rfile.read(length) or b"{}")
         messages = req.get("messages", [])
-        last_user = next((str(m.get("content"))[:80] for m in reversed(messages)
-                          if m.get("role") == "user"), "")
+        # Full content for the content-key (a harvested work prompt carries
+        # its "verdict" item text hundreds of chars in); truncated copy for
+        # logging only.
+        last_user_full = next((str(m.get("content")) for m in reversed(messages)
+                               if m.get("role") == "user"), "")
+        last_user = last_user_full[:80]
         delta = {"role": "assistant", "content": "ok"}
-        is_template = last_user.startswith("Generate a concise title") or last_user.startswith("Provide a detailed summary")
+        is_template = last_user_full.startswith("Generate a concise title") or last_user_full.startswith("Provide a detailed summary")
         if any(m.get("role") == "tool" for m in messages):
             stall = float(os.environ.get("MOCK_STALL", "0"))
             if stall > 0:
@@ -199,7 +203,7 @@ class Handler(BaseHTTPRequestHandler):
                         fh.write("stall\n")
                 time.sleep(stall)
             delta = {"role": "assistant", "content": "mock done"}
-        elif "verdict" in last_user.lower() and not is_template:
+        elif "verdict" in last_user_full.lower() and not is_template:
             args = json.dumps({"command": "echo pool-leg-probe", "description": "probe tool call"})
             delta = {"role": "assistant", "content": None,
                      "tool_calls": [{"id": "call_1", "type": "function",
