@@ -157,3 +157,51 @@ func TestKnownFactDetailStillRejectsCorruption(t *testing.T) {
 		)
 	}
 }
+
+// TestEventForSkipsKnownLedgerlessFamilies pins the CONSCIOUS half of the skip
+// policy: eight fact families reach the journal and carry no ledger state, so
+// the fold must skip each one by name instead of relying on the `default`
+// branch. Without this pin, a future refactor that deletes one case silently
+// reclassifies a known family as "unknown type" — indistinguishable in output
+// from version skew, and exactly the "nothing tests it" overclaim the OKF note
+// had to retract.
+func TestEventForSkipsKnownLedgerlessFamilies(t *testing.T) {
+	t.Parallel()
+
+	families := []journal.FactType{
+		journal.Heartbeat,
+		journal.CancelRequested,
+		journal.Released,
+		journal.Orphaned,
+		journal.SessionOpened,
+		journal.SessionClosed,
+		journal.QuestionAsked,
+		journal.QuestionAnswered,
+	}
+
+	for _, family := range families {
+		t.Run(string(family), func(t *testing.T) {
+			t.Parallel()
+
+			fact := journal.Fact{
+				Seq:    1,
+				Time:   time.UnixMilli(1_700_000_000_000),
+				TaskID: "000001a0ledgerless0000000000000000000",
+				Type:   family,
+				// Detail that WOULD be corruption if the family were decoded:
+				// the skip must happen before any decode.
+				Detail: []byte(`{"malformed":`),
+			}
+
+			evt, ok, err := eventFor(context.Background(), fact, nil)
+			if err != nil {
+				t.Fatalf("eventFor(%s) error = %v, want nil — a ledgerless family is a "+
+					"deliberate skip, not corruption", family, err)
+			}
+
+			if ok || evt != nil {
+				t.Fatalf("eventFor(%s) = (%v, %v), want (nil, false)", family, evt, ok)
+			}
+		})
+	}
+}

@@ -153,3 +153,48 @@ func TestDecodePayloadRejectsUnusableInput(t *testing.T) {
 		})
 	}
 }
+
+// TestDecodePayloadRejectsTypeMismatch draws the third line: tolerance is about
+// unknown MEMBERS, never about wrong TYPES. A payload that sends "text" where an
+// int lives is not a newer contract — it is a broken producer, and decoding it
+// into a zero value would run the task with a silently wrong number.
+//
+// CANARY: Go's encoding/json/v2 is strict about member NAMES only when asked, but
+// a future Go may flip that default. If `TestDecodePayloadToleranceIsNotVacuous`
+// ever starts failing because the LENIENT decode rejects `future_flag`, the
+// tolerance here has silently become strict — that is a behaviour change for every
+// producer, not a test to update.
+func TestDecodePayloadRejectsTypeMismatch(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		payload string
+	}{
+		{name: "string where int lives", payload: `{"repo":"acme","prompt":"p","v":"2"}`},
+		{name: "object where string lives", payload: `{"repo":{"name":"acme"},"prompt":"p"}`},
+		{name: "array where bool lives", payload: `{"repo":"acme","prompt":"p","yolo":[true]}`},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			_, err := decodePayload[AgentPayload](
+				task.Task{Type: TaskTypeAgent, Payload: jsontext.Value(tt.payload)},
+				TaskTypeAgent, "object with repo+prompt",
+			)
+			if err == nil {
+				t.Fatalf("decodePayload(%s) error = nil, want a type-mismatch rejection", tt.name)
+			}
+
+			if _, ok := errors.AsType[*PermanentError](err); !ok {
+				t.Errorf("decodePayload(%s) error = %v, want *PermanentError", tt.name, err)
+			}
+
+			if !strings.Contains(err.Error(), "decode payload") {
+				t.Errorf("decodePayload(%s) error = %q, want the decode-payload prefix", tt.name, err.Error())
+			}
+		})
+	}
+}
