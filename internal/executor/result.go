@@ -75,6 +75,13 @@ type AgentResult struct {
 	// tallies. Absent means the receipt predates this field or nothing ran —
 	// UNVERIFIED, never invalid (see AttestVerify / AttestationNoReceipt).
 	Verify *VerifyReceipt `json:"verify,omitempty"`
+	// Attestation is the deterministic verdict on Verify, stamped at write
+	// time by the process that held the gate output. It is a REFUSAL when the
+	// executed gate was not the pinned one or the gate ran at a rev the
+	// completion does not claim — the rendering surfaces show the refusal
+	// instead of presenting the receipt as verified (OKF §10.5: a false
+	// verdict means refuse the value, not decorate it).
+	Attestation *VerifyVerdict `json:"attestation,omitempty"`
 	// Commits are the commits whose `Task-Queue-ID: <id>` footer names this
 	// task, DERIVED from git after the run (oldest first) — the agent never
 	// reports them. FilesChanged is the union of files those commits
@@ -141,6 +148,10 @@ type FailureEvidence struct {
 	// One shape across both paths — a failure receipt and a success receipt
 	// are the same type, so no reader needs two decoders.
 	Verify *VerifyReceipt `json:"verify,omitempty"`
+	// Attestation is the write-time verdict on Verify, same contract as the
+	// success path (a refused receipt is evidence of a broken gate contract,
+	// which is exactly what a DLQ autopsy needs).
+	Attestation *VerifyVerdict `json:"attestation,omitempty"`
 }
 
 // IsZero reports whether no evidence was recorded — the field-wise zero
@@ -251,6 +262,11 @@ func SetVerifyFailureEvidence(ctx context.Context, out VerifyOutcome, err error)
 		ExitCode:    exitCode(err),
 		Tail:        out.Tail,
 		Verify:      out.Receipt,
+		// No claimed rev yet on this path (the failing run's own commits are
+		// derived afterwards), so the HEAD comparison is skipped rather than
+		// guessed — a skipped comparison is reported in the verdict, never
+		// silently counted as a pass.
+		Attestation: out.Attest(""),
 	})
 }
 

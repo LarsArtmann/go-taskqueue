@@ -137,6 +137,33 @@ func (v VerifyVerdict) String() string {
 	return "ok (" + strings.Join(v.Checked, ",") + ")"
 }
 
+// Attest grades this run's receipt with the declarations the run itself saw.
+// Returns nil when no gate ran (no receipt): absence is absence, and a stored
+// "no-receipt" verdict would dress it up as a judgement instead of a fact.
+//
+// The verdict is stamped at WRITE time, by the process that held the gate
+// output and the declarations, and stored beside the receipt. That is
+// deliberate: a reader months later cannot reconstruct the repo's .tq-verify or
+// the enqueue-time pin, so re-grading from the stored receipt alone would
+// silently skip comparisons and read green. Re-grading IS still possible for a
+// stored sidecar log (AttestVerify is pure) — that is the audit path, not the
+// rendering path.
+func (o VerifyOutcome) Attest(claimedHead string) *VerifyVerdict {
+	if o.Receipt == nil {
+		return nil
+	}
+
+	verdict := AttestVerify(AttestationInput{
+		Receipt:       o.Receipt,
+		PayloadVerify: o.PayloadVerify,
+		RepoVerify:    o.RepoVerify,
+		ClaimedHead:   claimedHead,
+		GateOutput:    string(o.Output),
+	})
+
+	return &verdict
+}
+
 // AttestationInput is everything the attester grades: the receipt the run
 // produced plus the declarations it must agree with. Every input is a plain
 // value, so the attester stays a pure function with no git access, no store

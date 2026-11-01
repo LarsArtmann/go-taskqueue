@@ -437,10 +437,15 @@ func (e *AgentExecutor) Execute(ctx context.Context, t task.Task) error {
 		}
 	}
 
+	// Grade the receipt AFTER derivation, against the rev the completion
+	// actually claims: a gate that ran at one HEAD while the completion names
+	// another proves a different tree, and that must show up as a refusal on
+	// the receipt instead of a green line nobody can contradict.
+	result.Attestation = verifyOut.Attest(result.CommitSHA)
+
 	// Worktree forensics: where the run actually happened and which branch
 	// carries the commits (the merge/reap machinery keys off the prefix);
-	// BaseBranch names the merge target for the post-approve merge.
-	result.WorktreeDir = runDir
+	// BaseBranch names the merge target for the post-approve merge.	result.WorktreeDir = runDir
 	result.Branch = wtBranch
 	result.BaseBranch = wtBase
 
@@ -1147,13 +1152,22 @@ func execWithTransientRetry[T any](run func() (T, error)) (T, error) {
 }
 
 // VerifyOutcome is one verify-gate run's result: the bounded output tail, the
-// death class (a VerifyStage* value, empty on success), and the structured
-// receipt describing what actually ran. One type for both paths — a failing
-// gate and a passing gate answer the same questions.
+// death class (a VerifyStage* value, empty on success), the structured receipt
+// describing what actually ran, and the declarations the run saw. One type for
+// both paths — a failing gate and a passing gate answer the same questions.
+//
+// RepoVerify and PayloadVerify are the gate-time declarations (not re-read
+// later: a declaration that drifts after the gate is exactly what the attester
+// must not silently absorb), and Output is the captured gate output the count
+// comparison re-derives from. Output is NOT stored in the journal detail — the
+// receipt is the bounded summary, the sidecar is the log.
 type VerifyOutcome struct {
-	Tail    string
-	Stage   string
-	Receipt *VerifyReceipt
+	Tail          string
+	Stage         string
+	Receipt       *VerifyReceipt
+	RepoVerify    string
+	PayloadVerify string
+	Output        []byte
 }
 
 // runVerify enforces the quality gate after the agent exited cleanly. The
@@ -1180,6 +1194,11 @@ func runVerify(
 		return VerifyOutcome{}, nil // nothing to verify (unknown stack, no explicit command)
 	}
 
+	// The declarations are captured at GATE time, beside the command that
+	// won: the attester compares "what ran" against "what was pinned", and a
+	// re-read after the fact would let the declaration drift into agreement.
+	repoVerify := readTQVerify(repoDir)
+
 	cmd := exec.CommandContext(ctx, "sh", "-c", verify)
 	cmd.Dir = repoDir
 
@@ -1190,6 +1209,21 @@ func runVerify(
 	prepareProcessGroup(cmd)
 
 	cmd.WaitDelay = 10 * time.Second
+
+	// outcome assembles the result of the run that just finished: the tail at
+	// the caller's bound, the death class, the receipt, and the declarations
+	// the attestation needs. Built from the buffer AFTER the run, so every
+	// field is an observation.
+	outcome := func(tail, stage string, rc int) VerifyOutcome {
+		return VerifyOutcome{
+			Tail:          tail,
+			Stage:         stage,
+			Receipt:       verifyReceipt(verify, repoDir, rc, buf.Bytes()),
+			RepoVerify:    repoVerify,
+			PayloadVerify: p.Verify,
+			Output:        buf.Bytes(),
+		}
+	}
 
 	if err := cmd.Run(); err != nil {
 		// The tail rides along even on error: it IS the failure evidence
@@ -1209,7 +1243,7 @@ func runVerify(
 			tail = fmt.Sprintf("%s\n(full verify output: %s)", tail, evidence)
 		}
 
-		out := VerifyOutcome{Tail: tail, Stage: stage, Receipt: verifyReceipt(verify, repoDir, exitCode(err), buf.Bytes())}
+		out := outcome(tail, stage, exitCode(err))
 
 		if gateErr := classifyVerifyFailure(ctx, verify, repoDir, baseRev, err, tail); gateErr != nil {
 			return out, gateErr
@@ -1222,7 +1256,7 @@ func runVerify(
 		return out, fmt.Errorf("agent verify failed (%q): %w: %s", verify, err, tail)
 	}
 
-	return VerifyOutcome{Tail: tailBytes(buf.Bytes(), 2048), Receipt: verifyReceipt(verify, repoDir, 0, buf.Bytes())}, nil
+	return outcome(tailBytes(buf.Bytes(), 2048), "", 0), nil
 }
 
 // verifyReceipt builds the gate receipt from what the run ACTUALLY did: the

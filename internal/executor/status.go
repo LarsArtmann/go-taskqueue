@@ -82,6 +82,9 @@ type StatusResult struct {
 	// committed on still builds (the same VerifyReceipt the agent path
 	// records).
 	Verify *VerifyReceipt `json:"verify,omitempty"`
+	// Attestation is the write-time verdict on Verify (same contract as the
+	// agent path).
+	Attestation *VerifyVerdict `json:"attestation,omitempty"`
 }
 
 // defaultStatusTaskTimeout bounds one status run unless the payload overrides.
@@ -175,6 +178,7 @@ func (e *StatusExecutor) Execute(ctx context.Context, t task.Task) error {
 	}
 
 	result.Verify = verifyOut.Receipt
+	result.Attestation = verifyOut.Attest("")
 
 	result.deriveUsage(ctx, repoDir, output, t.ID)
 	recordRunOutcome(ctx, &result, output, "", t.ID)
