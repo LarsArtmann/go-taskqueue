@@ -92,7 +92,7 @@ cat >"$XDG/crush/crush.json" <<EOF
       "base_url": "http://127.0.0.1:$PORT/v1",
       "type": "completions",
       "models": [
-        {"id": "mock-1", "name": "Mock 1", "context_window": 8192, "max_tokens": 1024}
+        {"id": "mock-1", "name": "Mock 1", "context_window": 200000, "max_tokens": 1024}
       ]
     }
   },
@@ -311,12 +311,18 @@ echo "PASS: /v1/health 200 on the scratch socket"
 
 echo "== leg: routed verdict round-trip (M1/M4)"
 rm -f "$REPO/smoke-verdict.json"
+: >"$TMP/mock-requests.log" # truncate, never rm: the mock holds an append handle
 routed_run run1.log
 RC=$?
 [ "$RC" -eq 0 ] || { cat "$TMP/run1.log"; fail "routed run rc=$RC" ; }
 grep -q "Created session for non-interactive run session_id=" "$TMP/run1.log" || fail "no session-id line in routed output (M4)"
-grep -Eq 'provider=mock' "$TMP/run1.log" || fail "run log does not name provider=mock — isolation was NEVER proven, abort"
-echo "PASS: rc 0 + session-id line + provider=mock receipt"
+# Zero-spend receipt: every provider call landed on OUR mock (its request
+# log is the traffic record; a real provider would show up as missing
+# entries + a very different run). Title + main turn = the minimum pair.
+[ -s "$TMP/mock-requests.log" ] || fail "mock request log empty — the run never called the (only configured) mock provider"
+grep -q "roles=\['system', 'user'\]" "$TMP/mock-requests.log" || fail "no title-gen request hit the mock (want the system+user pair)"
+grep -q "please write the verdict file now" "$TMP/mock-requests.log" || fail "the main turn never reached the mock provider"
+echo "PASS: rc 0 + session-id line + all provider traffic on the mock"
 grep -q '"verdict":"ok-routed"' "$REPO/smoke-verdict.json" || { cat "$TMP/run1.log"; fail "verdict file missing/wrong after routed run"; }
 echo "PASS: routed tool-call wrote the verdict file"
 
@@ -370,7 +376,7 @@ wait "$RUN2_PID"
 echo "PASS: stalled routed run completed after the probes"
 
 echo "== leg: env-gap canary (two-sided, v0.99.0 — see header)"
-start_mock 'printf %s server-env > "$XDG_CONFIG_HOME/env-proof.txt"; printf %s "[$TQ_RESULT_FILE]" > "$TMP/tqrf-seen.txt"' 'mock done' 0
+start_mock "printf %s server-env > \"\$XDG_CONFIG_HOME/env-proof.txt\"; printf %s \"[\$TQ_RESULT_FILE]\" > \"$TMP/tqrf-seen.txt\"" 'mock done' 0
 rm -f "$XDG/env-proof.txt" "$TMP/tqrf-seen.txt" "$REPO/smoke-verdict.json"
 routed_run run3.log
 [ "$(cat "$XDG/env-proof.txt" 2>/dev/null)" = "server-env" ] || fail "server-env side of the canary broke: bash tool no longer sees the server env (behavior changed — investigate!)"
