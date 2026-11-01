@@ -1642,3 +1642,11 @@ a8edabd0e5924db6c012b695002c59913fc649be
 d5a372e79a11d2b385f315828957c9262a10fed7
 # 2026-11-01 row-1450 pool smoke: final crush-pool-supervisor smoke sweep (superseded content-wise by the footered e44de143 COVERAGE/TODO half)
 4f008d1227affdf5034939b436cfa75f99e53292
+# 2026-11-01 row-1446 enricher: row-1446 enricher landing (agent.go/result.go/crushserver.go first write)
+3478d9970d83b7a8cfcfcc58314685c5967135cc
+# 2026-11-01 row-1446 enricher: row-1446 enricher (crushserver.go growth + crushserver_test.go first write)
+278000fdaa2bf30918b5c24c69ed890cd1fb56b8
+# 2026-11-01 row-1446 enricher: row-1446 enricher (resolver fix + test case fix)
+8657de8ed8c605655402c7485279dc50d3b7dd4c
+# 2026-11-01 row-1446 enricher: row-1446 closeout (CHANGELOG rows + TODO tick + facade alias)
+e7838543692811d067d7cf141534a5de439429af
