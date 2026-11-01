@@ -12,7 +12,7 @@ audit 11
 doctor 11
 top 4
 show 2
-dlq 10
+dlq 11
 cancel 3
 facts 7
 tail 3
