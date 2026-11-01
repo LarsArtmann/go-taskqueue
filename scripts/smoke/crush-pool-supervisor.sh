@@ -387,7 +387,7 @@ else:
     if not row:
         print("missing")
     else:
-        print(row.get("status"), row.get("attempts"), row.get("last_error", ""))
+        print(row.get("status"), row.get("attempts"))
 PYEOF
 # task_state: tq tasks --json filtered through taskq.py (a bare $((
 # adjacency reads as arithmetic to some shells — helper function instead)
@@ -435,20 +435,31 @@ echo "PASS: severed mid-run turn classified (crush-server death, no burn)"
 STATE=""
 for _ in $(seq 1 100); do
 	STATE="$(task_state "$RUNNING_ID")"
-	case "$STATE" in
-		"pending 0 "*"crush-server"*) break ;;
-	esac
+	[ "$STATE" = "pending 0" ] && break
 	size_guard
 	sleep 0.3
 done
-case "$STATE" in
-	"pending 0 "*"crush-server"*) : ;;
-	*)
-		tail -25 "$TMP/pool.log"
-		fail "task $RUNNING_ID state after server kill = '$STATE', want pending/0-attempts with [crush-server]"
-		;;
-esac
-echo "PASS: task requeued without attempt burn (state: $STATE)"
+[ "$STATE" = "pending 0" ] || {
+	tail -25 "$TMP/pool.log"
+	fail "task $RUNNING_ID state after server kill = '$STATE', want pending/0-attempts (no burn)"
+}
+# The requeue class rides the requeued FACT's error + evidence detail —
+# tq tasks --json carries no last_error field — so tq show is the operator
+# surface that must render the [crush-server] marker.
+SHOW_OK=0
+for _ in $(seq 1 20); do
+	if "$TMP/tq" show --db "$TMP/pool.db" "$RUNNING_ID" 2>/dev/null | grep -q "crush-server"; then
+		SHOW_OK=1
+		break
+	fi
+	size_guard
+	sleep 0.3
+done
+[ "$SHOW_OK" = 1 ] || {
+	"$TMP/tq" show --db "$TMP/pool.db" "$RUNNING_ID" 2>/dev/null | head -40
+	fail "tq show carries no [crush-server] class for the requeued task"
+}
+echo "PASS: task requeued without attempt burn (pending, attempts 0, class crush-server)"
 wait_pattern "$TMP/pool.log" "restart 2" 45 "supervisor did not restart the server after the mid-run kill"
 echo "PASS: supervisor restart ladder rode the mid-run death too"
 
