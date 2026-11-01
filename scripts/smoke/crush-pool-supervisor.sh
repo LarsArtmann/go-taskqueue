@@ -290,7 +290,11 @@ for _ in $(seq 1 90); do
 	size_guard
 	sleep 0.5
 done
-[ -n "$NEWPID" ] && [ "$NEWPID" != "$SRVPID" ] || { tail -20 "$TMP/pool.log"; fail "no replacement server process"; }
+if [ -z "$NEWPID" ] || [ "$NEWPID" = "$SRVPID" ]; then
+	echo "FAIL: no replacement server process after kill -9 (supervisor ladder broken)"
+	tail -20 "$TMP/pool.log"
+	exit 1
+fi
 echo "PASS: supervisor restarted the server ($SRVPID -> $NEWPID)"
 
 pkill -TERM -f "$TMP/tq agent-pool"
@@ -300,8 +304,9 @@ for _ in $(seq 1 30); do
 	sleep 0.5
 done
 if pgrep -f "$TMP/tq agent-pool" >/dev/null; then
+	echo "FAIL: pool did not exit on SIGTERM within 15s"
 	tail -20 "$TMP/pool.log"
-	fail "pool did not exit on SIGTERM"
+	exit 1
 fi
 sleep 1
 pgrep -f "$SRVPATT" >/dev/null && fail "crush server orphaned after pool exit"
