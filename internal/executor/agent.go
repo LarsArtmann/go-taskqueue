@@ -566,6 +566,16 @@ func assertCleanTree(ctx context.Context, repo string) error {
 // TQ_RESULT line is the legacy fallback for in-flight tasks.
 const verdictFileEnv = "TQ_RESULT_FILE"
 
+// verdictRailTmpl is the ONE prompt rail that keeps the verdict FILE
+// channel alive under `--crush-server`: the routed bash tool sees only
+// the SERVER process env (M8), so $TQ_RESULT_FILE is invisible to a
+// routed agent. The rail bakes the per-run path into the prompt itself
+// and teaches the flag form — `tq verdict --file <path> '<json>'` — so
+// local and routed runs share ONE contract. Always-on when the channel
+// exists (verdictPath != ""); additive only, the env channel stays
+// byte-identical for local runs.
+const verdictRailTmpl = "\n\nVerdict channel: record your final structured verdict before exiting by running: tq verdict --file %s '<one-line result JSON>' — the queue reads this file; it is the authoritative channel (stdout is only a fallback)."
+
 // crushClientServerEnv turns `crush run` into a thin client whose agent
 // executes inside the shared `crush server` (L1 seam; see AgentExecutor.
 // CrushServer). Set ONLY alongside the matching -H <socket> run arg.
@@ -693,6 +703,13 @@ func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPa
 	// <id>` footers in their commits so git log ↔ tq facts cross-reference
 	// (21:40 report §e3).
 	p.Prompt = strings.ReplaceAll(p.Prompt, "{{TASK_ID}}", id.String())
+
+	// The verdict rail (M8 bridge): the prompt itself names the channel,
+	// so the verdict file works whether the agent turn runs in-process
+	// (env channel) or routed through the pool's crush server (env gap).
+	if verdictPath != "" {
+		p.Prompt += fmt.Sprintf(verdictRailTmpl, verdictPath)
+	}
 
 	if e.Yolo || p.Yolo {
 		if err := requireRepoAutonomy(repoDir); err != nil {
@@ -944,6 +961,12 @@ func (e *AgentExecutor) runCloseoutTurn(
 	questionPath string,
 ) error {
 	closeout := strings.ReplaceAll(e.CloseoutPrompt, "{{TASK_ID}}", id.String())
+
+	// The closeout turn records its own verdict (the a)-g) report turn):
+	// same rail as the work turn, same always-on contract.
+	if verdictPath != "" {
+		closeout += fmt.Sprintf(verdictRailTmpl, verdictPath)
+	}
 
 	closeoutArgs := []string{"run", "--quiet", "--cwd", repoDir}
 	if e.CrushServer != "" {
