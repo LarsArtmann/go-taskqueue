@@ -63,6 +63,7 @@ func (e *CrushServerDeathError) Error() string {
 }
 
 func (e *CrushServerDeathError) Unwrap() error { return e.Cause }
+
 // containsFold is a tiny ASCII-case-insensitive Contains (log level
 // casing varies: WARN/warn).
 func containsFold(s, substr string) bool {

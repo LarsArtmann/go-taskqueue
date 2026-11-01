@@ -570,9 +570,9 @@ func TestQuestionRailSkipsSecondOpinionClones(t *testing.T) {
 	}
 
 	for _, tc := range []struct {
-		name       string
-		second     bool
-		wantRail   bool
+		name     string
+		second   bool
+		wantRail bool
 	}{
 		{name: "work executor learns the ask rail", second: false, wantRail: true},
 		{name: "second-opinion clone never sees it", second: true, wantRail: false},

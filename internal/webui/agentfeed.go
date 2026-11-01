@@ -144,9 +144,9 @@ const (
 // Pure time bookkeeping — the busy-session probe lives in the collector
 // loop so the tracker stays fake-clock testable.
 type stallTracker struct {
-	mu     sync.Mutex
-	last   map[string]time.Time
-	now    func() time.Time
+	mu   sync.Mutex
+	last map[string]time.Time
+	now  func() time.Time
 }
 
 func newStallTracker(now func() time.Time) *stallTracker {

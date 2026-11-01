@@ -68,13 +68,13 @@ var (
 
 // Typed errors.
 type (
-	LeaseLostError       = internalexecutor.LeaseLostError
-	PermanentError       = internalexecutor.PermanentError
-	PreflightError       = internalexecutor.PreflightError
-	QuestionPendingError = internalexecutor.QuestionPendingError
-	RateLimitError       = internalexecutor.RateLimitError
-	VerifyGateError      = internalexecutor.VerifyGateError
-	VerifyGateClass      = internalexecutor.VerifyGateClass
+	LeaseLostError        = internalexecutor.LeaseLostError
+	PermanentError        = internalexecutor.PermanentError
+	PreflightError        = internalexecutor.PreflightError
+	QuestionPendingError  = internalexecutor.QuestionPendingError
+	RateLimitError        = internalexecutor.RateLimitError
+	VerifyGateError       = internalexecutor.VerifyGateError
+	VerifyGateClass       = internalexecutor.VerifyGateClass
 	CrushServerDeathError = internalexecutor.CrushServerDeathError
 )
 
@@ -205,38 +205,38 @@ var (
 
 // Functions.
 var (
-	NewRegistry              = internalexecutor.NewRegistry
-	NewCommandExecutor       = internalexecutor.NewCommandExecutor
-	NewHTTPExecutor          = internalexecutor.NewHTTPExecutor
-	NewAgentExecutor         = internalexecutor.NewAgentExecutor
-	AgentVersion             = internalexecutor.AgentVersion
-	CommandFromPayload       = internalexecutor.CommandFromPayload
-	DetectRateLimit          = internalexecutor.DetectRateLimit
-	DetectVerify             = internalexecutor.DetectVerify
-	Excerpt                  = internalexecutor.Excerpt
-	ExtractResultPayload     = internalexecutor.ExtractResultPayload
-	ExtractSessionID         = internalexecutor.ExtractSessionID
-	Permanent                = internalexecutor.Permanent
-	QuestionPending          = internalexecutor.QuestionPending
-	RateLimited              = internalexecutor.RateLimited
-	ReadTQVerify             = internalexecutor.ReadTQVerify
-	RenderAgentPayload       = internalexecutor.RenderAgentPayload
-	ResultLine               = internalexecutor.ResultLine
-	RedactSecrets            = internalexecutor.RedactSecrets
-	SecretHits               = internalexecutor.SecretHits
-	SetFailureEvidence       = internalexecutor.SetFailureEvidence
-	SetVerifyFailureEvidence = internalexecutor.SetVerifyFailureEvidence
+	NewRegistry                = internalexecutor.NewRegistry
+	NewCommandExecutor         = internalexecutor.NewCommandExecutor
+	NewHTTPExecutor            = internalexecutor.NewHTTPExecutor
+	NewAgentExecutor           = internalexecutor.NewAgentExecutor
+	AgentVersion               = internalexecutor.AgentVersion
+	CommandFromPayload         = internalexecutor.CommandFromPayload
+	DetectRateLimit            = internalexecutor.DetectRateLimit
+	DetectVerify               = internalexecutor.DetectVerify
+	Excerpt                    = internalexecutor.Excerpt
+	ExtractResultPayload       = internalexecutor.ExtractResultPayload
+	ExtractSessionID           = internalexecutor.ExtractSessionID
+	Permanent                  = internalexecutor.Permanent
+	QuestionPending            = internalexecutor.QuestionPending
+	RateLimited                = internalexecutor.RateLimited
+	ReadTQVerify               = internalexecutor.ReadTQVerify
+	RenderAgentPayload         = internalexecutor.RenderAgentPayload
+	ResultLine                 = internalexecutor.ResultLine
+	RedactSecrets              = internalexecutor.RedactSecrets
+	SecretHits                 = internalexecutor.SecretHits
+	SetFailureEvidence         = internalexecutor.SetFailureEvidence
+	SetVerifyFailureEvidence   = internalexecutor.SetVerifyFailureEvidence
 	EnrichFailureEvidenceFiles = internalexecutor.EnrichFailureEvidenceFiles
-	SetResultDetail          = internalexecutor.SetResultDetail
-	StaleVerifyReasons       = internalexecutor.StaleVerifyReasons
-	SweepSidecars            = internalexecutor.SweepSidecars
-	SweepSidecarsByBytes     = internalexecutor.SweepSidecarsByBytes
-	ParseResult              = internalexecutor.ParseResult
-	ParseDLQFixResult        = internalexecutor.ParseDLQFixResult
-	ParsePrioritizeResult    = internalexecutor.ParsePrioritizeResult
-	NewSink                  = internalexecutor.NewSink
-	NewDepBumpExecutor       = internalexecutor.NewDepBumpExecutor
-	IsStableSemver           = internalexecutor.IsStableSemver
+	SetResultDetail            = internalexecutor.SetResultDetail
+	StaleVerifyReasons         = internalexecutor.StaleVerifyReasons
+	SweepSidecars              = internalexecutor.SweepSidecars
+	SweepSidecarsByBytes       = internalexecutor.SweepSidecarsByBytes
+	ParseResult                = internalexecutor.ParseResult
+	ParseDLQFixResult          = internalexecutor.ParseDLQFixResult
+	ParsePrioritizeResult      = internalexecutor.ParsePrioritizeResult
+	NewSink                    = internalexecutor.NewSink
+	NewDepBumpExecutor         = internalexecutor.NewDepBumpExecutor
+	IsStableSemver             = internalexecutor.IsStableSemver
 )
 
 // Review-finding vocabulary (internal finding.go): review/dlqfix results

@@ -33,8 +33,8 @@ const maxQuestionTTL = 7 * 24 * time.Hour
 // cmdAsk is the agent→owner question channel: an agent inside a queue task
 // that is unsure how to proceed runs
 //
-// 	tq ask --task <id> [--type info|approval|confirmation|input] \
-// 	       [--expires 72h] [--options a,b,c] [--file <path>] "the question"
+//	tq ask --task <id> [--type info|approval|confirmation|input] \
+//	       [--expires 72h] [--options a,b,c] [--file <path>] "the question"
 //
 // The command validates the task is actually running (the asker is
 // mid-run), redacts token-shaped secrets from the question, appends the
