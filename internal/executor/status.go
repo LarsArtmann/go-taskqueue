@@ -248,7 +248,7 @@ Inspect what these tasks actually changed (git log, git show, the repository's d
 
 ## Write a full status report
 
-Run "date" (CLI) for the current date-time, then write a comprehensive, detailed status report to:
+Write a comprehensive, detailed status report (filename timestamp from the clock, never guessed) to:
 
 docs/status/<YYYY-MM-DD_HH-MM_WELL-NAMED>.md
 
