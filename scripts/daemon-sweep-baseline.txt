@@ -1627,3 +1627,14 @@ aa043e213cf10773fe94f2f98389299f1187495e
 e42d7cd0a3817717c254afb032e99c23a8f78d98
 # 2026-11-01 recursion: bdb8a148 swept the e42d7cd0 grandfather append itself
 bdb8a14877f30d6668823df1545d32686b1b70d3
+# 2026-11-01 crush-server-route session: five mid-edit sweeps of the new smoke
+# + its docs (COVERAGE leg table, planning-doc v0.99 re-verification, TODO rows
+# 1446/1450 + upstream-issue row) — undispatched session, no task footer to heal
+# onto; content verified at HEAD: check-script-syntax 122/122, smoke 13 PASS
+# legs green end-to-end, check-todo-list + release-docs gates green
+4bb83aa552685df1f74d93c1f1e7796f53195686
+1726d07bc275fd1bdae6a73ebe35dad52e03c368
+c300fa032c7ce6b37be5b4da2df0e19c9e4f4760
+a8edabd0e5924db6c012b695002c59913fc649be
+34ddc9f4caf55462de1aeee9ebd8c81bd757b523
+6bddb08d7072bc34e6377967f02595b11ab3ab92

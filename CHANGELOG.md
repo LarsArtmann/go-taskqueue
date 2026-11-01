@@ -91,6 +91,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - agent-pool crush-server keeper + supervisor (client-shaped
   keepalive dial, 45s cadence, backoff restart ladder) so an idle
   suicide can no longer kill the pool's run.Group actor.
+- scripts/smoke/crush-server-route.sh: the crush client/server route's
+  wire legs end-to-end against an isolated scratch server + mock
+  provider (zero spend) — isolation gate, health, routed verdict
+  round-trip, live workspace + session/message shapes mid-run, a
+  two-sided env-gap canary (v0.99.0 does NOT forward client env to
+  the server-side bash tool — the `--crush-server` verdict/question
+  env channels stay caveated until upstream fixes it), server-side
+  hook denies, and client-led server respawn.
 - release.sh fresh-GOMODCACHE re-tidy gate: root and cmd/tq are
   re-tidied in a scratch copy against the public proxy; committed
   go.mod/go.sum must be byte-identical or the release dies.
