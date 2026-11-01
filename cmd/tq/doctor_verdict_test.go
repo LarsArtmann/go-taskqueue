@@ -59,8 +59,6 @@ func TestDoctorVerdictChannel(t *testing.T) {
 	})
 
 	t.Run("passes with a skew note when PATH shadows the running binary", func(t *testing.T) {
-		plantTQ(t, t.TempDir()+"/shadow") // never on PATH
-
 		dir := t.TempDir()
 		hit := plantTQ(t, dir)
 
