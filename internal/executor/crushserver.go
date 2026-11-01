@@ -70,9 +70,9 @@ type crushSessionSummary struct {
 // column's wire shape, where tool_call/tool_result carry their payload as
 // JSON STRINGS inside data.
 type crushMessage struct {
-	Role      string       `json:"role"`
+	Role      string      `json:"role"`
 	Parts     []crushPart `json:"parts"`
-	CreatedAt int64        `json:"created_at"`
+	CreatedAt int64       `json:"created_at"`
 }
 
 type crushPart struct {

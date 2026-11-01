@@ -1247,6 +1247,11 @@ func TestUseReadModelWarnsWhenReplayGuardSkips(t *testing.T) {
 		t.Fatalf("use read model: %v", err)
 	}
 
+	// Windows pin: the armed model holds the projection db open — close
+	// it before TempDir's RemoveAll or the cleanup unlinkat fails with
+	// "being used by another process" (the CI red this test was born on).
+	defer srv.CloseReadModel()
+
 	if !strings.Contains(logs.String(), "replay guard skipped") {
 		t.Fatalf("expected the replay-guard-skip warn, got: %s", logs.String())
 	}
