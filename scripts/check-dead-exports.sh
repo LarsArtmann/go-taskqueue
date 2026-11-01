@@ -188,8 +188,8 @@ fi
 # Alive = at least one occurrence OUTSIDE the declaring directory (usages
 # in tests of other packages count; declarations were test-excluded).
 decl_total="$(awk -F'\t' 'NF >= 2 && $2 != "" { n++ } END { print n + 0 }' "$declfile")"
-awk -F'\t' -v OFS='\t' '
-	NR == FNR { hits[$1] = hits[$1] $2 "\n"; next }
+awk -F'\t' -v OFS='\t' -v hitsfile="$hitsfile" '
+	FILENAME == hitsfile { hits[$1] = hits[$1] $2 "\n"; next }
 	{
 		if ($2 == "") next
 		dir = $1

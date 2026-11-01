@@ -129,6 +129,104 @@ func discoverWorkspaces(ctx context.Context, client *http.Client) ([]crushWorksp
 // hostile response must not balloon serve memory.
 const workspaceBodyLimit = 1 << 20
 
+// stuckTurnThreshold is the stall bar (A10/V2.13): an attached workspace
+// with a BUSY session that has produced no event frames for this long is
+// a stuck turn — the pane makes stalls visible, the detector makes them
+// actionable (a stall line in the feed every stuckTurnRewarn while it
+// persists). Quiet-but-idle workspaces never warn (no busy session, no
+// stuck turn).
+const (
+	stuckTurnThreshold = 10 * time.Minute
+	stuckTurnRewarn    = 30 * time.Minute
+)
+
+// stallTracker remembers the last frame time per attached workspace.
+// Pure time bookkeeping — the busy-session probe lives in the collector
+// loop so the tracker stays fake-clock testable.
+type stallTracker struct {
+	mu     sync.Mutex
+	last   map[string]time.Time
+	now    func() time.Time
+}
+
+func newStallTracker(now func() time.Time) *stallTracker {
+	return &stallTracker{last: map[string]time.Time{}, now: now}
+}
+
+// touch records a frame from the workspace (any data: line — even the
+// frames the pane ignores prove the turn is alive).
+func (s *stallTracker) touch(key string) {
+	s.mu.Lock()
+	s.last[key] = s.now()
+	s.mu.Unlock()
+}
+
+// attach seeds the attach time so a workspace that never emits (attached
+// mid-idle) counts quiet time from its attach, not from the epoch.
+func (s *stallTracker) attach(key string) {
+	s.mu.Lock()
+	if _, ok := s.last[key]; !ok {
+		s.last[key] = s.now()
+	}
+	s.mu.Unlock()
+}
+
+// quietKeys returns the attached keys whose quiet time crossed the
+// threshold (candidates for the busy-session probe).
+func (s *stallTracker) quietKeys() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	var quiet []string
+	for key, last := range s.last {
+		if s.now().Sub(last) >= stuckTurnThreshold {
+			quiet = append(quiet, key)
+		}
+	}
+
+	return quiet
+}
+
+// fetchWorkspaceBusy reports whether any session in the workspace is
+// busy (GET /v1/workspaces/<id>/sessions, the M5 shape). Errors answer
+// false — the detector is advisory, never a pane outage.
+func fetchWorkspaceBusy(ctx context.Context, client *http.Client, key string) bool {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://crush/v1/workspaces/"+key+"/sessions", nil)
+	if err != nil {
+		return false
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return false
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		return false
+	}
+
+	body, err := io.ReadAll(io.LimitReader(resp.Body, workspaceBodyLimit))
+	if err != nil {
+		return false
+	}
+
+	var sessions []struct {
+		IsBusy bool `json:"is_busy"`
+	}
+	if err := json.Unmarshal(body, &sessions); err != nil {
+		return false
+	}
+
+	for _, sess := range sessions {
+		if sess.IsBusy {
+			return true
+		}
+	}
+
+	return false
+}
+
 // decodeWorkspacesBody accepts both list shapes the crush API has carried:
 // {"workspaces":[...]} and a bare [...].
 func decodeWorkspacesBody(body []byte) ([]crushWorkspace, error) {
@@ -211,13 +309,15 @@ func excerpt(s string) string {
 // POST .../current-session, else 409 "client not attached". Any future
 // current-session (or prompt-viewing) call added here MUST be issued only
 // after a successful attach, never before it.
-func attachWorkspace(ctx context.Context, client *http.Client, feed *AgentFeed, ws crushWorkspace, clientID string) {
+func attachWorkspace(ctx context.Context, client *http.Client, feed *AgentFeed, ws crushWorkspace, clientID string, stalls *stallTracker) {
 	key := ws.key()
 
 	label := ws.Path
 	if label == "" {
 		label = key
 	}
+
+	stalls.attach(key)
 
 	for {
 		if ctx.Err() != nil {
@@ -266,7 +366,7 @@ func attachWorkspace(ctx context.Context, client *http.Client, feed *AgentFeed, 
 			continue
 		}
 
-		scanFrames(ctx, resp.Body, feed, label)
+		scanFrames(ctx, resp.Body, feed, label, stalls)
 		_ = resp.Body.Close()
 
 		if ctx.Err() != nil {
@@ -282,8 +382,9 @@ func attachWorkspace(ctx context.Context, client *http.Client, feed *AgentFeed, 
 }
 
 // scanFrames reads data:-only SSE frames (the crush server sends no
-// event: names) and broadcasts the distilled ones.
-func scanFrames(ctx context.Context, body io.Reader, feed *AgentFeed, label string) {
+// event: names) and broadcasts the distilled ones. Every data frame
+// touches the stall tracker — liveness proof, not pane content.
+func scanFrames(ctx context.Context, body io.Reader, feed *AgentFeed, label string, stalls *stallTracker) {
 	scanner := bufio.NewScanner(body)
 	scanner.Buffer(make([]byte, 0, 64*1024), 1<<20)
 
@@ -294,6 +395,8 @@ func scanFrames(ctx context.Context, body io.Reader, feed *AgentFeed, label stri
 
 		line := scanner.Text()
 		if after, ok := strings.CutPrefix(line, "data:"); ok {
+			stalls.touch(label)
+
 			if kind, distilled := distillFrame(strings.TrimSpace(after)); kind != "" {
 				feed.broadcast(AgentEvent{Workspace: label, Kind: kind, Line: distilled})
 			}
@@ -308,10 +411,12 @@ func scanFrames(ctx context.Context, body io.Reader, feed *AgentFeed, label stri
 // warn-and-retry (the pool may start it later; tq serve outlives pools).
 func RunAgentFeed(ctx context.Context, socket string, feed *AgentFeed, log *slog.Logger) error {
 	client := crushUnixClient(socket)
+	stalls := newStallTracker(time.Now)
 
 	var (
-		mu   sync.Mutex
-		live = map[string]struct{}{}
+		mu       sync.Mutex
+		live     = map[string]struct{}{}
+		lastWarn = map[string]time.Time{}
 	)
 
 	ticker := time.NewTicker(2 * time.Second)
@@ -346,7 +451,7 @@ func RunAgentFeed(ctx context.Context, socket string, feed *AgentFeed, log *slog
 			mu.Unlock()
 
 			if !attached {
-				go attachWorkspace(ctx, client, feed, ws, "tq-webui-"+socket)
+				go attachWorkspace(ctx, client, feed, ws, "tq-webui-"+socket, stalls)
 			}
 		}
 
@@ -357,6 +462,34 @@ func RunAgentFeed(ctx context.Context, socket string, feed *AgentFeed, log *slog
 			}
 		}
 		mu.Unlock()
+
+		// Stuck-turn detector (A10/V2.13): a quiet workspace whose session is
+		// STILL busy is a stalled turn — surface it as a pane line (spaced by
+		// stuckTurnRewarn while it persists). Quiet-but-idle never warns.
+		for _, key := range stalls.quietKeys() {
+			if !fetchWorkspaceBusy(ctx, client, key) {
+				continue
+			}
+
+			now := time.Now()
+
+			mu.Lock()
+			due := lastWarn[key].IsZero() || now.Sub(lastWarn[key]) >= stuckTurnRewarn
+			if due {
+				lastWarn[key] = now
+			}
+			mu.Unlock()
+
+			if !due {
+				continue // already warned in this window
+			}
+
+			feed.broadcast(AgentEvent{
+				Workspace: key,
+				Kind:      "stall",
+				Line:      fmt.Sprintf("no events for ≥%s while a session is busy — stuck turn? (detector bar %s)", stuckTurnThreshold, stuckTurnThreshold),
+			})
+		}
 
 		select {
 		case <-ctx.Done():

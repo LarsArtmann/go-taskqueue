@@ -334,8 +334,8 @@ import sys
 try:
     rows = json.load(sys.stdin)
 except Exception:
-    rows = []
-rows = [r for r in rows if isinstance(r, dict)]
+    rows = None
+rows = [r for r in (rows or []) if isinstance(r, dict)]
 if sys.argv[1] == "running-id":
     running = [r for r in rows if r.get("status") == "running"]
     print(running[0]["id"] if running else "")
@@ -346,10 +346,17 @@ else:
     else:
         print(row.get("status"), row.get("attempts"), row.get("last_error", ""))
 PYEOF
+# task_state: tq tasks --json filtered through taskq.py (a bare $((
+# adjacency reads as arithmetic to some shells — helper function instead)
+task_state() { # mode [task-id]
+	local out
+	out="$("$TMP/tq" tasks --db "$TMP/pool.db" --json 2>/dev/null || true)"
+	[ -n "$out" ] || out='[]'
+	printf '%s' "$out" | python3 "$TMP/taskq.py" "$@"
+}
 RUNNING_ID=""
 for _ in $(seq 1 150); do
-	RUNNING_ID="$(("$TMP/tq" tasks --db "$TMP/pool.db" --json 2>/dev/null || echo '[]') \
-		| python3 "$TMP/taskq.py" running-id)"
+	RUNNING_ID="$(task_state running-id)"
 	[ -n "$RUNNING_ID" ] && break
 	size_guard
 	sleep 0.3
@@ -367,8 +374,7 @@ wait_pattern "$TMP/pool.log" "crush server died around the routed run" 45 \
 echo "PASS: severed mid-run turn classified (crush-server death, no burn)"
 STATE=""
 for _ in $(seq 1 100); do
-	STATE="$(("$TMP/tq" tasks --db "$TMP/pool.db" --json 2>/dev/null || echo '[]') \
-		| python3 "$TMP/taskq.py" "$RUNNING_ID")"
+	STATE="$(task_state "$RUNNING_ID")"
 	case "$STATE" in
 		"pending 0 "*"crush-server"*) break ;;
 	esac
