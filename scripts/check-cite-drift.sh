@@ -16,11 +16,13 @@
 #   1. MISSING FILE  — the cited path does not exist. A repo-relative path in
 #                      a living doc that resolves to nothing is a stale cite.
 #   2. LINE PAST EOF — the cited line number is beyond the file's length.
-#   3. ANCHOR DRIFT  — the citing line names a backticked identifier that DOES
-#                      occur in the cited file, but not within +/-TQ_CITE_WINDOW
-#                      lines of the cite. This is the "points at the wrong
-#                      function" class: a cite that lands in an unrelated
-#                      region is worse than no cite, because readers trust it.
+#   3. ANCHOR DRIFT  — the citing line names a backticked identifier that occurs
+#                      EXACTLY ONCE in the cited file, but not within
+#                      +/-TQ_CITE_WINDOW lines of the cite. This is the "points at
+#                      the wrong function" class: a cite that lands in an
+#                      unrelated region is worse than no cite, because readers
+#                      trust it. Uniqueness is required because a symbol used in
+#                      five places cannot locate a line.
 #
 # Deliberate non-findings (why this is not a false-positive machine):
 #   - a +/-1 line slip passes. It is cosmetic, and a window-based gate that
@@ -122,7 +124,6 @@ run_gate() {
 	local -A seen=()
 
 	tracked_index=$(mktemp)
-	trap 'rm -f "$tracked_index"' RETURN
 	git ls-files >"$tracked_index" 2>/dev/null || : >"$tracked_index"
 	if [ ! -s "$tracked_index" ]; then
 		# Not a git checkout (the self-test fixture, a tarball export): walk
@@ -153,12 +154,18 @@ run_gate() {
 				seen[$key]=1
 
 				local finding="" resolved=""
-				resolved=$(resolve_cite "$path" || true)
+				# A BARE basename ("claims.go:165") is skipped outright: living
+				# docs cite other projects' files that way (a research note
+				# quoting the upstream source) and the basename can legitimately
+				# collide with one of ours. Only a PATH-SHAPED cite is a claim
+				# about THIS repo.
+				case "$path" in
+				*/*) resolved=$(resolve_cite "$path" || true) ;;
+				*) resolved="" ;;
+				esac
 				if [ -z "$resolved" ]; then
-					# Unresolvable. Only a PATH-SHAPED cite (it carries a
-					# directory) is judged: a bare basename is shorthand whose
-					# home we cannot know, and docs legitimately cite other
-					# projects' files by basename.
+					# Unresolvable: a path-shaped cite that matches no tracked
+					# file is either a rename or a deletion.
 					case "$path" in
 					*/*) finding="MISSING FILE: $f:$linenum cites '$cite' — no tracked file matches that path" ;;
 					esac
@@ -173,7 +180,11 @@ run_gate() {
 						for raw in $( [ "$single_cite" = 1 ] && grep -oE '`[^`]+`' <<<"$text" | tr -d '`' ); do
 							tok=$(normalize_token "$raw")
 							[ -z "$tok" ] && continue
-							grep -qF -- "$tok" "$resolved" 2>/dev/null || continue
+							# An anchor must be UNIQUE in the file: a symbol that
+							# recurs (a helper used in five places) cannot locate a
+							# line, and treating it as one turns the gate into a
+							# false-positive machine on any prose that names it.
+							[ "$(grep -cF -- "$tok" "$resolved" 2>/dev/null)" = 1 ] || continue
 							found=1
 							in_window "$resolved" "$lineno" "$tok" && { found=2; break; }
 						done
@@ -206,8 +217,12 @@ run_gate() {
 	if [ "$MODE" = emit ]; then
 		local k
 		for k in "${!emit[@]}"; do echo "$k"; done | sort -u
+		rm -f "$tracked_index"
+
 		return 0
 	fi
+
+	rm -f "$tracked_index"
 
 	echo "cite-drift summary: ${new_hits} new, ${baselined_hits} baselined, ${#files[@]} file(s) scanned"
 	[ "$fail" = 0 ] && echo "cite refs ok"
