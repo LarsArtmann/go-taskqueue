@@ -15,6 +15,12 @@
 #     + a NEW server pid + healthy socket, SIGTERM pool -> clean exit with
 #     the server torn down (never orphaned). Unit pins cover the ladder
 #     table; this is the live process proof.
+#   mid-run kill (V2.10) — kill -9 the server INSIDE a stalled routed agent
+#     turn (mock scripts the tool_call, stalls the tool-result): the
+#     severed client exits 0 with the WARN line, the executor classifies
+#     crush-server death, the worker REQUEUES without attempt burn (task
+#     pending, attempts 0, last error carries [crush-server]), and the
+#     supervisor restart ladder rides the same death.
 #
 # Zero spend by construction (mock provider, XDG-isolated scratch config;
 # the isolation gate refuses to run anything before it is proven). Needs
@@ -144,11 +150,14 @@ cat >"$TMP/mock_crush_pool.py" <<'PYEOF'
 #!/usr/bin/env python3
 # Minimal OpenAI-compatible mock for the pool smoke: every completion is
 # either an inert streamed text answer or, with MOCK_429=1, a 429 with
-# rate-limit error text (the fast-refuse signature). No tool scripting
-# needed here — the wire legs own that surface.
+# rate-limit error text (the fast-refuse signature). MOCK_STALL seconds
+# stall the TOOL-RESULT turn so the mid-run kill leg gets its window; the
+# tool_call scripting keys on "verdict" in the last NON-TEMPLATE user
+# message (the route smoke's proven content-key).
 import json
 import os
 import sys
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 
@@ -275,7 +284,7 @@ git -C "$TMP/poolproj/repo" commit -qm seed
 (
 	cd "$TMP/poolproj"
 	XDG_CONFIG_HOME="$XDG" XDG_DATA_HOME="$DATA" \
-		setsid timeout 180 "$TMP/tq" agent-pool --db "$TMP/pool.db" \
+		setsid timeout 300 "$TMP/tq" agent-pool --db "$TMP/pool.db" \
 		--projects-dir "$TMP/poolproj" --repos repo \
 		--poll 200ms --task-timeout 30s --interval 5s --crush-server "$PSOCK" \
 		>"$TMP/pool.log" 2>&1 </dev/null
@@ -305,6 +314,77 @@ if [ -z "$NEWPID" ] || [ "$NEWPID" = "$SRVPID" ]; then
 fi
 echo "PASS: supervisor restarted the server ($SRVPID -> $NEWPID)"
 
+echo "== leg: server death MID-RUN requeues the routed task without attempt burn (V2.10)"
+# pins: the severed-stream classification end-to-end — the mock scripts a
+# bash tool_call for the harvested prompt (item text contains "verdict"),
+# stalls the tool-result turn, and the leg kills -9 the server inside that
+# window. The severed client exits 0 with the WARN line; the executor's
+# DetectCrushServerDeath classifies it; the worker requeues (class
+# crush-server): task PENDING, attempts 0, last error carries the marker.
+MOCK_429=0 MOCK_STALL=25 python3 "$TMP/mock_crush_pool.py" "$PORT" >"$TMP/mock2.log" 2>&1 &
+sleep 1
+printf -- '- [ ] smoke probe: write the verdict file now\n' >"$TMP/poolproj/repo/TODO_LIST.md"
+git -C "$TMP/poolproj/repo" add -A
+git -C "$TMP/poolproj/repo" commit -qm "open the mid-run kill probe item"
+# taskq.py: one filter helper for both polls (running-id, then full state)
+cat >"$TMP/taskq.py" <<'PYEOF'
+import json
+import sys
+
+try:
+    rows = json.load(sys.stdin)
+except Exception:
+    rows = []
+rows = [r for r in rows if isinstance(r, dict)]
+if sys.argv[1] == "running-id":
+    running = [r for r in rows if r.get("status") == "running"]
+    print(running[0]["id"] if running else "")
+else:
+    row = next((r for r in rows if r.get("id") == sys.argv[1]), None)
+    if not row:
+        print("missing")
+    else:
+        print(row.get("status"), row.get("attempts"), row.get("last_error", ""))
+PYEOF
+RUNNING_ID=""
+for _ in $(seq 1 150); do
+	RUNNING_ID="$(("$TMP/tq" --db "$TMP/pool.db" tasks --json 2>/dev/null || echo '[]') \
+		| python3 "$TMP/taskq.py" running-id)"
+	[ -n "$RUNNING_ID" ] && break
+	size_guard
+	sleep 0.3
+done
+[ -n "$RUNNING_ID" ] || {
+	tail -25 "$TMP/pool.log"
+	fail "no task reached running — harvest never minted the probe item"
+}
+DEAD_PID="$(pgrep -f "crush server --host unix://$PSOCK" | head -1)"
+[ -n "$DEAD_PID" ] || fail "no server process to kill mid-run"
+kill -9 "$DEAD_PID"
+wait_pattern "$TMP/pool.log" "crush server died around the routed run" 45 \
+	"the severed run was never classified as crush-server death"
+echo "PASS: severed mid-run turn classified (crush-server death, no burn)"
+STATE=""
+for _ in $(seq 1 100); do
+	STATE="$(("$TMP/tq" --db "$TMP/pool.db" tasks --json 2>/dev/null || echo '[]') \
+		| python3 "$TMP/taskq.py" "$RUNNING_ID")"
+	case "$STATE" in
+		"pending 0 "*"crush-server"*) break ;;
+	esac
+	size_guard
+	sleep 0.3
+done
+case "$STATE" in
+	"pending 0 "*"crush-server"*) : ;;
+	*)
+		tail -25 "$TMP/pool.log"
+		fail "task $RUNNING_ID state after server kill = '$STATE', want pending/0-attempts with [crush-server]"
+		;;
+esac
+echo "PASS: task requeued without attempt burn (state: $STATE)"
+wait_pattern "$TMP/pool.log" "restart 2" 45 "supervisor did not restart the server after the mid-run kill"
+echo "PASS: supervisor restart ladder rode the mid-run death too"
+
 pkill -TERM -f "$TMP/tq agent-pool"
 for _ in $(seq 1 30); do
 	pgrep -f "$TMP/tq agent-pool" >/dev/null || break
@@ -321,4 +401,4 @@ pgrep -f "$SRVPATT" >/dev/null && fail "crush server orphaned after pool exit"
 echo "PASS: pool exited clean on SIGTERM, server torn down with it"
 
 echo
-echo "PASS: crush-pool-supervisor smoke — routed 429 fast-refuse + keeper/supervisor restart both green"
+echo "PASS: crush-pool-supervisor smoke — routed 429 fast-refuse + keeper/supervisor restart + mid-run kill no-burn all green"
