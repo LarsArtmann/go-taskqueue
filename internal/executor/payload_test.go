@@ -2,6 +2,7 @@ package executor
 
 import (
 	"encoding/json/jsontext"
+	jsonv2 "encoding/json/v2"
 	"errors"
 	"strings"
 	"testing"
@@ -69,6 +70,33 @@ func TestDecodePayloadIgnoresUnknownKeys(t *testing.T) {
 					tt.name, got, tt.want.Repo, tt.want.Prompt, tt.want.Verify)
 			}
 		})
+	}
+}
+
+// TestDecodePayloadToleranceIsNotVacuous proves the pin above bites: the
+// same bytes decoded with strict-unknown-members DO fail, so
+// TestDecodePayloadIgnoresUnknownKeys would go red the moment somebody adds
+// jsonv2.RejectUnknownMembers to decodePayload. Without this counterfactual
+// the tolerance test passes for the trivial reason that the payload happens
+// to be valid.
+func TestDecodePayloadToleranceIsNotVacuous(t *testing.T) {
+	t.Parallel()
+
+	payload := []byte(`{"repo":"acme","prompt":"do the thing","future_flag":true}`)
+
+	var lenient AgentPayload
+	if err := jsonv2.Unmarshal(payload, &lenient); err != nil {
+		t.Fatalf("lenient unmarshal error = %v — decodePayload's posture is unreachable if the baseline itself rejects", err)
+	}
+
+	var strict AgentPayload
+	err := jsonv2.Unmarshal(payload, &strict, jsonv2.RejectUnknownMembers(true))
+	if err == nil {
+		t.Fatal("strict unmarshal error = nil, want a rejection — the counterfactual is not exercising anything")
+	}
+
+	if !strings.Contains(err.Error(), "future_flag") {
+		t.Errorf("strict unmarshal error = %q, want it to name the unknown member", err.Error())
 	}
 }
 

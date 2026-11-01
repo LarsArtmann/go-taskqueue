@@ -140,6 +140,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Internal
 
+- OKF (Open Knowledge Format) lessons note + forward-compat pins
+  (2026-11-01): `docs/research/2026-11-01_okf-lessons.md` records what
+  Google's agent-written-knowledge format teaches tq — provenance as
+  objective signals rather than scores, `generated` ≠ `verified` with
+  derived trust tiers, freshness as an absolute anchor rather than a
+  TTL, and attested computations carrying a declared receipt plus a
+  no-LLM attester — and separates what to adopt from what to reject
+  (including why execution payloads keep rejecting newer contract
+  versions). The two consumer behaviours tq already had are now pinned:
+  `internal/readmodel/forwardcompat_test.go` (unknown fact types are
+  skipped, unknown detail keys ignored, corruption still rejected) and
+  `internal/executor/payload_test.go` (unknown payload keys ignored,
+  plus a counterfactual proving the pin bites under a strict decoder).
 - dead-exports gate (2026-11-01): importer scan rewritten from
   per-symbol whole-tree sweeps (O(symbols × tree), hours under the
   grown vendor/) to ONE identifier-token sweep + awk containment join
