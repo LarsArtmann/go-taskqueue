@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json/jsontext"
 	"encoding/json/v2"
+	"strings"
 	"testing"
 	"time"
 
@@ -94,12 +95,18 @@ func TestUnknownDetailKeysCrossVerbatim(t *testing.T) {
 	}
 }
 
-// TestAdapterNeverDecodesDetailIntoAStruct is the canary for the refactor this
-// file exists to prevent: decoding a detail into a struct here would introduce a
-// key whitelist across the whole journal read path. The assertion is behavioural
-// — a detail that is NOT valid JSON still crosses untouched, because a
-// struct-decoding adapter could not do that.
-func TestAdapterNeverDecodesDetailIntoAStruct(t *testing.T) {
+// TestMalformedDetailIsRefusedAtMarshal pins the ONE place this adapter judges
+// a detail, and that it judges the right thing: `jsontext.Value` validates on
+// marshal, so undecodable bytes are refused HERE (a corruption signal) rather
+// than crossing into the event stream. That is the opposite of a key whitelist —
+// it is byte validity, which no producer can break additively — and it is why
+// the tolerance tests above can be absolute about unknown KEYS.
+//
+// The canary for a future refactor: if this error ever starts naming a missing
+// or unexpected FIELD instead of a malformed one, somebody has introduced a
+// detail struct here, and every additive detail field in the repo now has to
+// clear a decode it never used to reach.
+func TestMalformedDetailIsRefusedAtMarshal(t *testing.T) {
 	t.Parallel()
 
 	fact := journal.Fact{
@@ -110,18 +117,13 @@ func TestAdapterNeverDecodesDetailIntoAStruct(t *testing.T) {
 		Detail: jsontext.Value(`{"truncated":`),
 	}
 
-	evt, err := factEvent(fact)
-	if err != nil {
-		t.Fatalf("factEvent(malformed detail) error = %v — the adapter transports detail, it does not judge it", err)
+	_, err := factEvent(fact)
+	if err == nil {
+		t.Fatal("factEvent(malformed detail) error = nil, want a refusal — undecodable bytes must not enter the event stream")
 	}
 
-	var payload factPayload
-	if unmarshalErr := json.Unmarshal(evt.Payload(), &payload); unmarshalErr != nil {
-		t.Fatalf("decode payload: %v", unmarshalErr)
-	}
-
-	if !bytes.Equal(payload.Detail, fact.Detail) {
-		t.Fatalf("detail = %s, want the malformed bytes preserved", payload.Detail)
+	if !strings.Contains(err.Error(), "marshal payload") {
+		t.Fatalf("error = %v, want the marshal-payload corruption class", err)
 	}
 }
 
