@@ -1,6 +1,7 @@
 # CI-LOCAL GREEN, the three reds root-caused, healed and pushed
 
-**Session:** 2026-11-01 22:20 → 2026-11-02 00:20 (interactive, undispatched;
+**Session:** 2026-11-02 00:20 close (window began 2026-11-01 22:20; interactive,
+undispatched;
 owner GO: "keep going until everything works"). Continuation of the OKF
 receipt/attester window whose report is
 `2026-11-01_22-00_receipt-attester-shipped-ci-local-still-red.md` (now carrying
@@ -91,11 +92,11 @@ reachable twin, and **every citing report already knew the mapping** — it was
 written as "local X vs origin Y", "X/Y", "rode sweep X" instead of the gate's
 `old→new` form. Resolution was proof, not assertion:
 
-| orphan | twin | proof |
-| --- | --- | --- |
-| `631e7e08` | `9aea94ee` | `git diff 631e7e08 9aea94ee` → **empty** (identical trees) |
-| `ef3fd1f8` | `9eaf55d6` | same subject + same tree modulo later fuzz corpus |
-| `b2c611bb` | `f0c4560e` | same delta; `f0c4560e` is the commit that ADDed that report |
+| fork record | proof |
+| --- | --- |
+| `631e7e08→9aea94ee` | `git diff 631e7e08 9aea94ee` → **empty** (identical trees) |
+| `ef3fd1f8→9eaf55d6` | same subject + same tree modulo a later fuzz corpus |
+| `b2c611bb→f0c4560e` | same delta; `f0c4560e` is the commit that ADDed that report |
 
 Repaired in `631e7e08→9aea94ee`, `ef3fd1f8→9eaf55d6`, `b2c611bb→f0c4560e` at
 all five sites plus the two README rows and the two `TODO_LIST.md` rows (both
@@ -203,8 +204,8 @@ All inherited from §f of the 22:00 report and still valid, none attempted:
    battery was running and let intent leak into a fact slot.
 2. **I generalised a heal rule that was false.** Wrote "commits that already
    carried the footer kept their shas verbatim in the second pass". They do not:
-   a commit's sha moves whenever any ancestor moves, so `80bd4a1a` became
-   `37abcc78` (it was MY footered commit). Caught by comparing the fork-record
+   a commit's sha moves whenever any ancestor moves, so 80bd4a1a→37abcc78
+   (it was MY footered commit). Caught by comparing the fork-record
    list against the identity records and corrected in place.
 3. **I healed too early, three times.** Healing as soon as the gate went red
    meant the second heal rewrote 32 commits, invalidated my own report's shas
@@ -216,9 +217,9 @@ All inherited from §f of the 22:00 report and still valid, none attempted:
    had already taken the work. Correct protocol (stage within seconds of the
    edit) was known and not followed.
 5. **I repeated a previous session's misattribution without checking.**
-   `826aa46f` was labelled "foreign, ownership unknown" and routed as a BLOCKED
-   row. It was mine (a `.golangci-baseline.txt` regen). One `git show --stat`
-   would have settled it in seconds; I copied the prior claim forward, which is
+   `826aa46f→6e27a41e` was labelled "foreign, ownership unknown" and routed as a
+   BLOCKED row. It was mine (a `.golangci-baseline.txt` regen). One `git show
+   --stat` would have settled it in seconds; I copied the prior claim forward,
    exactly how a lie survives a window boundary.
 6. **I edited four other windows' status reports without attribution.** The
    arrow repair is sanctioned by the gate, but a reader cannot tell an author's
@@ -264,7 +265,8 @@ All inherited from §f of the 22:00 report and still valid, none attempted:
    entire failure class (`git commit` → "nothing to commit").
 4. **Check ownership before repeating it.** Any pre-existing attribution (row,
    note, baseline comment) is a HYPOTHESIS. `git show --stat` + the diff decides
-   in seconds. The `826aa46f` class will recur as long as sweeps are anonymous.
+   in seconds. The 826aa46f→6e27a41e class will recur as long as sweeps are
+   anonymous.
 5. **Repairs to another window's report need a dated janitor note.** Keep the
    arrow (required by the gate) and add "repaired <date> by <window>: <old> had
    a reachable twin <new>" in the same line or an adjacent one.
