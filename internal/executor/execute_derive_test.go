@@ -67,8 +67,8 @@ Task-Queue-ID: $tid"
 		t.Fatalf("derived commits = %d, want 1 (footer-based derivation): %+v", len(result.Commits), result)
 	}
 
-	if result.Commits[0].Message == "" || !strings.Contains(result.Commits[0].Message, "work") {
-		t.Errorf("derived commit message = %q", result.Commits[0].Message)
+	if result.Commits[0].Subject == "" || !strings.Contains(result.Commits[0].Subject, "work") {
+		t.Errorf("derived commit subject = %q", result.Commits[0].Subject)
 	}
 
 	if result.CommitSHA == "" {
