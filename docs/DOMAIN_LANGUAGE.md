@@ -122,6 +122,31 @@ designed tq-vs-go-cqrs-lite divergence, cited and revisit-dated).
 | **Keeper**               | The pool actor that boots the shared crush server, restarts it on a backoff ladder when it dies, samples its RSS on every dial into `<journal-dir>/crush-server-rss.log`, and tears it down with the pool (never orphaned).                                                                                  |
 | **Supervisor ladder**    | The keeper's restart policy: unexpected exits log `restart N` with growing backoff; a server death MID-RUN additionally requeues the severed task without attempt burn (class `crush-server`) so the restarted server picks it up on the next claim.                                                          |
 
+## Trust vocabulary (OKF-derived)
+
+Five words the journal, the receipts and the reports all depend on. They are
+named here because the live confusions are between them — `generated` vs
+`verified` (attempt outcome vs review approval) survived three windows of
+review findings that were really vocabulary drift. Source:
+`docs/research/2026-11-01_okf-lessons.md`; the source format's own names are in
+parentheses.
+
+| Term             | Meaning                                                                                                                                                                                                                                                              |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Provenance** (`generated`) | WHO or WHAT produced an artifact, and from what. In tq the producer is the fact writer (a run, a sweeper, an operator command) and provenance is the fact itself: `tq facts` answers it, nothing else does. An agent's stdout self-report is NOT provenance — it was retired in favour of derivation. |
+| **Trust** (`verified`) | Who CONFIRMED an artifact, recorded as evidence rather than asserted. tq has two independent confirmations: the deterministic gate (`VerifyReceipt` + `AttestVerify`) and a human/reviewer approval on the delivery. They are never merged into one field, because a passing gate says nothing about whether the work should ship. |
+| **Freshness** (`stale_after`) | Whether an artifact is still worth believing, expressed as an ABSOLUTE instant, never a TTL. In tq: a verify pin's resolution date (the `--reresolve-verify` question) and a research note's `stale_after` line. Reads as "re-check before relying", never "delete". |
+| **Lifecycle** (`status`) | Where an artifact sits in its own progression, with a documented default when absent. In tq: `task.Status` for tasks, and the *absence* of a verify receipt meaning UNVERIFIED — absence is a lifecycle position, never an error. |
+| **Attestation** (`attester`) | The deterministic, model-free grading of a claim against the evidence that produced it (`executor.AttestVerify`: head / command / counts). Its verdict is a REFUSAL when it fails, not an annotation — a consumer refuses to render a mismatched receipt as verified. Attestation is per-run and runtime; it is recorded beside the receipt, never re-derived later from a receipt alone. |
+
+Two rules that follow, and that the vocabulary is meant to make obvious:
+
+- **Trust never comes from a score.** A priority score is a scheduling signal;
+  only an attestation or an approval is trust.
+- **Absence is not invalidity.** A legacy task with no receipt is unverified;
+  a research note with no `stale_after` is unmanaged, not wrong. Every
+  additive field must say which it is.
+
 ## Bounded contexts
 
 - **Queue core** (`internal/queue`, `internal/task`, `internal/journal`):
