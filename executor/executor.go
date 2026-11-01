@@ -66,6 +66,33 @@ var (
 	UnknownEvidenceTerms         = internalexecutor.UnknownEvidenceTerms
 )
 
+// Verify receipts and the attester (receipt.go): the structured summary of one
+// verify-gate run and the deterministic, model-free grading of it.
+type (
+	VerifyReceipt    = internalexecutor.VerifyReceipt
+	VerifyOutcome    = internalexecutor.VerifyOutcome
+	VerifyVerdict    = internalexecutor.VerifyVerdict
+	AttestationInput = internalexecutor.AttestationInput
+)
+
+var (
+	ParseVerifyCounts = internalexecutor.ParseVerifyCounts
+	AttestVerify      = internalexecutor.AttestVerify
+)
+
+// Attestation refusal classes and the comparisons a verdict performed.
+const (
+	AttestationNoReceipt       = internalexecutor.AttestationNoReceipt
+	AttestationHeadMismatch    = internalexecutor.AttestationHeadMismatch
+	AttestationCommandMismatch = internalexecutor.AttestationCommandMismatch
+	AttestationCountMismatch   = internalexecutor.AttestationCountMismatch
+
+	AttestationCheckReceipt = internalexecutor.AttestationCheckReceipt
+	AttestationCheckHead    = internalexecutor.AttestationCheckHead
+	AttestationCheckCommand = internalexecutor.AttestationCheckCommand
+	AttestationCheckCounts  = internalexecutor.AttestationCheckCounts
+)
+
 // Typed errors.
 type (
 	LeaseLostError        = internalexecutor.LeaseLostError
