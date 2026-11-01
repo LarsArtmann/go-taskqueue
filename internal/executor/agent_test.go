@@ -301,7 +301,17 @@ func TestAgentExecutorArgvContract(t *testing.T) {
 		t.Fatalf("work prompt must be the payload prompt + the verdict rail: %q", prompt)
 	}
 
-	if !strings.HasSuffix(prompt, "'<one-line result JSON>' — the queue reads this file; it is the authoritative channel (stdout is only a fallback).") {
+	if !strings.Contains(prompt, "'<one-line result JSON>' — the queue reads this file; it is the authoritative channel (stdout is only a fallback)") {
+		t.Fatalf("work prompt lost the verdict rail wording: %q", prompt)
+	}
+
+	// The owner-question rail follows the verdict rail (same always-on
+	// channel contract; task id and question path render per-run).
+	if !strings.Contains(prompt, "Owner-question channel: if you need an owner ruling before finishing, run: tq ask --task ") {
+		t.Fatalf("work prompt lost the owner-question rail: %q", prompt)
+	}
+
+	if !strings.HasSuffix(prompt, "— the task parks without attempt burn until the answer arrives.") {
 		t.Fatalf("work prompt rail tail changed: %q", prompt)
 	}
 }
