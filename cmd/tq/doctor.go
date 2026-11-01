@@ -1614,6 +1614,7 @@ func doctorEnvironment(ctx context.Context, opts doctorOptions) []checkResult {
 		}
 	}
 
+	results = append(results, doctorVerdictChannel(runningExecutablePath())...)
 	results = append(results, doctorProbeGoEnv(ctx))
 
 	for _, repo := range expandRepoSpecs(opts.ProjectsDir, splitRepos(opts.Repos)) {
@@ -1628,6 +1629,46 @@ func doctorEnvironment(ctx context.Context, opts doctorOptions) []checkResult {
 	results = append(results, doctorTagAncestry())
 
 	return results
+}
+
+// runningExecutablePath is the production seam for doctorVerdictChannel's
+// skew note: the running tq's own path, "" when the OS will not say.
+func runningExecutablePath() string {
+	if self, err := os.Executable(); err == nil {
+		return self
+	}
+
+	return ""
+}
+
+// doctorVerdictChannel checks that paid turns can actually record their
+// verdict: the work and closeout prompts bake `tq verdict --file <path>`
+// and `tq ask --task <id> --file <path>` rails, so a pool whose PATH lacks
+// tq fails every paid turn's recording channel at the source. self is the
+// running executable's path ("" when unknown): when the PATH hit differs
+// from it the check still passes but notes the skew — an older tq earlier
+// on PATH shadows the running binary's flags.
+func doctorVerdictChannel(self string) []checkResult {
+	tqPath, err := exec.LookPath("tq")
+	if err != nil {
+		return []checkResult{{
+			Name:   "verdict-channel",
+			Status: checkWarn,
+			Detail: "\"tq\" not found on PATH (tq verdict / tq ask in paid-turn prompts will fail; check the service PATH)",
+		}}
+	}
+
+	detail := tqPath + " found"
+
+	if self != "" {
+		if hit, aerr := filepath.Abs(tqPath); aerr == nil {
+			if mine, aerr := filepath.Abs(self); aerr == nil && hit != mine {
+				detail = fmt.Sprintf("%s found (differs from the running %s — PATH shadowing)", tqPath, self)
+			}
+		}
+	}
+
+	return []checkResult{{Name: "verdict-channel", Status: checkOK, Detail: detail}}
 }
 
 // doctorTreeProbeTimeout bounds one live-tree gofmt walk: big repos take
