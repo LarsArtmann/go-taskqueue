@@ -5,7 +5,7 @@
 `docs/status/2026-11-01_20-09_okf-lessons-forward-compat-pins.md` (what that
 session did and got wrong).
 **Scope of this plan:** every actionable item from that session's `§f` list
-(50 items), consolidated into 24 tasks of 30–100 min, then into 102 micro-tasks
+(50 items), consolidated into 25 tasks of 30–100 min, then into 102 micro-tasks
 of ≤ 12 min. Nothing from that list is dropped; §6 records what was
 deliberately excluded and why.
 
@@ -160,40 +160,40 @@ change behaviour on their own.
 
 ---
 
-## 5. Task table A — 24 tasks, 30–100 min each (all TODOs covered)
+## 5. Task table A — 25 tasks, 30–100 min each (all TODOs covered)
 
 Sorted by leverage (Impact × Customer value ÷ Effort), highest first.
 Effort: 1 = trivial … 5 = heavy. Impact/Value: 1–5.
 
-| # | Task | Why it matters | Imp | Eff | Val | Lev | Deps |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| R1 | **Receipt design**: extend `AgentResult` with `verify_command`, `verify_rc`, `verify_head`, `verify_counts`; reuse the `writeVerifyEvidence` sidecar; write the storage rationale (why the fact detail and not a new file) | This is the design that decides whether R2 is 90 min or 400 | 5 | 3 | 5 | 8.3 | — |
-| R2 | **Emit the receipt** from `runVerify` on success *and* failure; keep one shape across both paths | The actual artifact; without it everything else is theory | 5 | 3 | 5 | 8.3 | R1 |
-| R3 | **Attester**: pure function over (receipt, declared verify, claimed HEAD) returning a verdict; three comparisons | Converts a trust statement into a check; also makes V1 observable | 5 | 2 | 5 | 12.5 | R2 |
-| R5 | **Surface it**: `tq show` section, `tq dlq` column, `--evidence-stage` receipt term | An unrendered artifact is worth nothing to the tier-2/3 consumers | 4 | 2 | 4 | 8.0 | R2 |
-| V1 | **`--reresolve-verify`**: audit `tq doctor --hygiene` coverage, write the retire-vs-narrow design note | Closes a documented trust hole where the gate is agent-editable | 5 | 2 | 4 | 10.0 | R3 |
-| G1 | **Cite-drift guard**: extract every `file:NNN` cite from a doc and re-read the line, FAIL on token mismatch; `--self-test`; wire into ci-local | Prevents the exact defect this session committed 4×; sibling to `check-dead-sha-refs.sh` | 4 | 3 | 4 | 5.3 | — |
-| C1 | **Two AGENTS.md pins** (additive-growth contract; signals-not-scores) + the required compress pass against the size budget | The contract the new receipt fields ride on; the anti-promotion rule for AI scores | 4 | 3 | 4 | 5.3 | R1 |
-| C2 | **Known Issues x3**: `download`-before-`fetch`; tolerate-unknown ≠ tolerate-newer; no absolute verification phrases | Three rules whose absence cost this session real damage | 3 | 2 | 4 | 6.0 | — |
-| C3 | **Research-note template norms**: record the acquisition passes; cite-then-verify | Fixes the template so the next note cannot repeat the failure | 3 | 2 | 4 | 6.0 | — |
-| G2 | **`check-research-note-shape.sh`**: every `docs/research/*.md` has a citations table + a Verification trail; `--self-test`; ci-local | Makes the template norms enforceable instead of advisory | 3 | 2 | 3 | 4.5 | C3 |
-| R4 | **Refuse-not-annotate** wiring: a failed attestation refuses the value and lands a named refusal class in the evidence surface | OKF §10.5: a false verdict must not merely decorate | 4 | 2 | 3 | 6.0 | R3 |
-| R6 | **Correct the research note**: the gap is success-side receipt + attester, not "no receipt artifact" | The note currently overstates; a wrong note is worse than none | 3 | 1 | 4 | 12.0 | — |
-| T1 | **Queue detail decoders**: forward-compat pins for `ParseReprioritizeEvidence` + siblings | Turns the tolerance lesson from one test into a contract | 3 | 3 | 3 | 3.0 | — |
-| T2 | **journal/cqrs adapter**: fact-decode tolerance pin | Same class, different decode surface | 3 | 2 | 3 | 4.5 | — |
-| T3 | **`eventFor` known-skip families** pin + **webui degrade** pin | Closes the overclaim in lesson 1: "nothing tests it" was written wider than the evidence | 3 | 2 | 3 | 4.5 | — |
-| T4 | **Payload type-mismatch** case + a canary comment about a future strict-by-default Go | Distinguishes tolerance on *members* from strictness on *types* | 2 | 1 | 3 | 6.0 | — |
-| H1 | **The owed battery**: `ci-local.sh`, `root-gate.sh`, `check-mirror-clones.sh`, `check-dead-exports.sh --self-test`, windows cross-compile, rc to files | The one gate that sees cross-module interactions two targeted runs cannot | 4 | 2 | 4 | 8.0 | R2, R3, T1, T2 |
-| H2 | **Daemon attribution**: grandfather this session's 7 sweeps in `scripts/daemon-sweep-baseline.txt` with a dated reason; route the 34 foreign ones | 41 unattributed sweeps are red at HEAD; laundering foreign debt is not ours to do | 3 | 2 | 3 | 4.5 | — |
-| D1 | **DOMAIN_LANGUAGE.md**: the five OKF words mapped to tq terms | Unnamed concepts are the ones that get conflated (`generated` vs `verified`) | 3 | 2 | 3 | 4.5 | — |
-| F1 | **`stale_after` on the OKF note** + the convention in the template | The concept applied to the note about the concept; costs nothing | 2 | 1 | 3 | 6.0 | — |
-| D3 | **Size the receipt work**: count live reports carrying a hand-grepped "N ok / M fail" | Gives R1–R5 a measured justification instead of an argued one | 2 | 1 | 3 | 6.0 | — |
-| D4 | **Deeper OKF**: SPEC §10.4 `receipt` declaration syntax + read `attesters/sql_equality.py`; write adopt/reject | Only worth it once R1 lands; could change the receipt's field set | 2 | 2 | 2 | 2.0 | R1 |
-| D5 | **Record two rejections** (TODO-row `status` analogue; provenance-on-closeout-claim experiment) | Stops the same two ideas being re-proposed | 2 | 1 | 2 | 4.0 | — |
-| D2 | **Route foreign debt**: the 4 dead-SHA cites + the 10 phrase-drift WARNs recorded on the fleet board, not fixed blind | Foreign reports are not ours to edit; the count is the useful output | 1 | 1 | 2 | 2.0 | — |
-| Q1 | **Trust-tier ruling brief** (one page: advisory tier vs no tier; cost = a fact type + retention) | Unblocks the `— BLOCKED:` row without us deciding the owner's product call | 3 | 1 | 3 | 9.0 | — |
+| Rank | # | Tier | Task | Why it matters | Est | Imp | Eff | Val | Lev | Deps |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | R3 | 1% | **Attester**: pure function over (receipt, declared verify, claimed HEAD) returning a verdict; three comparisons | Converts a trust statement into a check; also makes V1 observable | 60 | 5 | 2 | 5 | 12.5 | R2 |
+| 2 | R6 | 20% | **Correct the research note**: the gap is success-side receipt + attester, not "no receipt artifact" | The note overstated; a wrong note is worse than none — corrected in the planning window | 30 | 3 | 1 | 4 | 12.0 | — |
+| 3 | V1 | 4% | **`--reresolve-verify`**: audit `tq doctor --hygiene` coverage, write the retire-vs-narrow design note | Closes a documented trust hole where the gate is agent-editable | 75 | 5 | 2 | 4 | 10.0 | R3 |
+| 4 | Q1 | tail | **Trust-tier ruling brief** (one page: advisory tier vs no tier; cost = a fact type + retention) | Unblocks the `— BLOCKED:` row without us deciding the owner's product call | 30 | 3 | 1 | 3 | 9.0 | — |
+| 5 | R1 | 1% | **Receipt design**: extend `AgentResult` with `verify_command`, `verify_rc`, `verify_head`, `verify_counts`; reuse the `writeVerifyEvidence` sidecar; write the storage rationale | This is the design that decides whether R2 is 90 min or 400 | 100 | 5 | 3 | 5 | 8.3 | — |
+| 6 | R2 | 1% | **Emit the receipt** from `runVerify` on success *and* failure; one shape across both paths | The actual artifact; without it everything else is theory | 90 | 5 | 3 | 5 | 8.3 | R1 |
+| 7 | R5 | 4% | **Surface it**: `tq show` section, `tq dlq` column, `--evidence-stage` receipt term | An unrendered artifact is worth nothing to the tier-2/3 consumers | 60 | 4 | 2 | 4 | 8.0 | R2 |
+| 8 | H1 | 20% | **The owed battery**: `ci-local.sh`, `root-gate.sh`, `check-mirror-clones.sh`, `check-dead-exports.sh --self-test`, windows cross-compile, rc to files | The one gate that sees cross-module interactions two targeted runs cannot | 60 | 4 | 2 | 4 | 8.0 | R2,R3,T1,T2 |
+| 9 | C2 | 20% | **Known Issues x3**: `download`-before-`fetch`; tolerate-unknown ≠ tolerate-newer; no absolute verification phrases | Three rules whose absence cost this session real damage | 45 | 3 | 2 | 4 | 6.0 | — |
+| 10 | C3 | 20% | **Research-note template norms**: record the acquisition passes; cite-then-verify | Fixes the template so the next note cannot repeat the failure | 40 | 3 | 2 | 4 | 6.0 | — |
+| 11 | R4 | 4% | **Refuse-not-annotate** wiring: a failed attestation refuses the value and lands a named refusal class in the evidence surface | OKF §10.5: a false verdict must not merely decorate | 45 | 4 | 2 | 3 | 6.0 | R3 |
+| 12 | T4 | 20% | **Payload type-mismatch** case + a canary comment about a future strict-by-default Go | Distinguishes tolerance on *members* from strictness on *types* | 40 | 2 | 1 | 3 | 6.0 | — |
+| 13 | F1 | 20% | **`stale_after` on the OKF note** + the convention in the template | The concept applied to the note about the concept; costs nothing | 30 | 2 | 1 | 3 | 6.0 | — |
+| 14 | D3 | 20% | **Size the receipt work**: count live reports carrying a hand-grepped "N ok / M fail" | Gives R1–R5 a measured justification instead of an argued one | 30 | 2 | 1 | 3 | 6.0 | — |
+| 15 | G1 | 4% | **Cite-drift guard**: extract every `file:NNN` cite from a doc and re-read the line, FAIL on token mismatch; `--self-test`; wire into ci-local | Prevents the exact defect this session committed 4×; sibling to `check-dead-sha-refs.sh` | 75 | 4 | 3 | 4 | 5.3 | — |
+| 16 | C1 | 4% | **Two AGENTS.md pins** (additive-growth contract; signals-not-scores) + the required compress pass against the size budget | The contract the new receipt fields ride on; the anti-promotion rule for AI scores | 75 | 4 | 3 | 4 | 5.3 | R1 |
+| 17 | G2 | 20% | **`check-research-note-shape.sh`**: every `docs/research/*.md` has a citations table + a Verification trail; `--self-test`; ci-local | Makes the template norms enforceable instead of advisory | 60 | 3 | 2 | 3 | 4.5 | C3 |
+| 18 | T2 | 20% | **journal/cqrs adapter**: fact-decode tolerance pin | Same class, different decode surface | 60 | 3 | 2 | 3 | 4.5 | — |
+| 19 | T3 | 20% | **`eventFor` known-skip families** pin + **webui degrade** pin | Closes the overclaim in lesson 1: "nothing tests it" was written wider than the evidence | 45 | 3 | 2 | 3 | 4.5 | — |
+| 20 | H2 | tail | **Daemon attribution**: grandfather this session's 7 sweeps in `scripts/daemon-sweep-baseline.txt` with a dated reason; route the 34 foreign ones | 41 unattributed sweeps are red at HEAD; laundering foreign debt is not ours to do | 40 | 3 | 2 | 3 | 4.5 | — |
+| 21 | D1 | 20% | **DOMAIN_LANGUAGE.md**: the five OKF words mapped to tq terms | Unnamed concepts are the ones that get conflated (`generated` vs `verified`) | 40 | 3 | 2 | 3 | 4.5 | — |
+| 22 | D5 | tail | **Record two rejections** (TODO-row `status` analogue; provenance-on-closeout-claim experiment) | Stops the same two ideas being re-proposed | 30 | 2 | 1 | 2 | 4.0 | — |
+| 23 | T1 | 20% | **Queue detail decoders**: forward-compat pins for `ParseReprioritizeEvidence` + siblings | Turns the tolerance lesson from one test into a contract | 80 | 3 | 3 | 3 | 3.0 | — |
+| 24 | D4 | tail | **Deeper OKF**: SPEC §10.4 `receipt` declaration syntax + read `attesters/sql_equality.py`; write adopt/reject | Only worth it once R1 lands; could change the receipt's field set | 45 | 2 | 2 | 2 | 2.0 | R1 |
+| 25 | D2 | tail | **Route foreign debt**: the 4 dead-SHA cites + the 10 phrase-drift WARNs recorded on the fleet board, not fixed blind | Foreign reports are not ours to edit; the count is the useful output | 30 | 1 | 1 | 2 | 2.0 | — |
 
-Total effort: **1315 minutes ≈ 21.9 h** across 24 tasks (≈ 3 focused days, or one
+Total effort: **1315 minutes ≈ 21.9 h** across 25 tasks (≈ 3 focused days, or one
 long wave of dispatched batches).
 
 ## 6. Deliberate non-goals (the verschlimmbesserung guard)
@@ -402,7 +402,7 @@ safe to dispatch as separate batches.
 | Cite-drift guard floods on historical docs | the repo has thousands of cites | G1.5 measures the baseline first; historical dirs excluded like `check-dead-sha-refs.sh` does |
 | Grandfathering washes foreign debt | 41 sweeps, 7 mine | H2.2 appends only mine, with a dated reason; H2.4 routes the rest |
 | AGENTS.md grows past budget while adding pins | hard size cap | C1.1/C1.2 compress first, then C1.5 verifies |
-| The plan itself becomes stale | 24 tasks, 3 days | every task is independently shippable; nothing depends on the whole |
+| The plan itself becomes stale | 25 tasks, 3 days | every task is independently shippable; nothing depends on the whole |
 
 ## 10. Questions the owner must answer (blocking only where marked)
 
