@@ -3222,11 +3222,14 @@ func cmdDLQ(args []string) error {
 	// scans. A deliberate --evidence-stage filter always reads — the
 	// operator asked for class forensics — and says so via evidence_read.
 	evidence := make(map[task.ID]executor.FailureEvidence, len(tasks))
+	// receipts is the verify receipt twin for the same rows, decoded off the
+	// SAME trail read: the row carries both, the read cap stays a cap on IO.
+	receipts := make(map[task.ID]*verifyReceiptView, len(tasks))
 	evidenceRead := true
 
 	if *evidenceStage != "" || len(tasks) <= dlqEvidenceReadCap {
 		for _, dead := range tasks {
-			evidence[dead.ID] = failureEvidenceFor(context.Background(), store, dead.ID)
+			evidence[dead.ID], receipts[dead.ID] = dlqForensicsFor(context.Background(), store, dead.ID)
 		}
 	} else {
 		evidenceRead = false
@@ -3266,12 +3269,12 @@ func cmdDLQ(args []string) error {
 	}
 
 	if *jsonOut {
-		printDLQJSON(tasks, total, evidence, deadlines, evidenceRead)
+		printDLQJSON(tasks, total, evidence, receipts, deadlines, evidenceRead)
 
 		return nil
 	}
 
-	printDLQ(tasks, deadlines, evidence)
+	printDLQ(tasks, deadlines, evidence, receipts)
 
 	return nil
 }
@@ -3340,6 +3343,7 @@ type dlqJSONRow struct {
 	LastError       string               `json:"last_error,omitempty"`
 	UpdatedAt       time.Time            `json:"updated_at"`
 	Evidence        *failureEvidenceView `json:"evidence,omitempty"`
+	Verify          *verifyReceiptView   `json:"verify,omitempty"`
 	DLQBackoffUntil *time.Time           `json:"dlq_backoff_until,omitempty"`
 }
 
@@ -3347,6 +3351,7 @@ func printDLQJSON(
 	tasks []task.Task,
 	total int,
 	evidence map[task.ID]executor.FailureEvidence,
+	receipts map[task.ID]*verifyReceiptView,
 	dlqBackoff map[string]time.Time,
 	evidenceRead bool,
 ) {
@@ -3363,6 +3368,7 @@ func printDLQJSON(
 			MaxAttempts: t.MaxAttempts,
 			LastError:   t.LastError,
 			UpdatedAt:   t.UpdatedAt,
+			Verify:      receipts[t.ID],
 		}
 
 		if ev := evidence[t.ID]; !ev.IsZero() {
@@ -3385,7 +3391,12 @@ func printDLQJSON(
 	}
 }
 
-func printDLQ(tasks []task.Task, dlqBackoff map[string]time.Time, evidence map[task.ID]executor.FailureEvidence) {
+func printDLQ(
+	tasks []task.Task,
+	dlqBackoff map[string]time.Time,
+	evidence map[task.ID]executor.FailureEvidence,
+	receipts map[task.ID]*verifyReceiptView,
+) {
 	if len(tasks) == 0 {
 		fmt.Println("(empty)")
 
@@ -3398,6 +3409,10 @@ func printDLQ(tasks []task.Task, dlqBackoff map[string]time.Time, evidence map[t
 
 		if summary := failureEvidenceSummary(evidence[t.ID], t.LastError); summary != "" {
 			row += "  evidence=" + summary
+		}
+
+		if suffix := verifySuffix(receipts[t.ID]); suffix != "" {
+			row += "  " + suffix
 		}
 
 		fmt.Println(row)
