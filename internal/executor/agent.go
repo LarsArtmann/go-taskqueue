@@ -445,7 +445,8 @@ func (e *AgentExecutor) Execute(ctx context.Context, t task.Task) error {
 
 	// Worktree forensics: where the run actually happened and which branch
 	// carries the commits (the merge/reap machinery keys off the prefix);
-	// BaseBranch names the merge target for the post-approve merge.	result.WorktreeDir = runDir
+	// BaseBranch names the merge target for the post-approve merge.
+	result.WorktreeDir = runDir
 	result.Branch = wtBranch
 	result.BaseBranch = wtBase
 
