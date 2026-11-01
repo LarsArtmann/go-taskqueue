@@ -185,6 +185,21 @@ class Handler(BaseHTTPRequestHandler):
             return
         length = int(self.headers.get("Content-Length", "0"))
         req = json.loads(self.rfile.read(length) or b"{}")
+        messages = req.get("messages", [])
+        last_user = next((str(m.get("content"))[:80] for m in reversed(messages)
+                          if m.get("role") == "user"), "")
+        delta = {"role": "assistant", "content": "ok"}
+        is_template = last_user.startswith("Generate a concise title") or last_user.startswith("Provide a detailed summary")
+        if any(m.get("role") == "tool" for m in messages):
+            stall = float(os.environ.get("MOCK_STALL", "0"))
+            if stall > 0:
+                time.sleep(stall)
+            delta = {"role": "assistant", "content": "mock done"}
+        elif "verdict" in last_user.lower() and not is_template:
+            args = json.dumps({"command": "echo pool-leg-probe", "description": "probe tool call"})
+            delta = {"role": "assistant", "content": None,
+                     "tool_calls": [{"id": "call_1", "type": "function",
+                                     "function": {"name": "bash", "arguments": args}}]}
         base = {"id": "chatcmpl-mock", "object": "chat.completion.chunk",
                 "created": 0, "model": "mock-1"}
         if req.get("stream"):
@@ -199,9 +214,15 @@ class Handler(BaseHTTPRequestHandler):
                 self.wfile.write(f"{len(data):x}\r\n".encode() + data + b"\r\n")
                 self.wfile.flush()
 
-            chunk({**base, "choices": [{"index": 0, "delta": {"role": "assistant", "content": "ok"},
-                                        "finish_reason": None}]})
-            chunk({**base, "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}]})
+            calls = delta.get("tool_calls")
+            if calls:
+                fn = calls[0]["function"]
+                chunk({**base, "choices": [{"index": 0, "delta": {"role": "assistant", "tool_calls": [{"index": 0, "id": calls[0]["id"], "type": "function", "function": {"name": fn["name"], "arguments": ""}}]}, "finish_reason": None}]})
+                chunk({**base, "choices": [{"index": 0, "delta": {"tool_calls": [{"index": 0, "function": {"arguments": fn["arguments"]}}]}, "finish_reason": None}]})
+                chunk({**base, "choices": [{"index": 0, "delta": {}, "finish_reason": "tool_calls"}]})
+            else:
+                chunk({**base, "choices": [{"index": 0, "delta": delta, "finish_reason": None}]})
+                chunk({**base, "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}]})
             self.wfile.write(b"0\r\n\r\n")
             self.wfile.flush()
             return

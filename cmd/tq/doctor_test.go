@@ -70,7 +70,7 @@ func TestDoctorHealthyEmptyDB(t *testing.T) {
 	t.Cleanup(func() { doctorProbeCrushVersion = orig })
 
 	doctorProbeCrushVersion = func(context.Context, string) (string, error) {
-		return "crush version v9.9.9", nil
+		return "crush version v" + doctorCrushProvenVersion, nil
 	}
 
 	results, err := runDoctor(context.Background(), doctorOptions{Deployment: config.SQLite(path), AgentBin: self})

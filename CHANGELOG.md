@@ -8,6 +8,42 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- **`tq verdict --file` and `tq ask --file`** (2026-11-01, client/server
+  adoption): both agent→queue channels gain a flag form that overrides the
+  env channel — the work/closeout prompts now bake a one-line rail naming
+  the per-run path (`tq verdict --file <path> '<json>'`;
+  `tq ask --task <id> --file <path> '…'`), so the channels survive
+  `--crush-server` routing where the bash tool cannot see the client's
+  env (crush#4210). Local runs keep the env channels byte-identical; the
+  rails are additive and always-on.
+- **Crush-server death never burns an attempt** (2026-11-01): a routed
+  turn severed by the shared server dying exits 0 with only a WARN line —
+  the executor classifies the signature (`[crush-server]`), the worker
+  requeues WITHOUT attempt burn (new requeue class `crush-server`,
+  exempt from the env-streak breaker), the DLQ-autopsy sweeper refuses
+  to mint one, and the supervisor's restart ladder owns recovery.
+- **`--crush-server` seam hardening** (2026-11-01): a scheme-less socket
+  path is normalized to `unix://` (crush rejects bare paths with
+  "Invalid host URL" — caught live by the pool smoke's mid-run kill
+  leg); pinned three-way by `TestAgentCrushServerSeam`.
+- **Shared-server memory watch** (2026-11-01): the pool's crush keeper
+  logs the server's RSS on every dial and appends samples to
+  `<journal-dir>/crush-server-rss.log`; `tq pool-health` folds the log
+  into a `crushServerRss` summary (samples/last/max, WARN above a 2 GiB
+  band) — the L4 fleet GO/NO-GO evidence feed.
+- **Stuck-turn detector on the live agent pane** (2026-11-01): an
+  attached workspace whose session stays busy but silent for ≥10 minutes
+  surfaces a `stall` line in the `/agents/live` feed (re-warned every
+  30 min); quiet-but-idle workspaces never warn.
+- **`tq doctor` smokes-proven crush pin** (2026-11-01): the
+  crush-version check now also WARNs when the host binary differs from
+  the version the client/server smokes were proven on (currently
+  0.99.0), naming the re-run ritual before trusting `--crush-server`.
+- **NixOS module `crushServerSocket` option** (2026-11-01): the
+  `tq-agent-pool` module gains a `crushServerSocket` option (default
+  null = today's in-process runs) wiring `--crush-server` into BOTH the
+  pool and (with serve enabled) the dashboard unit; unset is the
+  one-line rollback.
 - **Dashboard questions pane with browser answers** (2026-10-31, L3):
   the dashboard surfaces every OPEN `tq ask` question (unanswered
   question-asked facts on parked tasks) as an amber pane with an inline
