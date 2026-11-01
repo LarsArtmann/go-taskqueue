@@ -7,6 +7,8 @@
 #
 # The audit classifies every footer-less `chore: auto-commit …` sweep:
 #   attributed / report-only  — never failures, not recorded in the baseline
+#   session-scoped            — same: a session-slug footer owns it (the
+#                               task-less window's landing zone)
 #   unattributed-shipping     — failure UNLESS the commit sha is baselined
 #
 # Baseline: scripts/daemon-sweep-baseline.txt (one full sha per line, `#`
@@ -17,8 +19,8 @@
 #
 # --self-test pins the decision branches against a /tmp fixture repo: baselined
 # sweep rc=0 (silent unless verbose), shrink advisory (marker-attributed sweep
-# stops counting), new shipping sweep rc=1 naming the sha, missing baseline
-# fails closed.
+# stops counting), session-scoped sweep rc=0 (slug-owned, not baselined), new
+# shipping sweep rc=1 naming the sha, missing baseline fails closed.
 set -uo pipefail
 
 SELFDIR=$(cd "$(dirname "$0")" && pwd)
@@ -157,7 +159,22 @@ if [ "${1:-}" = "--self-test" ]; then
 	check_eq "stale baseline row no longer counted" \
 		"daemon-sweep attribution ok (0 baselined, 0 new)" "$out"
 
-	# 3. NEW unattributed-shipping sweep: rc=1 naming exactly that sha.
+	# 3. Session-scoped sweep (task-less window): a marker footered with a
+	# SESSION SLUG owns the sweep — rc=0, never a new failure (2026-11-01:
+	# this is what lets an interactive owner session land without growing
+	# the baseline by hand).
+	printf 'package scoped\n' >"$repo/scoped.go"
+	fixture_commit -m "$daemon_subj"
+	scoped_sweep=$(git -C "$repo" rev-parse HEAD)
+	git -C "$repo" commit -q --allow-empty -m "$(printf '%s\n\n%s' \
+		"The work files landed in the footer-less sweep ${scoped_sweep}; this owner-directed session has no queue task." \
+		"Task-Queue-ID: owner-directive")"
+	out=$(cd "$repo" && run_gate)
+	rc=$?
+	check_eq "session-scoped run exit" "0" "$rc"
+	check_eq "session-scoped sweep not flagged" "0" "$(grep -c "$scoped_sweep" <<<"$out")"
+
+	# 4. NEW unattributed-shipping sweep: rc=1 naming exactly that sha.
 	printf 'package new\n' >"$repo/new.go"
 	fixture_commit -m "$daemon_subj"
 	new_sweep=$(git -C "$repo" rev-parse HEAD)
@@ -169,7 +186,7 @@ if [ "${1:-}" = "--self-test" ]; then
 	check_eq "attributed old sweep not flagged" "0" \
 		"$(grep -c "$old_sweep" <<<"$out")"
 
-	# 4. Missing baseline fails closed.
+	# 5. Missing baseline fails closed.
 	mv "$tmp/base.txt" "$tmp/base.bak"
 	out=$(cd "$repo" && run_gate)
 	rc=$?
