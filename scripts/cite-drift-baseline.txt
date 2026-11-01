@@ -1,0 +1,33 @@
+# Line-cite drift baseline (scripts/check-cite-drift.sh).
+#
+# Pre-existing drifted cites in living docs, grandfathered 2026-11-01 when the
+# gate landed (13 findings at HEAD). Each row is `<resolved-path>:<lineno>` of
+# the CITE, not of the correct location: a row means "this document's claim
+# about that line was already wrong before the gate existed".
+#
+# These are NOT curses on the documents. `TODO_LIST.md` rows and the
+# `2026-10-09_turnstone-lessons.md` research note were written when their
+# citations were true, and re-resolving one requires knowing which symbol the
+# author meant — a judgement the gate cannot make and an agent should not
+# guess. Shrink is advisory-only; a NEW drifted cite (not listed here) fails
+# the gate, which is the whole point.
+#
+# Two rows cite paths that do not exist in this repo at all
+# (`pkg/analyzer/upcaster.go`, `backend/agent.go`): they are shorthand for
+# files in another project, kept because the surrounding row is about that
+# project.
+#
+# Regenerate with: ./scripts/check-cite-drift.sh --emit-baseline
+
+cmd/tq/main.go:2039
+cmd/tq/main.go:2218
+internal/executor/agent.go:466
+internal/executor/agent.go:479
+internal/executor/verifygate.go:260
+internal/httpapi/httpapi.go:111
+internal/queue/companion/conform/suite.go:215
+internal/queue/companion/questions.go:76
+internal/queue/queue.go:309
+internal/worker/worker.go:567
+pkg/analyzer/upcaster.go:9
+backend/agent.go:315

@@ -191,7 +191,7 @@ run_gate() {
 					continue
 				fi
 
-				if in_baseline "$path:$lineno"; then
+				if in_baseline "${resolved:-$path}:$lineno"; then
 					baselined_hits=$((baselined_hits + 1))
 					[ "${TQ_CITE_VERBOSE:-0}" = 1 ] && echo "BASELINED: $finding"
 				else

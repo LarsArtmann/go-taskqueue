@@ -746,6 +746,17 @@ step "dead-sha citation self-test (gate semantics pin)"
 step "dead-sha citation check"
 ./scripts/check-dead-sha-refs.sh
 
+# Line-cite drift gate (2026-11-01 OKF window): the sibling of the dead-SHA
+# check for the OTHER half of citation rot — a living doc's `path.go:NNN`
+# claim is re-read and fails when the path is gone, the line is past EOF, or
+# the identifier the line names is nowhere near the cited line. Pre-existing
+# drift is grandfathered in scripts/cite-drift-baseline.txt.
+step "cite-drift self-test (gate semantics pin)"
+./scripts/check-cite-drift.sh --self-test
+
+step "cite-drift citation check"
+./scripts/check-cite-drift.sh
+
 # Daemon-commit attribution gate (task 000001a109757cf3d260a0de4e2700000000,
 # 00-55 report f2): a footer-less auto-commit sweep that touched files
 # outside docs/status/ fails the gate unless its sha is baselined in
