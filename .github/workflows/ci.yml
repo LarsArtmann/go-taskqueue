@@ -329,8 +329,9 @@ jobs:
         # journalDrift consumes only queue.Store; this pins that the
         # sqlite lifecycle findings hold over the postgres backend too
         # (skips would hide a regression — the job-level env guarantees it
-        # actually runs here).
-        run: ./scripts/test-cmd-tq.sh -run TestJournalDriftNoDriftOverFullLifecyclePostgres -count=1 -v
+        # actually runs here). Seeded-drift variant included (row 462):
+        # detection EXECUTED, not just absence-of-drift.
+        run: ./scripts/test-cmd-tq.sh -run 'TestJournalDrift.*Postgres' -count=1 -v
 
   consumer:
     # T5 (09-14 retro §f5 + §f6): the out-of-tree consumer proof — a scratch
