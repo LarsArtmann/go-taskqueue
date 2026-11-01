@@ -368,6 +368,7 @@ func (e *AgentExecutor) Execute(ctx context.Context, t task.Task) error {
 		p.Session = retrySession(t)
 	}
 
+	runStart := time.Now()
 	output, err := e.runAgent(runCtx, runDir, &p, t.ID)
 	if err != nil {
 		// Forensics for the task.failed fact: exit code + output tail. The
@@ -396,6 +397,12 @@ func (e *AgentExecutor) Execute(ctx context.Context, t task.Task) error {
 	derived := result.deriveUsage(ctx, runDir, output, t.ID)
 	result.Commits = derived.Commits
 	result.FilesChanged = derived.Files
+
+	// Structured closeout facts (row 1446): routed runs get the session
+	// identity, usage block, and tool-call inventory from the crush
+	// server's messages endpoint; in-process runs and any fetch failure
+	// keep the stdout-derived values (the fallback the row mandates).
+	e.enrichCloseoutFacts(ctx, runDir, &result, runStart)
 
 	if n := len(derived.Commits); n > 0 {
 		result.CommitSHA = derived.Commits[n-1].SHA

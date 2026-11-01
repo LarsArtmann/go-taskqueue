@@ -93,6 +93,12 @@ type AgentResult struct {
 	// repo's HEAD branch at worktree-create time). The merge machinery
 	// merges Branch into BaseBranch on review approve.
 	BaseBranch string `json:"base_branch,omitempty"`
+	// ToolCalls is the structured per-tool-call inventory of the session,
+	// fetched from the crush server's messages endpoint when the run was
+	// routed (row 1446): the closeout-report raw material without stdout
+	// parsing. Empty on in-process runs — the stdout derivation stays the
+	// fallback channel.
+	ToolCalls []ToolCallFact `json:"tool_calls,omitempty"`
 }
 
 // FailureEvidence is the structured forensics attached to a task.failed
