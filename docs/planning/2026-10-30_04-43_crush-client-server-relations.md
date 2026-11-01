@@ -121,3 +121,58 @@ v0.98.2→v0.99 endpoint diff is exactly 5 endpoints (host-context ×2, theme
   `AMBER-RELATION` returned (memory intact).
 - **E6 prompt scoping**: `POST .../current-session` before SSE attach → 409
   `client not attached`; after attach → 200 + `client_session` event.
+
+## Evidence E7 (HTTP envelope, captured 2026-11-01, crush v0.99.0, unix socket)
+
+Full request/response shapes for the M5 surface, captured live against a
+mocked provider (recipe: `/tmp/tq-crush-recipe/launch.sh`, scratch stack
+`/tmp/tq-crush2`; raw bodies: `messages-envelope.json`, route table:
+`openapi.json`).
+
+- **Route authority**: `GET /v1/docs/openapi.json` → 200, 72 paths (v0.99.0).
+  This endpoint is the source of truth for the whole surface — no binary
+  strings archaeology needed again.
+- **`GET /v1/version`** → `{"version":"v0.99.0","commit":"unknown",
+  "build_id":"gjdgxs","go_version":"go1.27.1","platform":"linux/amd64"}`.
+- **M1 delta (v0.99.0)**: `GET /v1/workspaces` stays `[]` for the whole
+  duration of a non-interactive routed `crush run` (fast-polled at 0.2 s
+  through a 45 s provider stall — never non-empty; differs from v0.98.2's
+  E1). The run still executes server-side (session rows land in
+  `<repo>/.crush/crush.db`); only the LISTING is quiet.
+- **Workspace registration (the M5 doorway)**: `POST /v1/workspaces` with
+  `{"client_id": "<uuid4>", "path": "<repo>"}` → 200 `{"id": "<uuid4>",
+  "path", "data_dir": "<repo>/.crush", "version": "v0.99.0", "config":
+  {…full resolved config…}}`. Missing/invalid `client_id` → 400
+  `{"message":"invalid client_id"}`. A registered workspace over a path
+  reads ALL sessions of that project (sessions persist per-project in
+  `data_dir`, newest-first) — so an executor-side enricher can register its
+  own workspace and read the routed run's session without the run's own
+  workspace id. `DELETE /v1/workspaces/{id}` by a different client → 400.
+- **`GET /v1/workspaces/{wid}/sessions`** → bare JSON array (no envelope
+  object), newest first: `{"id","parent_session_id","title",
+  "message_count","prompt_tokens","completion_tokens",
+  "summary_message_id","cost","created_at","updated_at","is_busy",
+  "attached_clients"}` (timestamps unix SECONDS; `is_busy` true mid-turn;
+  `attached_clients` counts live SSE attaches).
+- **`GET /v1/workspaces/{wid}/sessions/{sid}/messages`** → bare JSON array
+  of messages: `{"parts":[{"type","data"}],"id","role","session_id",
+  "model","provider","created_at","updated_at"}`. Observed parts (wire
+  shapes, `input`/`metadata` are JSON STRINGS):
+  - user: `{"type":"text","data":{"text":<prompt>}}` +
+    `{"type":"finish","data":{"reason":"stop","time":0}}`
+  - assistant: `{"type":"tool_call","data":{"id":"call_1","name":"bash",
+    "input":"{\"command\":…,\"description\":…}","finished":true}}` +
+    `{"type":"finish","data":{"reason":"tool_use","time":<unix-sec>}}`
+  - tool: `{"type":"tool_result","data":{"tool_call_id","name","content",
+    "metadata":"{\"start_time\":<ms>,\"end_time\":<ms>,\"output\":…,
+    \"description\":…,\"working_directory\":…}","is_error":false}}` +
+    finish `{"reason":"stop","time":0}`
+  - a trailing assistant message can carry `parts:[]` while a turn is
+    mid-flight (the stall window) — enrichers must tolerate empty parts.
+- **Session correlation for an enricher**: match by `created_at` window
+  around the run start (seconds granularity) or scan newest-first; the
+  `--verbose` `session_id=` log line (E4) remains the exact-match key when
+  the executor can parse it.
+- DB mirror (per-project `<repo>/.crush/crush.db`, tables `sessions` /
+  `messages`: `parts` column holds the same part JSON) — the API is the
+  read seam; the DB is the durability fact, not the interface.
