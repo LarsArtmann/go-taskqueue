@@ -256,7 +256,11 @@ research-note-shape ok, cite-drift ok, lint-baseline within baseline
     grep for `\.\t`-joined comment lines across the tree.
 48. Re-tighten the AGENTS budget constant toward 22k (14 B headroom is a hazard).
 49. Add a `ci-local` preflight mode that runs the cheap gates first.
-50. Push and watch the first green CI run since before this window.
+50. ~~Push and watch the first green CI run since before this window.~~ DONE:
+    36 commits pushed (df7162c7..4c84be60); CI run 41359093781 on 4c84be60 is
+    **green** (the two preceding runs failed on `checks.x86_64-linux.treefmt`,
+    which now builds rc=0 locally too, as do `module-eval`, `version-sync` and
+    `format`).
 
 ## g) QUESTIONS FOR THE OWNER
 
