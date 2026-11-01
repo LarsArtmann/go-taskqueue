@@ -1668,3 +1668,5 @@ eebb838345a41e85f6633d0ecd6e3f38b0b43d9c
 348275dc978d530331a8460b33e383003f817844
 # 2026-11-01 wave-3 closeout report file (index row landed footered)
 b2c611bba044f708331f8e2067e53ebf1cb3682a
+# 2026-11-01 poll-loudness exhaust fix (crush-pool-supervisor.sh)
+a140724a67d76c1795bd919e9bfc581192225979
