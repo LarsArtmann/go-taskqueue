@@ -311,8 +311,14 @@ derives a name from prompt CONTENT is a time bomb; derive it from identity.
 Receipt: rc written to a file, not read from a pipe.
 
 - `scripts/smoke/worktree.sh` rc=0 (above).
-- `ci-local.sh` — receipt appended below once the run finishes; this line is
-  NOT a claim until it names an rc.
+- `ci-local.sh` rc=0 — 450 `==` gate steps, ending
+  `ALL CI GATES GREEN — this exact tree is what CI will see. Safe to push.`
+  The FIRST full run of this window was rc=1 on exactly one step,
+  daemon-attribution, and only because five of this window's own footer-less
+  sweeps were newer than the baseline; the heal below cured them and the rerun
+  was green end to end. `CI_CHECK=off` was deliberate for the local runs: the
+  remote `check-ci` step reads master's LAST PUSHED sha, which predates this
+  window's nixfmt/treefmt cures.
 - `check-dead-sha-refs.sh` rc=0: the 13 dangling cites were REPAIRED, not
   baselined. The three foreign shas already had their twins written in prose by
   the very reports that cite them — "local X vs origin Y", "X/Y", "rode sweep
