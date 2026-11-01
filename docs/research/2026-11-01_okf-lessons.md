@@ -151,6 +151,29 @@ weakened.
   indexes enforced by `check-status-index.sh`). Renaming to `index.md`/`log.md`
   buys nothing. **Rejected.**
 
+### Re-read of §10.2/§10.4/§10.5 against the SHIPPED receipt (2026-11-01)
+
+Once `VerifyReceipt` existed, the computation chapter was re-read at source
+(`SPEC.md` §10.2 Contract fields, §10.4, §10.5 "How a consumer uses it",
+§10.6) to check the field set against something more prescriptive than prose.
+Seven deltas, each ruled:
+
+| Delta the spec states | Ruling | Why |
+| --- | --- | --- |
+| `executor.receipt` is a DECLARED field list (`receipt: [job_id, executed_sql, result]`) chosen by the contract author | **REJECT the declaration, ADOPT the discipline** | tq has one runtime (a shell gate) and one executor, so the receipt shape is a constant, not a contract variable; a per-task declaration list would be ceremony with a single possible value. The discipline — declare which observations count as proof and grade EXACTLY those — is what `VerifyReceipt`'s five fields are. |
+| §10.5 step 5 "fidelity": the value is re-read from the authoritative source "by job id rather than taken from the agent's text" | **ADOPTED, already shipped** | `ParseVerifyCounts` re-derives the ok/fail tallies from the captured gate output instead of trusting a number a report claims. That is the same move: re-read the source, never the claim. |
+| §10.5 step 6 "gate": "refuse to display a failing attestation" | **ADOPTED, already shipped** | `tq show` renders the refusal; a mismatched receipt is never presented as verified (`AttestVerify` + the `verify=<verdict>` row term). |
+| §10.5 step 6 "warn or refuse when `now >= stale_after`" | **REJECT (already covered elsewhere)** | tq's freshness check is the doctor's `verify-pins` audit, which reports the three staleness classes for pending tasks. A second, display-time warning would duplicate that surface and give two answers to "is this pin stale". |
+| §10.4: "each computation is its own concept, so revenue can be fresh while profit is past its `stale_after`" — i.e. freshness per computation | **REJECT for tq's battery** | A `.tq-verify` line is one opaque `sh -c` command with N stages, not N concepts; the only per-stage question tq actually asks is "which stage died", and `verifyDeathStage` answers it from the full output. Splitting freshness per stage would require each stage to be a declared concept — the same ceremony the first row rejected. |
+| §10.5 "the consumer runs the attester"; §10.6 attestation "is per-call, runtime, and not stored" | **DELIBERATE DIVERGENCE** | tq stores the verdict beside the receipt. OKF's consumer attests immediately against the live runtime; tq's consumer is a report reader months later, holding neither the gate output nor the declarations. Storing the write-time verdict is the only way that reader gets an honest answer; re-deriving it later would silently skip comparisons and read green. `AttestVerify` stays pure so the audit path (re-grade a stored sidecar) is still available. |
+| §10.2 `parameters` as typed `{name, type, required}` holes the agent may only FILL | **ALIGNED** | `AgentPayload` is the typed parameter set, and a dispatched agent cannot mint one: `tq enqueue` is forbidden to work prompts, so the "may only supply values" rule is already structural. |
+
+The two ADOPTED rows were already true before the re-read, which is the useful
+finding: the design converged on the spec's fidelity-by-re-read rule
+independently. The two REJECTED rows share one reason — a declared per-stage
+contract is ceremony when one runtime and one opaque command produce every
+receipt.
+
 ## Verification trail
 
 - **Cites re-verified 2026-11-01 after the receipt work landed.** Every `file:line` above was
