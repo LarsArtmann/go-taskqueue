@@ -396,9 +396,9 @@ func (e *AgentExecutor) Execute(ctx context.Context, t task.Task) error {
 		return &CrushServerDeathError{}
 	}
 
-	tail, verifyStage, err := runVerify(runCtx, t.ID, runDir, &p, e.ReresolveVerify, baseRev)
+	verifyOut, err := runVerify(runCtx, t.ID, runDir, &p, e.ReresolveVerify, baseRev)
 	if err != nil {
-		SetVerifyFailureEvidence(ctx, verifyStage, err, tail)
+		SetVerifyFailureEvidence(ctx, verifyOut, err)
 		EnrichFailureEvidenceFiles(ctx, runDir, t.ID)
 
 		return err
@@ -409,7 +409,8 @@ func (e *AgentExecutor) Execute(ctx context.Context, t task.Task) error {
 	// in-flight tasks minted before the derivation contract. Best effort —
 	// a missing session id or empty derivation is not an error.
 	result := AgentResult{
-		VerifyTail: tail,
+		VerifyTail: verifyOut.Tail,
+		Verify:     verifyOut.Receipt,
 	}
 
 	derived := result.deriveUsage(ctx, runDir, output, t.ID)
@@ -443,7 +444,7 @@ func (e *AgentExecutor) Execute(ctx context.Context, t task.Task) error {
 	result.Branch = wtBranch
 	result.BaseBranch = wtBase
 
-	recordRunOutcome(ctx, &result, output, tail, t.ID)
+	recordRunOutcome(ctx, &result, output, verifyOut.Tail, t.ID)
 
 	return nil
 }
@@ -1145,6 +1146,16 @@ func execWithTransientRetry[T any](run func() (T, error)) (T, error) {
 	return out, err
 }
 
+// VerifyOutcome is one verify-gate run's result: the bounded output tail, the
+// death class (a VerifyStage* value, empty on success), and the structured
+// receipt describing what actually ran. One type for both paths — a failing
+// gate and a passing gate answer the same questions.
+type VerifyOutcome struct {
+	Tail    string
+	Stage   string
+	Receipt *VerifyReceipt
+}
+
 // runVerify enforces the quality gate after the agent exited cleanly. The
 // repo's .tq-verify file wins over everything (the repo is the source of
 // truth for how it proves itself), then the payload, then auto-detect —
@@ -1163,10 +1174,10 @@ func runVerify(
 	p *AgentPayload,
 	reresolve bool,
 	baseRev string,
-) (string, string, error) {
+) (VerifyOutcome, error) {
 	verify := verifyFor(repoDir, p, reresolve)
 	if verify == "" {
-		return "", "", nil // nothing to verify (unknown stack, no explicit command)
+		return VerifyOutcome{}, nil // nothing to verify (unknown stack, no explicit command)
 	}
 
 	cmd := exec.CommandContext(ctx, "sh", "-c", verify)
@@ -1179,6 +1190,7 @@ func runVerify(
 	prepareProcessGroup(cmd)
 
 	cmd.WaitDelay = 10 * time.Second
+
 	if err := cmd.Run(); err != nil {
 		// The tail rides along even on error: it IS the failure evidence
 		// (what the gate printed before dying) — but bounded small: verify
@@ -1197,18 +1209,38 @@ func runVerify(
 			tail = fmt.Sprintf("%s\n(full verify output: %s)", tail, evidence)
 		}
 
+		out := VerifyOutcome{Tail: tail, Stage: stage, Receipt: verifyReceipt(verify, repoDir, exitCode(err), buf.Bytes())}
+
 		if gateErr := classifyVerifyFailure(ctx, verify, repoDir, baseRev, err, tail); gateErr != nil {
-			return tail, stage, gateErr
+			return out, gateErr
 		}
 
 		if ctx.Err() != nil {
-			return tail, stage, fmt.Errorf("agent verify cancelled (%w): %s", ctx.Err(), tail)
+			return out, fmt.Errorf("agent verify cancelled (%w): %s", ctx.Err(), tail)
 		}
 
-		return tail, stage, fmt.Errorf("agent verify failed (%q): %w: %s", verify, err, tail)
+		return out, fmt.Errorf("agent verify failed (%q): %w: %s", verify, err, tail)
 	}
 
-	return tailBytes(buf.Bytes(), 2048), "", nil
+	return VerifyOutcome{Tail: tailBytes(buf.Bytes(), 2048), Receipt: verifyReceipt(verify, repoDir, 0, buf.Bytes())}, nil
+}
+
+// verifyReceipt builds the gate receipt from what the run ACTUALLY did: the
+// command that executed (not the one we meant to run), the exit code, the HEAD
+// at gate time (captured before any post-gate derivation moves the tree), and
+// the ok/fail tallies the closeout would otherwise hand-grep. Every field is an
+// observation, never an intention — which is what lets the attester contradict
+// it.
+func verifyReceipt(command, repoDir string, rc int, output []byte) *VerifyReceipt {
+	okCount, failCount := ParseVerifyCounts(string(output))
+
+	return &VerifyReceipt{
+		Command: command,
+		RC:      rc,
+		Head:    gitHeadRev(repoDir),
+		OK:      okCount,
+		Fail:    failCount,
+	}
 }
 
 // verifyErrorTailBytes bounds the verify-failure excerpt inlined into the

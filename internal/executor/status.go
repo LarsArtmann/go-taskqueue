@@ -78,6 +78,10 @@ type StatusResult struct {
 	// NextItems counts the next-work items the agent appended to
 	// TODO_LIST.md (its own self-report, not re-verified).
 	NextItems int `json:"next_items"`
+	// Verify is the receipt of the gate that proved the tree the report was
+	// committed on still builds (the same VerifyReceipt the agent path
+	// records).
+	Verify *VerifyReceipt `json:"verify,omitempty"`
 }
 
 // defaultStatusTaskTimeout bounds one status run unless the payload overrides.
@@ -153,16 +157,24 @@ func (e *StatusExecutor) Execute(ctx context.Context, t task.Task) error {
 	// the payload timeout bounds the whole task (agent + verify).
 	// reresolve=false: the pin comes from THIS payload built at run time,
 	// not a stale enqueue-time pin, so there is nothing to drop.
-	if _, _, err := runVerify(
+	verifyOut, err := runVerify(
 		runCtx,
 		t.ID,
 		repoDir,
 		&AgentPayload{Verify: payload.Verify},
 		false,
 		baseRev,
-	); err != nil {
+	)
+	if err != nil {
+		// Same forensics as the agent path: a reporter gate that dies after
+		// the report commit is exactly the death a DLQ autopsy needs the
+		// stage + receipt for.
+		SetVerifyFailureEvidence(ctx, verifyOut, err)
+
 		return err
 	}
+
+	result.Verify = verifyOut.Receipt
 
 	result.deriveUsage(ctx, repoDir, output, t.ID)
 	recordRunOutcome(ctx, &result, output, "", t.ID)

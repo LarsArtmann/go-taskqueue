@@ -300,13 +300,14 @@ func TestDoctorRepoAutonomy(t *testing.T) {
 	}
 }
 
-// doctorIgnoreTools drops the tool:<name> checks: they reflect the host
-// PATH, which a hermetic test cannot assume.
+// doctorIgnoreTools drops the tool:<name> and verdict-channel checks: they
+// reflect the host PATH (tq/git/go reachability), which a hermetic test
+// cannot assume — the nix sandbox and CI runners ship none of them.
 func doctorIgnoreTools(results []checkResult) []checkResult {
 	var kept []checkResult
 
 	for _, r := range results {
-		if strings.HasPrefix(r.Name, "tool:") {
+		if strings.HasPrefix(r.Name, "tool:") || r.Name == "verdict-channel" {
 			continue
 		}
 

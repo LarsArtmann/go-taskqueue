@@ -115,7 +115,7 @@ func TestVerifyGateSlowOnDeadline(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 150*time.Millisecond)
 	defer cancel()
 
-	_, _, err := runVerify(ctx, task.ID("verify-gate-slow-test"), dir, &AgentPayload{Verify: "sleep 30"}, false, "")
+	_, err := runVerify(ctx, task.ID("verify-gate-slow-test"), dir, &AgentPayload{Verify: "sleep 30"}, false, "")
 	if err == nil {
 		t.Fatal("want gate-slow, got nil")
 	}
@@ -143,7 +143,7 @@ func TestVerifyGateCooperativeCancelStaysCancelled(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	_, _, err := runVerify(ctx, task.ID("verify-gate-cancel-test"), dir, &AgentPayload{Verify: "sleep 30"}, false, "")
+	_, err := runVerify(ctx, task.ID("verify-gate-cancel-test"), dir, &AgentPayload{Verify: "sleep 30"}, false, "")
 	if err == nil || !strings.Contains(err.Error(), "cancelled") {
 		t.Fatalf("want cancelled error, got %v", err)
 	}
@@ -218,7 +218,7 @@ func writeVendorRepo(t *testing.T, trackedBad bool) string {
 func TestVendorGofmtSignatureClassifiesEnvironmental(t *testing.T) {
 	repo := writeVendorRepo(t, false)
 
-	_, _, err := runVerify(
+	_, err := runVerify(
 		context.Background(),
 		task.ID("vendor-gofmt-test"),
 		repo,
@@ -251,7 +251,7 @@ func TestVendorGofmtSignatureClassifiesEnvironmental(t *testing.T) {
 func TestVendorGofmtSignatureNeverMasksIntroducedWork(t *testing.T) {
 	repo := writeVendorRepo(t, true)
 
-	_, _, err := runVerify(
+	_, err := runVerify(
 		context.Background(),
 		task.ID("vendor-gofmt-introduced-test"),
 		repo,
@@ -281,7 +281,7 @@ func TestVendorGofmtSignatureNeverMasksIntroducedWork(t *testing.T) {
 func TestDefaultVerifyScopedGofmtStage(t *testing.T) {
 	repo := writeVendorRepo(t, false)
 
-	if _, _, err := runVerify(
+	if _, err := runVerify(
 		context.Background(),
 		task.ID("scoped-gofmt-vendor-test"),
 		repo,
@@ -297,7 +297,7 @@ func TestDefaultVerifyScopedGofmtStage(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, _, err := runVerify(
+	_, err := runVerify(
 		context.Background(),
 		task.ID("scoped-gofmt-untracked-test"),
 		repo,
