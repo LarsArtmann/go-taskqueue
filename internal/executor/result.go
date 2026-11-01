@@ -66,8 +66,15 @@ type AgentResult struct {
 	sessionUsage
 
 	// VerifyTail is the last lines of the verify command's output: the
-	// proof the task completed on.
+	// proof the task completed on. Bounded, and blind to the two questions a
+	// closeout actually asks ("which gate ran?" and "how many checks
+	// passed?") — those live in Verify.
 	VerifyTail string `json:"verify_tail,omitempty"`
+	// Verify is the structured receipt of the gate that judged this run:
+	// the executed command, its rc, the HEAD it ran at and the ok/fail
+	// tallies. Absent means the receipt predates this field or nothing ran —
+	// UNVERIFIED, never invalid (see AttestVerify / AttestationNoReceipt).
+	Verify *VerifyReceipt `json:"verify,omitempty"`
 	// Commits are the commits whose `Task-Queue-ID: <id>` footer names this
 	// task, DERIVED from git after the run (oldest first) — the agent never
 	// reports them. FilesChanged is the union of files those commits
@@ -129,6 +136,11 @@ type FailureEvidence struct {
 	// the derivation contract). Empty when the run died before any
 	// footer commit landed.
 	FilesChanged []string `json:"files_changed,omitempty"`
+	// Verify is the receipt of the gate that DIED: the same four
+	// observations the success path records (command, rc, HEAD, counts).
+	// One shape across both paths — a failure receipt and a success receipt
+	// are the same type, so no reader needs two decoders.
+	Verify *VerifyReceipt `json:"verify,omitempty"`
 }
 
 // IsZero reports whether no evidence was recorded — the field-wise zero
@@ -229,13 +241,16 @@ func SetFailureEvidence(ctx context.Context, stage string, err error, tail strin
 // SetVerifyFailureEvidence attaches verify-gate forensics with the death
 // class stamped: Stage "verify" plus VerifyStage (verifyDeathStage's gofmt
 // / test / e2e-timeout / run), so DLQ triage can query the failing stage
-// from the fact instead of re-deriving it from tails and rotated logs.
-func SetVerifyFailureEvidence(ctx context.Context, verifyStage string, err error, tail string) {
+// from the fact instead of re-deriving it from tails and rotated logs. The
+// outcome's receipt rides along, so a FAILING gate answers the same two
+// questions a passing one does (which gate, how many checks).
+func SetVerifyFailureEvidence(ctx context.Context, out VerifyOutcome, err error) {
 	setFailureEvidence(ctx, FailureEvidence{
 		Stage:       "verify",
-		VerifyStage: verifyStage,
+		VerifyStage: out.Stage,
 		ExitCode:    exitCode(err),
-		Tail:        tail,
+		Tail:        out.Tail,
+		Verify:      out.Receipt,
 	})
 }
 
