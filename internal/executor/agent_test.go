@@ -351,8 +351,10 @@ func TestAgentPromptTaskIDSubstitution(t *testing.T) {
 
 // TestAgentCrushServerSeam pins the L1 client-server seam
 // (AgentExecutor.CrushServer): when set, the work-run argv gains
-// `-H <socket>` and the agent env gains CRUSH_CLIENT_SERVER=1; when
-// empty, neither appears (today's in-process path — the rollback
+// `-H <unix://socket>` and the agent env gains CRUSH_CLIENT_SERVER=1;
+// a scheme-less path is NORMALIZED to unix:// (crush rejects bare paths
+// with "Invalid host URL" — caught live by the pool smoke's V2.10 leg);
+// when empty, neither appears (today's in-process path — the rollback
 // contract). Pinned via a stub that dumps argv AND its environment.
 func TestAgentCrushServerSeam(t *testing.T) {
 	for _, tc := range []struct {
@@ -362,6 +364,7 @@ func TestAgentCrushServerSeam(t *testing.T) {
 	}{
 		{name: "seam off keeps today's argv", server: "", wantArg: false},
 		{name: "seam on routes via -H", server: "/tmp/crush-pool.sock", wantArg: true},
+		{name: "full URL passes through unchanged", server: "unix:///tmp/s.sock", wantArg: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			dir := t.TempDir()
@@ -398,15 +401,16 @@ func TestAgentCrushServerSeam(t *testing.T) {
 
 			argv := strings.Split(strings.TrimRight(string(raw), "\n"), "\n")
 			hasHost := false
+			wantHost := crushHostFlag(tc.server)
 
 			for i, a := range argv {
-				if a == "-H" && i+1 < len(argv) && argv[i+1] == tc.server {
+				if a == "-H" && i+1 < len(argv) && argv[i+1] == wantHost {
 					hasHost = true
 				}
 			}
 
 			if hasHost != tc.wantArg {
-				t.Fatalf("argv %v: -H %s presence = %v, want %v", argv, tc.server, hasHost, tc.wantArg)
+				t.Fatalf("argv %v: -H %s presence = %v, want %v", argv, wantHost, hasHost, tc.wantArg)
 			}
 
 			envRaw, err := os.ReadFile(envLog)

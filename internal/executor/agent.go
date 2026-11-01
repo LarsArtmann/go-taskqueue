@@ -595,6 +595,18 @@ const verdictRailTmpl = "\n\nVerdict channel: record your final structured verdi
 // CrushServer). Set ONLY alongside the matching -H <socket> run arg.
 const crushClientServerEnv = "CRUSH_CLIENT_SERVER"
 
+// crushHostFlag normalizes the seam's -H value: crush rejects a bare
+// socket path with "Invalid host URL: invalid host format" — a
+// scheme-less path must ride unix:// (pool smoke V2.10 leg caught the
+// seam passing the flag through unnormalized; a full URL stays as-is).
+func crushHostFlag(server string) string {
+	if strings.Contains(server, "://") {
+		return server
+	}
+
+	return "unix://" + server
+}
+
 // envDenylistForAgents is the operational environment the agent process
 // must NOT inherit (secret-injection seam, M24 — first rung):
 //   - TQ_DB: the queue's own journal path (in the pool process, the
@@ -744,7 +756,7 @@ func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPa
 	args := []string{"run", runVerb, "--cwd", repoDir}
 	if e.CrushServer != "" {
 		// L1 seam: thin-client mode against the pool's shared crush server.
-		args = append(args, "-H", e.CrushServer)
+		args = append(args, "-H", crushHostFlag(e.CrushServer))
 	}
 
 	if p.Model != "" {
@@ -984,7 +996,7 @@ func (e *AgentExecutor) runCloseoutTurn(
 
 	closeoutArgs := []string{"run", "--quiet", "--cwd", repoDir}
 	if e.CrushServer != "" {
-		closeoutArgs = append(closeoutArgs, "-H", e.CrushServer)
+		closeoutArgs = append(closeoutArgs, "-H", crushHostFlag(e.CrushServer))
 	}
 
 	closeoutArgs = append(closeoutArgs, "--session", session, "--", closeout)
