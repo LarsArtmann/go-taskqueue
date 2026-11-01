@@ -188,8 +188,8 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   gate-slow aliases — comma-separated terms with `!`-negation; `tq show` renders
   a `failure` JSON section; `tq dlq` rows + webui timeline lines carry an
   `evidence=` suffix (matcher `executor.MatchesEvidenceStageSet`, ONE copy).
-- **prune-stale**: cancels PENDING tasks whose item is `[x]` or gone; pools
-  sweep at start.
+- **prune-stale**: cancels PENDING tasks whose item is `[x]` or gone; pools sweep
+  at start.
 - **Claim-time budget gate**: paid turns block once the daily cap/budget-cmd
   is spent — class `budget`, no burn, parked to midnight (cap) / 15m (cmd),
   outside env-streak. Claim checks run CHEAP-FIRST (budget → preflight →
@@ -306,9 +306,10 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   naming the span's PARENT (foreign footer BELOW an exactly-mine span) is the
   span-terminator shape: run its printed `--from <oldest-blocker>`; residue
   fallback = amend the unpushed HEAD once `git show --stat` proves it mine.
-- **`TestExactlyOnceUnderConcurrency` (worker) and `TestSelfManagingLoop`
-  (harvest) are load-flaky**: build storms drop at clean parents — re-run before
-  attributing; both ride `KNOWN_FLAKY` in `scripts/lib/verify-retry.sh`.
+- **`TestExactlyOnceUnderConcurrency` is load-flaky (worker);
+  `TestSelfManagingLoop` is load-flaky (harvest)**: build storms drop at clean
+  parents — re-run before attributing; both ride `KNOWN_FLAKY` in
+  `scripts/lib/verify-retry.sh`.
 - **Agent shells inherit `TQ_DB`** (PRODUCTION journal) — scratch smokes
   MUST export `TQ_DB=<scratch>`.
 - **Session shell hazards**: no `PIPESTATUS`; bare `unset VAR` leaks to
