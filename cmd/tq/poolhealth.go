@@ -14,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -97,6 +98,61 @@ type PoolHealthReport struct {
 	// folding repos[] (TODO row 1087).
 	BackingOff int          `json:"backingOff"`
 	Repos      []RepoHealth `json:"repos"`
+	// CrushServerRSS summarizes the pool's shared crush server memory
+	// (A9/V2.11-V2.12): present only when the keeper's sample log exists
+	// next to the journal (pool runs with --crush-server + TQ_DB set).
+	// Last/Max feed the L4 GO/NO-GO sheet (row 1448 evidence).
+	CrushServerRSS *CrushServerRSSSummary `json:"crushServerRss,omitempty"`
+}
+
+// CrushServerRSSSummary is the folded view over the keeper's RSS log.
+type CrushServerRSSSummary struct {
+	Samples int   `json:"samples"`
+	LastKB  int64 `json:"lastKb"`
+	MaxKB   int64 `json:"maxKb"`
+	Warn    bool  `json:"warn,omitempty"`
+}
+
+// crushServerRSSWarnKB is the pool-health WARN band for the shared
+// crush server: 2 GiB leaves half the deployed 8G MemoryMax ceiling as
+// runway while being far above a healthy idle server's footprint.
+const crushServerRSSWarnKB = 2 << 20
+
+// readCrushServerRSS folds the keeper's RSS sample log ("<unix-milli>
+// <kb>" lines) into the summary; nil when the log is absent (unrouted
+// pool) or unreadable. Malformed lines are skipped, never fatal.
+func readCrushServerRSS(path string) *CrushServerRSSSummary {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil
+	}
+
+	sum := &CrushServerRSSSummary{}
+	for line := range strings.SplitSeq(string(data), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) != 2 {
+			continue
+		}
+
+		kb, err := strconv.ParseInt(fields[1], 10, 64)
+		if err != nil || kb < 0 {
+			continue
+		}
+
+		sum.Samples++
+		sum.LastKB = kb
+		if kb > sum.MaxKB {
+			sum.MaxKB = kb
+		}
+	}
+
+	if sum.Samples == 0 {
+		return nil
+	}
+
+	sum.Warn = sum.LastKB > crushServerRSSWarnKB
+
+	return sum
 }
 
 // harvestItemKeyPrefix mirrors harvest.ItemKey's "todo:" prefix (the
@@ -451,6 +507,8 @@ func cmdPoolHealth(args []string) error {
 		return err
 	}
 
+	report.CrushServerRSS = readCrushServerRSS(crushServerRSSLogPath())
+
 	if *asJSON {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
@@ -470,6 +528,15 @@ func cmdPoolHealth(args []string) error {
 // printPoolHealth renders the per-repo table: verdict, outcome counts,
 // streak, and recency of harvest vs any activity.
 func printPoolHealth(report PoolHealthReport) {
+	if rss := report.CrushServerRSS; rss != nil {
+		note := ""
+		if rss.Warn {
+			note = fmt.Sprintf("  WARN: last sample above the %d kB band", crushServerRSSWarnKB)
+		}
+
+		fmt.Printf("crush-server rss: %d sample(s), last %d kB, max %d kB%s\n", rss.Samples, rss.LastKB, rss.MaxKB, note)
+	}
+
 	if len(report.Repos) == 0 {
 		fmt.Println("(no task-bearing repos in journal)")
 	}

@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/larsartmann/go-taskqueue/internal/executor"
@@ -993,7 +994,11 @@ func runCrushServerActor(ctx context.Context, bin, socket string) error {
 
 	keeperDone := make(chan struct{})
 
-	go crushKeeper(ctx, socket, keeperStop, keeperDone)
+	// The keeper reads the CURRENT server's /proc RSS each dial (A9/V2.11):
+	// the actor stores every restart's pid here.
+	serverPID := &atomic.Int64{}
+
+	go crushKeeper(ctx, socket, serverPID, keeperStop, keeperDone)
 	defer func() {
 		close(keeperStop)
 		<-keeperDone
@@ -1015,7 +1020,13 @@ func runCrushServerActor(ctx context.Context, bin, socket string) error {
 			fmt.Fprintf(os.Stderr, "tq: agent-pool: crush server (L1 seam) restart %d on %s\n", attempt, host)
 		}
 
-		err := cmd.Run()
+		if err := cmd.Start(); err != nil {
+			fmt.Fprintf(os.Stderr, "tq: agent-pool: crush server failed to start: %v\n", err)
+		} else if cmd.Process != nil {
+			serverPID.Store(int64(cmd.Process.Pid))
+		}
+
+		err := cmd.Wait()
 
 		if ctx.Err() != nil {
 			return nil // pool shutdown: the server dying with us is the design
@@ -1036,8 +1047,12 @@ func runCrushServerActor(ctx context.Context, bin, socket string) error {
 // server: a GET on the workspaces endpoint every crushKeeperInterval.
 // Best-effort by design — a failed dial logs nothing (the server may be
 // mid-restart); the supervisor owns correctness, the keeper only removes
-// the idle-suicide churn (M7).
-func crushKeeper(ctx context.Context, socket string, stop <-chan struct{}, done chan<- struct{}) {
+// the idle-suicide churn (M7). Each successful dial also samples the
+// server's RSS (A9/V2.11): /proc/<pid>/status is read, the sample is
+// appended to the RSS log next to the journal (crushServerRSSLogPath)
+// and logged to stderr — the shared-server memory evidence the L4
+// GO/NO-GO sheet (row 1448) and `tq pool-health` read.
+func crushKeeper(ctx context.Context, socket string, serverPID *atomic.Int64, stop <-chan struct{}, done chan<- struct{}) {
 	defer close(done)
 
 	path := strings.TrimPrefix(socket, "unix://")
@@ -1051,6 +1066,8 @@ func crushKeeper(ctx context.Context, socket string, stop <-chan struct{}, done 
 			},
 		},
 	}
+
+	rssLog := crushServerRSSLogPath()
 
 	ticker := time.NewTicker(crushKeeperInterval)
 	defer ticker.Stop()
@@ -1071,7 +1088,82 @@ func crushKeeper(ctx context.Context, socket string, stop <-chan struct{}, done 
 			if err == nil {
 				_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 1<<20))
 				_ = resp.Body.Close()
+
+				pid := serverPID.Load()
+
+				if kb, ok := procRSSKB(pid); ok {
+					fmt.Fprintf(os.Stderr, "tq: agent-pool: crush server rss=%d kB (pid %d)\n", kb, pid)
+
+					if rssLog != "" {
+						appendRSSSample(rssLog, time.Now().UnixMilli(), kb)
+					}
+				}
 			}
 		}
 	}
+}
+
+// crushServerRSSLogPath resolves the keeper's RSS sample log: next to the
+// pool journal (TQ_DB's directory) when the env names one — the same
+// directory the deployed units already hold write access to. Empty (RSS
+// file disabled, stderr stream still live) otherwise.
+func crushServerRSSLogPath() string {
+	db := os.Getenv("TQ_DB")
+	if db == "" {
+		return ""
+	}
+
+	dir := filepath.Dir(db)
+	if dir == "" || dir == "." {
+		return ""
+	}
+
+	return filepath.Join(dir, "crush-server-rss.log")
+}
+
+// appendRSSSample writes one "<unix-milli> <kb>" line; every failure is
+// silent (evidence logging must never fail the pool).
+func appendRSSSample(path string, tsMS, kb int64) {
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
+	if err != nil {
+		return
+	}
+
+	defer f.Close()
+
+	fmt.Fprintf(f, "%d %d\n", tsMS, kb)
+}
+
+// procRSSKB reads a process's VmRSS from /proc/<pid>/status (kB). Linux
+// only by construction — a missing /proc (windows, macOS) reports !ok and
+// the keeper skips the sample.
+func procRSSKB(pid int64) (int64, bool) {
+	if pid <= 0 {
+		return 0, false
+	}
+
+	data, err := os.ReadFile(fmt.Sprintf("/proc/%d/status", pid))
+	if err != nil {
+		return 0, false
+	}
+
+	for line := range strings.SplitSeq(string(data), "\n") {
+		if !strings.HasPrefix(line, "VmRSS:") {
+			continue
+		}
+
+		fields := strings.Fields(line)
+		if len(fields) < 2 {
+			return 0, false
+		}
+
+		kb, err := strconv.ParseInt(fields[1], 10, 64)
+		if err != nil || kb < 0 {
+			return 0, false
+		}
+
+		return kb, true
+	}
+
+	return 0, false
 }
