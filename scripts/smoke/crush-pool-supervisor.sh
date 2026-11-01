@@ -347,7 +347,7 @@ git -C "$TMP/poolproj/repo" commit -qm seed
 	XDG_CONFIG_HOME="$XDG" XDG_DATA_HOME="$DATA" PATH="$TMP:$PATH" \
 		setsid timeout 420 "$TMP/tq" agent-pool --db "$TMP/pool.db" \
 		--projects-dir "$TMP/poolproj" --repos repo \
-		--poll 200ms --task-timeout 30s --interval 5s --crush-server "$PSOCK" \
+		--poll 200ms --task-timeout 30s --interval 5s --lease 20s --crush-server "$PSOCK" \
 		>"$TMP/pool.log" 2>&1 </dev/null
 ) &
 wait_pattern "$TMP/pool.log" "listening on" 45 "pool never started the crush server"
