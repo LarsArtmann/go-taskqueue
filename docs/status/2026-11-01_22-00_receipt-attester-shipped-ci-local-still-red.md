@@ -314,10 +314,10 @@ Receipt: rc written to a file, not read from a pipe.
 - `ci-local.sh` — receipt appended below once the run finishes; this line is
   NOT a claim until it names an rc.
 - `check-dead-sha-refs.sh` rc=0: the 13 dangling cites were REPAIRED, not
-  baselined. The three foreign shas already had their twins written in prose
-  ("local 631e7e08 vs origin 9aea94ee", "ef3fd1f8/9eaf55d6", "rode sweep
-  b2c611bb") — the gate wanted the `old→new` form, so the repair was to say
-  exactly what those reports already said. Fork records:
+  baselined. The three foreign shas already had their twins written in prose by
+  the very reports that cite them — "local X vs origin Y", "X/Y", "rode sweep
+  X" — and the gate wants the `old→new` form, so the repair was to spell the
+  same fact that way. Fork records:
   `631e7e08→9aea94ee` (identical trees, `git diff` empty),
   `ef3fd1f8→9eaf55d6`, `b2c611bb→f0c4560e`.
 - `check-daemon-attribution.sh` rc=0: `ok (1580 baselined, 0 new)` — see i3.
