@@ -81,6 +81,7 @@ print(s.getsockname()[1])
 s.close()')"
 
 echo "== scratch config (mock provider only, defaults disabled)"
+# pins: XDG isolation gate — mock is the ONLY resolvable provider
 cat >"$XDG/crush/crush.json" <<EOF
 {
   "\$schema": "https://charm.land/crush.json",
@@ -127,7 +128,10 @@ git -C "$REPO" commit -qm seed
 #   <port> <verdict-cmd> <final-text> [stall-seconds]
 # The stall delays the tool-result response so the smoke can probe the live
 # workspace mid-run.
+# pins: the content-keyed branches — verdict tool_call, title/summary
+# template exclusion, tool-result final text, loop guard
 # ---------------------------------------------------------------------------
+# pins: content-keyed branches — verdict tool_call, template exclusion, tool-result final, loop guard
 cat >"$TMP/mock_provider.py" <<'PYEOF'
 #!/usr/bin/env python3
 import json
@@ -401,6 +405,7 @@ else
 fi
 
 echo "== leg: hooks fire server-side and deny (M3)"
+# pins: the exit-2 deny branch (marker command blocked, hook log written)
 cat >"$TMP/deny-hook.sh" <<'HOOKEOF'
 #!/bin/sh
 input="$(cat)"
@@ -414,6 +419,7 @@ esac
 exit 0
 HOOKEOF
 chmod +x "$TMP/deny-hook.sh"
+# pins: the PreToolUse '^bash$' matcher wiring the deny hook rides
 cat >"$REPO/.crushrc" <<CRUSHEOF
 permissions allow bash view read write edit
 hook add PreToolUse --matcher '^bash\$' --command 'env HOOK_LOG="$TMP/hook.log" sh $TMP/deny-hook.sh' --name smoke-deny --timeout 5
