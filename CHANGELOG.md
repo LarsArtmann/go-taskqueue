@@ -91,6 +91,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - agent-pool crush-server keeper + supervisor (client-shaped
   keepalive dial, 45s cadence, backoff restart ladder) so an idle
   suicide can no longer kill the pool's run.Group actor.
+- structured closeout facts (row 1446): routed runs
+  (`--crush-server`) enrich the agent result from the crush server's
+  messages endpoint — session id without stdout scraping (extracted id
+  wins; start-window discovery only when stdout gave nothing), usage
+  block from the session summary, and a per-tool-call inventory
+  (command redacted, duration, working directory, error flag) as
+  AgentResult.tool_calls; every fetch failure keeps the stdout-derived
+  values (the fallback channel stays).
+- scripts/smoke/crush-pool-supervisor.sh: the pool-side E-gap legs —
+  routed 429 fast-refuse under the executor's exact seam argv (rc!=0 +
+  rate-limit text; the signature rides the agent-stream error, not the
+  env channel) and the keeper/supervisor restart ladder live (kill -9
+  → restart line + new pid; SIGTERM pool → clean exit, no orphan).
 - scripts/smoke/crush-server-route.sh: the crush client/server route's
   wire legs end-to-end against an isolated scratch server + mock
   provider (zero spend) — isolation gate, health, routed verdict

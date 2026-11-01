@@ -32,6 +32,7 @@ type (
 type (
 	AgentPayload      = internalexecutor.AgentPayload
 	AgentResult       = internalexecutor.AgentResult
+	ToolCallFact      = internalexecutor.ToolCallFact
 	ReviewPayload     = internalexecutor.ReviewPayload
 	ReviewResult      = internalexecutor.ReviewResult
 	ReviewVerdict     = internalexecutor.ReviewVerdict
