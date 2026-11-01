@@ -33,8 +33,8 @@ const maxQuestionTTL = 7 * 24 * time.Hour
 // cmdAsk is the agent→owner question channel: an agent inside a queue task
 // that is unsure how to proceed runs
 //
-//	tq ask --task <id> [--type info|approval|confirmation|input] \
-//	       [--expires 72h] [--options a,b,c] "the question"
+// 	tq ask --task <id> [--type info|approval|confirmation|input] \
+// 	       [--expires 72h] [--options a,b,c] [--file <path>] "the question"
 //
 // The command validates the task is actually running (the asker is
 // mid-run), redacts token-shaped secrets from the question, appends the
@@ -42,6 +42,9 @@ const maxQuestionTTL = 7 * 24 * time.Hour
 // writes the question marker into $TQ_QUESTION_FILE — the executor turns
 // the marker into a question park after the agent's turn ends, so the task
 // requeues WITHOUT burning an attempt and waits for the owner's answer.
+// `--file <path>` overrides the env channel (the routed-run bridge, same
+// as `tq verdict --file`: the work prompt bakes the marker path because
+// the routed bash tool cannot see the client's env — M8).
 //
 // Re-ask semantics (the ref is a stable hash over task + normalized
 // question text): an already-ANSWERED ref is a no-op success — the answer
@@ -60,6 +63,8 @@ func cmdAsk(args []string) error {
 		"how long the question stays open before the task re-enters (e.g. 72h)",
 	)
 	options := fs.String("options", "", "comma-separated answer options shown to the owner")
+	fileFlag := fs.String("file", "",
+		"write the question marker to this path (the routed-run channel; overrides $TQ_QUESTION_FILE — the task prompt names the path)")
 	dbPath := dbFlag(fs)
 
 	if err := fs.Parse(args); err != nil {
@@ -174,12 +179,16 @@ func cmdAsk(args []string) error {
 		}
 	}
 
-	path := os.Getenv("TQ_QUESTION_FILE")
+	path := *fileFlag
+	if path == "" {
+		path = os.Getenv("TQ_QUESTION_FILE")
+	}
+
 	if path == "" {
 		return errors.New(
-			"TQ_QUESTION_FILE is not set — the question was recorded, but this run cannot park on it. " +
-				"Finish the turn normally; the bridge still delivers the question and the answer lands in the journal",
-		)
+			"no question channel: pass --file <path> (the task prompt names it) or set $TQ_QUESTION_FILE — " +
+				"the question was recorded, but this run cannot park on it. " +
+				"Finish the turn normally; the bridge still delivers the question and the answer lands in the journal")
 	}
 
 	marker, err := json.Marshal(detail)

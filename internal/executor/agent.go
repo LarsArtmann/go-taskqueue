@@ -590,6 +590,14 @@ const verdictFileEnv = "TQ_RESULT_FILE"
 // byte-identical for local runs.
 const verdictRailTmpl = "\n\nVerdict channel: record your final structured verdict before exiting by running: tq verdict --file %s '<one-line result JSON>' — the queue reads this file; it is the authoritative channel (stdout is only a fallback)."
 
+// questionRailTmpl is the question channel's M8 bridge — same pattern as
+// the verdict rail: the prompt names the per-run marker path so
+// `tq ask --task <id> --file <path> '…'` works whether the turn runs
+// in-process (env channel) or routed (env gap). Only WORK turns and
+// their closeouts carry it — second-opinion clones (review/status/
+// dlqfix/prioritize) never get the question channel.
+const questionRailTmpl = "\n\nOwner-question channel: if you need an owner ruling before finishing, run: tq ask --task %s --file %s 'one-line question' — the task parks without attempt burn until the answer arrives."
+
 // crushClientServerEnv turns `crush run` into a thin client whose agent
 // executes inside the shared `crush server` (L1 seam; see AgentExecutor.
 // CrushServer). Set ONLY alongside the matching -H <socket> run arg.
@@ -735,6 +743,12 @@ func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPa
 	// (env channel) or routed through the pool's crush server (env gap).
 	if verdictPath != "" {
 		p.Prompt += fmt.Sprintf(verdictRailTmpl, verdictPath)
+	}
+
+	// The question rail rides the same bridge but ONLY for executors that
+	// carry the question channel (second-opinion clones park nothing).
+	if questionPath != "" && !e.secondOpinion {
+		p.Prompt += fmt.Sprintf(questionRailTmpl, id.String(), questionPath)
 	}
 
 	if e.Yolo || p.Yolo {
@@ -992,6 +1006,10 @@ func (e *AgentExecutor) runCloseoutTurn(
 	// same rail as the work turn, same always-on contract.
 	if verdictPath != "" {
 		closeout += fmt.Sprintf(verdictRailTmpl, verdictPath)
+	}
+
+	if questionPath != "" && !e.secondOpinion {
+		closeout += fmt.Sprintf(questionRailTmpl, id.String(), questionPath)
 	}
 
 	closeoutArgs := []string{"run", "--quiet", "--cwd", repoDir}

@@ -517,6 +517,73 @@ func TestVerdictRailBakedIntoPrompts(t *testing.T) {
 	if got := strings.Count(string(envRaw), "TQ_RESULT_FILE="+paths[0]); got < 2 {
 		t.Fatalf("env channel must stay exported on BOTH turns, got %d hits for %s", got, paths[0])
 	}
+
+	// The question rail rides the same bridge (work executor, not a
+	// second-opinion clone): both prompts name tq ask --file <path>.
+	askRail := "tq ask --task "
+	if got := strings.Count(string(raw), askRail); got < 2 {
+		t.Fatalf("question rail must ride BOTH prompts, got %d hits", got)
+	}
+}
+
+// TestQuestionRailSkipsSecondOpinionClones pins the channel gate: the
+// question rail (unlike the verdict rail, which every paid turn records)
+// appears ONLY for executors that carry the question channel — a
+// second-opinion clone must never learn it can park on an owner question.
+func TestQuestionRailSkipsSecondOpinionClones(t *testing.T) {
+	dir := t.TempDir()
+	argsLog := filepath.Join(dir, "argv.log")
+
+	stub := "#!/bin/sh\n" +
+		"printf '%s\\n' \"$*\" >> \"" + argsLog + "\"\n" +
+		"echo '---8<---' >> \"" + argsLog + "\"\n"
+	bin := filepath.Join(dir, "ask-agent")
+	if err := os.WriteFile(bin, []byte(stub), 0o755); err != nil {
+		t.Fatalf("write stub: %v", err)
+	}
+
+	for _, tc := range []struct {
+		name       string
+		second     bool
+		wantRail   bool
+	}{
+		{name: "work executor learns the ask rail", second: false, wantRail: true},
+		{name: "second-opinion clone never sees it", second: true, wantRail: false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := os.WriteFile(argsLog, nil, 0o600); err != nil {
+				t.Fatal(err)
+			}
+
+			repo := t.TempDir()
+			if err := os.WriteFile(filepath.Join(repo, ".crushrc"), []byte("permissions allow view\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+
+			e := &AgentExecutor{Bin: bin, secondOpinion: tc.second}
+			if err := e.Execute(
+				context.Background(),
+				agentTaskT(t, AgentPayload{Repo: repo, Prompt: "do it"}),
+			); err != nil {
+				t.Fatalf("Execute: %v", err)
+			}
+
+			raw, err := os.ReadFile(argsLog)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			has := strings.Contains(string(raw), "tq ask --task ")
+			if has != tc.wantRail {
+				t.Fatalf("ask rail present = %v, want %v (log: %q)", has, tc.wantRail, raw)
+			}
+
+			// The verdict rail is unconditional either way.
+			if !strings.Contains(string(raw), "tq verdict --file ") {
+				t.Fatalf("verdict rail must ride every paid turn: %q", raw)
+			}
+		})
+	}
 }
 
 // TestAgentExecutorYoloWithoutRepoAutonomyFailsFast verifies the guard that
