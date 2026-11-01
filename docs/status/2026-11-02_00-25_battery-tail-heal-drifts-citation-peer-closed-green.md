@@ -1,6 +1,6 @@
 # Battery tail: heal under owner-directive, drift wars, citation fix — peer closed it green + pushed
 
-Session window 2026-11-01 20:26 → 2026-11-02 00:25 (active work to ~21:05,
+Session window 2026-11-02 00:25 close (began 2026-11-01 20:26; active work to ~21:05,
 then a tree-settle wait and this report; the long tail was consumed by
 concurrent-agent landing storms). Continuation of the 20-26 battery-chase
 window. Concurrent agents + daemon active throughout.
