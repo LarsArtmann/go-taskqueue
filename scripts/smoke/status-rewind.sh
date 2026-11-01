@@ -38,6 +38,8 @@ echo "== stub agent (the status turn writes one report)"
 REPORT_PATH="docs/status/$(date +%Y-%m-%d_%H-%M)_rewind-smoke.md"
 export REPORT_PATH
 STUB="$TMP/stub-agent"
+# pins: the status-reporter branch (report write + footer commit) and the
+# commit-free work branch (the nothing-to-commit dead-letter trap)
 cat >"$STUB" <<'EOF'
 #!/bin/sh
 prompt=""

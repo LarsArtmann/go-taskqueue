@@ -346,7 +346,7 @@ bbbbbbbbbbbbbbbb) printf '%s\n' '- [x] alpha landed' '- [ ] beta open' ;;
 esac
 EOF
 	chmod +x "$tmp/listcmd.sh"
-	cat >"$tmp/diffcmd.sh" <<'EOF'
+	cat >"$tmp/diffcmd.sh" <<'EOF' # pins: diff-output shapes (ticked / open / blocked rows)
 #!/bin/sh
 case "$1" in
 aaaaaaaaaaaaaaaa) printf '%s\n' '+- [x] alpha landed' ;;
@@ -356,7 +356,7 @@ eeeeeeeeeeeeeeee) printf '%s\n' '+- [ ] one row — BLOCKED: fixture' ;;
 esac
 EOF
 	chmod +x "$tmp/diffcmd.sh"
-	cat >"$tmp/msgcmd.sh" <<'EOF'
+	cat >"$tmp/msgcmd.sh" <<'EOF' # pins: commit-message subject-shape table
 #!/bin/sh
 printf '%s\t%s\n' \
 	eeeeeeeeeeeeeeee 'docs: mark todo rows blocked on owner rulings' \

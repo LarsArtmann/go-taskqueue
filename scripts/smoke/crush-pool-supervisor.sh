@@ -103,6 +103,7 @@ REPO="$TMP/repo"
 mkdir -p "$XDG/crush" "$DATA" "$REPO"
 
 echo "== scratch config (mock provider only; auto-summarize OFF)"
+# pins: XDG isolation leg — mock is the ONLY resolvable provider
 cat >"$XDG/crush/crush.json" <<EOF
 {
 	"\$schema": "https://charm.land/crush.json",
@@ -138,6 +139,7 @@ git -C "$REPO" add -A
 git -C "$REPO" commit -qm seed
 
 echo "== write mock provider (429 mode via MOCK_429=1)"
+# pins: the 429 fast-refuse branch + the inert streamed-text branch
 cat >"$TMP/mock_crush_pool.py" <<'PYEOF'
 #!/usr/bin/env python3
 # Minimal OpenAI-compatible mock for the pool smoke: every completion is

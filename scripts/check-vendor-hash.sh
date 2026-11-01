@@ -47,6 +47,7 @@ self_test() {
 [ "${1:-}" = "--self-test" ] && self_test
 
 if [ "${TQ_VENDOR_HASH_TEST:-}" = "drift" ]; then
+	# pins: self-test drift branch (recipe text + flake line + got: hash)
 	cat >&2 <<EOF
 VENDOR-HASH DRIFT: the committed go.mod graph hashes differently than flake.nix pins.
   specified: sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
@@ -86,6 +87,7 @@ if [ -z "$GOT" ]; then
 	exit 1
 fi
 
+# pins: real drift branch (got/spec from the nix build log + copy recipe)
 cat >&2 <<EOF
 VENDOR-HASH DRIFT: the committed go.mod graph hashes differently than flake.nix pins.
   specified: $SPEC
