@@ -36,8 +36,6 @@
 # HTTP probes and the mock provider. Requires `crush` on PATH — a host
 # without it fails loudly instead of skipping silently.
 set -euo pipefail
-cd "$(dirname "$0")/../.."
-REPO_ROOT="$(pwd)"
 
 fail() {
 	echo "FAIL: $*"

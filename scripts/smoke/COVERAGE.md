@@ -31,8 +31,9 @@ signal (`exec.ExitError`, code −1).
 | `api.sh`                  | machine API: token gate, lockout, POST /tasks |
 | `archive-evidence.sh`     | evidence-archive helper rails                 |
 | `bootstrap-install.sh`    | `tq bootstrap` install path                   |
-| `consumer-install.sh`     | journal consumer wiring                       |
-| `dep-sweep.sh`            | `--dep-sweep` sweeper turn                    |
+| `consumer-install.sh`      | journal consumer wiring                       |
+| `crush-server-route.sh`    | crush client/server route wire legs (table below) |
+| `dep-sweep.sh`             | `--dep-sweep` sweeper turn                    |
 | `dlq-evidence-stage.sh`   | `tq dlq --evidence-stage` filter vs real DLQ  |
 | `doctor-hygiene.sh`       | `tq doctor` hygiene probes                    |
 | `dogfood-once.sh`         | one self-hosted pool tick                     |
@@ -56,6 +57,31 @@ signal (`exec.ExitError`, code −1).
 | `status-loop.sh`          | status sweeper turn                           |
 | `webui.sh`                | serve dashboard + SSE                         |
 | `worktree.sh`             | `--worktrees` agent branches                  |
+
+## `crush-server-route.sh` — the L1 client/server seam's wire legs (2026-11-01)
+
+Boots an isolated `crush server` (XDG-redirected scratch config, mock
+OpenAI-compatible provider, zero spend) and routes real `crush run`
+clients through it. Asserts the wire contract the `--crush-server` pool
+flag depends on (planning doc §L1; TODO row 1450).
+
+| Leg                 | Surface                       | Key assertions                                                                                                                 | Stream                        |
+| ------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ----------------------------- |
+| isolation gate      | `crush dirs` + config parse   | first dirs line = scratch config dir; crush.json parses with `disable_default_providers` — no run before the gate                | stderr (dirs prints there!)   |
+| boot + health       | server + `/v1/health`         | 200 on the scratch unix socket                                                                                                 | unix socket HTTP              |
+| routed verdict run  | `CRUSH_CLIENT_SERVER=1` + `-H`| rc 0; `Created session … session_id=` line (M4); every provider call on the mock (request log = zero-spend receipt); tool-call wrote the verdict file (M1) | run log + mock request log + file |
+| live workspace + M5 | `/v1/workspaces[/{id}/sessions\|/messages]` | workspace listed DURING the run (the routing discriminator — local runs never appear); session keys (id/title/message_count/is_busy); message part types (text/tool_call/tool_result/finish) | unix socket HTTP (de-chunked) |
+| env-gap canary      | tool exec env, two-sided      | server env var VISIBLE in the routed bash tool; client `$TQ_RESULT_FILE` EMPTY — v0.99.0 does not forward workspace Env to tool exec (`internal/shell/background.go` builds the shell without it); flips red when upstream fixes it | files written by the tool     |
+| hooks server-side   | repo `.crushrc` PreToolUse    | hook fired (its own log line); exit-2 deny BLOCKED the marker command (the file it would write is absent) — M3, deny contract per runner.go exit 2 | hook log + side-effect file   |
+| server-kill respawn | `ensureServer` (M7)           | kill -9 the server; the next routed client respawns it, run rc 0, health 200 after                                              | process + socket              |
+
+Deliberately NOT covered at smoke level: the pool-integration E-gaps
+(verdict file via the executor's `$TQ_RESULT_FILE` channel, question
+parking, 429 evidence under routed runs) — BLOCKED on the env gap above
+upstream; unit-pinned in-process (ratelimit-e2e stub class) until then.
+Also not covered: `--session` resume through the server (M4's second half,
+executor-pinned via ExtractSessionID) and SSE events attach (M2/M6,
+webui unit tests with a fake server).
 
 ## `--db` flag-placement audit (2026-10-24)
 
