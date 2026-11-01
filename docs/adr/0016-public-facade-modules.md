@@ -82,3 +82,13 @@ removed); wrappers instead of aliases (drift surface, identity split:
 `facade.Store` would not satisfy `internal/queue.Store`); waiting for
 stabilization (the evaluator forked and drifted; adoption-blocking costs
 are paid per evaluator, not once).
+
+**S4 addendum (2026-11-01, folded from
+docs/memos/2026-10-10_readmodel-open-seams.md §4):**
+`internal/composition` is an app-composition module — no facade exists or
+is warranted. It assembles the S4 root (`system.New` + the tq projection
+runtime), which is a deployment concern of the `tq` binary, not a library
+surface; a facade would invite external coupling to composition wiring
+that ADR-0019 reserves for the platform migration. In-repo root-module
+code imports `internal/…` directly (the root go.mod already
+requires + replaces it), same as every other internal module.

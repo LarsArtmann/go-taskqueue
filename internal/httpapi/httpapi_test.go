@@ -1240,7 +1240,7 @@ func TestUseReadModelWarnsWhenReplayGuardSkips(t *testing.T) {
 
 	var logs bytes.Buffer
 	srv.log = slog.New(slog.NewTextHandler(&logs, &slog.HandlerOptions{Level: slog.LevelWarn}))
-	srv.store = wmErrorStore{Store: srv.store}
+	srv.store = &wmErrorStore{Store: srv.store}
 
 	d := config.SQLite(filepath.Join(t.TempDir(), "queue.db"))
 	if err := srv.UseReadModel(context.Background(), d); err != nil {
