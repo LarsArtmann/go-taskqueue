@@ -1,8 +1,6 @@
 # Wave-5 close residue: census, rows 808/471/880/807, two CI heals, lint settled; battery receipt landed by the concurrent session
 
-Session 2026-11-01 20:10 → ~21:05 active (owner-directive whole-TODO GO,
-resumed from the wave-4 WAIT). Report written 2026-11-02 00:25 on owner
-order. Concurrent lanes ran throughout (auto-commit daemon + at least one
+Session 2026-11-02 00:25 (written; work ran 2026-11-01 20:10 → ~21:05). Concurrent lanes ran throughout (auto-commit daemon + at least one
 peer session executing the OKF receipt-and-attester plan; that session's
 own 00-20 report covers the final battery receipt). This report covers
 THIS session's run only.
