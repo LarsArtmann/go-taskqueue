@@ -331,7 +331,8 @@ footer, and the gate went RED anyway: the audit accepts only a HEX
 interactive session has had to grandfather its own sweeps by hand. That is the
 "heal-daemon-sweep task-less mode" item carried since 2026-10-05.
 
-Fixed in `6677e260` instead of laundering: the audit now resolves the documented
+Fixed in `af971f32` (6677e260→af971f32: the same commit, re-shasshed by the
+second heal below) instead of laundering: the audit now resolves the documented
 session-slug shapes (`owner-directive`, `<yyyymmdd>-<slug>`) into their own
 `session-scoped` class — counted in the summary, silent by default, a warning
 under `-v`, never a gate failure. A malformed slug (`owner_directive`, the
@@ -345,7 +346,16 @@ Fork records from that heal (old→new), for any doc still citing the old shas:
 `0a7a4d05→1b1bb079`, `cfb29e66→3ff368ec`, `c6489b3b→36f500b1`,
 `2e4db1d3→243d0152`, `0ea3f21b→90140f93`, `eb512007→b0f325f4`,
 `600a5c04→45bdc108`, `cef0c928→6b56fc3c`, `12e1d625→dbfb8598`,
-`7f7c7aea→0ea99799`.
+`7f7c7aea→0ea99799`. Commits that already carried the footer kept their shas
+verbatim in the second pass (the heal prints identity records for them), so this
+list stays the only mapping a reader needs.
+
+A second heal, right before the push, caught the sweeps that landed after the
+first one (the fuzz-seed corpus and two doc sweeps): `10184f1a→2a5e04c3`,
+`1523a841→bd7180ac`, `2d2e3d58→d244d725`, `44f9074c→c36fcd98`,
+`01bdf856→fd46a6f8`, `80bd4a1a→37abcc78`, `6677e260→af971f32`. Lesson worth
+keeping: heal LAST, after every file edit, because each daemon sweep between the
+heal and the push is a new unattributed commit.
 
 The three owner rulings in §g still stand, and the `cmd/tq` re-pin still owns
 `verify-ok`/`verify-mismatch` (§f 4-5).
