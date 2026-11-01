@@ -376,6 +376,21 @@ wait "$RUN2_PID"
 echo "PASS: stalled routed run completed after the probes"
 
 echo "== leg: env-gap canary (two-sided, v0.99.0 — see header)"
+# A client-respawned server (idle suicide + ensureServer) ADOPTS the
+# respawning client's env, so TQ_RESULT_FILE visible there is inheritance,
+# not propagation — and a cross-task env-bleed hazard in its own right
+# (planning doc M7 amendment). The canary is only honest against the server
+# WE booted: if the pid changed, restart ours first.
+ensure_our_server() {
+	kill -0 "$SERVER_PID" 2>/dev/null && return 0
+	pkill -9 -f "crush server --host unix://$SOCK" 2>/dev/null || true
+	XDG_CONFIG_HOME="$XDG" XDG_DATA_HOME="$DATA" "$CRUSH_BIN" server --host "unix://$SOCK" >>"$TMP/server.log" 2>&1 &
+	SERVER_PID=$!
+	sleep 2
+	probe /v1/health | head -1 | grep -q 200 || fail "could not re-boot our server for the canary leg"
+	echo "note: server had been respawned by a client (env adopted); re-booted ours for the canary"
+}
+ensure_our_server
 start_mock "printf %s server-env > \"\$XDG_CONFIG_HOME/env-proof.txt\"; printf %s \"[\$TQ_RESULT_FILE]\" > \"$TMP/tqrf-seen.txt\"" 'mock done' 0
 rm -f "$XDG/env-proof.txt" "$TMP/tqrf-seen.txt" "$REPO/smoke-verdict.json"
 routed_run run3.log
