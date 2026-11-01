@@ -108,3 +108,72 @@ Task-Queue-ID: $tid"
 		t.Errorf("stub session id = %q, want empty (no session line in stub output)", result.SessionID)
 	}
 }
+
+// TestExecuteEnrichesFailureEvidenceFilesOnVerifyDeath (row 806 slice 2):
+// the failure leg of the derived-files contract — the stub commits real
+// footer work, the verify gate fails for real, and the recorded Sink
+// failure evidence must carry the DERIVED files alongside the stage
+// forensics, so a DLQ autopsy sees what the run had already changed when
+// it died.
+func TestExecuteEnrichesFailureEvidenceFilesOnVerifyDeath(t *testing.T) {
+	repo := t.TempDir()
+	setupGitRepo(t, repo)
+
+	stub := makeStubAgent(t, `
+tid=""
+prev=""
+for a in "$@"; do
+	if [ "$prev" = "--" ]; then
+		set -- $a
+		tid="$4"
+	fi
+	prev="$a"
+done
+echo half-shipped > work.txt
+git add -A
+git commit -qm "work
+
+Task-Queue-ID: $tid"
+`)
+
+	e := &AgentExecutor{Bin: stub}
+
+	tk := agentTaskT(t, AgentPayload{
+		Repo:   repo,
+		Prompt: "ship the work {{TASK_ID}}",
+		Verify: "exit 1",
+	})
+	tk.ID = task.ID("000001a1e2e300000000000000000000001task")
+
+	ctx, sink := NewSink(context.Background())
+
+	if err := e.Execute(ctx, tk); err == nil {
+		t.Fatal("Execute succeeded, want the verify gate to fail the task")
+	}
+
+	raw := sink.Failure()
+	if raw == nil {
+		t.Fatal("no failure evidence recorded on the sink")
+	}
+
+	var evidence FailureEvidence
+	if err := json.Unmarshal(raw, &evidence); err != nil {
+		t.Fatalf("failure evidence parse: %v", err)
+	}
+
+	if evidence.Stage != "verify" {
+		t.Fatalf("evidence stage = %q, want verify", evidence.Stage)
+	}
+
+	found := false
+
+	for _, file := range evidence.FilesChanged {
+		if strings.Contains(file, "work.txt") {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Fatalf("work.txt missing from failure-evidence files: %+v", evidence.FilesChanged)
+	}
+}
