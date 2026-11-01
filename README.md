@@ -53,6 +53,7 @@ happened to this task?" always has an answer.
 [Bootstrap](#one-command-from-zero-tq-bootstrap) ·
 [Running unattended](#running-unattended) ·
 [Command map](#every-command-at-a-glance) ·
+[Session triggers](#session-triggers-tq-crush) ·
 [Concepts](#concepts) ·
 [Embedding in Go](#embedding-it-in-go) ·
 [Distribution](#distribution) ·
@@ -388,7 +389,7 @@ are NOT comparable with fresh `tq audit --journal` output.
 | `tq doctor`      | Health checks: DB integrity, expired leases, worker heartbeats, budget, agent binary, per-repo autonomy files; `--hygiene` audits PENDING agent tasks' enqueue-time verify pins against the repo's CURRENT gate ladder (three-way match / latent / STALE-PIN-WILL-FIRE) |
 | `tq audit`       | TODO-vs-queue drift: stale-open items repaired by catch-up tasks, stale-done reported                                                                                                                                                                                   |
 | `tq watermarks`  | Journal consumer cursors + lag (`show`); `set CONSUMER SEQ` rewinds for safe replay                                                                                                                                                                                     |
-| `tq session`     | Interactive-session close-out bridge (prototype): `begin` records the opening; `close` attributes the session's `Crush-Session:` footer commits and enqueues one review + one status task                                                                               |
+| `tq session`     | Interactive-session close-out bridge (prototype): `begin` records the opening; `close` attributes the session's `Crush-Session:` footer commits and enqueues one review + one status task — see [Session triggers](#session-triggers-tq-crush) below               |
 | `tq version`     | Build identity (version, VCS revision)                                                                                                                                                                                                                                  |
 
 ### Session triggers: `tq crush`
@@ -399,7 +400,7 @@ close-out happens on process exit — clean or crashed.
 
 ```sh
 tq crush                                       # wraps the interactive crush session
-tq crush --repo ~/projects/CV -- run -m "…"    # everything after the flags is the crush invocation
+tq crush --repo ~/projects/CV -- run -m "<your prompt>"   # everything after the flags is the crush invocation
 ```
 
 The child runs with inherited stdio (you watch everything live) while the
@@ -412,7 +413,8 @@ closed and the database is never touched. Remaining flags: `--project`,
 `--summary`, `--allow-dirty`, `--db`, `--bin`. Two hook-based triggers exist
 alongside it: the PreToolUse session registry (`tq session ping`/`sweep`,
 `scripts/hook-session-registry.sh`) and crush's upstream SessionEnd hook
-(crush #3146, unreleased).
+(crush #3146, unreleased). Design history:
+`docs/planning/archived/2026-09-12_session-close-bridge-design.md`.
 
 ## Concepts
 

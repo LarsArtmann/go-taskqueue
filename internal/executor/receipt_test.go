@@ -378,6 +378,117 @@ func TestAttestVerifyWhitespaceToleranceIsNotVacuous(t *testing.T) {
 	}
 }
 
+// TestAttestationRefusesReresolvedGate pins the integrity hole
+// --reresolve-verify opens, and that the attester makes it VISIBLE rather than
+// silent: with the enqueue-time pin dropped, the gate is resolved from
+// agent-editable repo content (here: an auto-detected Makefile target), so the
+// command that runs is not the command the payload pinned. Refusing the receipt
+// is the honest outcome; failing the task is not (the gate itself passed).
+func TestAttestationRefusesReresolvedGate(t *testing.T) {
+	repo := t.TempDir()
+
+	if err := os.WriteFile(filepath.Join(repo, "Makefile"), []byte("test:\n\t@true\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	out, err := runVerify(
+		context.Background(),
+		task.ID("reresolve-attestation-test"),
+		repo,
+		&AgentPayload{Verify: "make check"},
+		true, // reresolve: the payload pin is dropped
+		"",
+	)
+	if err != nil {
+		t.Fatalf("runVerify: %v", err)
+	}
+
+	if out.Receipt == nil || out.Receipt.Command != "make test" {
+		t.Fatalf("receipt command = %+v, want the auto-detected gate", out.Receipt)
+	}
+
+	verdict := out.Attest("")
+	if verdict == nil {
+		t.Fatal("a gate that ran must be graded")
+	}
+
+	if verdict.OK || verdict.Refusal != AttestationCommandMismatch {
+		t.Fatalf("verdict = %+v, want refusal %s", verdict, AttestationCommandMismatch)
+	}
+
+	if !strings.Contains(verdict.Detail, "make check") {
+		t.Fatalf("refusal must name the pin it violated, got %q", verdict.Detail)
+	}
+}
+
+// TestAgentRunStoresReceiptAndVerdict pins the R4 wiring end to end: a passing
+// agent run records the receipt AND the write-time verdict in its completion
+// detail, so `tq show` renders evidence instead of asking a reader to trust a
+// tail.
+func TestAgentRunStoresReceiptAndVerdict(t *testing.T) {
+	ctx, sink := NewSink(context.Background())
+
+	e := &AgentExecutor{Bin: makeStubAgent(t, "true")}
+	if err := e.Execute(ctx, agentTaskT(t, AgentPayload{
+		Repo:   t.TempDir(),
+		Prompt: "hi",
+		Verify: `echo "ok: build"`,
+	})); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+
+	var result AgentResult
+	if err := json.Unmarshal(sink.Detail(), &result); err != nil {
+		t.Fatalf("decode completion detail: %v", err)
+	}
+
+	if result.Verify == nil {
+		t.Fatal("completion detail carries no receipt")
+	}
+
+	if result.Verify.Command != `echo "ok: build"` || result.Verify.OK != 1 || result.Verify.RC != 0 {
+		t.Fatalf("receipt = %+v, want the executed gate with 1 ok / rc 0", result.Verify)
+	}
+
+	if result.Attestation == nil || !result.Attestation.OK {
+		t.Fatalf("attestation = %+v, want an OK verdict", result.Attestation)
+	}
+}
+
+// TestVerifyFailureStoresReceiptAndVerdict pins the failure half of the same
+// wiring: one shape across both paths, so a DLQ autopsy reads the receipt and
+// the verdict exactly like a completion does.
+func TestVerifyFailureStoresReceiptAndVerdict(t *testing.T) {
+	ctx, sink := NewSink(context.Background())
+
+	e := &AgentExecutor{Bin: makeStubAgent(t, "true")}
+	err := e.Execute(ctx, agentTaskT(t, AgentPayload{
+		Repo:   t.TempDir(),
+		Prompt: "hi",
+		Verify: `echo "ok: build"; echo "FAIL: vet"; exit 7`,
+	}))
+	if err == nil {
+		t.Fatal("want a verify failure, got nil")
+	}
+
+	var evidence FailureEvidence
+	if err := json.Unmarshal(sink.Failure(), &evidence); err != nil {
+		t.Fatalf("decode failure evidence: %v", err)
+	}
+
+	if evidence.Verify == nil {
+		t.Fatal("failure evidence carries no receipt")
+	}
+
+	if evidence.Verify.RC != 7 || evidence.Verify.OK != 1 || evidence.Verify.Fail != 1 {
+		t.Fatalf("receipt = %+v, want rc 7 with 1 ok / 1 fail", evidence.Verify)
+	}
+
+	if evidence.Attestation == nil {
+		t.Fatal("failure evidence carries no verdict")
+	}
+}
+
 // TestAttestVerifyReportsSkippedComparisons pins the honest-reporting half: a
 // comparison that could not run is absent from Checked instead of reading as a
 // silent pass.

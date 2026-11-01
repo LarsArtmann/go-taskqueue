@@ -2596,12 +2596,14 @@ func cmdShow(args []string) error {
 		Result    any                  `json:"result,omitempty"`
 		Commits   any                  `json:"commits,omitempty"`
 		Failure   *failureEvidenceView `json:"failure,omitempty"`
+		Verify    *verifyReceiptView   `json:"verify,omitempty"`
 		Window    []statusWindowView   `json:"window,omitempty"`
 		Questions []questionView       `json:"questions,omitempty"`
 		Priority  priorityProvenance   `json:"priority"`
 		Liveness  livenessView         `json:"liveness"`
 	}{
-		t, trail, resultDetail(t, trail), commitView, failureView, statusWindowFor(t),
+		t, trail, resultDetail(t, trail), commitView, failureView,
+		buildVerifyReceiptView(trail), statusWindowFor(t),
 		buildQuestionView(trail), buildPriorityProvenance(ctx, store, t, trail), buildLivenessView(t),
 	})
 }
