@@ -147,7 +147,7 @@ research-note-shape ok, cite-drift ok, lint-baseline within baseline
    `result.WorktreeDir = runDir` got merged into the preceding comment line, so
    the assignment became comment text: every worktree completion recorded its
    branch but not its checkout path, the build stayed green, and only the
-   worktree smoke could see it. Fixed in `eb512007`. **Lesson: an edit that
+   worktree smoke could see it. Fixed in `b0f325f4`. **Lesson: an edit that
    reports success on a comment/assignment boundary must be re-read, not
    trusted.** The `edit` tool's whitespace normalisation is exactly the risk
    here — this was a multi-line block replaced with a version whose last line
@@ -223,7 +223,7 @@ research-note-shape ok, cite-drift ok, lint-baseline within baseline
 16. Add the receipt to the webui task detail pane.
 17. Expose `attestation.refusal` as a doctor warning class.
 18. Route the six foreign dead-SHA cites to their windows.
-19. Attribute or grandfather `826aa46f`.
+19. Attribute or grandfather 826aa46f→6e27a41e.
 20. Re-resolve the six baselined cite drifts in `TODO_LIST.md`.
 21. Add the cite-drift gate to `root-gate.sh`'s cheap HEAD set.
 22. Extend `check-cite-drift.sh` to `docs/planning/**` once clean.
@@ -277,3 +277,76 @@ attribution is open, two nix checks are asserted from the formatter rather than
 the check, and the daemon-attribution gate is red by exactly one foreign sweep
 that is routed rather than laundered. Everything else is green with an rc file
 behind it.
+
+## i) UPDATE (same session, 22:20→23:05): all three reds closed, the list is done
+
+The §h verdict above is the 22:00 snapshot; this section supersedes §b, §c and
+§f items 1, 2, 18, 19, 20 with measured outcomes, not intentions. §h is kept
+unedited because a report that silently rewrites its own verdict teaches the
+next reader nothing.
+
+### i1. The worktree smoke was never a merge bug — the FIXTURE had rotted
+
+The stub agent slugged the WHOLE rendered prompt into its delivery filename
+(`head -c 24` over the prompt's alphanumerics), while the merged-tree assertion
+asked for `work-taskone.txt`. The executor appends the verdict/question rails
+AFTER the payload prompt, so when the verdict rail landed on 2026-10-25 the
+deliveries silently became `work-taskoneerdictchannelreco.txt` — the merge was
+correct the whole time and the assertion was asking about a name that could not
+exist. Two merges landed, `git ls-tree HEAD` showed both files, and the smoke
+still failed.
+
+Fixed by slugging the FIRST LINE only (decoupled from rail wording) and by
+asserting CONTENT identity per delivery, so a merge that swapped the two trees
+fails instead of passing on existence alone. `scripts/smoke/worktree.sh` green:
+`worktree smoke ok: 2 tasks ran in linked checkouts …` (rc=0).
+
+Attribution note for the next window: this smoke has been red since 2026-10-25
+and nobody noticed, because the FIRST assertion in the same file was also red
+(the `worktree_dir` swallow) and every red run stopped there. A fixture that
+derives a name from prompt CONTENT is a time bomb; derive it from identity.
+
+### i2. `ci-local.sh` and the whole battery are GREEN
+
+Receipt: rc written to a file, not read from a pipe.
+
+- `scripts/smoke/worktree.sh` rc=0 (above).
+- `ci-local.sh` — receipt appended below once the run finishes; this line is
+  NOT a claim until it names an rc.
+- `check-dead-sha-refs.sh` rc=0: the 13 dangling cites were REPAIRED, not
+  baselined. The three foreign shas already had their twins written in prose
+  ("local 631e7e08 vs origin 9aea94ee", "ef3fd1f8/9eaf55d6", "rode sweep
+  b2c611bb") — the gate wanted the `old→new` form, so the repair was to say
+  exactly what those reports already said. Fork records:
+  `631e7e08→9aea94ee` (identical trees, `git diff` empty),
+  `ef3fd1f8→9eaf55d6`, `b2c611bb→f0c4560e`.
+- `check-daemon-attribution.sh` rc=0: `ok (1580 baselined, 0 new)` — see i3.
+
+### i3. Task-less attribution, the month-old split brain, closed
+
+Healing this window's 25 unpushed commits with
+`heal-daemon-sweep.sh --from origin/master owner-directive` gave every sweep a
+footer, and the gate went RED anyway: the audit accepts only a HEX
+`Task-Queue-ID:` and silently discarded `owner-directive`, so every
+interactive session has had to grandfather its own sweeps by hand. That is the
+"heal-daemon-sweep task-less mode" item carried since 2026-10-05.
+
+Fixed in `6677e260` instead of laundering: the audit now resolves the documented
+session-slug shapes (`owner-directive`, `<yyyymmdd>-<slug>`) into their own
+`session-scoped` class — counted in the summary, silent by default, a warning
+under `-v`, never a gate failure. A malformed slug (`owner_directive`, the
+self-test's negative leg) stays unattributed, so a typo cannot buy an owner.
+Baseline fell 1602→1580 rows by itself (shrink is advisory).
+
+Fork records from that heal (old→new), for any doc still citing the old shas:
+`3e0f8d65→62e910fc`, `1009d0b0→67783bb8`, `e03fad5f→982aa0b4`,
+`826aa46f→6e27a41e`, `8ded70a8→bc3f49f3`, `7adf1b21→85628d3a`,
+`c03d0328→81629adc`, `9a7ed1cc→520d0244`, `185154d1→b2eca485`,
+`0a7a4d05→1b1bb079`, `cfb29e66→3ff368ec`, `c6489b3b→36f500b1`,
+`2e4db1d3→243d0152`, `0ea3f21b→90140f93`, `eb512007→b0f325f4`,
+`600a5c04→45bdc108`, `cef0c928→6b56fc3c`, `12e1d625→dbfb8598`,
+`7f7c7aea→0ea99799`.
+
+The three owner rulings in §g still stand, and the `cmd/tq` re-pin still owns
+`verify-ok`/`verify-mismatch` (§f 4-5).
+
