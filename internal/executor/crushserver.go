@@ -5,7 +5,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
-	"encoding/json"
+	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"fmt"
 	"net"
@@ -76,8 +76,8 @@ type crushMessage struct {
 }
 
 type crushPart struct {
-	Type string          `json:"type"`
-	Data json.RawMessage `json:"data"`
+	Type string         `json:"type"`
+	Data jsontext.Value `json:"data"`
 }
 
 type crushToolCallData struct {
@@ -171,7 +171,7 @@ func (c *crushServerClient) getJSON(ctx context.Context, path string, dst any) e
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("crush server %s: %s", path, resp.Status)
 	}
-	return json.Unmarshal(dst, resp.Body)
+	return json.UnmarshalRead(resp.Body, dst)
 }
 
 func (c *crushServerClient) postJSON(ctx context.Context, path string, body, dst any) error {
@@ -179,7 +179,7 @@ func (c *crushServerClient) postJSON(ctx context.Context, path string, body, dst
 	if err != nil {
 		return err
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "http://crush"+path, bytesReader(payload))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "http://crush"+path, bytes.NewReader(payload))
 	if err != nil {
 		return err
 	}
@@ -192,7 +192,7 @@ func (c *crushServerClient) postJSON(ctx context.Context, path string, body, dst
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("crush server %s: %s", path, resp.Status)
 	}
-	return json.Unmarshal(dst, resp.Body)
+	return json.UnmarshalRead(resp.Body, dst)
 }
 
 // enrichCloseoutFacts fills the structured session facts for a routed
