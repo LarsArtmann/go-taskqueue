@@ -113,7 +113,6 @@ self_test() {
 	trap 'rm -rf "${tmp:-}"' EXIT
 	local canary="$tmp/canary"
 	echo canary-v1 >"$canary"
-	local out
 	# Drive the detection loop manually: snapshot v1, write v2 (CHANGE),
 	# write back v1 (REVERT) — the same state machine watch() runs.
 	local h1 h2
