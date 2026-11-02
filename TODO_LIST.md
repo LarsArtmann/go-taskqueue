@@ -1352,7 +1352,7 @@ not here.
 
 ## Discovered closing the dlqBackoffUntil webui batch (2026-10-28)
 
-- [ ] TestConcurrentClientsRace (internal/webui) fails under `-race`: the three concurrent `/api/events` SSE collectors die with GET context-deadline-exceeded inside the 500ms window — reproduced at clean origin/master too (1bc6f499, 2026-10-28), so it predates the dlqBackoffUntil webui batch; triage whether the hub's initial burst or ssetest.CollectWithTimeout's window is at fault, fix it, or add it to KNOWN_FLAKY in scripts/lib/verify-retry.sh with the reproduction recorded (source: root `go test ./... -race`, dlqBackoffUntil batch closeout)
+- [x] TestConcurrentClientsRace (internal/webui) fails under `-race`: the three concurrent `/api/events` SSE collectors die with GET context-deadline-exceeded inside the 500ms window — reproduced at clean origin/master too (1bc6f499, 2026-10-28), so it predates the dlqBackoffUntil webui batch; triage whether the hub's initial burst or ssetest.CollectWithTimeout's window is at fault, fix it, or add it to KNOWN_FLAKY in scripts/lib/verify-retry.sh with the reproduction recorded (source: root `go test ./... -race`, dlqBackoffUntil batch closeout) — FIXED 2026-11-03: window at fault, not the hub; /api/events never closes by design (heartbeat + subscribe loop) so CollectWithTimeout always exits via deadline and passes only if the burst lands in-window; 500ms → 5s (webui_test.go), `-race` count=10 green
 
 ## Done-prompt 17th-dispatch appends (2026-10-28; source: docs/status/2026-10-28_09-05_done-prompt-window-report-seventeenth-dispatch.md; deduped — signal-4 batch-awareness already rowed (00-09 §f1), heal span guard row 1319, divergence + go-health rows in the NAF-session section, race flake row above)
 
