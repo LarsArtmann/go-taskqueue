@@ -117,7 +117,7 @@ func TestStatusExecutorHappyPath(t *testing.T) {
 
 	body := "mkdir -p docs/status\n"
 	body += "echo '# report' > docs/status/2026-09-08_20-40_demo.md\n"
-	body += `printf '%s\n' 'TQ_RESULT: {"report":"docs/status/2026-09-08_20-40_demo.md","next_items":5}'`
+	body += `printf '%s' '{"report":"docs/status/2026-09-08_20-40_demo.md","next_items":5}' > "$TQ_RESULT_FILE"`
 
 	e := &StatusExecutor{Agent: &AgentExecutor{Bin: makeStubAgent(t, body)}}
 
@@ -143,7 +143,7 @@ func TestStatusExecutorHappyPath(t *testing.T) {
 func TestStatusExecutorMissingReportFileFailsRetryable(t *testing.T) {
 	t.Parallel()
 
-	bin := makeStubAgent(t, `printf '%s\n' 'TQ_RESULT: {"report":"docs/status/never-written.md","next_items":1}'`)
+	bin := makeStubAgent(t, `printf '%s' '{"report":"docs/status/never-written.md","next_items":1}' > "$TQ_RESULT_FILE"`)
 	e := &StatusExecutor{Agent: &AgentExecutor{Bin: bin}}
 
 	err := e.Execute(context.Background(), statusTaskT(t, StatusPayload{
@@ -325,7 +325,7 @@ func TestStatusExecutorVerifyGateGatesCompletion(t *testing.T) {
 
 	report := "mkdir -p docs/status\n"
 	report += "echo '# report' > docs/status/r.md\n"
-	report += `printf '%s\n' 'TQ_RESULT: {"report":"docs/status/r.md","next_items":0}'`
+	report += `printf '%s' '{"report":"docs/status/r.md","next_items":0}' > "$TQ_RESULT_FILE"`
 
 	tests := []struct {
 		name    string

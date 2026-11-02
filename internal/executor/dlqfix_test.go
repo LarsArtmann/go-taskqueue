@@ -148,7 +148,8 @@ func TestDLQFixExecutorVerdictContract(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			bin := makeStubAgent(t, "cat <<'EOF'\n"+tt.agentOut+"EOF")
+			body, verdict := splitVerdictLine(tt.agentOut)
+			bin := makeStubAgent(t, body+"\n"+stubVerdict(verdict))
 			e := &DLQFixExecutor{Agent: &AgentExecutor{Bin: bin}}
 
 			ctx, sink := NewSink(context.Background())
