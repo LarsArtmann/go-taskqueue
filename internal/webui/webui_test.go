@@ -501,13 +501,20 @@ func TestConcurrentClientsRace(t *testing.T) {
 
 	for range 3 {
 		wg.Go(func() {
-			// 500ms, not 100ms: the window also covers the dial, and
-			// under -race on loaded CI runners 100ms deadlined out
-			// repeatedly (the test's point is the race, not the speed).
+			// The window must cover dial + the hub's initial snapshot
+			// burst under -race on loaded runners: /api/events is a
+			// live stream that never closes by design (heartbeat +
+			// subscribe loop), so CollectWithTimeout ALWAYS exits via
+			// its context deadline and passes only if the burst fully
+			// lands in the window. 500ms flaked
+			// (GET context-deadline-exceeded at clean 1bc6f499,
+			// 2026-10-28); the burst itself is milliseconds, so 5s is
+			// pure headroom — the test's point is the race, not the
+			// speed.
 			_ = ssetest.CollectWithTimeout(
 				t,
 				handler,
-				500*time.Millisecond,
+				5*time.Second,
 				ssetest.WithPath("/api/events"),
 			)
 		})
