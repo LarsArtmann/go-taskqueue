@@ -596,8 +596,18 @@ func factEffect(fact journalFactView) string {
 // pool LOOK idle on purpose — without it an operator reads the parked
 // pending row as a dead pool (the 03-11 paperclip report's exact concern).
 func parkedOnBudget(t task.Task, facts []journalFactView) bool {
+	return parkedRequeueEvidence(t, facts).Class == queue.RequeueClassBudget
+}
+
+// parkedRequeueEvidence decodes the task's most recent requeue evidence —
+// the SAME full RequeueEvidence every other reader (tq tasks --parked, the
+// doctor's provider list) reads — so the webui parked strip names the
+// exhausted provider on surface parity with the CLI (07-28 closeout §f7).
+// Only a PENDING task can be parked; legacy or unparsable details
+// normalize to the zero evidence.
+func parkedRequeueEvidence(t task.Task, facts []journalFactView) queue.RequeueEvidence {
 	if t.Status != task.Pending {
-		return false
+		return queue.RequeueEvidence{}
 	}
 
 	for _, fact := range slices.Backward(facts) {
@@ -605,17 +615,19 @@ func parkedOnBudget(t task.Task, facts []journalFactView) bool {
 			continue
 		}
 
-		var evidence struct {
-			Class string `json:"class"`
-		}
+		var evidence queue.RequeueEvidence
 		if err := json.Unmarshal(fact.Detail, &evidence); err != nil {
-			return false
+			return queue.RequeueEvidence{}
 		}
 
-		return evidence.Class == queue.RequeueClassBudget
+		if evidence.Class == "" {
+			evidence.Class = queue.RequeueClassUnknown
+		}
+
+		return evidence
 	}
 
-	return false
+	return queue.RequeueEvidence{}
 }
 
 // dashboardProps builds the shared page shell for both pages. HTMX is
