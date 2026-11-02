@@ -57,7 +57,11 @@ func TestReadCrushServerRSS(t *testing.T) {
 	}
 
 	hot := filepath.Join(t.TempDir(), "hot.log")
-	if err := os.WriteFile(hot, []byte("1700000000000 "+strconv.FormatInt(crushServerRSSWarnKB+1, 10)+"\n"), 0o600); err != nil {
+	if err := os.WriteFile(
+		hot,
+		[]byte("1700000000000 "+strconv.FormatInt(crushServerRSSWarnKB+1, 10)+"\n"),
+		0o600,
+	); err != nil {
 		t.Fatal(err)
 	}
 

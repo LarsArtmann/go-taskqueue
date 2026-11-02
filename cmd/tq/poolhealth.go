@@ -534,7 +534,13 @@ func printPoolHealth(report PoolHealthReport) {
 			note = fmt.Sprintf("  WARN: last sample above the %d kB band", crushServerRSSWarnKB)
 		}
 
-		fmt.Printf("crush-server rss: %d sample(s), last %d kB, max %d kB%s\n", rss.Samples, rss.LastKB, rss.MaxKB, note)
+		fmt.Printf(
+			"crush-server rss: %d sample(s), last %d kB, max %d kB%s\n",
+			rss.Samples,
+			rss.LastKB,
+			rss.MaxKB,
+			note,
+		)
 	}
 
 	if len(report.Repos) == 0 {

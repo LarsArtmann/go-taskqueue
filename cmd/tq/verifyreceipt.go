@@ -106,7 +106,11 @@ func verifyReceiptFor(ctx context.Context, store *sqlite.Store, id task.ID) *ver
 // `tq dlq` row renders: the typed failure evidence (pinned-tag shape) and the
 // verify receipt twin. One IO for two views, because the row carries both and
 // the DLQ read cap must stay a cap on READS, not on rows.
-func dlqForensicsFor(ctx context.Context, store *sqlite.Store, id task.ID) (executor.FailureEvidence, *verifyReceiptView) {
+func dlqForensicsFor(
+	ctx context.Context,
+	store *sqlite.Store,
+	id task.ID,
+) (executor.FailureEvidence, *verifyReceiptView) {
 	trail, err := store.FactsForTask(ctx, id.String(), 0)
 	if err != nil {
 		return executor.FailureEvidence{}, nil

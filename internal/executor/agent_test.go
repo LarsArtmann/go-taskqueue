@@ -297,17 +297,26 @@ func TestAgentExecutorArgvContract(t *testing.T) {
 	}
 
 	prompt := strings.Join(got[len(wantPrefix):], "\n")
-	if !strings.HasPrefix(prompt, "do it\n\nVerdict channel: record your final structured verdict before exiting by running: tq verdict --file /tmp/tq-verdict-") {
+	if !strings.HasPrefix(
+		prompt,
+		"do it\n\nVerdict channel: record your final structured verdict before exiting by running: tq verdict --file /tmp/tq-verdict-",
+	) {
 		t.Fatalf("work prompt must be the payload prompt + the verdict rail: %q", prompt)
 	}
 
-	if !strings.Contains(prompt, "'<one-line result JSON>' — the queue reads this file; it is the authoritative channel (stdout is only a fallback)") {
+	if !strings.Contains(
+		prompt,
+		"'<one-line result JSON>' — the queue reads this file; it is the authoritative channel (stdout is only a fallback)",
+	) {
 		t.Fatalf("work prompt lost the verdict rail wording: %q", prompt)
 	}
 
 	// The owner-question rail follows the verdict rail (same always-on
 	// channel contract; task id and question path render per-run).
-	if !strings.Contains(prompt, "Owner-question channel: if you need an owner ruling before finishing, run: tq ask --task ") {
+	if !strings.Contains(
+		prompt,
+		"Owner-question channel: if you need an owner ruling before finishing, run: tq ask --task ",
+	) {
 		t.Fatalf("work prompt lost the owner-question rail: %q", prompt)
 	}
 
@@ -583,7 +592,11 @@ func TestQuestionRailSkipsSecondOpinionClones(t *testing.T) {
 			}
 
 			repo := t.TempDir()
-			if err := os.WriteFile(filepath.Join(repo, ".crushrc"), []byte("permissions allow view\n"), 0o644); err != nil {
+			if err := os.WriteFile(
+				filepath.Join(repo, ".crushrc"),
+				[]byte("permissions allow view\n"),
+				0o644,
+			); err != nil {
 				t.Fatal(err)
 			}
 
@@ -1187,7 +1200,8 @@ printf 'TQ_RESULT: {"files_changed":["x.go"]}\n'
 	}
 
 	closeout := strings.Split(strings.TrimSpace(blocks[1]), "\n")
-	if len(closeout) == 0 || !strings.Contains(closeout[0], "--session sess-1234") || !strings.Contains(closeout[0], "closeout review ") {
+	if len(closeout) == 0 || !strings.Contains(closeout[0], "--session sess-1234") ||
+		!strings.Contains(closeout[0], "closeout review ") {
 		t.Fatalf("closeout turn must resume the extracted session with the resolved prompt: %q", blocks[1])
 	}
 }

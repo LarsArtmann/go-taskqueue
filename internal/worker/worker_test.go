@@ -801,7 +801,10 @@ func TestCrushServerDeathRequeuesWithoutAttemptBurn(t *testing.T) {
 	}
 
 	if ran.Load() != 1 {
-		t.Fatalf("executor completed %d healthy passes, want exactly 1 (the death pass requeued before any verdict)", ran.Load())
+		t.Fatalf(
+			"executor completed %d healthy passes, want exactly 1 (the death pass requeued before any verdict)",
+			ran.Load(),
+		)
 	}
 
 	cancel()

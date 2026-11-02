@@ -309,7 +309,14 @@ func excerpt(s string) string {
 // POST .../current-session, else 409 "client not attached". Any future
 // current-session (or prompt-viewing) call added here MUST be issued only
 // after a successful attach, never before it.
-func attachWorkspace(ctx context.Context, client *http.Client, feed *AgentFeed, ws crushWorkspace, clientID string, stalls *stallTracker) {
+func attachWorkspace(
+	ctx context.Context,
+	client *http.Client,
+	feed *AgentFeed,
+	ws crushWorkspace,
+	clientID string,
+	stalls *stallTracker,
+) {
 	key := ws.key()
 
 	label := ws.Path
@@ -487,7 +494,11 @@ func RunAgentFeed(ctx context.Context, socket string, feed *AgentFeed, log *slog
 			feed.broadcast(AgentEvent{
 				Workspace: key,
 				Kind:      "stall",
-				Line:      fmt.Sprintf("no events for ≥%s while a session is busy — stuck turn? (detector bar %s)", stuckTurnThreshold, stuckTurnThreshold),
+				Line: fmt.Sprintf(
+					"no events for ≥%s while a session is busy — stuck turn? (detector bar %s)",
+					stuckTurnThreshold,
+					stuckTurnThreshold,
+				),
 			})
 		}
 

@@ -86,7 +86,10 @@ func TestDecodePayloadToleranceIsNotVacuous(t *testing.T) {
 
 	var lenient AgentPayload
 	if err := jsonv2.Unmarshal(payload, &lenient); err != nil {
-		t.Fatalf("lenient unmarshal error = %v — decodePayload's posture is unreachable if the baseline itself rejects", err)
+		t.Fatalf(
+			"lenient unmarshal error = %v — decodePayload's posture is unreachable if the baseline itself rejects",
+			err,
+		)
 	}
 
 	var strict AgentPayload
@@ -142,7 +145,11 @@ func TestDecodePayloadRejectsUnusableInput(t *testing.T) {
 			}
 
 			if _, ok := errors.AsType[*PermanentError](err); !ok {
-				t.Errorf("decodePayload(%s) error = %v, want *PermanentError — retrying identical bytes can never help", tt.name, err)
+				t.Errorf(
+					"decodePayload(%s) error = %v, want *PermanentError — retrying identical bytes can never help",
+					tt.name,
+					err,
+				)
 			}
 
 			for _, sub := range tt.wantSub {

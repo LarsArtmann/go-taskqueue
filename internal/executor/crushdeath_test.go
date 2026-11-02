@@ -60,7 +60,11 @@ printf 'warn  Events stream ended error="unexpected EOF"\n'`)
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			repo := t.TempDir()
-			if err := os.WriteFile(filepath.Join(repo, ".crushrc"), []byte("permissions allow view\n"), 0o644); err != nil {
+			if err := os.WriteFile(
+				filepath.Join(repo, ".crushrc"),
+				[]byte("permissions allow view\n"),
+				0o644,
+			); err != nil {
 				t.Fatal(err)
 			}
 

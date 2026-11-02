@@ -63,8 +63,11 @@ func cmdAsk(args []string) error {
 		"how long the question stays open before the task re-enters (e.g. 72h)",
 	)
 	options := fs.String("options", "", "comma-separated answer options shown to the owner")
-	fileFlag := fs.String("file", "",
-		"write the question marker to this path (the routed-run channel; overrides $TQ_QUESTION_FILE — the task prompt names the path)")
+	fileFlag := fs.String(
+		"file",
+		"",
+		"write the question marker to this path (the routed-run channel; overrides $TQ_QUESTION_FILE — the task prompt names the path)",
+	)
 	dbPath := dbFlag(fs)
 
 	if err := fs.Parse(args); err != nil {

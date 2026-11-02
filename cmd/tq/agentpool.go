@@ -1052,7 +1052,13 @@ func runCrushServerActor(ctx context.Context, bin, socket string) error {
 // appended to the RSS log next to the journal (crushServerRSSLogPath)
 // and logged to stderr — the shared-server memory evidence the L4
 // GO/NO-GO sheet (row 1448) and `tq pool-health` read.
-func crushKeeper(ctx context.Context, socket string, serverPID *atomic.Int64, stop <-chan struct{}, done chan<- struct{}) {
+func crushKeeper(
+	ctx context.Context,
+	socket string,
+	serverPID *atomic.Int64,
+	stop <-chan struct{},
+	done chan<- struct{},
+) {
 	defer close(done)
 
 	path := strings.TrimPrefix(socket, "unix://")

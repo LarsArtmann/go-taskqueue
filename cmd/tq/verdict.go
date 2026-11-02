@@ -26,15 +26,23 @@ import (
 func cmdVerdict(args []string) error {
 	fs := flag.NewFlagSet("verdict", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
-	fileFlag := fs.String("file", "",
-		"write the verdict to this path (the routed-run channel; overrides $TQ_RESULT_FILE — the task prompt names the path)")
+	fileFlag := fs.String(
+		"file",
+		"",
+		"write the verdict to this path (the routed-run channel; overrides $TQ_RESULT_FILE — the task prompt names the path)",
+	)
 
 	if err := fs.Parse(args); err != nil {
-		return fmt.Errorf("tq verdict: %w (usage: tq verdict '<json>' | tq verdict --file <path> '<json>' | tq verdict - < file)", err)
+		return fmt.Errorf(
+			"tq verdict: %w (usage: tq verdict '<json>' | tq verdict --file <path> '<json>' | tq verdict - < file)",
+			err,
+		)
 	}
 
 	if fs.NArg() != 1 {
-		return errors.New("usage: tq verdict '<json>'   (or: tq verdict --file <path> '<json>'  |  tq verdict - < file.json)")
+		return errors.New(
+			"usage: tq verdict '<json>'   (or: tq verdict --file <path> '<json>'  |  tq verdict - < file.json)",
+		)
 	}
 
 	var body []byte

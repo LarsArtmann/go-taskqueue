@@ -240,7 +240,8 @@ func doctorCrushVersionCheck(ctx context.Context, bin string) checkResult {
 
 	if v != doctorCrushProvenVersion {
 		return checkResult{
-			Name: name, Status: checkWarn,
+			Name:   name,
+			Status: checkWarn,
 			Detail: "crush " + v + " (floor " + doctorCrushMinVersion + ", smokes-proven pin " + doctorCrushProvenVersion +
 				") — the client/server wire legs were proven on " + doctorCrushProvenVersion +
 				"; re-run scripts/smoke/crush-server-route.sh + crush-pool-supervisor.sh before trusting --crush-server, then bump the pin",
@@ -1651,11 +1652,13 @@ func runningExecutablePath() string {
 func doctorVerdictChannel(self string) []checkResult {
 	tqPath, err := exec.LookPath("tq")
 	if err != nil {
-		return []checkResult{{
-			Name:   "verdict-channel",
-			Status: checkWarn,
-			Detail: "\"tq\" not found on PATH (tq verdict / tq ask in paid-turn prompts will fail; check the service PATH)",
-		}}
+		return []checkResult{
+			{
+				Name:   "verdict-channel",
+				Status: checkWarn,
+				Detail: "\"tq\" not found on PATH (tq verdict / tq ask in paid-turn prompts will fail; check the service PATH)",
+			},
+		}
 	}
 
 	detail := tqPath + " found"
