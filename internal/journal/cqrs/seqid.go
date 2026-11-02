@@ -25,10 +25,17 @@ const (
 	seqBytesLen = 8
 )
 
-func seqEventID(seq int64) (id.EventID, error) {
+// seqEventIDError is the specific error type seqEventID returns.
+type seqEventIDError struct {
+	msg string
+}
+
+func (e *seqEventIDError) Error() string { return e.msg }
+
+func seqEventID(seq int64) (id.EventID, *seqEventIDError) {
 	if seq <= 0 {
 		//cqrs-lint:ignore(C025) validation error built from seq data; no wrapped cause exists
-		return id.EventID{}, fmt.Errorf("cqrs: sequence %d is not positive", seq)
+		return id.EventID{}, &seqEventIDError{fmt.Sprintf("cqrs: sequence %d is not positive", seq)}
 	}
 
 	var raw ulid.ULID
@@ -36,7 +43,7 @@ func seqEventID(seq int64) (id.EventID, error) {
 
 	eventID, err := id.ParseEventID(raw.String())
 	if err != nil {
-		return id.EventID{}, fmt.Errorf("cqrs: encode sequence %d as event id: %w", seq, err)
+		return id.EventID{}, &seqEventIDError{fmt.Sprintf("cqrs: encode sequence %d as event id: %s", seq, err)}
 	}
 
 	return eventID, nil

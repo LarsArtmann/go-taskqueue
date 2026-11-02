@@ -501,8 +501,10 @@ func (s *Server) dlqBackoffDeadlines(ctx context.Context, now time.Time) map[str
 		return nil
 	}
 
-	deadlines, err := dlqbackoff.DeadlinesForStore(ctx, s.store, now, s.cfg.DLQBackoff)
-	if err != nil {
+	// Typed variable: a nil *DeadlinesError converted to error would be a
+	// non-nil interface.
+	deadlines, deadlinesErr := dlqbackoff.DeadlinesForStore(ctx, s.store, now, s.cfg.DLQBackoff)
+	if deadlinesErr != nil {
 		return nil
 	}
 
