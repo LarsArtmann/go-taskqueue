@@ -203,6 +203,9 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   2026-11-01 note said that while every fact came through one.
 - **Claims carry citations** (gate run or SHA; never a running gate);
   filter-scope claims cite file:line or a pin.
+- **Two-tick convention for verify-before-filing rows**: TWO unchecked
+  items (rebuild repro; file upstream) so NOT-reproducible ticks row
+  one — never a fused RESOLVED-WITHOUT-FILING row (row-683 §e2).
 - **Verify-window battery**: cheap HEAD gates (check-doc-refs, root
   build+vet, check-dead-sha-refs, date-named report) + one fresh delta;
   expensive gates inherit a same-HEAD report; nested-module claims
