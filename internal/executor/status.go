@@ -187,7 +187,7 @@ func (e *StatusExecutor) Execute(ctx context.Context, t task.Task) error {
 	result.Attestation = verifyOut.Attest("")
 
 	result.deriveUsage(ctx, repoDir, output, t.ID)
-	recordRunOutcome(ctx, &result, output, "", t.ID)
+	recordRunOutcome(ctx, &result, "status", raw, output, "", t.ID)
 
 	return nil
 }

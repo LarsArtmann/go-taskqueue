@@ -164,7 +164,7 @@ func (e *DLQFixExecutor) Execute(ctx context.Context, t task.Task) error {
 		err = verr
 	}
 
-	return finishParsedRun(ctx, &result, err, "dlqfix", output, repoDir, t.ID)
+	return finishParsedRun(ctx, &result, err, "dlqfix", raw, output, repoDir, t.ID)
 }
 
 // dlqFixPrompt builds the autopsy instruction: the dead task's original

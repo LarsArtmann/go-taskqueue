@@ -371,7 +371,7 @@ func (e *AgentExecutor) Execute(ctx context.Context, t task.Task) error {
 
 	runStart := time.Now()
 
-	output, _, err := e.runAgent(runCtx, runDir, &p, t.ID)
+	output, verdict, err := e.runAgent(runCtx, runDir, &p, t.ID)
 	if err != nil {
 		// Forensics for the task.failed fact: exit code + output tail. The
 		// full output survives in the sidecar only when TQ_LOG_DIR is set,
@@ -436,7 +436,7 @@ func (e *AgentExecutor) Execute(ctx context.Context, t task.Task) error {
 	result.Branch = wtBranch
 	result.BaseBranch = wtBase
 
-	recordRunOutcome(ctx, &result, output, verifyOut.Tail, t.ID)
+	recordRunOutcome(ctx, &result, "agent", verdict, output, verifyOut.Tail, t.ID)
 
 	return nil
 }

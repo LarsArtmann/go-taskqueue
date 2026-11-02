@@ -3,6 +3,7 @@ package executor
 import (
 	"context"
 	"encoding/json"
+	"encoding/json/jsontext"
 	"os"
 	"path/filepath"
 	"strings"
@@ -110,7 +111,7 @@ func TestRecordRunOutcome(t *testing.T) {
 		ctx, sink := NewSink(context.Background())
 
 		result := ReviewResult{Summary: "clean"}
-		recordRunOutcome(ctx, &result, "full output", "verify tail", task.ID("000001a0recordrunoutcome0000001"))
+		recordRunOutcome(ctx, &result, "review", jsontext.Value("{\"verdict\":\"approve\"}"), "full output", "verify tail", task.ID("000001a0recordrunoutcome0000001"))
 
 		if result.LogPath == "" {
 			t.Fatal("LogPath empty, want the sidecar path")
@@ -149,7 +150,7 @@ func TestRecordRunOutcome(t *testing.T) {
 		ctx, sink := NewSink(context.Background())
 
 		result := ReviewResult{Summary: "clean"}
-		recordRunOutcome(ctx, &result, "out", "", task.ID("000001a0recordrunoutcome0000002"))
+		recordRunOutcome(ctx, &result, "review", nil, "out", "", task.ID("000001a0recordrunoutcome0000002"))
 
 		if result.LogPath != "" {
 			t.Fatalf("LogPath = %q, want empty without TQ_LOG_DIR", result.LogPath)

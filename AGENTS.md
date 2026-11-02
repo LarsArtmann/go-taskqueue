@@ -131,6 +131,11 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   `$TQ_RESULT_FILE` (file > stdout, last-wins); prompts bake the `--file` rails
   (verdict + ask — routed bash tools see only SERVER env, crush#4210; never
   drop). `-H` sans CRUSH_CLIENT_SERVER=1 is silently LOCAL (R4).
+- **Calibration dataset**: every paid run appends ONE `CalibrationRow`
+  (raw verdict-channel body + `Verify`/`Attestation` join keys + derived
+  outcome counts + session usage) to `$TQ_LOG_DIR/calibration.jsonl`
+  (`internal/executor/calibration.go`); best-effort — no TQ_LOG_DIR, no
+  dataset. Auto-dismiss/review rules tune FROM this data, not by feel.
 - **Batched harvest** (`--batch-items`, default 3): N adjacent same-section
   items → one task (dedup `batch:` + SORTED-key hash; gates see ONE task);
   direct `tq enqueue` forbidden — work prompts grant the move. Prompts are

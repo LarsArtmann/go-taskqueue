@@ -189,7 +189,7 @@ func (e *ReviewExecutor) Execute(ctx context.Context, t task.Task) error {
 	}
 
 	result.deriveUsage(ctx, repoDir, output, t.ID)
-	recordRunOutcome(ctx, &result, output, "", t.ID)
+	recordRunOutcome(ctx, &result, "review", raw, output, "", t.ID)
 
 	return nil
 }

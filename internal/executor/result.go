@@ -201,7 +201,9 @@ func SetResultDetail(ctx context.Context, detail jsontext.Value) {
 
 // recordRunOutcome finishes one paid run's bookkeeping: persist the FULL
 // run output sidecar, then record the result — with its log_path — as the
-// execution's outcome detail for `tq show`. The sidecar path is stamped
+// execution's outcome detail for `tq show`, and append the calibration
+// row (raw verdict-channel body joined against the derived outcome) to
+// the dataset. The sidecar path is stamped
 // through the result's embedded sessionUsage so it lands inside the
 // recorded detail; callers that derive session usage do so BEFORE calling
 // (deriveUsage returns its derivation for executors that also need
@@ -209,28 +211,30 @@ func SetResultDetail(ctx context.Context, detail jsontext.Value) {
 func recordRunOutcome[R any, T interface {
 	*R
 	setLogPath(path string)
-}](ctx context.Context, result T, output, tail string, id task.ID) {
+}](ctx context.Context, result T, kind string, verdict jsontext.Value, output, tail string, id task.ID) {
 	result.setLogPath(writeOutputSidecar(id, output, tail))
 
 	detail, _ := json.Marshal(result)
 	SetResultDetail(ctx, detail)
+	recordCalibration(kind, id, verdict, detail)
 }
 
 // finishParsedRun is the shared tail of every closeout-free agent turn:
 // a parse miss wraps as the executor-named error (retryable — the model
 // may comply on a retry), a parsed result derives its session usage from
-// the finished output and records the run outcome for `tq show`.
+// the finished output and records the run outcome for `tq show` plus the
+// calibration row (the raw verdict body rides in).
 func finishParsedRun[R any, T interface {
 	*R
 	setLogPath(path string)
 	deriveUsage(ctx context.Context, repoDir, output string, id task.ID) derivedOutcome
-}](ctx context.Context, result T, parseErr error, kind, output, repoDir string, id task.ID) error {
+}](ctx context.Context, result T, parseErr error, kind string, verdict jsontext.Value, output, repoDir string, id task.ID) error {
 	if parseErr != nil {
 		return fmt.Errorf("%s: %w", kind, parseErr)
 	}
 
 	result.deriveUsage(ctx, repoDir, output, id)
-	recordRunOutcome(ctx, result, output, "", id)
+	recordRunOutcome(ctx, result, kind, verdict, output, "", id)
 
 	return nil
 }

@@ -150,7 +150,7 @@ func (e *PrioritizeExecutor) Execute(ctx context.Context, t task.Task) error {
 		err = verr
 	}
 
-	return finishParsedRun(ctx, &result, err, "prioritize", output, repoDir, t.ID)
+	return finishParsedRun(ctx, &result, err, "prioritize", raw, output, repoDir, t.ID)
 }
 
 // prioritizePrompt builds the scorer instruction: the batch, the scoring
