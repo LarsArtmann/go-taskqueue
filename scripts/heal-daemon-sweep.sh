@@ -45,9 +45,13 @@
 #
 # Usage: scripts/heal-daemon-sweep.sh [--from <ref>] [--retitle <subject>] <Task-Queue-ID>
 #        scripts/heal-daemon-sweep.sh --self-test
-#   --from <ref>  base of the heal range (default: origin/master, then
-#                 @{upstream}, then the root commit). Everything in
-#                 <ref>..HEAD is treated as unpushed-local and verified.
+#   --from <ref>  EXCLUSIVE base bound of the heal range (default:
+#                 origin/master, then @{upstream}, then the root commit).
+#                 Only <ref>..HEAD is treated as unpushed-local and verified;
+#                 the commit AT <ref> itself is NEVER healed — a sweep
+#                 sitting at/below its base stays footer-less (the 2026-10-26
+#                 03-22 §d2 misread: --from 7b65aaa6 does NOT include
+#                 7b65aaa6). Pinned by --self-test (exclusive-bound check).
 #   --retitle <subject>
 #                 set this subject on every HEALED (footer-less) commit in
 #                 the range — healed sweeps keep the daemon's lying
@@ -71,6 +75,10 @@ die() {
 usage() {
 	echo "usage: $0 [--from <ref>] [--retitle <subject>] <Task-Queue-ID>" >&2
 	echo "       $0 --self-test" >&2
+	echo "  --from <ref> is an EXCLUSIVE base bound: only <ref>..HEAD is healed;" >&2
+	echo "  the commit AT <ref> itself is never rewritten (it may stay footer-less)." >&2
+	echo "  --retitle renames ONLY footer-less sweeps; commits already carrying a" >&2
+	echo "  Task-Queue-ID footer keep their subject and message byte-identical." >&2
 	exit 2
 }
 
@@ -221,12 +229,16 @@ run_filter() {
 	local err
 	err=$(FILTER_BRANCH_SQUELCH_WARNING=1 TQ_HEAL_FOOTER="$footer" TQ_HEAL_SUBJECT="$subject" git filter-branch -f --msg-filter '
 		msg=$(cat)
-		case $msg in
-		*"Task-Queue-ID: "*)
+		# Same line-anchored criterion as snapshot_subjects.has_footer: only a
+		# LINE-INITIAL footer marks an already-attributed commit, so its
+		# subject (and body) survive --retitle byte-identical. A body that
+		# merely MENTIONS "Task-Queue-ID: " mid-prose is still healed, or the
+		# expected-subject snapshot diverges from the filter output (2026-10-26
+		# 03-22 §d2 preservation pin).
+		if printf "%s\n" "$msg" | grep -q "^Task-Queue-ID: "; then
 			printf "%s\n" "$msg"
 			exit 0
-			;;
-		esac
+		fi
 		if [ -n "$TQ_HEAL_SUBJECT" ]; then
 			printf "%s\n\n" "$TQ_HEAL_SUBJECT"
 		else
@@ -865,6 +877,37 @@ EOF
 		fail=$((fail + 1))
 		echo "SELF-TEST FAIL: dirty worktree must heal and preserve the dirt" >&2
 		cat "$tmp/out_dirty" "$tmp/err_dirty" >&2
+	fi
+
+	# Exclusive --from base bound (2026-10-26 03-22 §d2): the commit AT the
+	# --from ref is NEVER healed — sha unmoved, still footer-less — while
+	# the span above it gets the footer.
+	local repo5="$tmp/repo5"
+	git init -q "$repo5"
+	git -C "$repo5" config user.email t@t
+	git -C "$repo5" config user.name t
+	echo a >"$repo5/a.txt"
+	git -C "$repo5" add a.txt
+	git -C "$repo5" commit -qm "base"
+	git -C "$repo5" update-ref refs/remotes/origin/master HEAD
+	echo s1 >"$repo5/s1.txt"
+	git -C "$repo5" add s1.txt
+	git -C "$repo5" commit -qm "chore: sweep at bound"
+	local bound_sha
+	bound_sha=$(git -C "$repo5" rev-parse HEAD)
+	echo s2 >"$repo5/s2.txt"
+	git -C "$repo5" add s2.txt
+	git -C "$repo5" commit -qm "chore: sweep above bound"
+	(cd "$repo5" && "$self" --from "$bound_sha" deadbeef00000000000000000000000000000009) >"$tmp/out_bound" 2>"$tmp/err_bound"
+	if [ "$?" = "0" ] &&
+		[ "$(git -C "$repo5" rev-parse HEAD~1)" = "$bound_sha" ] &&
+		! git -C "$repo5" log -1 --format='%B' "$bound_sha" | grep -q '^Task-Queue-ID: ' &&
+		footer_well_formed "$(git -C "$repo5" log -1 --format='%B' HEAD)" "deadbeef00000000000000000000000000000009"; then
+		ok=$((ok + 1))
+	else
+		fail=$((fail + 1))
+		echo "SELF-TEST FAIL: --from base must stay unhealed (exclusive bound)" >&2
+		cat "$tmp/out_bound" "$tmp/err_bound" >&2
 	fi
 
 	if [ "$fail" = "0" ]; then
