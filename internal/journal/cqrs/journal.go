@@ -97,9 +97,9 @@ func mapFacts(facts []journal.Fact) ([]event.Event, error) {
 	events := make([]event.Event, 0, len(facts))
 
 	for _, f := range facts {
-		evt, err := factEvent(f)
-		if err != nil {
-			return nil, err
+		evt, evtErr := factEvent(f)
+		if evtErr != nil {
+			return nil, evtErr
 		}
 
 		events = append(events, evt)
@@ -108,20 +108,31 @@ func mapFacts(facts []journal.Fact) ([]event.Event, error) {
 	return events, nil
 }
 
-func factEvent(fact journal.Fact) (event.Event, error) {
+// factEventError is the specific error type factEvent returns; it unwraps
+// wrapped causes (stream-id parse, event build).
+type factEventError struct {
+	msg string
+	err error
+}
+
+func (e *factEventError) Error() string { return e.msg }
+
+func (e *factEventError) Unwrap() error { return e.err }
+
+func factEvent(fact journal.Fact) (event.Event, *factEventError) {
 	if fact.Seq <= 0 {
 		//cqrs-lint:ignore(C025) validation error built from fact data; no wrapped cause exists
-		return nil, fmt.Errorf("cqrs: fact for task %s has non-positive seq %d", fact.TaskID, fact.Seq)
+		return nil, &factEventError{msg: fmt.Sprintf("cqrs: fact for task %s has non-positive seq %d", fact.TaskID, fact.Seq)}
 	}
 
 	eventID, err := seqEventID(fact.Seq)
 	if err != nil {
-		return nil, err
+		return nil, &factEventError{msg: err.Error(), err: err}
 	}
 
-	streamID, err := id.ParseStreamID(fact.TaskID)
-	if err != nil {
-		return nil, fmt.Errorf("cqrs: fact seq %d stream id: %w", fact.Seq, err)
+	streamID, parseErr := id.ParseStreamID(fact.TaskID)
+	if parseErr != nil {
+		return nil, &factEventError{msg: fmt.Sprintf("cqrs: fact seq %d stream id: %s", fact.Seq, parseErr), err: parseErr}
 	}
 
 	streamType := id.StreamType(StreamTypeTask)
@@ -133,7 +144,7 @@ func factEvent(fact journal.Fact) (event.Event, error) {
 	// stamps the encoding: a bare NewEvent leaves Encoding empty, and
 	// DecodePayloadAuto — the decode path every go-cqrs-lite consumer of
 	// this journal uses — refuses unstamped payloads.
-	evt, err := event.New(
+	evt, newErr := event.New(
 		event.Type(fact.Type),
 		streamID,
 		streamType,
@@ -151,8 +162,8 @@ func factEvent(fact journal.Fact) (event.Event, error) {
 		event.WithOccurredAt(fact.Time),
 		event.WithSchemaVersion(event.SchemaVersion(1)),
 	)
-	if err != nil {
-		return nil, fmt.Errorf("cqrs: build event for fact seq %d: %w", fact.Seq, err)
+	if newErr != nil {
+		return nil, &factEventError{msg: fmt.Sprintf("cqrs: build event for fact seq %d: %s", fact.Seq, newErr), err: newErr}
 	}
 
 	return evt, nil

@@ -3263,9 +3263,12 @@ func cmdDLQ(args []string) error {
 		tasks = filtered
 	}
 
-	deadlines, err := dlqbackoff.DeadlinesForStore(context.Background(), store, time.Now(), *dlqBackoff)
-	if err != nil {
-		return err
+	// Keep the result in its typed variable: converting a nil *DeadlinesError
+	// into an error interface would surface as a non-nil interface holding a
+	// nil pointer.
+	deadlines, deadlinesErr := dlqbackoff.DeadlinesForStore(context.Background(), store, time.Now(), *dlqBackoff)
+	if deadlinesErr != nil {
+		return deadlinesErr
 	}
 
 	if *jsonOut {
