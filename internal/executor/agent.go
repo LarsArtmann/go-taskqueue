@@ -679,7 +679,8 @@ func retrySession(t task.Task) string {
 func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPayload, id task.ID) (string, jsontext.Value, error) {
 	// The verdict channel: one temp file per run, exported to the agent
 	// process. Best-effort — when the temp dir is unusable the channel is
-	// absent and the legacy stdout line still works.
+	// absent and the run records no verdict (strict-parser executors fail
+	// the attempt; plain work turns ride the footer derivation).
 	verdictPath := ""
 
 	if f, err := os.CreateTemp("", "tq-verdict-*.json"); err == nil {
@@ -953,29 +954,6 @@ func (e *AgentExecutor) runCloseoutIfNeeded(
 	}
 
 	return buf.String(), nil
-}
-
-// appendVerdictLine merges the verdict file into the run output as a
-// synthetic trailing TQ_RESULT line. Appended LAST on purpose: ResultLine
-// reads the last match, so the file outranks any legacy stdout line. Empty
-// or missing files leave the output untouched (the stdout fallback stays
-// the only channel).
-func appendVerdictLine(output, path string) string {
-	if path == "" {
-		return output
-	}
-
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		return output
-	}
-
-	body := strings.TrimSpace(string(raw))
-	if body == "" {
-		return output
-	}
-
-	return output + "\nTQ_RESULT: " + body
 }
 
 // closeoutPending records a finished WORK turn whose close-out is owed: a

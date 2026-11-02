@@ -93,16 +93,16 @@ const defaultStatusTaskTimeout = 15 * time.Minute
 
 // StatusExecutor runs the done-prompt agent. It reuses the agent run
 // mechanics through its Agent executor (same pattern as ReviewExecutor); the
-// differences are the prompt and the output contract: the final
-// TQ_RESULT line must name an existing, repo-relative report file.
+// differences are the prompt and the output contract: the verdict must
+// name an existing, repo-relative report file.
 type StatusExecutor struct {
 	// Agent supplies the run mechanics and its configuration. nil selects a
 	// default AgentExecutor.
 	Agent *AgentExecutor
 }
 
-// Execute runs the reporting agent and enforces two gates: the output must
-// end with TQ_RESULT: {"report":"docs/status/...","next_items":N} naming an
+// Execute runs the reporting agent and enforces two gates: the verdict file
+// must hold {"report":"docs/status/...","next_items":N} naming an
 // existing, repo-relative file, and the repo verify command must exit 0 (the
 // reporter commits, so it can break the tree it reports on). Malformed
 // output, a missing file or a failed verify is a retryable failure; payload

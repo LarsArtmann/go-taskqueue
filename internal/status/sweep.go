@@ -441,7 +441,7 @@ func (s *Sweeper) log(msg string, args ...any) {
 
 // completionDetail reads one task's completion-fact detail as AgentResult.
 // Best-effort by design: a vanished fact, an empty detail (plain agent runs
-// without a TQ_RESULT self-report) or a foreign shape returns ok=false and
+// without a verdict) or a foreign shape returns ok=false and
 // the window entry simply carries no commit info.
 func (s *Sweeper) completionDetail(ctx context.Context, id task.ID) (commit string, files []string, ok bool) {
 	facts, err := s.store.FactsForTask(ctx, id.String(), maxWindowItems)

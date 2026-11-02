@@ -81,10 +81,10 @@ func TestParseDLQFixResultTable(t *testing.T) {
 			errContain: "no verdict field",
 		},
 		{
-			name:       "no TQ_RESULT line at all",
+			name:       "no verdict at all",
 			output:     "all work and no verdict\n",
 			wantErr:    true,
-			errContain: "no TQ_RESULT line",
+			errContain: "does not parse",
 		},
 	}
 

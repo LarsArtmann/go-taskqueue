@@ -208,7 +208,7 @@ func TestStatusExecutorInvalidOutputFailsAttemptRetryable(t *testing.T) {
 		Completed: []StatusCompletion{{TaskID: "t-1", Item: "item"}},
 	}))
 	if err == nil {
-		t.Fatal("Execute with no TQ_RESULT line must fail")
+		t.Fatal("Execute with no verdict must fail")
 	}
 
 	if _, ok := errors.AsType[*PermanentError](err); ok {

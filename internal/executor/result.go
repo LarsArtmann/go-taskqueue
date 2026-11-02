@@ -88,8 +88,8 @@ type AgentResult struct {
 	// task, DERIVED from git after the run (oldest first) — the agent never
 	// reports them. FilesChanged is the union of files those commits
 	// touched; CommitSHA is the newest one (the review sweeper and web UI
-	// read both). A legacy `TQ_RESULT` self-report still fills them when
-	// derivation finds nothing (in-flight tasks minted before derivation).
+	// read both). Empty when derivation finds nothing — there is no agent
+	// self-report: commits come only from the footer derivation.
 	Commits      []Commit `json:"commits,omitempty"`
 	FilesChanged []string `json:"files_changed,omitempty"`
 	CommitSHA    string   `json:"commit_sha,omitempty"`
