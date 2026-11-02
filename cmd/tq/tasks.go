@@ -144,7 +144,7 @@ func cmdTasks(args []string) error {
 			return err
 		}
 
-		tasks = parkedByClass(candidates, latestRequeueClass(facts), *parkedClass, time.Now())
+		tasks = parkedByClass(candidates, latestRequeueEvidence(facts), *parkedClass, time.Now())
 		classTotal = len(tasks)
 
 		if *limit > 0 && len(tasks) > *limit {
@@ -194,15 +194,13 @@ func cmdTasks(args []string) error {
 	}
 
 	var (
-		providers      map[string]string
-		evidenceRows   map[string]string
-		requeueClasses map[string]string
+		requeueEvidence map[string]queue.RequeueEvidence
+		evidenceRows    map[string]string
 	)
 
 	if *parked {
-		providers = latestRequeueProvider(facts)
+		requeueEvidence = latestRequeueEvidence(facts)
 		evidenceRows = latestFailureEvidenceSummary(facts)
-		requeueClasses = latestRequeueClass(facts)
 	}
 
 	if *asJSON {
@@ -214,13 +212,13 @@ func cmdTasks(args []string) error {
 		// "which provider" answer and can distinguish dirty-tree parks
 		// (requeue_class=preflight) from gate parks without journal reads;
 		// non-parked JSON stays the plain task array (2026-10-15 01-15 §b2).
-		if providers != nil {
+		if requeueEvidence != nil {
 			rows := make([]parkedTaskRow, len(tasks))
 			for i, t := range tasks {
 				rows[i] = parkedTaskRow{
 					Task:         t,
-					Provider:     providers[t.ID.String()],
-					RequeueClass: requeueClasses[t.ID.String()],
+					Provider:     requeueEvidence[t.ID.String()].Provider,
+					RequeueClass: requeueEvidence[t.ID.String()].Class,
 				}
 			}
 
@@ -256,7 +254,7 @@ func cmdTasks(args []string) error {
 		return enc.Encode(tasks)
 	}
 
-	printTaskListTo(os.Stdout, tasks, *limit, uncappedTotal, providers, evidenceRows, requeueClasses)
+	printTaskListTo(os.Stdout, tasks, *limit, uncappedTotal, requeueEvidence, evidenceRows)
 
 	return nil
 }
@@ -277,7 +275,7 @@ type parkedTaskRow struct {
 // so a truncated footer never reads as the whole set (dead-letter census
 // missed a 09-20 death behind a silent 50-row cap).
 func printTaskList(tasks []task.Task, limit int, total func() (int, error)) {
-	printTaskListTo(os.Stdout, tasks, limit, total, nil, nil, nil)
+	printTaskListTo(os.Stdout, tasks, limit, total, nil, nil)
 }
 
 // providers (nil outside --parked) joins each task's latest requeue
@@ -288,9 +286,8 @@ func printTaskListTo(
 	tasks []task.Task,
 	limit int,
 	total func() (int, error),
-	providers map[string]string,
+	requeueEvidence map[string]queue.RequeueEvidence,
 	evidence map[string]string,
-	classes map[string]string,
 ) {
 	if len(tasks) == 0 {
 		fmt.Fprintln(w, "no matching tasks")
@@ -315,7 +312,7 @@ func printTaskListTo(
 		row := fmt.Sprintf("%-36s %-14s %-16s %-7s %5d %-9s  %s",
 			t.ID.String(), statusCell(t, now), t.Project, t.Type, t.Attempts,
 			notBeforeCell(t, now),
-			truncate(parkedCell(t, providers), 60),
+			truncate(parkedCell(t, requeueEvidence), 60),
 		)
 		// The evidence= suffix keeps tq dlq's self-describing row shape on
 		// parked rows too (verify-stage/class of the death that parked it,
@@ -330,7 +327,7 @@ func printTaskListTo(
 		// the hint keeps the no-attempt-burn contract visible on the text
 		// surface (JSON consumers read requeue_class=preflight + the
 		// refusal's [dirty tree] marker).
-		if classes != nil && classes[t.ID.String()] == queue.RequeueClassPreflight &&
+		if requeueEvidence != nil && requeueEvidence[t.ID.String()].Class == queue.RequeueClassPreflight &&
 			strings.Contains(oneLine(t.LastError), "dirty tree") {
 			fmt.Fprintln(w, "       ↳ parked by a dirty tree — waits for the tree to clean; no attempt burn")
 		}
@@ -355,10 +352,10 @@ func printTaskListTo(
 
 // parkedCell prefixes the last-error excerpt with the parked task's
 // exhausted provider tag when the requeue evidence carries one.
-func parkedCell(t task.Task, providers map[string]string) string {
+func parkedCell(t task.Task, requeueEvidence map[string]queue.RequeueEvidence) string {
 	lastErr := oneLine(t.LastError)
-	if providers != nil {
-		if p := providers[t.ID.String()]; p != "" {
+	if requeueEvidence != nil {
+		if p := requeueEvidence[t.ID.String()].Provider; p != "" {
 			lastErr = "[" + p + "] " + lastErr
 		}
 	}

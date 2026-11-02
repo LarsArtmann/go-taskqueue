@@ -726,12 +726,12 @@ func doctorParked(ctx context.Context, store queue.Store) checkResult {
 		// one — "parked by zai" answers "which provider?" on the doctor
 		// surface too (2026-10-15 01-15 §f4).
 		if facts, ferr := store.LastFacts(ctx, factTailLimit); ferr == nil {
-			providers := latestRequeueProvider(facts)
+			providers := latestRequeueEvidence(facts)
 
 			seen := map[string]bool{}
 
 			for _, tk := range tasks {
-				if p := providers[tk.ID.String()]; p != "" {
+				if p := providers[tk.ID.String()].Provider; p != "" {
 					seen[p] = true
 				}
 			}

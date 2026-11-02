@@ -61,7 +61,7 @@ func TestParkedByClassJoinsFacts(t *testing.T) {
 		t.Fatalf("facts: %v", err)
 	}
 
-	latest := latestRequeueClass(facts)
+	latest := latestRequeueEvidence(facts)
 	now := time.Now()
 
 	budget := parkedByClass(tasks, latest, queue.RequeueClassBudget, now)
@@ -111,9 +111,9 @@ func TestParkedProviderJoinsOntoRows(t *testing.T) {
 		t.Fatalf("facts: %v", err)
 	}
 
-	providers := latestRequeueProvider(facts)
-	if providers[tk.ID.String()] != "zai" {
-		t.Fatalf("provider = %q, want zai", providers[tk.ID.String()])
+	evidence := latestRequeueEvidence(facts)
+	if evidence[tk.ID.String()].Provider != "zai" {
+		t.Fatalf("provider = %q, want zai", evidence[tk.ID.String()].Provider)
 	}
 
 	parked, err := store.Get(ctx, tk.ID)
@@ -122,7 +122,7 @@ func TestParkedProviderJoinsOntoRows(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	printTaskListTo(&buf, []task.Task{parked}, 0, func() (int, error) { return 1, nil }, providers, nil, nil)
+	printTaskListTo(&buf, []task.Task{parked}, 0, func() (int, error) { return 1, nil }, evidence, nil)
 
 	if out := buf.String(); !strings.Contains(out, "[zai] rate limited") {
 		t.Fatalf("parked row = %q, want a [zai] tag on the last-error cell", out)
