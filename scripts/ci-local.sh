@@ -871,6 +871,15 @@ step "TODO_LIST honesty self-test (advisory/structural exit semantics pin)"
 step "TODO_LIST honesty check"
 ./scripts/check-todo-list.sh
 
+# Landed-but-unticked sweep (dispatch 000001a19e59e52e219b2608422000000000,
+# TODO row 1292): probes open rows' backticked symbols at HEAD and prints
+# advisory candidates — the report, not a gate red.
+step "landed-but-unticked sweep self-test (summary pin + negative counter battery)"
+./scripts/check-unticked.sh --self-test
+
+step "landed-but-unticked sweep (advisory candidates over open TODO rows)"
+./scripts/check-unticked.sh
+
 step "FEATURES/ROADMAP cross-check"
 ./scripts/check-features-roadmap.sh
 
