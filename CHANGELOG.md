@@ -140,6 +140,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Internal
 
+- Commit-msg hook pin hardening (2026-11-02): `check-commit-msg-hook.sh`
+  now pins CRLF line-ending messages (footer-final accepted, stranded
+  rejected) and fixup!/squash!/merge special shapes (footer-final
+  accepted — no exemption needed), 15 cases green; stale footer-placement
+  owner-question wording cleared from FEATURES.md + TODO_LIST.
 - Verdict→outcome calibration dataset (2026-11-02): every paid agent/
   review/status/dlqfix/prioritize run appends one `CalibrationRow` (raw
   verdict-channel body, `Verify`/`Attestation` join keys, derived

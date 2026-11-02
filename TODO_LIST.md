@@ -1534,3 +1534,9 @@ not here.
 - [ ] Failure-path calibration rows: append verdict-less rows (class + `FailureEvidence` join) for parse-miss/verify-death/429 attempts so the dataset covers every attempt outcome, not only completions
 - [ ] First data-driven calibration tuning pass: once production rows accumulate (≥50 per kind), diff auto-dismiss/review thresholds against observed verdict→outcome rates and report tuning candidates
 - [ ] Calibration live-path smoke under `scripts/smoke/` (TQ_DB + TQ_LOG_DIR scratch): run one stub executor end-to-end and assert the `CalibrationRow` lands — closes the observe-first gap for the write path
+
+## Commit-msg pin batch appends (2026-11-02; source: docs/status/tasks/2026-11-02_19-04_task-000001a19d646b3b8319f0dfba9400000000.md §f; deduped against the calibration/28th/29th blocks + open row 355)
+- [ ] Corpus-wide stale-wording sweep extension: run the "stays open"/"owner question" + footer|attribution|placement phrase sweep over docs/architecture-understanding/, replay/, and per-package ADOPTION/docs files (the row-1234 sweep covered README/AGENTS/FEATURES/adr/memos/problems/release/planning only) (report §f1)
+- [ ] Reason-pinned hook cases: extend run_case in scripts/check-commit-msg-hook.sh with an optional want-stderr substring and re-pin all 15 cases to their guard reasons — rc-only assertions stay green when the hook fails for the WRONG guard (00-43 §d1 wrong-fixture class) (report §f2)
+- [ ] Merged-message consumer pin: test that a merge-shaped message with footer-final is FOUND by the queue's own trailer scan (git log --grep / %(trailers) shaped) — the special-shape verification is hook+interpret-trailers level, one end-to-end leg short (report §f3)
+- [ ] Resolve the eleventh-dispatch batch's "rows 394/928" second citation to its actual row text and confirm/correct the sweep premise (the 19-04 closeout verified 394 only; annotate its report if 928 points elsewhere) (report §f4)
