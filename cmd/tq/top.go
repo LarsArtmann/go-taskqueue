@@ -138,10 +138,10 @@ func sortedProjectViews(byProject map[string]*projectView) []projectView {
 // pending tasks whose latest requeue evidence is the budget class and
 // whose park window is still open — the “the pool LOOKS idle on purpose”
 // state the webui nowband renders as its budget lamp.
-func applyBudgetParked(tasks []task.Task, latest map[string]string, now time.Time, view func(string) *projectView) {
+func applyBudgetParked(tasks []task.Task, latest map[string]queue.RequeueEvidence, now time.Time, view func(string) *projectView) {
 	for i := range tasks {
 		t := tasks[i]
-		if t.Status != task.Pending || latest[t.ID.String()] != queue.RequeueClassBudget {
+		if t.Status != task.Pending || latest[t.ID.String()].Class != queue.RequeueClassBudget {
 			continue
 		}
 
@@ -169,7 +169,7 @@ func aggregateTop(tasks []task.Task, facts []journal.Fact, now time.Time) []proj
 	// Facts arrive in seq order, so the last Completed fact per project is
 	// the most recent completion.
 	claimedAt := applyRunDurations(facts, taskProject, view)
-	applyBudgetParked(tasks, latestRequeueClass(facts), now, view)
+	applyBudgetParked(tasks, latestRequeueEvidence(facts), now, view)
 	applyActiveDurations(tasks, claimedAt, now, view)
 
 	return sortedProjectViews(byProject)

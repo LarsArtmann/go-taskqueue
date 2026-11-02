@@ -42,7 +42,7 @@ func TestParkedRowsCarryEvidenceSuffix(t *testing.T) {
 	parked := task.Task{ID: id, Status: task.Pending, Type: "agent", Project: "demo"}
 
 	var buf bytes.Buffer
-	printTaskListTo(&buf, []task.Task{parked}, 0, func() (int, error) { return 1, nil }, nil, summaries, nil)
+	printTaskListTo(&buf, []task.Task{parked}, 0, func() (int, error) { return 1, nil }, nil, summaries)
 
 	if out := buf.String(); !strings.Contains(out, "evidence="+want) {
 		t.Fatalf("parked row = %q, want evidence=%q suffix", out, want)
@@ -63,7 +63,7 @@ func TestParkedRowsWithoutEvidenceRenderPlain(t *testing.T) {
 	parked := task.Task{ID: id, Status: task.Pending, Type: "agent", Project: "demo"}
 
 	var buf bytes.Buffer
-	printTaskListTo(&buf, []task.Task{parked}, 0, func() (int, error) { return 1, nil }, nil, summaries, nil)
+	printTaskListTo(&buf, []task.Task{parked}, 0, func() (int, error) { return 1, nil }, nil, summaries)
 
 	if strings.Contains(buf.String(), "evidence=") {
 		t.Fatalf("parked row = %q, must not carry an evidence suffix", buf.String())

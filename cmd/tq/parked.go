@@ -16,38 +16,16 @@ import (
 // bounded tail keeps every refresh O(1) as the journal grows.
 const factTailLimit = 5000
 
-// latestRequeueClass walks facts in seq order and returns, per task id,
-// the class of its most recent task.requeued fact (last-wins). Legacy or
-// malformed details normalize to RequeueClassUnknown, matching every
-// other reader of the evidence (journalaudit, webui, readmodel).
-func latestRequeueClass(facts []journal.Fact) map[string]string {
-	latest := make(map[string]string)
-
-	for _, fact := range facts {
-		if fact.Type != journal.Requeued {
-			continue
-		}
-
-		var evidence queue.RequeueEvidence
-		if err := json.Unmarshal(fact.Detail, &evidence); err != nil || evidence.Class == "" {
-			latest[fact.TaskID] = queue.RequeueClassUnknown
-
-			continue
-		}
-
-		latest[fact.TaskID] = evidence.Class
-	}
-
-	return latest
-}
-
-// latestRequeueProvider walks facts in seq order and returns, per task
-// id, the provider tag of its most recent task.requeued fact (last-wins):
-// WHICH provider exhausted, so the parked surface answers "which provider
-// is limited?" in one glance (04-03 §f8). Legacy or malformed details
-// normalize to "" (no tag), matching the skip-don't-fail decode policy.
-func latestRequeueProvider(facts []journal.Fact) map[string]string {
-	latest := make(map[string]string)
+// latestRequeueEvidence walks facts in seq order and returns, per task
+// id, the RequeueEvidence of its most recent task.requeued fact
+// (last-wins): ONE single-pass decider shared by the parked-class filter,
+// the provider tag, and the budget chip, so no reader walks the fact tail
+// twice (2026-10-27 07-28 closeout §f24). Legacy or malformed details
+// normalize the same way every other reader of the evidence does
+// (journalaudit, webui, readmodel): unparsable details to the zero
+// evidence, a missing class to RequeueClassUnknown.
+func latestRequeueEvidence(facts []journal.Fact) map[string]queue.RequeueEvidence {
+	latest := make(map[string]queue.RequeueEvidence)
 
 	for _, fact := range facts {
 		if fact.Type != journal.Requeued {
@@ -56,12 +34,16 @@ func latestRequeueProvider(facts []journal.Fact) map[string]string {
 
 		var evidence queue.RequeueEvidence
 		if err := json.Unmarshal(fact.Detail, &evidence); err != nil {
-			latest[fact.TaskID] = ""
+			latest[fact.TaskID] = queue.RequeueEvidence{}
 
 			continue
 		}
 
-		latest[fact.TaskID] = evidence.Provider
+		if evidence.Class == "" {
+			evidence.Class = queue.RequeueClassUnknown
+		}
+
+		latest[fact.TaskID] = evidence
 	}
 
 	return latest
@@ -130,11 +112,11 @@ func latestFailureEvidenceSummary(facts []journal.Fact) map[string]string {
 // and the not_before window still open (a due park is claimable work, not
 // parked). The class join runs CLI-side because it is fact evidence, not
 // a stored column the queue filter could push down.
-func parkedByClass(tasks []task.Task, latest map[string]string, class string, now time.Time) []task.Task {
+func parkedByClass(tasks []task.Task, latest map[string]queue.RequeueEvidence, class string, now time.Time) []task.Task {
 	out := make([]task.Task, 0, len(tasks))
 
 	for _, t := range tasks {
-		if t.Status != task.Pending || latest[t.ID.String()] != class {
+		if t.Status != task.Pending || latest[t.ID.String()].Class != class {
 			continue
 		}
 
