@@ -10,7 +10,6 @@
 package config
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -66,33 +65,41 @@ func Postgres(dsn string) Deployment {
 	return Deployment{Driver: DriverPostgres, DSN: dsn, SyncPolicy: SyncNormal}
 }
 
+// ValidationError is the specific error type Validate returns; the message
+// carries the violated invariant verbatim.
+type ValidationError struct {
+	msg string
+}
+
+func (e *ValidationError) Error() string { return e.msg }
+
 // Validate enforces the deployment's shape invariants.
-func (d Deployment) Validate() error {
+func (d Deployment) Validate() *ValidationError {
 	switch d.Driver {
 	case DriverSQLite:
 		if d.DBPath == "" {
-			return errors.New("config: sqlite deployment needs a DBPath")
+			return &ValidationError{"config: sqlite deployment needs a DBPath"}
 		}
 
 		if d.DSN != "" {
-			return errors.New("config: sqlite deployment must not carry a DSN")
+			return &ValidationError{"config: sqlite deployment must not carry a DSN"}
 		}
 	case DriverPostgres:
 		if d.DSN == "" {
-			return errors.New("config: postgres deployment needs a DSN")
+			return &ValidationError{"config: postgres deployment needs a DSN"}
 		}
 
 		if d.DBPath != "" {
-			return errors.New("config: postgres deployment must not carry a DBPath")
+			return &ValidationError{"config: postgres deployment must not carry a DBPath"}
 		}
 	default:
-		return fmt.Errorf("config: unknown driver %q (want sqlite or postgres)", d.Driver)
+		return &ValidationError{fmt.Sprintf("config: unknown driver %q (want sqlite or postgres)", d.Driver)}
 	}
 
 	switch d.SyncPolicy {
 	case SyncFull, SyncNormal, SyncOff:
 	default:
-		return fmt.Errorf("config: unknown sync policy %q (want full, normal, off)", d.SyncPolicy)
+		return &ValidationError{fmt.Sprintf("config: unknown sync policy %q (want full, normal, off)", d.SyncPolicy)}
 	}
 
 	return nil
