@@ -133,6 +133,16 @@ func stillActive(
 	return deadlines
 }
 
+// DeadlinesError is the specific error type DeadlinesForStore returns; it
+// unwraps the underlying store error.
+type DeadlinesError struct {
+	err error
+}
+
+func (e *DeadlinesError) Error() string { return e.err.Error() }
+
+func (e *DeadlinesError) Unwrap() error { return e.err }
+
 // DeadlinesForStore is the store-backed seam under Deadlines for
 // callers that hold a store and need only the deadline map (the webui
 // snapshot loader, `tq dlq` rows): drains the journal, joins the task
@@ -142,7 +152,7 @@ func DeadlinesForStore(
 	store queue.Store,
 	now time.Time,
 	window time.Duration,
-) (map[string]time.Time, error) {
+) (map[string]time.Time, *DeadlinesError) {
 	if window <= 0 {
 		return nil, nil
 	}
@@ -154,7 +164,7 @@ func DeadlinesForStore(
 	for {
 		batch, err := store.Facts(ctx, after, drainPageSize)
 		if err != nil {
-			return nil, fmt.Errorf("read facts after %d: %w", after, err)
+			return nil, &DeadlinesError{fmt.Errorf("read facts after %d: %w", after, err)}
 		}
 
 		facts = append(facts, batch...)
@@ -167,7 +177,7 @@ func DeadlinesForStore(
 
 	tasks, err := store.List(ctx, queue.Filter{})
 	if err != nil {
-		return nil, fmt.Errorf("list tasks: %w", err)
+		return nil, &DeadlinesError{fmt.Errorf("list tasks: %w", err)}
 	}
 
 	projectByID := make(map[task.ID]string, len(tasks))

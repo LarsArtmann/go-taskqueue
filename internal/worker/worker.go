@@ -717,7 +717,7 @@ func (p *Pool) execute(ctx context.Context, t task.Task, claim queue.Claim) {
 	// question) hold it. Every judged outcome — completion, burned or
 	// permanent failure, cancellation — forgets it so a later refusal
 	// starts fresh.
-	if !staysOnLadder(execErr) {
+	if execErr == nil || !staysOnLadder(execErr) {
 		p.preflightReset(t.ID)
 	}
 
@@ -1012,13 +1012,24 @@ func (p *Pool) execute(ctx context.Context, t task.Task, claim queue.Claim) {
 	}
 }
 
-func (p *Pool) runExecutor(ctx context.Context, t task.Task) error {
+// runExecutorError is the specific error type runExecutor returns; Unwrap
+// keeps sentinel matching (errors.Is context.Canceled) and errors.AsType
+// classification of the wrapped executor errors working through the type.
+type runExecutorError struct {
+	err error
+}
+
+func (e *runExecutorError) Error() string { return e.err.Error() }
+
+func (e *runExecutorError) Unwrap() error { return e.err }
+
+func (p *Pool) runExecutor(ctx context.Context, t task.Task) *runExecutorError {
 	exec, err := p.cfg.Executors.Lookup(t.Type)
 	if err != nil {
 		// Unknown type is a permanent error: the payload can never match a
 		// registered executor on a retry either. Dead-letter via the
 		// permanent class instead of exhausting attempts.
-		return executor.Permanent(fmt.Errorf("no executor for type %q: %w", t.Type, err))
+		return &runExecutorError{executor.Permanent(fmt.Errorf("no executor for type %q: %w", t.Type, err))}
 	}
 
 	runCtx, cancel := context.WithTimeout(ctx, p.cfg.TaskTimeout)
@@ -1038,21 +1049,25 @@ func (p *Pool) runExecutor(ctx context.Context, t task.Task) error {
 
 	select {
 	case err := <-done:
-		return err
+		if err == nil {
+			return nil
+		}
+
+		return &runExecutorError{err}
 	case <-runCtx.Done():
 		// The heartbeat goroutine shares ctx; if OUR ctx was cancelled the
 		// lease is being abandoned anyway.
 		if ctx.Err() != nil {
-			return ctx.Err()
+			return &runExecutorError{ctx.Err()}
 		}
 
 		// Parent (heartbeat) context cancelled us without a pool shutdown:
 		// cooperative cancel or lease loss — report the cancellation itself,
 		// not a misleading timeout.
 		if errors.Is(runCtx.Err(), context.Canceled) {
-			return runCtx.Err()
+			return &runExecutorError{runCtx.Err()}
 		}
 
-		return fmt.Errorf("task timeout after %s", p.cfg.TaskTimeout)
+		return &runExecutorError{fmt.Errorf("task timeout after %s", p.cfg.TaskTimeout)}
 	}
 }
