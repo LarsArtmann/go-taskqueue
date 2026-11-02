@@ -140,6 +140,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Internal
 
+- Verdict→outcome calibration dataset (2026-11-02): every paid agent/
+  review/status/dlqfix/prioritize run appends one `CalibrationRow` (raw
+  verdict-channel body, `Verify`/`Attestation` join keys, derived
+  commit/file counts, session usage) to
+  `$TQ_LOG_DIR/calibration.jsonl` (`internal/executor/calibration.go`);
+  best-effort — unset `TQ_LOG_DIR` records no dataset. Repo-internal
+  tuning input, no operator surface yet.
 - Done-prompt window pass (2026-11-02, twenty-sixth dispatch): the
   2026-10-30→31 window's sixteen tasks audited against their 13
   a)-g) closeout reports and re-verified at HEAD
