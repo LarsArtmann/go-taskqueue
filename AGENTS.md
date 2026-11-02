@@ -339,6 +339,10 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   endpoint without it (SECURITY.md).
 - **templ + cmd/tq LSP diagnostics are false positives** — trust the CLI
   gates, never "fix" them.
+- **cmd/tq `GOWORK=off` build/test fails at HEAD** against the pinned facade
+  floor (undefined readmodel/executor/dlqfix internals) — the tracked
+  cmd/tq go.work workspace or `scripts/test-cmd-tq.sh` is the supported
+  gate until the next internal release (2026-10-27 07-28 closeout §d5).
 - **erraudit**: HARD gate `scripts/check-erraudit.sh` — exact ruled flags live
   there (`--max` dev-build-only; CI pin v0.7.0 rejects it, hence the explicit
   decomposition), run from EACH module root (`lint` REJECTS `--modules`/
