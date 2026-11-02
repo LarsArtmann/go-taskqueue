@@ -14,7 +14,7 @@
 # over a fixture repo with backdated commit timestamps (fleet convention:
 # countable gate summaries are PINNED).
 set -euo pipefail
-cd "$(dirname "$0")/.."
+cd "${TQ_PUSH_TIMING_REPO:-$(dirname "$0")/..}"
 
 min_age="${TQ_PUSH_MIN_AGE:-600}"
 
@@ -74,6 +74,10 @@ run_hook() {
 }
 
 if [ "${1:-}" = "--self-test" ]; then
+	case "$0" in
+	/*) script="$0" ;;
+	*) script="$(pwd)/$0" ;;
+	esac
 	tmp="$(mktemp -d)"
 	trap 'rm -rf "$tmp"' EXIT
 	git init -q "$tmp"
@@ -182,9 +186,68 @@ Task-Queue-ID: 000001a175f4de403dc14ed9579100000000'
 		rc=1
 		;;
 	esac
+	# --check dry-run battery (row 1241): age + verdict + heal command,
+	# no stdin hooking; TQ_PUSH_TIMING_REPO points the spawned run at the
+	# fixture (the script would otherwise cd to the real repo root).
+	out="$(TQ_PUSH_TIMING_REPO="$tmp" TQ_PUSH_TIMING_NOW=$((base + 700)) bash "$script" --check "$fresh_sha" 2>&1)" && chk_rc=0 || chk_rc=$?
+	[ "$chk_rc" -eq 1 ] || {
+		echo "FAIL: --check fresh commit should exit 1 (rc=$chk_rc)"
+		rc=1
+	}
+	case "$out" in
+	*"PUSH-TIMING REFUSAL:"*"push-timing --check: $fresh_sha REFUSED (age="*"heal-daemon-sweep.sh"*) ;;
+	*)
+		echo "FAIL: --check refusal pin (age + heal command) mismatch:"
+		printf '%s\n' "$out"
+		rc=1
+		;;
+	esac
+	out="$(TQ_PUSH_TIMING_REPO="$tmp" TQ_PUSH_TIMING_NOW=$((base + 700)) bash "$script" --check "$old_sha" 2>&1)" || {
+		echo "FAIL: --check backdated commit should allow: $out"
+		rc=1
+	}
+	case "$out" in
+	*"push-timing --check: $old_sha ALLOWED (age="*) ;;
+	*)
+		echo "FAIL: --check allowed pin mismatch:"
+		printf '%s\n' "$out"
+		rc=1
+		;;
+	esac
+	out="$(TQ_PUSH_TIMING_REPO="$tmp" bash "$script" --check 0000000000000000000000000000000000000000 2>&1)" && chk_rc=0 || chk_rc=$?
+	[ "$chk_rc" -eq 2 ] || {
+		echo "FAIL: --check unknown sha should exit 2 (rc=$chk_rc)"
+		rc=1
+	}
 	[ "$rc" -eq 0 ] || exit 1
-	echo "push-timing self-test ok (summary format pin + range-walk battery: backdated allowed, fresh refused, healed allowed, mid-history fresh under allowed tip refused, new-branch zero-remote refused)"
+	echo "push-timing self-test ok (summary format pin + range-walk battery: backdated allowed, fresh refused, healed allowed, mid-history fresh under allowed tip refused, new-branch zero-remote refused; --check dry-run: refused with age+heal, allowed pin, unknown sha exit 2)"
 	exit 0
+fi
+
+# Dry-run triage mode (row 1241): --check <sha> prints age + verdict + the
+# heal command WITHOUT hooking stdin, so a fresh-daemon-chore push refusal is
+# triageable in one command. Exit codes: 0 allowed, 1 refused, 2 usage/unknown sha.
+if [ "${1:-}" = "--check" ]; then
+	shift
+	if [ "$#" -ne 1 ]; then
+		echo "usage: check-push-timing.sh (pre-push stdin) | --self-test | --check <sha>" >&2
+		exit 2
+	fi
+	sha="$1"
+	if ! git cat-file -e "$sha^{commit}" 2>/dev/null; then
+		echo "push-timing --check: no such commit: $sha" >&2
+		exit 2
+	fi
+	now="${TQ_PUSH_TIMING_NOW:-$(date +%s)}"
+	age="$((now - $(git log -1 --format=%ct "$sha")))"
+	subject="$(git log -1 --format=%s "$sha")"
+	if check_commit "$sha" "$now"; then
+		printf 'push-timing --check: %s ALLOWED (age=%ss, subject: %s)\n' "$sha" "$age" "$subject"
+		exit 0
+	fi
+	printf 'push-timing --check: %s REFUSED (age=%ss, limit TQ_PUSH_MIN_AGE=%ss, subject: %s)\n' "$sha" "$age" "$min_age" "$subject" >&2
+	printf '  heal while still unpushed: scripts/heal-daemon-sweep.sh [--from %s] <Task-Queue-ID>\n' "$sha" >&2
+	exit 1
 fi
 
 # Hook mode: pre-push pipes the ref lines on stdin; a terminal stdin is an
