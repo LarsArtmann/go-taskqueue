@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# AGENTS.md byte-budget gate (row 425): trips at gate time with a readable
+# AGENTS.md byte-budget gate (agentsDocMaxBytes twin): trips at gate time with a readable
 # message instead of as a cmd/tq TestAgentsDocSizeGuard failure two windows
 # later. Mirrors agentsDocMaxBytes in cmd/tq/facts_json_test.go (23,900 B
 # since the 2026-10-29 conscious reset 23,600 → 23,900 for the Crush

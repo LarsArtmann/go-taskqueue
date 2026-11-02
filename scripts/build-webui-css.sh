@@ -79,7 +79,7 @@ trap 'rm -f "$ENTRY"' EXIT
 floor_bytes="${CSS_MIN_BYTES:-20000}"
 out_bytes="$(wc -c <"$OUT")"
 if [ "$out_bytes" -lt "$floor_bytes" ]; then
-	echo "FAIL: rebuild produced ${out_bytes}B (< ${floor_bytes}B floor) — @source resolution failed (cold module cache or vendored fallback without templates/; row 1125). NOT writing the stripped sheet." >&2
+	echo "FAIL: rebuild produced ${out_bytes}B (< ${floor_bytes}B floor) — @source resolution failed (cold module cache or vendored fallback without templates/; @source floor). NOT writing the stripped sheet." >&2
 	mv "$OUT" "$OUT.stripped" 2>/dev/null || true
 	echo "implausible output kept for diagnosis at $OUT.stripped" >&2
 	exit 1

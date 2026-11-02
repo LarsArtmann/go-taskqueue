@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Push-timing guard (TODO row 949; 2026-10-15 00-44 report §d1/§g1): the
+# Push-timing guard (2026-10-15 00-44 report §d1/§g1): the
 # auto-commit daemon's footer-less `chore:` sweeps commit continuously, and
 # an in-flight task heals them into attributed commits via
 # scripts/heal-daemon-sweep.sh — but only while they are UNPUSHED (heal

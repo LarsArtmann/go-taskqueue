@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Gate-ordering guard (row 1121-adjacent F24 / the fleet ORDERING row):
+# Gate-ordering guard (fleet ORDERING convention — AGENTS.md §Conventions
+# "countable gate summaries are PINNED"):
 # the fleet convention says every countable gate's --self-test invocation
 # runs AHEAD of its real-gate invocation in ci-local.sh — the dce6c12b
 # inverted wiring (self-tests after gates) shipped despite the convention

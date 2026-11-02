@@ -31,7 +31,7 @@ is_prompt_const_file() {
 }
 
 # The daemon's subject template — mirrors the queue's folded-here regex
-# (cmd/tq daemonCommitSubject; keep both in sync, row 243).
+# (cmd/tq daemonCommitSubject; keep both in sync — the queue's dedup scan is the other writer).
 is_daemon_subject() {
 	printf '%s' "$1" | grep -Eq '^chore: auto-commit [0-9]+ changed file\(s\) \(heuristic\)$'
 }

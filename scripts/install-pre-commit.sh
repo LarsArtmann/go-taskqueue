@@ -106,7 +106,7 @@ cat >"$commit_msg" <<'EOF'
 # >= 2.15, the same floor as the queue's trailer scanning). And the footer
 # must be the LAST non-empty (non-comment) line: a footer followed by
 # another trailer still parses but breaks the footer-as-final-line
-# contract (2026-10-14 05-16 report §d1/§e1/§f4; TODO row 937).
+# contract (2026-10-14 05-16 report §d1/§e1/§f4).
 msg="$1"
 
 count=$(grep -ciE '^Task-Queue-ID:' "$msg" || true)
@@ -155,7 +155,7 @@ exit 0
 EOF
 chmod +x "$commit_msg"
 
-# Pre-push push-timing guard (TODO row 949): refuse pushing footer-less
+# Pre-push push-timing guard (push-timing contract, pinned by check-push-timing.sh --self-test): refuse pushing footer-less
 # `chore:` daemon commits younger than TQ_PUSH_MIN_AGE (default 600s) —
 # an in-flight task can still heal them (scripts/heal-daemon-sweep.sh);
 # pushing mid-fold unattributes the sweep's substance permanently

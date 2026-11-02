@@ -243,13 +243,13 @@ fi
 
 cd "$(dirname "$0")/.." || exit 1
 
-# TQ_DEAD_SHA_BASELINE overrides the curated baseline path (row 825 keeps
+# TQ_DEAD_SHA_BASELINE overrides the curated baseline path (the env var keeps
 # the curated file untouched; the hook serves fixture self-tests and a
 # LOCAL receipt run against a scratch baseline — never a default change).
 baseline="${TQ_DEAD_SHA_BASELINE:-scripts/dead-sha-baseline.txt}"
 
 # Explicit file arguments (repo-root-relative) scope the gate to exactly
-# those files — the verify-battery's own-file leg (TODO row 370) passes the
+# those files — the verify-battery's own-file leg (scripts/verify-battery.sh) passes the
 # window's touched files so a NEW dead cite outside the default scope
 # (docs/planning/, docs/adr/, scripts docs …) still fails loudly. No args
 # keeps the default living-docs scope.
