@@ -211,9 +211,9 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   need in-module `GOWORK=off` tests; root-parsed-file closeouts cite
   ROOT build+vet+test -race rc. Re-dispatch: `scripts/redispatch-brief.sh`;
   battery rc TO A FILE (no PIPESTATUS); dated DONE re-verified note;
-  `-v` + PASS COUNT for conform `-run`. **Observe-first for pinning
-  work**: CAPTURE the live output (temp observation test or smoke run)
-  and pin what was observed — assertion-first pinning burned three windows.
+  `-v` + PASS COUNT for conform `-run`. **Observe-first for pinning**:
+  CAPTURE live output (observation test or smoke run) and pin what was
+  observed — assertion-first pinning burned three windows.
 - **Gate receipts**: a report's "N ok / M fail" count is
   `grep -c '^ok:'` over a CAPTURED gate-output file — never counted in
   context or from a summary line.
@@ -222,7 +222,8 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   check-go-mods, check-dead-exports, check-guard-wiring; gosec too)
   carries `--self-test` pinning its summary format + a negative-path
   counter battery via an env hook; wired into ci-local. New gates:
-  same contract.- **Crush PreToolUse hooks** (`.crushrc` → `scripts/hooks/`, `--self-test`):
+  same contract.
+- **Crush PreToolUse hooks** (`scripts/hooks/`, `--self-test`):
   `tq-bash-guard` (^bash$) denies the paid-trap classes (PIPESTATUS,
   `printf %.0s`, ERE bracket `\t/\d`, unscoped `gofmt`, smokes w/o `TQ_DB=`,
   force-push, `filter-branch`, redirect→`*.go`) and advises TQ_DB/unset/
@@ -247,9 +248,9 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   WARN gate `check-tick-claims.sh`.
 - **O14 CHANGELOG policy**: `[Unreleased]` carries OPERATOR-VISIBLE changes
   only — repo-internal tooling and non-operator rows go in the `### Internal`
-  subsection at the bottom of the release section, never Added/Changed/Fixed;
-  external/API behavior changes get an explicit `(BEHAVIOR CHANGE for …)`
-  flag (O14 check in `scripts/check-release-docs.sh`).
+  subsection at the release section's bottom, never Added/Changed/Fixed;
+  behavior changes get an explicit `(BEHAVIOR CHANGE for …)` flag (O14
+  check in `scripts/check-release-docs.sh`).
 - **Clock-first filenames**: run `date +%Y-%m-%d_%H-%M` BEFORE
   composing a `<ts>_<slug>` filename — a guessed `<ts>` lies.
 - **Edit→commit→battery ordering**: stage+commit BEFORE running anything
@@ -302,17 +303,16 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 
 - **Concurrent agents commit constantly** (auto-commit daemon): re-run
   `go test ./... -race` before declaring success; never generate Go source via
-  heredocs; fixtures under /tmp (gated trees are daemon-food). Footer-less
-  `chore:` sweeps heal via `scripts/heal-daemon-sweep.sh [--from <ref>]
-  [--retitle <s>] <Task-Queue-ID>` (unpushed only; backup on failure;
-  `--self-test` pins rails): REFUSES non-contiguous spans; a refusal naming
-  the span's PARENT (foreign footer BELOW an exactly-mine span) = terminator
-  shape — run its printed `--from <oldest-blocker>`; residue fallback = amend
-  the unpushed HEAD once `git show --stat` proves it mine.
-- **`TestExactlyOnceUnderConcurrency` is load-flaky (worker);
-  `TestSelfManagingLoop` is load-flaky (harvest)**: build storms drop at clean
-  parents — re-run before attributing; both ride `KNOWN_FLAKY` in
-  `scripts/lib/verify-retry.sh`.
+  heredocs; /tmp fixtures (gated trees are daemon-food). Footer-less sweeps
+  heal via `scripts/heal-daemon-sweep.sh [--from <ref>] [--retitle <s>] <id>`
+  (unpushed only; backup on failure; `--self-test` pins rails): REFUSES
+  non-contiguous spans; a refusal naming the span's PARENT (foreign footer
+  BELOW an exactly-mine span) = terminator shape — run its printed
+  `--from <oldest-blocker>`; residue fallback = amend the unpushed HEAD
+  once `git show --stat` proves it mine.
+- **`TestExactlyOnceUnderConcurrency` (worker) and `TestSelfManagingLoop`
+  (harvest) are load-flaky**: build storms drop at clean parents — re-run
+  before attributing; both ride `KNOWN_FLAKY` in scripts/lib/verify-retry.sh.
 - **Agent shells inherit `TQ_DB`** (PRODUCTION journal) — scratch smokes
   MUST export `TQ_DB=<scratch>`.
 - **Session shell hazards**: no `PIPESTATUS`; bare `unset VAR` leaks to
@@ -337,22 +337,21 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 - **`tq serve`/`tq api` security**: loopback + read-only default; writes
   CSRF+lockout-guarded; non-loopback needs `--auth-token`; no new write
   endpoint without it (SECURITY.md).
-- **templ + cmd/tq LSP diagnostics are false positives** — trust the CLI
-  gates, never "fix" them.
-- **cmd/tq `GOWORK=off` build/test fails at HEAD** against the pinned facade
-  floor (undefined readmodel/executor/dlqfix internals) — the tracked
-  cmd/tq go.work workspace or `scripts/test-cmd-tq.sh` is the supported
-  gate until the next internal release (2026-10-27 07-28 closeout §d5).
-- **erraudit**: HARD gate `scripts/check-erraudit.sh` — exact ruled flags live
-  there (`--max` dev-build-only; CI pin v0.7.0 rejects it, hence the explicit
-  decomposition), run from EACH module root (`lint` REJECTS `--modules`/
-  `--violations-only`). `legacy_as` → `errors.AsType` (done); `legacy_is`
-  sentinel sites KEEP `errors.Is` + `//nolint:legacyerrors // <reason>` on the
-  call line (gate passes `--no-suppress`; never run `nolint-audit --fix` —
-  it deletes honored tokens). `generic_return` (~197 sites / 24 modules):
-  OWNER-RULED ADOPT — a migration project, not suppressible lint debt; gate
-  keeps `--disable generic_return` until it lands. Wiring: gate + ci-local
-  HARD; CI = `--self-test` only (repo PRIVATE). Bugs: github.com/larsartmann/erraudit.
+- **templ + cmd/tq LSP diagnostics are false positives; cmd/tq `GOWORK=off`
+  build/test fails at HEAD** (undefined readmodel/executor/dlqfix internals
+  vs the pinned facade floor) — trust the CLI gates: the tracked go.work
+  workspace or `scripts/test-cmd-tq.sh` is the supported gate until the
+  next internal release (07-28 §d5); never "fix" the diagnostics.
+- **erraudit**: HARD gate `scripts/check-erraudit.sh` — ruled flags live
+  there (`--max` dev-build-only; CI pin v0.7.0 rejects it), run from EACH
+  module root (`lint` REJECTS `--modules`/`--violations-only`). `legacy_as`
+  → `errors.AsType` (done); `legacy_is` sites KEEP `errors.Is` +
+  `//nolint:legacyerrors // <reason>` on the call line (gate passes
+  `--no-suppress`; never run `nolint-audit --fix` — deletes honored tokens).
+  `generic_return` (~197 sites / 24 modules): OWNER-RULED ADOPT, a migration
+  project — gate keeps `--disable generic_return` until it lands. Wiring:
+  gate + ci-local HARD; CI = `--self-test` only (repo PRIVATE).
+  Bugs: github.com/larsartmann/erraudit.
 - **VendorHash drift**: after a go.mod change run
   `nix build .#checks.x86_64-linux.vendor-hash` and copy `got:` into flake.nix.
 - **readmodel schema drift crash-loops the fold** (planned tables get no
