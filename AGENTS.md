@@ -103,7 +103,7 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 - **SQLite IO policy**: steady-state handles run at the configured sync tier
   (NORMAL = checkpoint fsync, lost-tail-tolerant); migrations stay FULL. Claim
   probes use partial RUNNING-only indexes (companion.Migrate), never history;
-  idle loops back off (cap `IdlePollMax` 2s).
+  idle loops back off (cap IdlePollMax 2s).
 - **Task contexts survive pool shutdown** (bounded only by `--task-timeout`)
 — no shared drain deadline.
 - **Facts in the same tx as state**, or it didn't happen.
@@ -214,17 +214,18 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   rc TO A FILE (no PIPESTATUS); dated DONE re-verified note; `-v` + PASS
   COUNT for conform `-run`. **Premise-check first**: RUN a batch item's
   premise gate (e.g. `check-agents-size.sh`) BEFORE planning — a stale
-  premise (a "zero headroom" that was 380 B red) burned a window. **Observe-first for pinning**:
+  premise ("zero headroom" was actually 380 B red) burned a window. **Observe-first for pinning**:
   CAPTURE live output (observation test or smoke run) and pin what was
   observed — assertion-first pinning burned three windows.
-- **Gate receipts**: a report's "N ok / M fail" count is  `grep -c '^ok:'` over a CAPTURED gate-output file — never counted in
-  context or from a summary line.
+- **Gate receipts**: a report's "N ok / M fail" count is `grep -c '^ok:'`
+  over a CAPTURED gate-output file — never counted in context or from a
+  summary line. Copy-paste: `go test ./... | tee /tmp/gate.log` then
+  `grep -c '^ok:' /tmp/gate.log`.
 - **Fleet convention — countable gate summaries are PINNED, not
   advisory**: every countable sibling gate (check-script-syntax,
   check-go-mods, check-dead-exports, check-guard-wiring; gosec too)
   carries `--self-test` pinning its summary format + a negative-path
-  counter battery via an env hook; wired into ci-local; new gates:
-  same contract.
+  counter battery via an env hook; wired into ci-local; new gates too.
 - **Crush PreToolUse hooks** (`scripts/hooks/`, `--self-test`):
   `tq-bash-guard` (^bash$) denies the paid-trap classes (PIPESTATUS,
   `printf %.0s`, ERE bracket `\t/\d`, unscoped `gofmt`, smokes w/o `TQ_DB=`,
@@ -235,8 +236,7 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   (force-push hatchless); smoke rule is command-position.
 - docs/status reports follow the a)-g) skeleton; indexed on creation
   (`check-status-index.sh`; daemon bypasses hooks — AMEND MANEUVER for
-  daemon folds); ONE index-row write point (top chronological
-  cluster); CHANGELOG append-only; record `tq verdict` before session end
+  daemon folds); ONE index-row write point (top cluster); CHANGELOG append-only; record `tq verdict` before session end
   (report without verdict = half-closeout).
 - **Dry-run-first for doc/index mutation scripts**: one-off
   AGENTS/TODO_LIST/status-index sweeps print computed rows first; the FIRST
@@ -244,7 +244,7 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   to print, fatal to run.
 - **Closeout TICK-AUDIT**: before the FINAL commit of any batch, grep
   TODO_LIST.md for each verbatim batch anchor; finished rows must read
-  `- [x]` (landed + unchecked = paid round-trip).
+  `- [x]` — landed + unchecked = paid round-trip.
 - **Tick-claims cite the tick commit**: "rows N-M ticked/`[x]`" claims cite
   the tick commit when the ticks aren't in the report's own commit;
   WARN gate `check-tick-claims.sh`.
@@ -266,7 +266,7 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   and the heal refuses, so between steps the tree must be CLEAN, not merely
   "nothing left to stage".
 - **Prompt-content changes are dedup-invisible when daemon-folded**:
-  re-dispatch dedup scans footer-bearing commits only, so prompt-const work
+  re-dispatch dedup scans footer-bearing commits only — prompt-const work
   in a footer-less chore sweep is invisible to it.
   `scripts/check-prompt-const-folds.sh` (e0b1fc4f) catches the fold AFTER
   it lands; never tick a prompt-content row off
@@ -289,10 +289,10 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 - POSIX-only suites carry `//go:build unix`; tests hermetic (nix checkPhase
   lacks host tools).
 - Generated `*_templ.go` + minified `app.css` COMMITTED; after template
-  edits run `templ generate` from REPO ROOT + `nix run .#webui-css`.
-- Web UI uses `templ-components` (guard-pinned; table
-  `internal/webui/ADOPTION.md`); REJECTED `display.Eyebrow`,
-  `KanbanBoard`, errorpage, `icons.Render`.
+  edits run `templ generate` + `nix run .#webui-css` (REPO ROOT).
+- Web UI uses templ-components (guard-pinned; table
+  internal/webui/ADOPTION.md); REJECTED display.Eyebrow,
+  KanbanBoard, errorpage, icons.Render.
 - `TODO_LIST.md` machine-consumed: `- [ ]`, one per line, never tables;
   `— BLOCKED: <reason>`; items agent-executable (`check-todo-list.sh`);
   DONE-row notes collapse to ONE note + latest-report pointer.
@@ -325,7 +325,7 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 - **GOEXPERIMENT/GOTOOLCHAIN**: ci-local exports jsonv2; CI setup-go + go.mod
   floors + flake tarball PINNED IN LOCKSTEP (1.27.3); NEVER lower a `go`
   directive (`check-go-mods.sh`).
-- **`fetch` empty ≠ URL dead**: an empty body is a tool mismatch — retry with `download`; record the pass.
+- **`fetch` empty ≠ URL dead**: an empty body is a tool mismatch — retry with `download`.
 - **Host GOCACHE/GOROOT hazards**: gates run `GOCACHE=/tmp/go-build-cache`
   (host symlink → /nix/store ENOSPCs); "package X is not in std" +
   `$GOMODCACHE/toolchain@…` GOROOT = corrupt extraction (chmod -R u+w + trash).
@@ -339,7 +339,7 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 - **templ + cmd/tq LSP diagnostics are false positives — never "fix" them;
   cmd/tq `GOWORK=off` build/test fails at HEAD** (undefined internals vs
   the facade floor) — trust the CLI gates: go.work workspace or
-  `scripts/test-cmd-tq.sh` until the next internal release (07-28 §d5).
+  `scripts/test-cmd-tq.sh` (07-28 §d5).
 - **erraudit**: HARD gate `scripts/check-erraudit.sh` — ruled flags live
   there (`--max` dev-build-only; CI pin v0.7.0 rejects it), run from EACH
   module root (`lint` REJECTS `--modules`/`--violations-only`). `legacy_as`
@@ -375,7 +375,7 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   `{sqlitev4,postgresv4}` + `companion`; `internal/journal/cqrs` PROPRIETARY,
   read-only — never extend or import below root. Facade Open
   backward-auto-upgrades legacy pre-flip DBs in place (snapshot
-  `<db>.legacy-*.bak`, verify, restore on mismatch; absent feature-era tables
+  `<db>.legacy-*.bak`, verify, restore on mismatch; absent tables
   tolerated); refuse via `TQ_NO_AUTO_UPGRADE=1`; manual replay:
   `go run ./replay` (internal/queue/sqlitev4).
 - **PapDashboard bridge**: `--alert-url/--alert-api-key`; dead letters raise
