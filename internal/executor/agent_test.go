@@ -306,7 +306,7 @@ func TestAgentExecutorArgvContract(t *testing.T) {
 
 	if !strings.Contains(
 		prompt,
-		"'<one-line result JSON>' — the queue reads this file; it is the authoritative channel (stdout is only a fallback)",
+		"'<one-line result JSON>' — the queue reads this file; it is the ONLY verdict channel (a stdout line is never parsed)",
 	) {
 		t.Fatalf("work prompt lost the verdict rail wording: %q", prompt)
 	}

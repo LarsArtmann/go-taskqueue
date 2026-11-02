@@ -583,7 +583,7 @@ const verdictFileEnv = "TQ_RESULT_FILE"
 // and teaches the flag form — `tq verdict --file <path> '<json>'` — so
 // local and routed runs share ONE contract. Always-on when the channel
 // exists (verdictPath != "").
-const verdictRailTmpl = "\n\nVerdict channel: record your final structured verdict before exiting by running: tq verdict --file %s '<one-line result JSON>' — the queue reads this file; it is the authoritative channel (stdout is only a fallback)."
+const verdictRailTmpl = "\n\nVerdict channel: record your final structured verdict before exiting by running: tq verdict --file %s '<one-line result JSON>' — the queue reads this file; it is the ONLY verdict channel (a stdout line is never parsed)."
 
 // questionRailTmpl is the question channel's M8 bridge — same pattern as
 // the verdict rail: the prompt names the per-run marker path so
