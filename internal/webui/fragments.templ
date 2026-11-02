@@ -928,6 +928,12 @@ templ taskDetailTimeline(data DashboardData, t task.Task, facts []journalFactVie
 				<span class="text-xs text-gray-500 dark:text-gray-400">the claim-time budget gate parked this paid turn — it resumes when the daily cap or budget command resets (no attempt burned)</span>
 			</div>
 		}
+		if ev := parkedRequeueEvidence(t, facts); ev.Provider != "" {
+			<div class="tq-parked-budget flex flex-wrap items-center gap-x-2 gap-y-1" aria-label="parked by a provider rate limit">
+				@display.Badge(display.BadgeProps{Text: "parked: [" + ev.Provider + "]", Type: display.BadgeWarning, Size: display.BadgeSizeSM})
+				<span class="text-xs text-gray-500 dark:text-gray-400">the provider rate-limit gate parked this paid turn — it resumes when the requeue wait elapses (no attempt burned)</span>
+			</div>
+		}
 		@retryStrip(retryTrail(facts))
 		<div class="journal-scroll rounded-lg border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
 			@display.Scrollback(display.ScrollbackProps{

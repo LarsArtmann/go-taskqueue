@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/larsartmann/go-taskqueue/internal/journal"
+	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 	"github.com/larsartmann/templ-components/display"
 )
@@ -353,6 +354,74 @@ func TestParkedOnBudget(t *testing.T) {
 					got,
 					tc.want,
 				)
+			}
+		})
+	}
+}
+
+func TestParkedRequeueEvidenceProvider(t *testing.T) {
+	t.Parallel()
+
+	providerRequeue := journal.Fact{
+		Type: journal.Requeued,
+		Detail: jsontext.Value(
+			`{"reason":"429","retry_in_ms":900000,"class":"rate-limit","provider":"zai"}`,
+		),
+	}
+	plainRequeue := journal.Fact{
+		Type:   journal.Requeued,
+		Detail: jsontext.Value(`{"reason":"dirty tree","class":"preflight"}`),
+	}
+
+	pending := task.Task{Status: task.Pending}
+
+	cases := []struct {
+		name          string
+		tk            task.Task
+		facts         []journalFactView
+		wantProvider  string
+		wantBudgetTag bool
+	}{
+		{
+			"provider surfaced",
+			pending,
+			[]journalFactView{providerRequeue},
+			"zai",
+			false,
+		},
+		{
+			"latest requeue evidence wins",
+			pending,
+			[]journalFactView{providerRequeue, plainRequeue},
+			"",
+			false,
+		},
+		{
+			"running is not parked",
+			task.Task{Status: task.Running},
+			[]journalFactView{providerRequeue},
+			"",
+			false,
+		},
+		{
+			"unparsable detail is zero evidence",
+			pending,
+			[]journalFactView{{Type: journal.Requeued, Detail: jsontext.Value(`{`)}},
+			"",
+			false,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			ev := parkedRequeueEvidence(tc.tk, tc.facts)
+			if ev.Provider != tc.wantProvider {
+				t.Errorf("parkedRequeueEvidence(%s) provider = %q, want %q", tc.tk.Status, ev.Provider, tc.wantProvider)
+			}
+			if got := ev.Class == queue.RequeueClassBudget; got != tc.wantBudgetTag {
+				t.Errorf("parkedOnBudget(%s) = %v, want %v", tc.tk.Status, got, tc.wantBudgetTag)
 			}
 		})
 	}
