@@ -3,6 +3,7 @@ package executor
 import (
 	"encoding/json/jsontext"
 	"regexp"
+	"strings"
 	"testing"
 )
 
@@ -26,4 +27,15 @@ func testVerdictLine(t *testing.T, output string) jsontext.Value {
 // per-run file channel — the sole channel since the stdout line retired.
 func stubVerdict(v string) string {
 	return "printf '%s' '" + v + "' > \"$TQ_RESULT_FILE\""
+}
+
+// splitVerdictLine splits a legacy fixture output into its noise lines and
+// the verdict JSON the stdout TQ_RESULT line carried, so Execute-level
+// tables can re-home the verdict into the file channel via stubVerdict.
+func splitVerdictLine(output string) (noise, verdict string) {
+	if m := testVerdictLineRe.FindStringSubmatch(output); m != nil {
+		return strings.TrimSpace(strings.Replace(output, m[0], "", 1)), m[1]
+	}
+
+	return strings.TrimSpace(output), ""
 }

@@ -181,7 +181,7 @@ func TestStatusExecutorPathConfinement(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	bin := makeStubAgent(t, "stubVerdict("{\"report\":\"\"+rel+\"\",\"next_items\":0}")")
+	bin := makeStubAgent(t, stubVerdict("{\"report\":\"" + rel + "\",\"next_items\":0}"))
 	e := &StatusExecutor{Agent: &AgentExecutor{Bin: bin}}
 
 	err = e.Execute(context.Background(), statusTaskT(t, StatusPayload{
@@ -260,7 +260,7 @@ func TestStatusExecutorPromptCarriesWindowContext(t *testing.T) {
 	script := "#!/bin/sh\nfor a in \"$@\"; do echo \"$a\"; done > \"" + promptLog + "\"\n"
 	script += "mkdir -p docs/status\n"
 	script += "echo '# report' > docs/status/r.md\n"
-	script += "stubVerdict("{\"report\":\"docs/status/r.md\",\"next_items\":1}")\n"
+	script += stubVerdict("{\"report\":\"docs/status/r.md\",\"next_items\":1}") + "\n"
 
 	if err := os.WriteFile(bin, []byte(script), 0o755); err != nil {
 		t.Fatalf("write stub: %v", err)

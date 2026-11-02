@@ -478,34 +478,27 @@ func TestReviewExecutorRefusesDirtyTreeAsPreflight(t *testing.T) {
 	}
 }
 
-// TestVerdictFileOutranksStdoutLine pins the channel precedence: when the
-// agent writes $TQ_RESULT_FILE AND prints a legacy stdout TQ_RESULT line,
-// the FILE wins (runAgent appends it last; ResultLine reads the last
-// match). This is the tq-verdict contract the prompts teach.
-func TestVerdictFileOutranksStdoutLine(t *testing.T) {
+// TestStdoutLineNoLongerSatisfiesGate pins the channel flip: a legacy
+// stdout TQ_RESULT line alone does NOT complete a strict executor — the
+// file channel is the sole verdict source, and a stdout-only run fails the
+// attempt (retryable) with the no-verdict contract error.
+func TestStdoutLineNoLongerSatisfiesGate(t *testing.T) {
 	t.Parallel()
 
-	body := `printf '%s\n' 'TQ_RESULT: {"verdict":"request_changes","findings":[{"title":"stale stdout line"}]}'
-printf '%s' '{"verdict":"approve","summary":"from the file"}' > "$TQ_RESULT_FILE"`
-	bin := makeStubAgent(t, body)
+	bin := makeStubAgent(t, `printf '%s\n' 'TQ_RESULT: {"verdict":"approve","summary":"stdout only"}'`)
 	e := &ReviewExecutor{Agent: &AgentExecutor{Bin: bin}}
 
-	ctx, sink := NewSink(context.Background())
-	if err := e.Execute(ctx, reviewTaskT(t, ReviewPayload{
+	err := e.Execute(context.Background(), reviewTaskT(t, ReviewPayload{
 		Repo:         t.TempDir(),
 		ReviewedTask: "t-1",
 		Item:         "write the thing",
-	})); err != nil {
-		t.Fatalf("Execute: %v", err)
+	}))
+	if err == nil {
+		t.Fatal("stdout-only verdict must fail the attempt (file channel is the sole source)")
 	}
 
-	var got ReviewResult
-	if err := json.Unmarshal(sink.Detail(), &got); err != nil {
-		t.Fatalf("sink detail %s: %v", sink.Detail(), err)
-	}
-
-	if got.Verdict != VerdictApprove || got.Summary != "from the file" {
-		t.Fatalf("verdict = %+v, want the FILE's approve (the stdout line must lose)", got)
+	if !strings.Contains(err.Error(), "recorded no verdict") {
+		t.Fatalf("err = %v, want the no-verdict contract error", err)
 	}
 }
 
