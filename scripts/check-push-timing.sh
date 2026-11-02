@@ -42,17 +42,28 @@ check_commit() {
 }
 
 # run_hook <now> on pre-push stdin lines "<local-ref> <local-sha> <remote-ref> <remote-sha>".
+# Each line walks the WHOLE pushed range `git rev-list <remote>..<local>` so a
+# fresh footer-less daemon chore MID-HISTORY is refused too, not only the per-ref
+# tip (row 1236; 2026-10-26 03-22 closeout §b1). A zero remote sha (new branch)
+# walks the local tip capped at 200 commits.
 run_hook() {
-	local now="$1" refused=0 total=0
+	local now="$1" refused=0 total=0 lsha rsha sha range
 	refused_summary="push-timing summary: 0 commits checked, 0 refused"
-	while read -r _ lsha _ _; do
+	while read -r _ lsha _ rsha; do
 		case "$lsha" in
 		0000000000000000000000000000000000000000) continue ;;
 		esac
-		total=$((total + 1))
-		if ! check_commit "$lsha" "$now"; then
-			refused=$((refused + 1))
+		if [ "$rsha" = "0000000000000000000000000000000000000000" ]; then
+			range="$(git rev-list --max-count=200 "$lsha")"
+		else
+			range="$(git rev-list "$rsha..$lsha")"
 		fi
+		for sha in $range; do
+			total=$((total + 1))
+			if ! check_commit "$sha" "$now"; then
+				refused=$((refused + 1))
+			fi
+		done
 	done
 	refused_summary="push-timing summary: $total commits checked, $refused refused"
 	if [ "$refused" -gt 0 ]; then
@@ -93,6 +104,15 @@ if [ "${1:-}" = "--self-test" ]; then
 Task-Queue-ID: 000001a175f4de403dc14ed9579100000000'
 	healed_sha="$(git -C "$tmp" rev-parse HEAD)"
 	non_daemon_sha="$(git -C "$tmp" rev-parse HEAD~3)"
+	seed_sha="$(git -C "$tmp" rev-parse HEAD~3)"
+	# Two-commit fixture (row 1236): non-daemon TIP over old backdated chore
+	# + FRESH chore MID-HISTORY — the range walk must refuse the fresh commit
+	# even though the pushed tip itself is allowed.
+	printf w >"$tmp/f"
+	git -C "$tmp" add -A
+	GIT_AUTHOR_DATE="@$base +0000" GIT_COMMITTER_DATE="@$base +0000" \
+		git -C "$tmp" commit -qm 'feat: non-daemon tip'
+	tip_sha="$(git -C "$tmp" rev-parse HEAD)"
 
 	cd "$tmp"
 	rc=0
@@ -111,23 +131,43 @@ Task-Queue-ID: 000001a175f4de403dc14ed9579100000000'
 		echo "FAIL: fresh footer-less daemon commit should be refused with a REFUSAL line (rc=$fresh_rc): $fresh_out"
 		rc=1
 	fi
-	out="$(printf 'refs/heads/master %s refs/heads/master %s\n' "$fresh_sha" "$fresh_sha" | run_hook "$now" 2>&1)" && hook_rc=0 || hook_rc=$?
+	out="$(printf 'refs/heads/master %s refs/heads/master %s\n' "$fresh_sha" "$seed_sha" | run_hook "$now" 2>&1)" && hook_rc=0 || hook_rc=$?
 	[ "$hook_rc" -eq 1 ] || {
 		echo "FAIL: hook should refuse the fresh commit batch (rc=$hook_rc)"
 		rc=1
 	}
 	case "$out" in
 	# refusal canary (expect-branch contract) then summary pin, print order
-	*"PUSH-TIMING REFUSAL:"*"push-timing summary: 1 commits checked, 1 refused"*) ;;
+	*"PUSH-TIMING REFUSAL:"*"push-timing summary: 2 commits checked, 1 refused"*) ;;
 	*)
 		echo "FAIL: refusal canary or summary pin mismatch:"
 		printf '%s\n' "$out"
 		rc=1
 		;;
 	esac
+	# Mid-history canary: ALLOWED non-daemon tip, fresh chore inside the range.
+	out="$(printf 'refs/heads/master %s refs/heads/master %s\n' "$tip_sha" "$seed_sha" | run_hook "$now" 2>&1)" && hook_rc=0 || hook_rc=$?
+	[ "$hook_rc" -eq 1 ] || {
+		echo "FAIL: hook should refuse a range containing a mid-history fresh chore (rc=$hook_rc)"
+		rc=1
+	}
+	case "$out" in
+	*"PUSH-TIMING REFUSAL:"*"push-timing summary: 4 commits checked, 1 refused"*) ;;
+	*)
+		echo "FAIL: mid-history refusal canary or summary pin mismatch:"
+		printf '%s\n' "$out"
+		rc=1
+		;;
+	esac
+	# Zero remote sha (new branch): walks the tip history, same refusal.
+	out="$(printf 'refs/heads/master %s refs/heads/master %s\n' "$tip_sha" "0000000000000000000000000000000000000000" | run_hook "$now" 2>&1)" && hook_rc=0 || hook_rc=$?
+	[ "$hook_rc" -eq 1 ] || {
+		echo "FAIL: hook should refuse a new-branch push containing the fresh chore (rc=$hook_rc)"
+		rc=1
+	}
 	out="$(printf 'refs/heads/master %s refs/heads/master %s\n' "$old_sha" "$old_sha" | run_hook "$now")"
 	case "$out" in
-	*"push-timing summary: 1 commits checked, 0 refused"*) ;;
+	*"push-timing summary: 0 commits checked, 0 refused"*) ;;
 	*)
 		echo "FAIL: allowed-batch summary pin mismatch:"
 		printf '%s\n' "$out"
@@ -143,7 +183,7 @@ Task-Queue-ID: 000001a175f4de403dc14ed9579100000000'
 		;;
 	esac
 	[ "$rc" -eq 0 ] || exit 1
-	echo "push-timing self-test ok (summary format pin + 3-way fixture battery: backdated allowed, fresh refused, healed allowed)"
+	echo "push-timing self-test ok (summary format pin + range-walk battery: backdated allowed, fresh refused, healed allowed, mid-history fresh under allowed tip refused, new-branch zero-remote refused)"
 	exit 0
 fi
 
