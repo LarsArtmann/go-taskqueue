@@ -140,6 +140,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Internal
 
+- O14 ruling on the push-timing pre-push guard (2026-11-02, row 1243):
+  a push refusal is CONTRIBUTOR-visible, not tq-product-visible — the
+  guard lives in `scripts/check-push-timing.sh` and installs into
+  contributor clones via `install-pre-commit.sh`; an operator of the
+  shipped `tq` binary never encounters it, so it stays repo-internal
+  and the 2026-10-26 Internal row stands (its "ruling still pending"
+  note is resolved by this ruling; no Added entry). The 2026-11-02
+  `--check <sha>` dry-run is contributor triage tooling under the same
+  ruling.
 - Pre-push timing guard range walk + smoke stub verdict-rail cures
   (2026-11-02, eleventh dispatch): `check-push-timing.sh` now walks the
   whole pushed range (`git rev-list <remote>..<local>` per stdin line) so
