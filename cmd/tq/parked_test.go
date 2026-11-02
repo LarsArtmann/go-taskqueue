@@ -320,3 +320,73 @@ func TestParkedJSONSurfacesProvider(t *testing.T) {
 		t.Fatalf("budget rows = %+v, want %s with no provider", rows, budgetTask.ID)
 	}
 }
+
+// Golden round-trip pin on the parkedTaskRow wire shape: embedded task
+// fields marshal at TOP LEVEL (flat object, no "task" wrapper), provider
+// and requeue_class are omitempty, and a row decodes back both as a
+// parkedTaskRow and as a plain task.Task. A task.Task field or marshaler
+// change that breaks JSON consumers must fail here (2026-10-27 07-28
+// closeout §f11).
+func TestParkedTaskRowJSONWireShape(t *testing.T) {
+	now := time.Date(2026, 11, 2, 12, 0, 0, 0, time.UTC)
+	tk := task.Task{
+		ID:          task.ID("tqwiresHAPE0001"),
+		Type:        "agent",
+		Status:      task.Pending,
+		Attempts:    2,
+		MaxAttempts: 3,
+		NotBefore:   now.Add(time.Hour),
+		CreatedAt:   now,
+		UpdatedAt:   now,
+	}
+
+	row := parkedTaskRow{Task: tk, Provider: "zai", RequeueClass: queue.RequeueClassRateLimit}
+
+	b, err := json.Marshal(row)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+
+	var probe map[string]any
+	if err := json.Unmarshal(b, &probe); err != nil {
+		t.Fatalf("unmarshal probe: %v", err)
+	}
+
+	for _, key := range []string{"id", "type", "status", "attempts", "maxAttempts", "notBefore", "createdAt", "updatedAt", "provider", "requeue_class"} {
+		if _, ok := probe[key]; !ok {
+			t.Errorf("wire shape missing top-level key %q (embedded task fields must stay flat): %s", key, b)
+		}
+	}
+
+	if _, wrapped := probe["task"]; wrapped {
+		t.Errorf("wire shape has a nested task wrapper — parked rows must stay flat: %s", b)
+	}
+
+	var back parkedTaskRow
+	if err := json.Unmarshal(b, &back); err != nil {
+		t.Fatalf("round-trip unmarshal: %v", err)
+	}
+
+	if back.ID != tk.ID || back.Provider != "zai" || back.RequeueClass != queue.RequeueClassRateLimit || back.Status != task.Pending {
+		t.Fatalf("round-trip mismatch: got %+v (provider=%q class=%q)", back.Task, back.Provider, back.RequeueClass)
+	}
+
+	empty := parkedTaskRow{Task: tk}
+	b, err = json.Marshal(empty)
+	if err != nil {
+		t.Fatalf("marshal empty: %v", err)
+	}
+
+	if strings.Contains(string(b), `"provider"`) || strings.Contains(string(b), `"requeue_class"`) {
+		t.Errorf("empty evidence must omit provider/requeue_class keys: %s", b)
+	}
+
+	var asTask task.Task
+	if err := json.Unmarshal(b, &asTask); err != nil {
+		t.Fatalf("empty row must decode as a plain task.Task: %v", err)
+	}
+
+	if asTask.ID != tk.ID {
+		t.Fatalf("plain task decode mismatch: %s", asTask.ID)
+	}
+}
