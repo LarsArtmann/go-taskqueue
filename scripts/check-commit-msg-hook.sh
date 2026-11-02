@@ -78,6 +78,10 @@ printf 'fix: subject\n\nTask-Queue-ID: %s\n\n# Please enter the commit message\n
 printf 'fix: subject\n\nTask-Queue-ID: %s\n\nsome trailing prose\n' "$id" >"$tmp/trailing-prose.txt"
 printf 'fix: subject\n\nTask-Queue-ID: %s\nSigned-off-by: Someone <s@x>\n' "$id" >"$tmp/footer-mid-block.txt"
 printf 'fix: subject\n\nTask-Queue-ID: %s\n\nSigned-off-by: Someone <s@x>\n' "$id" >"$tmp/footer-above-trailer.txt"
+# CRLF shapes (2026-10-26 closeout §f7): the last-line check is grep-based, so a
+# \r-terminated footer line must still pin — accepted when final, rejected when stranded.
+printf 'fix: subject\r\n\r\nGenerated with Crush\r\n\r\nTask-Queue-ID: %s\r\n' "$id" >"$tmp/crlf-final.txt"
+printf 'fix: subject\r\n\r\nTask-Queue-ID: %s\r\n\r\nGenerated with Crush\r\n' "$id" >"$tmp/crlf-above-attribution.txt"
 
 rc=0
 run_case "footer as final line after attribution (sanctioned)" 0 "$tmp/sanctioned.txt" || rc=1
@@ -90,9 +94,11 @@ run_case "footer with editor comment tail stays accepted" 0 "$tmp/comment-tail.t
 run_case "trailing prose after footer" 1 "$tmp/trailing-prose.txt" || rc=1
 run_case "footer mid-trailer-block (row 937: last non-empty line must BE the footer)" 1 "$tmp/footer-mid-block.txt" || rc=1
 run_case "footer above a separate trailer block" 1 "$tmp/footer-above-trailer.txt" || rc=1
+run_case "CRLF message with footer as final line stays accepted" 0 "$tmp/crlf-final.txt" || rc=1
+run_case "CRLF footer above attribution block rejects" 1 "$tmp/crlf-above-attribution.txt" || rc=1
 
 if [ "$rc" -ne 0 ]; then
 	echo "commit-msg hook pin FAILED"
 	exit 1
 fi
-echo "commit-msg hook pin ok (extraction guarded, $cases cases: placement, last-line, count, format, comment-tail, trailing-prose)"
+echo "commit-msg hook pin ok (extraction guarded, $cases cases: placement, last-line, count, format, comment-tail, trailing-prose, crlf)"
