@@ -57,7 +57,8 @@ case "$prompt" in
 		printf -- '- [ ] freshly minted status-loop item\n' >> TODO_LIST.md
 		git add -A
 		git commit -qm "docs: smoke status report"
-		printf '%s\n' "TQ_RESULT: {\"report\":\"$REPORT_PATH\",\"next_items\":1}"
+		# Verdict rail is FILE-only (dcd2d542 dropped the stdout fallback).
+		printf '%s\n' "{\"report\":\"$REPORT_PATH\",\"next_items\":1}" > "$TQ_RESULT_FILE"
 		;;
 	*)
 		printf 'did the work\n'
