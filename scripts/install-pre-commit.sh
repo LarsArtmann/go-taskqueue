@@ -59,6 +59,34 @@ if git diff --cached --name-only --diff-filter=ACMR | grep -qx 'internal/webui/s
 		fi
 	fi
 fi
+
+# Zero-byte source guard (2026-11-02): a footer-less daemon sweep once
+# committed an EMPTY internal/executor/statusresume.go (c785820d) that
+# broke every executor module gate for ~20 minutes. A zero-byte staged
+# source file is never a legitimate commit. Quarantine (move aside into
+# .git/zero-byte-quarantine/ — outside the tree, invisible to the next
+# sweep) + refuse: the commit that would ship the empty file is blocked,
+# the tree self-heals on the next sweep, and the bytes (none) are kept
+# inspectable. Scope: staged ADDITIONS of *.go/*.templ/*.sh only — a
+# modification can never empty an existing file without the deletion
+# filter catching it, and non-source empty files (e.g. .gitkeep) are
+# legitimate.
+zero_byte_quarantine=".git/zero-byte-quarantine"
+while IFS= read -r zf; do
+	if [ -e "$zf" ] && [ ! -s "$zf" ]; then
+		mkdir -p "$zero_byte_quarantine"
+		qts=$(date +%Y%m%dT%H%M%S)
+		qname="${qts}_$(printf '%s' "$zf" | tr / _)"
+		mv "$zf" "$zero_byte_quarantine/$qname"
+		echo "FAIL: staged source file is ZERO-BYTE: $zf" >&2
+		echo "  Quarantined to $zero_byte_quarantine/$qname" >&2
+		echo "  A zero-byte source file breaks every module gate ('expected 'package', found 'EOF'" >&2
+		echo "  class). If this was intentional (rare), restore the file from the quarantine" >&2
+		echo "  path, give it content, and re-stage. The next sweep sees a clean tree." >&2
+		exit 1
+	fi
+done < <(git diff --cached --name-only --diff-filter=A | grep -E '\.(go|templ|sh)$' || true)
+
 exit 0
 EOF
 chmod +x "$pre_commit"
