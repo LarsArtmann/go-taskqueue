@@ -89,7 +89,10 @@ probe = sys.argv[2]
 row = db.execute("SELECT id FROM tasks LIMIT 1").fetchone()
 assert row, "no tasks seeded"
 db.execute(
-    "INSERT INTO facts (time, task_id, type, error) VALUES (strftime('%s','now'), ?, 'task.failed', ?)",
+    # Store invariant: facts.time is unix MILLI — a seconds-granularity
+    # seeder sorts before every engine-written fact and would flake any
+    # ordering-sensitive phase assert (status-window precedent, 2026-10-17).
+    "INSERT INTO facts (time, task_id, type, error) VALUES (CAST(strftime('%s','now') AS INTEGER) * 1000, ?, 'task.failed', ?)",
     (row[0], "boom: " + probe),
 )
 db.commit()
@@ -112,10 +115,14 @@ assert ev[0].get("field") == "error", "secret_evidence[0].field = %r, want error
 assert ev[0].get("type") == "task.failed", "secret_evidence[0].type = %r, want task.failed" % (ev[0].get("type"),)
 import sqlite3
 seeded = sqlite3.connect(sys.argv[2]).execute(
-    "SELECT task_id FROM facts WHERE type = \"task.failed\" AND error LIKE ? LIMIT 1",
+    "SELECT task_id, time FROM facts WHERE type = \"task.failed\" AND error LIKE ? LIMIT 1",
     ("%sk-ant-%",),
 ).fetchone()
 assert seeded, "seeded task.failed fact not found in the journal DB"
+assert seeded[1] >= 1_000_000_000_000, (
+    "seeded fact time %r is not unix-milli (seconds-granularity seeder regressed;"
+    " ordering-sensitive asserts would flake)" % (seeded[1],)
+)
 assert ev[0].get("taskId") == seeded[0], "secret_evidence[0].taskId = %r, want the seeded task %r (mis-routed evidence row)" % (ev[0].get("taskId"), seeded[0])
 ' "$JSON" "$DB" || fail "json secret_evidence assertion"
 echo "ok: json secret_evidence count=1 field=error type=task.failed taskId=routed-to-seeded-task"
