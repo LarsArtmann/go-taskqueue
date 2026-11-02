@@ -140,6 +140,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Internal
 
+- Pre-push timing guard range walk + smoke stub verdict-rail cures
+  (2026-11-02, eleventh dispatch): `check-push-timing.sh` now walks the
+  whole pushed range (`git rev-list <remote>..<local>` per stdin line) so
+  a fresh footer-less daemon chore MID-HISTORY is refused, not only ref
+  tips (self-test extended); the status-loop/dogfood-once/redaction/
+  status-rewind smoke stubs moved off the retired stdout `TQ_RESULT:`
+  fallback onto the file-only verdict rail (`$TQ_RESULT_FILE`) — the
+  status-loop smoke had failed 10/10 at HEAD from the stub break; a
+  10x build-storm rerun passed clean.
 - Commit-msg hook pin hardening (2026-11-02): `check-commit-msg-hook.sh`
   now pins CRLF line-ending messages (footer-final accepted, stranded
   rejected) and fixup!/squash!/merge special shapes (footer-final

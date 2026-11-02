@@ -82,7 +82,7 @@ case "\$prompt" in
 		sed -i 's/^- \[ \] stub redaction-ok item.*/- [x] stub redaction-ok item/' TODO_LIST.md
 		git add -A
 		git commit -qm "stub redaction work" -m "Task-Queue-ID: \$qid"
-		printf '%s\n' 'TQ_RESULT: {"summary":"stub ok"}'
+		printf '%s\n' '{"summary":"stub ok"}' > "\$TQ_RESULT_FILE"
 		;;
 esac
 EOF

@@ -53,7 +53,7 @@ done
 case "$prompt" in
 	*"senior code reviewer"*)
 		printf 'looks fine\n'
-		printf '%s\n' 'TQ_RESULT: {"verdict":"approve","summary":"stub review","findings":[]}'
+		printf '%s\n' '{"verdict":"approve","summary":"stub review","findings":[]}' > "$TQ_RESULT_FILE"
 		;;
 	*)
 		qid="$(printf '%s\n' "$prompt" | grep -o 'Task-Queue-ID: [0-9a-f]*' | head -1 | cut -d' ' -f2)"
@@ -62,7 +62,7 @@ case "$prompt" in
 		git add -A
 		git commit -qm "stub dogfood work" -m "Task-Queue-ID: $qid"
 		printf 'did the work\n'
-		printf '%s\n' 'TQ_RESULT: {"summary":"stub work"}'
+		printf '%s\n' '{"summary":"stub work"}' > "$TQ_RESULT_FILE"
 		;;
 esac
 EOF

@@ -54,7 +54,7 @@ case "$prompt" in
 		printf '# rewind smoke report\n' >"$REPORT_PATH"
 		git add -A
 		git commit -qm "docs: rewind smoke report"
-		printf '%s\n' "TQ_RESULT: {\"report\":\"$REPORT_PATH\"}"
+		printf '%s\n' "{\"report\":\"$REPORT_PATH\"}" > "$TQ_RESULT_FILE"
 		;;
 	*)
 		# Work branch stays commit-free (a nothing-to-commit git exit 1
