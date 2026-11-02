@@ -106,6 +106,26 @@ else
 	echo "  -> every installer-written .git/hooks guard is silently disabled; re-run scripts/install-pre-commit.sh or fix core.hooksPath"
 fi
 
+# Pre-push liveness + byte-staleness (2026-10-26 03-22 §e4): a missing
+# pre-push hook is the silent c7e95833-class regression (push-timing guard
+# gone, footer-less fresh sweeps pushable mid-fold), and a stale hook can
+# guard against bytes the installer no longer ships. Compare against the
+# installer's OWN pre-push heredoc so the expectation can never drift from
+# scripts/install-pre-commit.sh. Warn-only, per the hook-liveness pattern
+# above — the ritual always completes.
+if [ -e "$hooks_dir/pre-push" ]; then
+	expected_pre_push="$(awk '/^cat >"\$pre_push" <<.EOF.$/{f=1; next} f && /^EOF$/{exit} f' scripts/install-pre-commit.sh)"
+	if [ "$(cat "$hooks_dir/pre-push")" = "$expected_pre_push" ]; then
+		echo "pre-push hook LIVE and byte-fresh vs installer"
+	else
+		echo "pre-push hook STALE: bytes differ from scripts/install-pre-commit.sh's pre-push heredoc"
+		echo "  -> re-run scripts/install-pre-commit.sh (idempotent) so the push-timing guard matches the installer"
+	fi
+else
+	echo "pre-push hook MISSING: push-timing guard silently disabled (c7e95833 class — fresh footer-less sweeps pushable)"
+	echo "  -> re-run scripts/install-pre-commit.sh"
+fi
+
 echo
 echo "=== status index tail (docs/status/README.md, last 10 lines) ==="
 # Sibling close-outs carry the stop-artifact / §d remedy patterns; the
