@@ -92,7 +92,7 @@ func TestParseDLQFixResultTable(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := ParseDLQFixResult(tt.output)
+			got, err := ParseDLQFixResult(testVerdictLine(t, tt.output))
 			if tt.wantErr {
 				if err == nil {
 					t.Fatalf("ParseDLQFixResult(%q) = %+v, want error", tt.output, got)
@@ -185,7 +185,7 @@ func TestDLQFixExecutorPromptCarriesEvidence(t *testing.T) {
 	bin := filepath.Join(dir, "prompt-agent")
 
 	script := "#!/bin/sh\nfor a in \"$@\"; do echo \"$a\"; done > \"" + promptLog + "\"\n"
-	script += "printf '%s\\n' 'TQ_RESULT: {\"verdict\":\"fixed\",\"summary\":\"s\"}'\n"
+	script += "stubVerdict("{\"verdict\":\"fixed\",\"summary\":\"s\"}")\n"
 
 	if err := os.WriteFile(bin, []byte(script), 0o755); err != nil {
 		t.Fatalf("write stub: %v", err)
@@ -290,7 +290,7 @@ func TestDLQFixExecutorRunsDirtyTree(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	bin := makeStubAgent(t, "printf '%s\\n' 'TQ_RESULT: {\"verdict\":\"wontfix\",\"summary\":\"s\"}'")
+	bin := makeStubAgent(t, "stubVerdict("{\"verdict\":\"wontfix\",\"summary\":\"s\"}")")
 	e := &DLQFixExecutor{Agent: &AgentExecutor{Bin: bin}}
 
 	if err := e.Execute(context.Background(), dlqFixTaskT(t, DLQFixPayload{
@@ -314,7 +314,7 @@ func TestDLQFixExecutorExplicitCleanStillPreflights(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	bin := makeStubAgent(t, "printf '%s\\n' 'TQ_RESULT: {\"verdict\":\"fixed\",\"summary\":\"s\"}'")
+	bin := makeStubAgent(t, "stubVerdict("{\"verdict\":\"fixed\",\"summary\":\"s\"}")")
 	e := &DLQFixExecutor{Agent: &AgentExecutor{Bin: bin}}
 
 	yes := true

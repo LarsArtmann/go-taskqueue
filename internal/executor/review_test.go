@@ -127,7 +127,7 @@ func TestParseResultTable(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := ParseResult(tt.output)
+			got, err := ParseResult(testVerdictLine(t, tt.output))
 			if tt.wantErr {
 				if err == nil {
 					t.Fatalf("ParseResult(%q) = %+v, want error", tt.output, got)
@@ -193,7 +193,8 @@ func TestReviewExecutorVerdictContract(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			bin := makeStubAgent(t, "cat <<'EOF'\n"+tt.agentOut+"EOF")
+			body, verdict := splitVerdictLine(tt.agentOut)
+			bin := makeStubAgent(t, body+"\n"+stubVerdict(verdict))
 			e := &ReviewExecutor{Agent: &AgentExecutor{Bin: bin}}
 
 			ctx, sink := NewSink(context.Background())
@@ -226,7 +227,7 @@ func TestReviewExecutorBackfillsFindingCommitSHA(t *testing.T) {
 
 	bin := makeStubAgent(
 		t,
-		"cat <<'EOF'\n"+`TQ_RESULT: {"verdict":"request_changes","findings":[{"title":"fix leak","severity":"high","anchor":"conn.Close()"}]}`+"\nEOF",
+		"cat <<'EOF'\nEOF\n" + stubVerdict(`{"verdict":"request_changes","findings":[{"title":"fix leak","severity":"high","anchor":"conn.Close()"}]}`),
 	)
 	e := &ReviewExecutor{Agent: &AgentExecutor{Bin: bin}}
 
@@ -262,7 +263,7 @@ func TestReviewExecutorPromptCarriesReviewContext(t *testing.T) {
 	bin := filepath.Join(dir, "prompt-agent")
 
 	script := "#!/bin/sh\nfor a in \"$@\"; do echo \"$a\"; done > \"" + promptLog + "\"\n"
-	script += "printf '%s\\n' 'TQ_RESULT: {\"verdict\":\"approve\"}'\n"
+	script += stubVerdict("{\"verdict\":\"approve\"}") + "\n"
 
 	if err := os.WriteFile(bin, []byte(script), 0o755); err != nil {
 		t.Fatalf("write stub: %v", err)
@@ -354,7 +355,7 @@ func TestReviewExecutorPromptDoesNotRestampQuotedFooter(t *testing.T) {
 	bin := filepath.Join(dir, "argv-agent")
 
 	script := "#!/bin/sh\nfor a in \"$@\"; do echo \"$a\"; done > \"" + promptLog + "\"\n"
-	script += "printf '%s\\n' 'TQ_RESULT: {\"verdict\":\"approve\"}'\n"
+	script += stubVerdict("{\"verdict\":\"approve\"}") + "\n"
 
 	if err := os.WriteFile(bin, []byte(script), 0o755); err != nil {
 		t.Fatalf("write stub: %v", err)

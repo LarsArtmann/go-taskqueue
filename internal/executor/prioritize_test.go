@@ -20,7 +20,7 @@ func TestParsePrioritizeResultContract(t *testing.T) {
 		"{\"item_key\":\"todo:bbb\",\"score\":15,\"effort_minutes\":15,\"confidence\":90}" +
 		"]}\n"
 
-	res, err := ParsePrioritizeResult(valid, items)
+	res, err := ParsePrioritizeResult(testVerdictLine(t, valid), items)
 	if err != nil {
 		t.Fatalf("valid batch: %v", err)
 	}
@@ -54,7 +54,7 @@ func TestParsePrioritizeResultContract(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			if _, err := ParsePrioritizeResult(tc.out, items); err == nil {
+			if _, err := ParsePrioritizeResult(testVerdictLine(t, tc.out), items); err == nil {
 				t.Fatal("expected contract failure, got nil")
 			}
 		})
