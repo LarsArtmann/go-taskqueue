@@ -676,6 +676,29 @@ func gateBoardTail(out string) string {
 	return tail
 }
 
+// maxNamedProviders caps the provider list the parked check names inline:
+// a pathological parked set spread over many providers would blow the
+// one-line check, so beyond three the rest collapse into "+N more"
+// (2026-10-27 07-28 closeout §f20).
+const maxNamedProviders = 3
+
+// cappedProviderList renders the distinct-provider set sorted, naming up
+// to maxNamedProviders and folding the remainder into "+N more".
+func cappedProviderList(providers map[string]bool) string {
+	names := make([]string, 0, len(providers))
+	for p := range providers {
+		names = append(names, p)
+	}
+
+	slices.Sort(names)
+
+	if len(names) <= maxNamedProviders {
+		return strings.Join(names, ", ")
+	}
+
+	return strings.Join(names[:maxNamedProviders], ", ") + fmt.Sprintf(" +%d more", len(names)-maxNamedProviders)
+}
+
 // doctorParked surfaces rate-limit-parked tasks (pending, not_before in the
 // future): an idle pool with parked tasks is WAITING on the provider, not
 // broken — the 13:29 incident's "is it dead or just limited?" question
@@ -714,17 +737,10 @@ func doctorParked(ctx context.Context, store queue.Store) checkResult {
 			}
 
 			if len(seen) > 0 {
-				names := make([]string, 0, len(seen))
-				for p := range seen {
-					names = append(names, p)
-				}
-
-				slices.Sort(names)
-
 				detail = fmt.Sprintf(
 					"%d task(s) parked by %s — WAITING, not broken; see `tq tasks --parked`",
 					n,
-					strings.Join(names, ", "),
+					cappedProviderList(seen),
 				)
 			}
 		}

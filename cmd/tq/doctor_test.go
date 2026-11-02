@@ -1489,3 +1489,28 @@ func TestDoctorParkedNamesExhaustedProvider(t *testing.T) {
 		t.Fatalf("detail = %q, want both providers sorted", r.Detail)
 	}
 }
+
+// TestCappedProviderList pins the one-line cap on the doctor parked check's
+// provider list: up to three providers name inline, a pathological set
+// collapses the remainder into "+N more" (2026-10-27 07-28 closeout §f20).
+func TestCappedProviderList(t *testing.T) {
+	if got := cappedProviderList(map[string]bool{"zai": true}); got != "zai" {
+		t.Fatalf("single = %q, want zai", got)
+	}
+
+	if got := cappedProviderList(map[string]bool{"zai": true, "openai": true, "anthropic": true, "gemini": true}); got != "anthropic, gemini, openai +1 more" {
+		t.Fatalf("four = %q, want three named + 1 more", got)
+	}
+
+	many := map[string]bool{}
+
+	for i := range 7 {
+		many[fmt.Sprintf("p%d", i)] = true
+	}
+
+	got := cappedProviderList(many)
+
+	if want := "p0, p1, p2 +4 more"; got != want {
+		t.Fatalf("seven = %q, want %q", got, want)
+	}
+}
