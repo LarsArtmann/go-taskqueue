@@ -6,7 +6,7 @@
 # never mentions (the 03-37 "lint-lll verified already-excluded" class)
 # passed every gate for four days and cost a review rejection + two
 # re-verify windows. Mismatch = WARN pointing at the annotate-never-rewrite
-# convention (TODO row 313); a hard-gate flip is a separate follow-up row.
+# convention (annotate-never-rewrite, AGENTS.md §Conventions dry-run-first); a hard-gate flip is a separate follow-up row.
 set -uo pipefail
 cd "$(dirname "$0")/.." || exit 1
 
@@ -53,7 +53,7 @@ run_check() {
 			fi
 		done < <(grep -oE '"[^"]+"' <<<"$text" | awk -v m="$min_len" 'length($0) - 2 >= m')
 	done < <(grep -E '^\| 2026-[0-9]{2}-[0-9]{2}[[:space:]]*\|`[^`]+\.md`' "$readme")
-	echo "index phrase-drift: $rows rows, $spans spans, $warn WARN(s), $missing missing report(s) — advisory (annotate-never-rewrite; TODO row 313), continuing"
+	echo "index phrase-drift: $rows rows, $spans spans, $warn WARN(s), $missing missing report(s) — advisory (annotate-never-rewrite), continuing"
 	# Advisory by design: drift is a WARN, never a gate failure.
 	return 0
 }

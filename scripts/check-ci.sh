@@ -79,9 +79,9 @@ if [ "${CHECK_CI_SELF_TEST:-}" = "1" ]; then
 	# Pinned hermetically in a scratch repo (no network, no gh). The
 	# battery needs a git binary — bare nix checkPhase contexts may lack
 	# one, so the contract degrades to an explicit WARN+skip instead of a
-	# cryptic command-not-found failure (row 1121).
+	# cryptic command-not-found failure (this gate's git-on-PATH WARN contract).
 	if ! command -v git >/dev/null 2>&1; then
-		echo "WARN: git not on PATH — skipping the scratch-repo red-branch battery (bare nix checkPhase context; row 1121)"
+		echo "WARN: git not on PATH — skipping the scratch-repo red-branch battery (bare nix checkPhase context; git-on-PATH WARN contract)"
 		rel_scratch=""
 	else
 		rel_scratch="$(mktemp -d)"

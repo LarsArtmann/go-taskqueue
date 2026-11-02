@@ -248,7 +248,7 @@ if [[ "${1:-}" == "--self-test" ]]; then
 			exit 1
 		}
 
-		# --print-floor battery (row 1101): the MAX floor wins over fixtures,
+		# --print-floor battery (--print-floor MAX-floor pin): the MAX floor wins over fixtures,
 		# and an unparsable fixture exits 1 with the stderr diagnostic.
 		printf 'module highmod\n\ngo 9.9.9\n' >"$tmp/highmod.mod"
 		out="$(TQ_TOOLCHAIN_EXTRA_MODS="$tmp/highmod.mod" "$self_abs" --print-floor 2>&1)" && rc=0 || rc=$?

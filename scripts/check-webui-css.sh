@@ -29,7 +29,7 @@ if ! diff -u "$before" internal/webui/static/app.css; then
 	before_bytes="$(wc -c <"$before")"
 	after_bytes="$(wc -c <internal/webui/static/app.css)"
 	if [ "$after_bytes" -lt $((before_bytes / 2)) ]; then
-		echo "  the rebuild is implausibly small (${after_bytes}B vs committed ${before_bytes}B) — do NOT commit it; investigate the @source resolution (row 1125)" >&2
+		echo "  the rebuild is implausibly small (${after_bytes}B vs committed ${before_bytes}B) — do NOT commit it; investigate the @source resolution (@source floor)" >&2
 	else
 		echo "  commit the regenerated file" >&2
 	fi

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Verify-window battery as ONE script (TODO row 370). Spec: the AGENTS.md
-# verify-window minimum battery + the row-346 recipe — cheap gates at HEAD
+# Verify-window battery as ONE script (AGENTS.md §Conventions "Verify-window
+# battery"). Spec: the AGENTS.md
+# verify-window minimum battery + the AGENTS.md closeout recipe — cheap gates at HEAD
 # (check-doc-refs, root build+vet, check-dead-sha-refs), the window's
 # own-file dead-SHA grep, the date-measured report filename check, and the
 # fresh delta as TARGETED test legs that must prove a PASS COUNT (-v), so a
