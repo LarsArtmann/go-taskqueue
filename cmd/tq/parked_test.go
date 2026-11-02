@@ -221,4 +221,97 @@ func TestParkedJSONSurfacesProvider(t *testing.T) {
 	if len(plain) != 1 {
 		t.Fatalf("plain rows = %+v, want the unmodified task array", plain)
 	}
+
+	// --parked-class path: tasks arrive via the CLI-side parkedByClass join
+	// (the class is requeue evidence, not a store filter), so the provider
+	// join must ride the same facts onto THOSE rows — the --parked-only
+	// assertions above never exercise this slice.
+	path2 := filepath.Join(t.TempDir(), "q2.db")
+
+	seed2, err := sqlite.Open(path2)
+	if err != nil {
+		t.Fatalf("sqlite.Open: %v", err)
+	}
+
+	budgetTask, err := seed2.Enqueue(ctx, task.New{Type: "agent"})
+	if err != nil {
+		t.Fatalf("enqueue budget: %v", err)
+	}
+
+	btk, bclaim, err := seed2.ClaimDue(ctx, "w1", time.Minute)
+	if err != nil {
+		t.Fatalf("claim budget: %v", err)
+	}
+
+	if err := seed2.Requeue(
+		ctx,
+		btk.ID,
+		bclaim,
+		"daily cap spent",
+		time.Hour,
+		false,
+		queue.RequeueClassBudget,
+		"",
+	); err != nil {
+		t.Fatalf("requeue budget: %v", err)
+	}
+
+	rlTask, err := seed2.Enqueue(ctx, task.New{Type: "agent"})
+	if err != nil {
+		t.Fatalf("enqueue rate-limit: %v", err)
+	}
+
+	rlk, rlclaim, err := seed2.ClaimDue(ctx, "w1", time.Minute)
+	if err != nil {
+		t.Fatalf("claim rate-limit: %v", err)
+	}
+
+	if rlk.ID != rlTask.ID {
+		t.Fatalf("claim = %s, want %s", rlk.ID, rlTask.ID)
+	}
+
+	if err := seed2.Requeue(
+		ctx,
+		rlk.ID,
+		rlclaim,
+		"rate limited",
+		time.Hour,
+		false,
+		queue.RequeueClassRateLimit,
+		"openai",
+	); err != nil {
+		t.Fatalf("requeue rate-limit: %v", err)
+	}
+
+	if err := seed2.Close(); err != nil {
+		t.Fatalf("close: %v", err)
+	}
+
+	out = captureStdout(t, func() {
+		if err := cmdTasks([]string{"--parked", "--parked-class", "rate-limit", "--json", "--db", path2}); err != nil {
+			t.Errorf("cmdTasks --parked --parked-class --json: %v", err)
+		}
+	})
+
+	if err := json.Unmarshal([]byte(out), &rows); err != nil {
+		t.Fatalf("unmarshal class rows %q: %v", out, err)
+	}
+
+	if len(rows) != 1 || rows[0].ID != rlTask.ID || rows[0].Provider != "openai" {
+		t.Fatalf("class rows = %+v, want %s with provider openai", rows, rlTask.ID)
+	}
+
+	out = captureStdout(t, func() {
+		if err := cmdTasks([]string{"--parked", "--parked-class", "budget", "--json", "--db", path2}); err != nil {
+			t.Errorf("cmdTasks --parked --parked-class budget --json: %v", err)
+		}
+	})
+
+	if err := json.Unmarshal([]byte(out), &rows); err != nil {
+		t.Fatalf("unmarshal budget rows %q: %v", out, err)
+	}
+
+	if len(rows) != 1 || rows[0].ID != budgetTask.ID || rows[0].Provider != "" {
+		t.Fatalf("budget rows = %+v, want %s with no provider", rows, budgetTask.ID)
+	}
 }
