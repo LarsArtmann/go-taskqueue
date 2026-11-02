@@ -12,6 +12,13 @@
 # accept the sanctioned shape (footer as the FINAL line). Comment lines
 # (editor COMMIT_EDITMSG tail) must stay ignored; trailing prose after the
 # footer must reject (footer must be the last line).
+#
+# Special shapes (2026-10-26 closeout §f8): fixup!/squash! subjects, merge
+# messages, and squash bodies ride the SAME footer-final rule — verified at
+# the hook (they pass when the footer is the last line and fail when it is
+# stranded) and at git (interpret-trailers parses all three). No exemption
+# needed: the check is footer-conditional, and a plain `git commit --fixup`
+# (no footer at all) is already covered by the optional-presence case.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -82,6 +89,9 @@ printf 'fix: subject\n\nTask-Queue-ID: %s\n\nSigned-off-by: Someone <s@x>\n' "$i
 # \r-terminated footer line must still pin — accepted when final, rejected when stranded.
 printf 'fix: subject\r\n\r\nGenerated with Crush\r\n\r\nTask-Queue-ID: %s\r\n' "$id" >"$tmp/crlf-final.txt"
 printf 'fix: subject\r\n\r\nTask-Queue-ID: %s\r\n\r\nGenerated with Crush\r\n' "$id" >"$tmp/crlf-above-attribution.txt"
+printf 'fixup! fix: subject\n\nGenerated with Crush\n\nTask-Queue-ID: %s\n' "$id" >"$tmp/fixup-footer-final.txt"
+printf 'squash! fix: subject\n\nsome body prose here\n\nTask-Queue-ID: %s\n' "$id" >"$tmp/squash-footer-final.txt"
+printf "Merge branch 'feature'\n\nCrush-Session: abc\n\nTask-Queue-ID: %s\n" "$id" >"$tmp/merge-footer-final.txt"
 
 rc=0
 run_case "footer as final line after attribution (sanctioned)" 0 "$tmp/sanctioned.txt" || rc=1
@@ -96,9 +106,12 @@ run_case "footer mid-trailer-block (row 937: last non-empty line must BE the foo
 run_case "footer above a separate trailer block" 1 "$tmp/footer-above-trailer.txt" || rc=1
 run_case "CRLF message with footer as final line stays accepted" 0 "$tmp/crlf-final.txt" || rc=1
 run_case "CRLF footer above attribution block rejects" 1 "$tmp/crlf-above-attribution.txt" || rc=1
+run_case "fixup! subject with footer-final stays accepted" 0 "$tmp/fixup-footer-final.txt" || rc=1
+run_case "squash! body with footer-final stays accepted" 0 "$tmp/squash-footer-final.txt" || rc=1
+run_case "merge message with footer-final stays accepted" 0 "$tmp/merge-footer-final.txt" || rc=1
 
 if [ "$rc" -ne 0 ]; then
 	echo "commit-msg hook pin FAILED"
 	exit 1
 fi
-echo "commit-msg hook pin ok (extraction guarded, $cases cases: placement, last-line, count, format, comment-tail, trailing-prose, crlf)"
+echo "commit-msg hook pin ok (extraction guarded, $cases cases: placement, last-line, count, format, comment-tail, trailing-prose, crlf, special-shapes)"
