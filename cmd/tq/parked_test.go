@@ -307,6 +307,11 @@ func TestParkedJSONSurfacesProvider(t *testing.T) {
 		}
 	})
 
+	// Fresh slice: the budget row's provider is omitempty (absent from the
+	// JSON), so unmarshalling into the previous slice would keep the stale
+	// "openai" and mask the omitempty contract this assertion pins.
+	rows = nil
+
 	if err := json.Unmarshal([]byte(out), &rows); err != nil {
 		t.Fatalf("unmarshal budget rows %q: %v", out, err)
 	}
