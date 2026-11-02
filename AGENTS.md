@@ -273,6 +273,12 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   untracked files are daemon-food: a mid-sequence sweep breaks span contiguity
   and the heal refuses, so between steps the tree must be CLEAN, not merely
   "nothing left to stage".
+- **Prompt-content changes are dedup-invisible when daemon-folded**:
+  re-dispatch checks scan only footer-bearing commits, so prompt-const work
+  inside a footer-less chore sweep is invisible — a re-dispatched session
+  cannot see it already landed. `scripts/check-prompt-const-folds.sh`
+  (detector, e0b1fc4f) catches the fold AFTER it lands; it is not pre-dispatch
+  dedup — never tick a prompt-content row off the guard's existence alone.
 - Tab-bearing insertions go through python-heredoc replace — free-text
   edit glues tabs into comments as literal `\t`.
 - Pure-Go deps only (`CGO_ENABLED=0`); Go 1.26+ idioms deliberate
