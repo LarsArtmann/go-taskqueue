@@ -20,6 +20,7 @@ allow=(
 	'^queue/v4'                  # go-cqrs-lite module path@version, not a repo path (AGENTS.md ADR-0019 bullet; tags verified pushed on origin 2026-09-22)
 	'^claiming/v4'               # go-cqrs-lite module path@version, not a repo path (AGENTS.md ADR-0019 bullet; tags verified pushed on origin 2026-09-22)
 	'^internal/queue/cqrsqlite$' # CHANGELOG O12 deletion entry cites the deleted module historically (added 2026-10-06)
+	'^internal/executor/result_fuzz_test.go$' # CHANGELOG cites the deleted fuzz target historically (target removed 2026-11-02, daemon 7765f27b)
 )
 
 fail=0
