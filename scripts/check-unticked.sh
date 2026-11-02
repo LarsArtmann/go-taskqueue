@@ -102,6 +102,10 @@ flush_row() {
 	while IFS= read -r tok; do
 		case "$tok" in
 			'' | '`') continue ;;
+			-*) continue ;;          # CLI flags are prose, not identifiers
+			*' '*) continue ;;       # multi-word tokens are prose (commands, snippets)
+			*'$'*) continue ;;
+			*'`'*) continue ;;
 		esac
 		case "$tok" in
 			"$self_abs") continue ;;
