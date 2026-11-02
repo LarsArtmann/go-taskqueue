@@ -140,6 +140,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Internal
 
+- Done-prompt window pass (2026-11-02, twenty-sixth dispatch): the
+  2026-10-30→31 window's sixteen tasks audited against their 13
+  a)-g) closeout reports and re-verified at HEAD
+  (`docs/status/2026-11-02_12-26_done-prompt-window-report-twentysixth-dispatch.md`);
+  the pass also repaired the two dangling `56d949ad→3c875802` dead-SHA
+  cites the 2026-11-02 00-25 heal left red
+  (check-dead-sha-refs rc=1→0) and appended six work rows + three
+  BLOCKED owner rows to TODO_LIST.
+
 - OKF (Open Knowledge Format) lessons note + forward-compat pins
   (2026-11-01): `docs/research/2026-11-01_okf-lessons.md` records what
   Google's agent-written-knowledge format teaches tq — provenance as

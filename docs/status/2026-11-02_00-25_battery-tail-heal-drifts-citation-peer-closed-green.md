@@ -8,7 +8,10 @@ window. Concurrent agents + daemon active throughout.
 ## a) FULLY DONE
 
 - **Prompt-const fold HEALED under the established slug**: the gate
-  flagged daemon sweep 56d949ad (my agent.go prompt-rail work + a peer's
+  flagged daemon sweep 56d949ad→3c875802 (orphaned by the rewrite — the
+  reachable twin is tree-identical, verified by the 2026-11-02 12-xx
+  done-prompt; dead-sha cite repaired here in the sanctioned old→new
+  form) (my agent.go prompt-rail work + a peer's
   status.go VerifyReceipt change, folded together footer-less).
   Precedent-checked first (`git log` footers): `owner-directive` is the
   standing session-scope slug for owner windows — `heal-daemon-sweep.sh
