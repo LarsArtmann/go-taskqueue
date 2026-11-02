@@ -108,6 +108,13 @@ The double dispatch of one window in a day is itself a finding (§e6, rowed).
 5. **Early-window dispatches (05-31..06-22) recorded no verdict** (no
    TQ_RESULT_FILE in the shell) — the half-closeout class; later windows
    record same-session, and `tq verdict --file` is now the baked rail.
+6. **NOTICED AT THIS HEAD (not this window's defect, not rowed — likely
+   in-flight peer work)**: `check-doc-refs.sh` rc=1 — CHANGELOG.md cites
+   `internal/executor/result_fuzz_test.go`, which no longer exists
+   (deleted in a recent footer-less sweep, plausibly the row-1501
+   fuzz-target retirement in flight). If the deletion lands, the
+   CHANGELOG line needs a same-change repoint per the append-only
+   tension the O14 policy already navigates.
 
 ## e) WHAT WE SHOULD IMPROVE
 
