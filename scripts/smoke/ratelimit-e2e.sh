@@ -122,6 +122,14 @@ grep -Eq 'provider=zai' "$TMP/worker.log" || {
 	exit 1
 }
 
+echo "== assert the parked JSON surface names the provider (07-28 §f10)"
+"$TMP/tq" tasks --parked --json >"$TMP/parked.json"
+grep -Eq '"provider": ?"zai"' "$TMP/parked.json" || {
+	echo "FAIL: tq tasks --parked --json lost the provider field (want \"provider\": \"zai\")"
+	cat "$TMP/parked.json"
+	exit 1
+}
+
 echo "== second claim INSIDE the park window must not reach the agent (16-00 f37)"
 timeout 60 "$TMP/tq" worker --agents --once --poll 50ms --lease 5s --task-timeout 30s >"$TMP/worker2.log" 2>&1 || {
 	cat "$TMP/worker2.log"
