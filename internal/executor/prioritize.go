@@ -2,6 +2,7 @@ package executor
 
 import (
 	"context"
+	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"errors"
 	"fmt"
@@ -133,7 +134,7 @@ func (e *PrioritizeExecutor) Execute(ctx context.Context, t task.Task) error {
 	runCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	output, err := agent.runAgent(runCtx, repoDir, &AgentPayload{
+	output, verdict, err := agent.runAgent(runCtx, repoDir, &AgentPayload{
 		Repo:   payload.Repo,
 		Prompt: prioritizePrompt(payload),
 		Model:  payload.Model,
@@ -143,7 +144,11 @@ func (e *PrioritizeExecutor) Execute(ctx context.Context, t task.Task) error {
 		return err
 	}
 
-	result, err := ParsePrioritizeResult(output, payload.Items)
+	raw, verr := RequireVerdict(verdict)
+	result, err := ParsePrioritizeResult(raw, payload.Items)
+	if verr != nil {
+		err = verr
+	}
 
 	return finishParsedRun(ctx, &result, err, "prioritize", output, repoDir, t.ID)
 }
@@ -196,14 +201,10 @@ tq verdict '{"verdicts":[{"item_key":"...","score":80,"effort_minutes":30,"confi
 	return b.String()
 }
 
-// ParsePrioritizeResult extracts and validates the verdict batch: the
-// TQ_RESULT line must parse, cover every input item exactly once, and
-// carry in-range scores. Lenient on optional fields.
-func ParsePrioritizeResult(output string, items []PrioritizeItem) (PrioritizeResult, error) {
-	raw, err := ResultLine(output)
-	if err != nil {
-		return PrioritizeResult{}, err
-	}
+// ParsePrioritizeResult validates the verdict batch recorded in the file
+// channel: it must parse, cover every input item exactly once, and carry
+// in-range scores. Lenient on optional fields.
+func ParsePrioritizeResult(raw jsontext.Value, items []PrioritizeItem) (PrioritizeResult, error) {
 
 	var parsed struct {
 		Verdicts []PrioritizeVerdict `json:"verdicts"`

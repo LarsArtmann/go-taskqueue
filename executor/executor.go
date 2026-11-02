@@ -241,14 +241,14 @@ var (
 	DetectRateLimit            = internalexecutor.DetectRateLimit
 	DetectVerify               = internalexecutor.DetectVerify
 	Excerpt                    = internalexecutor.Excerpt
-	ExtractResultPayload       = internalexecutor.ExtractResultPayload
 	ExtractSessionID           = internalexecutor.ExtractSessionID
 	Permanent                  = internalexecutor.Permanent
 	QuestionPending            = internalexecutor.QuestionPending
 	RateLimited                = internalexecutor.RateLimited
 	ReadTQVerify               = internalexecutor.ReadTQVerify
 	RenderAgentPayload         = internalexecutor.RenderAgentPayload
-	ResultLine                 = internalexecutor.ResultLine
+	ReadVerdict                = internalexecutor.ReadVerdict
+	RequireVerdict             = internalexecutor.RequireVerdict
 	RedactSecrets              = internalexecutor.RedactSecrets
 	SecretHits                 = internalexecutor.SecretHits
 	SetFailureEvidence         = internalexecutor.SetFailureEvidence

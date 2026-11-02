@@ -2,6 +2,7 @@ package executor
 
 import (
 	"context"
+	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"errors"
 	"fmt"
@@ -147,7 +148,7 @@ func (e *DLQFixExecutor) Execute(ctx context.Context, t task.Task) error {
 	runCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	output, err := agent.runAgent(runCtx, repoDir, &AgentPayload{
+	output, verdict, err := agent.runAgent(runCtx, repoDir, &AgentPayload{
 		Repo:   p.Repo,
 		Prompt: dlqFixPrompt(p),
 		Model:  p.Model,
@@ -157,7 +158,11 @@ func (e *DLQFixExecutor) Execute(ctx context.Context, t task.Task) error {
 		return err
 	}
 
-	result, err := ParseDLQFixResult(output)
+	raw, verr := RequireVerdict(verdict)
+	result, err := ParseDLQFixResult(raw)
+	if verr != nil {
+		err = verr
+	}
 
 	return finishParsedRun(ctx, &result, err, "dlqfix", output, repoDir, t.ID)
 }
@@ -281,16 +286,12 @@ A wontfix without a summary is invalid output.
 	return b.String()
 }
 
-// ParseDLQFixResult extracts and validates the verdict JSON from autopsy
-// output. Strict where it matters: the verdict must be exactly fixed or
-// wontfix (case-insensitive), the JSON must parse, and a wontfix must carry
-// a non-empty summary (an unexplained dismissal is the behavior being
-// automated away).
-func ParseDLQFixResult(output string) (DLQFixResult, error) {
-	raw, err := ResultLine(output)
-	if err != nil {
-		return DLQFixResult{}, err
-	}
+// ParseDLQFixResult validates the verdict JSON the autopsy recorded in the
+// file channel. Strict where it matters: the verdict must be exactly fixed
+// or wontfix (case-insensitive), the JSON must parse, and a wontfix must
+// carry a non-empty summary (an unexplained dismissal is the behavior
+// being automated away).
+func ParseDLQFixResult(raw jsontext.Value) (DLQFixResult, error) {
 
 	var parsed struct {
 		Verdict   string `json:"verdict"`

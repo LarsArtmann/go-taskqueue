@@ -371,7 +371,7 @@ func (e *AgentExecutor) Execute(ctx context.Context, t task.Task) error {
 
 	runStart := time.Now()
 
-	output, err := e.runAgent(runCtx, runDir, &p, t.ID)
+	output, _, err := e.runAgent(runCtx, runDir, &p, t.ID)
 	if err != nil {
 		// Forensics for the task.failed fact: exit code + output tail. The
 		// full output survives in the sidecar only when TQ_LOG_DIR is set,
@@ -404,10 +404,10 @@ func (e *AgentExecutor) Execute(ctx context.Context, t task.Task) error {
 		return err
 	}
 	// Success: record structured outcome detail for `tq show`. Derivation
-	// first (git + crush session data — the queue's own view of what the
-	// run did); the legacy TQ_RESULT self-report only fills gaps for
-	// in-flight tasks minted before the derivation contract. Best effort —
-	// a missing session id or empty derivation is not an error.
+	// is the sole source (git + crush session data — the queue's own view
+	// of what the run did); the legacy TQ_RESULT stdout self-report is
+	// retired. Best effort — a missing session id or empty derivation is
+	// not an error.
 	result := AgentResult{
 		VerifyTail: verifyOut.Tail,
 		Verify:     verifyOut.Receipt,
@@ -427,20 +427,6 @@ func (e *AgentExecutor) Execute(ctx context.Context, t task.Task) error {
 		result.CommitSHA = derived.Commits[n-1].SHA
 	}
 
-	if files, sha, ok := ExtractResultPayload(output); ok {
-		if len(result.FilesChanged) == 0 {
-			result.FilesChanged = files
-		}
-
-		if result.CommitSHA == "" {
-			result.CommitSHA = sha
-		}
-	}
-
-	// Grade the receipt AFTER derivation, against the rev the completion
-	// actually claims: a gate that ran at one HEAD while the completion names
-	// another proves a different tree, and that must show up as a refusal on
-	// the receipt instead of a green line nobody can contradict.
 	result.Attestation = verifyOut.Attest(result.CommitSHA)
 
 	// Worktree forensics: where the run actually happened and which branch
@@ -584,9 +570,10 @@ func assertCleanTree(ctx context.Context, repo string) error {
 
 // verdictFileEnv names the per-run channel the executor hands the agent:
 // `tq verdict '<json>'` (or a plain write) lands the structured result in
-// this file, and runAgent appends it to the returned output as the LAST
-// TQ_RESULT line — the file is the authoritative channel, a stdout
-// TQ_RESULT line is the legacy fallback for in-flight tasks.
+// this file — the ONE verdict channel. runAgent reads the file directly
+// before it returns (the stdout TQ_RESULT line fallback is retired:
+// every live task mints on file-channel prompts and pre-flip tasks have
+// completed).
 const verdictFileEnv = "TQ_RESULT_FILE"
 
 // verdictRailTmpl is the ONE prompt rail that keeps the verdict FILE
@@ -595,8 +582,7 @@ const verdictFileEnv = "TQ_RESULT_FILE"
 // routed agent. The rail bakes the per-run path into the prompt itself
 // and teaches the flag form — `tq verdict --file <path> '<json>'` — so
 // local and routed runs share ONE contract. Always-on when the channel
-// exists (verdictPath != ""); additive only, the env channel stays
-// byte-identical for local runs.
+// exists (verdictPath != "").
 const verdictRailTmpl = "\n\nVerdict channel: record your final structured verdict before exiting by running: tq verdict --file %s '<one-line result JSON>' — the queue reads this file; it is the authoritative channel (stdout is only a fallback)."
 
 // questionRailTmpl is the question channel's M8 bridge — same pattern as
@@ -690,7 +676,7 @@ func retrySession(t task.Task) string {
 }
 
 // runAgent spawns the headless agent in the repo and waits for it.
-func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPayload, id task.ID) (string, error) {
+func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPayload, id task.ID) (string, jsontext.Value, error) {
 	// The verdict channel: one temp file per run, exported to the agent
 	// process. Best-effort — when the temp dir is unusable the channel is
 	// absent and the legacy stdout line still works.
@@ -715,13 +701,24 @@ func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPa
 
 		defer func() { _ = os.Remove(questionPath) }()
 	}
+	// finish folds the verdict-file read into the run outcome: the file is
+	// consumed DIRECTLY (never merged into the output as a synthetic line —
+	// the stdout channel is retired), and an invalid verdict body fails the
+	// attempt alongside any run error (errors.Join keeps Is/As classes
+	// intact for the worker's cancel/rate-limit matching).
+	finish := func(output string, err error) (string, jsontext.Value, error) {
+		v, verr := ReadVerdict(verdictPath)
+
+		return output, v, errors.Join(err, verr)
+	}
+
 	// Closeout resume (13:29 report f15): a prior attempt finished the WORK
 	// turn but was rate-limited during the close-out; re-running the work
 	// turn on re-claim would double real agent cost. Resume at closeout
 	// instead. In-process only (an executor restart forgets it — the
 	// fallback is the old full re-run, never a lost close-out).
 	if out, handled, err := e.resumePendingCloseout(ctx, id, repoDir, verdictPath, questionPath); handled {
-		return out, err
+		return finish(out, err)
 	}
 
 	// Provider gate: a sibling task just observed the provider refusing
@@ -731,13 +728,13 @@ func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPa
 	// carries the wait, so the worker requeues until the reset without
 	// burning an attempt.
 	if wait, limited := e.rateLimitWaitRepo(repoDir); limited {
-		return "", &RateLimitError{
+		return finish("", &RateLimitError{
 			Cause: errors.New(
 				"agent: provider rate limit in effect (observed by a sibling run); deferring until reset",
 			),
 			RetryAfter:  wait,
 			FastRefused: true,
-		}
+		})
 	}
 
 	// The queue task ID is only known at execution time (the harvester
@@ -762,7 +759,7 @@ func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPa
 
 	if e.Yolo || p.Yolo {
 		if err := requireRepoAutonomy(repoDir); err != nil {
-			return "", err
+			return finish("", err)
 		}
 	}
 
@@ -842,7 +839,7 @@ func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPa
 		// wrapping ctx.Err(): the worker finalizes cooperative cancels by
 		// matching context.Canceled.
 		if ctx.Err() != nil {
-			return buf.String(), fmt.Errorf("agent run cancelled (%w): %s", ctx.Err(), tailBytes(buf.Bytes(), 8192))
+			return finish(buf.String(), fmt.Errorf("agent run cancelled (%w): %s", ctx.Err(), tailBytes(buf.Bytes(), 8192)))
 		}
 
 		// Provider exhaustion (Z.ai 429 usage-limit windows, OpenAI-style
@@ -851,24 +848,26 @@ func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPa
 		// parks the task until the provider resets WITHOUT burning an
 		// attempt. Detection also arms the gate for sibling runs.
 		if rl := e.rateLimitedTurn("agent run", repoDir, err, buf.String()); rl != nil {
-			return buf.String(), rl
+			return finish(buf.String(), rl)
 		}
 
-		return buf.String(), fmt.Errorf("agent run failed: %w: %s", err, tailBytes(buf.Bytes(), 8192))
+		return finish(buf.String(), fmt.Errorf("agent run failed: %w: %s", err, tailBytes(buf.Bytes(), 8192)))
 	}
 
 	// Owner question parked the run (tq ask wrote the marker): the turn
 	// ends here — no verify (nothing to prove yet) and no close-out (the
 	// task is not done). The worker requeues without burning an attempt.
 	if qp := questionPendingFrom(questionPath, time.Now()); qp != nil {
-		return buf.String(), qp
+		return finish(buf.String(), qp)
 	}
 
 	// Second turn, same conversation: the agent that did the work answers
 	// the close-out self-review before the task completes. A failed closeout
 	// fails the attempt like any other contract breach; a missing session id
 	// degrades to a logged skip (the work itself already succeeded).
-	return e.runCloseoutIfNeeded(ctx, id, repoDir, buf, verdictPath, questionPath)
+	out, cerr := e.runCloseoutIfNeeded(ctx, id, repoDir, buf, verdictPath, questionPath)
+
+	return finish(out, cerr)
 }
 
 // parkedAfterCloseout checks the question marker after a close-out turn: a
@@ -914,14 +913,14 @@ func (e *AgentExecutor) resumePendingCloseout(
 
 	buf := &bytes.Buffer{}
 	if err := e.runCloseoutTurn(ctx, repoDir, pending.session, id, buf, verdictPath, questionPath); err != nil {
-		return appendVerdictLine(buf.String(), verdictPath), true, err
+		return buf.String(), true, err
 	}
 
 	if qp := e.parkedAfterCloseout(id, repoDir, pending.session, questionPath); qp != nil {
-		return appendVerdictLine(buf.String(), verdictPath), true, qp
+		return buf.String(), true, qp
 	}
 
-	return appendVerdictLine(buf.String(), verdictPath), true, nil
+	return buf.String(), true, nil
 }
 
 // runCloseoutIfNeeded performs the configured close-out turn: a missing
@@ -935,25 +934,25 @@ func (e *AgentExecutor) runCloseoutIfNeeded(
 	verdictPath, questionPath string,
 ) (string, error) {
 	if e.CloseoutPrompt == "" {
-		return appendVerdictLine(buf.String(), verdictPath), nil
+		return buf.String(), nil
 	}
 
 	session := ExtractSessionID(buf.String())
 	if session == "" {
 		buf.WriteString("\n[tq] closeout skipped: no session id in agent output\n")
 
-		return appendVerdictLine(buf.String(), verdictPath), nil
+		return buf.String(), nil
 	}
 
 	if err := e.runCloseoutTurn(ctx, repoDir, session, id, buf, verdictPath, questionPath); err != nil {
-		return appendVerdictLine(buf.String(), verdictPath), err
+		return buf.String(), err
 	}
 
 	if qp := e.parkedAfterCloseout(id, repoDir, session, questionPath); qp != nil {
-		return appendVerdictLine(buf.String(), verdictPath), qp
+		return buf.String(), qp
 	}
 
-	return appendVerdictLine(buf.String(), verdictPath), nil
+	return buf.String(), nil
 }
 
 // appendVerdictLine merges the verdict file into the run output as a

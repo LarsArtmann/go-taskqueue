@@ -2,6 +2,7 @@ package executor
 
 import (
 	"context"
+	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"errors"
 	"fmt"
@@ -134,7 +135,7 @@ func (e *StatusExecutor) Execute(ctx context.Context, t task.Task) error {
 
 	baseRev := gitHeadRev(repoDir)
 
-	output, err := agent.runAgent(runCtx, repoDir, &AgentPayload{
+	output, verdict, err := agent.runAgent(runCtx, repoDir, &AgentPayload{
 		Repo:   payload.Repo,
 		Prompt: statusPrompt(payload),
 		Model:  payload.Model,
@@ -144,7 +145,12 @@ func (e *StatusExecutor) Execute(ctx context.Context, t task.Task) error {
 		return err
 	}
 
-	result, err := parseStatusResult(output)
+	raw, err := RequireVerdict(verdict)
+	if err != nil {
+		return fmt.Errorf("status: %w", err)
+	}
+
+	result, err := parseStatusResult(raw)
 	if err != nil {
 		return fmt.Errorf("status: %w", err)
 	}
@@ -186,13 +192,9 @@ func (e *StatusExecutor) Execute(ctx context.Context, t task.Task) error {
 	return nil
 }
 
-// parseStatusResult enforces the mechanical contract: a TQ_RESULT JSON object
+// parseStatusResult enforces the mechanical contract: a verdict JSON object
 // with a non-empty report path and a next_items count.
-func parseStatusResult(output string) (StatusResult, error) {
-	raw, err := ResultLine(output)
-	if err != nil {
-		return StatusResult{}, err
-	}
+func parseStatusResult(raw jsontext.Value) (StatusResult, error) {
 
 	var parsed struct {
 		Report    string `json:"report"`

@@ -6,9 +6,11 @@ import (
 	"encoding/json/v2"
 	"errors"
 	"fmt"
+	"os"
 	"os/exec"
 	"regexp"
 	"slices"
+	"strings"
 	"sync"
 
 	"github.com/larsartmann/go-taskqueue/internal/task"
@@ -365,54 +367,45 @@ var verboseSessionRe = regexp.MustCompile(
 	`(?i)Created session for non-interactive run session_id=([A-Za-z0-9][A-Za-z0-9_-]+)`,
 )
 
-// resultLineRe matches the agent's result line: a single line of JSON
-// after the TQ_RESULT: marker. Everything else in the output is free-form.
-var resultLineRe = regexp.MustCompile(`(?im)^\s*TQ_RESULT:\s*(\{.+\})\s*$`)
-
-// lastResultLine scans all TQ_RESULT lines and returns the LAST match's
-// JSON: last-line-wins is the documented contract (the close-out turn
-// re-emits after the work turn; the verdict file is appended after both).
-// FindStringSubmatch would silently read the FIRST line instead — the
-// exact inversion this helper exists to prevent.
-func lastResultLine(output string) []string {
-	matches := resultLineRe.FindAllStringSubmatch(output, -1)
-	if len(matches) == 0 {
-		return nil
+// ReadVerdict returns the structured verdict the agent recorded in the
+// per-run file channel (TQ_RESULT_FILE): the ONE verdict channel since the
+// stdout TQ_RESULT line was retired — every live task mints on
+// file-channel prompts, and the file's last write wins across work +
+// close-out turns. A nil value with a nil error means the channel never
+// materialized (no temp file, unreadable, or empty — nothing the agent
+// wrote); a non-nil error means the agent wrote something that is not
+// valid JSON, which fails the attempt (retryable, same class the missing
+// TQ_RESULT line used to be).
+func ReadVerdict(path string) (jsontext.Value, error) {
+	if path == "" {
+		return nil, nil
 	}
 
-	return matches[len(matches)-1]
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return nil, nil
+	}
+
+	body := strings.TrimSpace(string(raw))
+	if body == "" {
+		return nil, nil
+	}
+
+	v := jsontext.Value(body)
+	if !v.IsValid() {
+		return nil, errors.New("verdict file does not hold valid JSON")
+	}
+
+	return v, nil
 }
 
-// ResultLine extracts the raw JSON of the LAST TQ_RESULT line from agent
-// output. Executors with a mechanical output contract (review, status) build
-// their strict parsing on top of it; ExtractResultPayload is the lenient
-// consumer for plain agent runs.
-func ResultLine(output string) (jsontext.Value, error) {
-	m := lastResultLine(output)
-	if m == nil {
-		return nil, errors.New("output has no TQ_RESULT line")
+// RequireVerdict turns a ReadVerdict outcome into the strict-parser
+// contract: executors with a mechanical output contract (review, status,
+// dlqfix, prioritize) fail the attempt when the agent recorded no verdict.
+func RequireVerdict(v jsontext.Value) (jsontext.Value, error) {
+	if v == nil {
+		return nil, errors.New("agent recorded no verdict (verdict file missing or empty)")
 	}
 
-	return jsontext.Value(m[1]), nil
-}
-
-// ExtractResultPayload parses the agent's structured self-report
-// ({files_changed, commit_sha}) from its output — the legacy fallback for
-// in-flight tasks; derivation is the primary source. Best-effort: no line,
-// no problem — the fields simply stay empty in the result detail.
-func ExtractResultPayload(output string) ([]string, string, bool) {
-	m := lastResultLine(output)
-	if m == nil {
-		return nil, "", false
-	}
-
-	var rp struct {
-		FilesChanged []string `json:"files_changed"`
-		CommitSHA    string   `json:"commit_sha"`
-	}
-	if err := json.Unmarshal([]byte(m[1]), &rp); err != nil {
-		return nil, "", false
-	}
-
-	return rp.FilesChanged, rp.CommitSHA, true
+	return v, nil
 }

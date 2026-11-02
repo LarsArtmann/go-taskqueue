@@ -2,6 +2,7 @@ package executor
 
 import (
 	"context"
+	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"errors"
 	"fmt"
@@ -157,7 +158,7 @@ func (e *ReviewExecutor) Execute(ctx context.Context, t task.Task) error {
 	runCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	output, err := agent.runAgent(runCtx, repoDir, &AgentPayload{
+	output, verdict, err := agent.runAgent(runCtx, repoDir, &AgentPayload{
 		Repo:   p.Repo,
 		Prompt: reviewPrompt(p),
 		Model:  p.Model,
@@ -167,7 +168,12 @@ func (e *ReviewExecutor) Execute(ctx context.Context, t task.Task) error {
 		return err
 	}
 
-	result, err := ParseResult(output)
+	raw, err := RequireVerdict(verdict)
+	if err != nil {
+		return fmt.Errorf("review: %w", err)
+	}
+
+	result, err := ParseResult(raw)
 	if err != nil {
 		return fmt.Errorf("review: %w", err)
 	}
@@ -275,16 +281,12 @@ tq verdict '{"verdict":"request_changes","summary":"...","findings":[{"title":".
 	return b.String()
 }
 
-// ParseResult extracts and validates the verdict JSON from reviewer output.
-// Strict where it matters, lenient where nothing depends on it: the verdict
-// must be exactly approve or request_changes (case-insensitive) and the
-// JSON must parse; findings with empty titles are dropped and severity
-// ratings are normalized to low/medium/high.
-func ParseResult(output string) (ReviewResult, error) {
-	raw, err := ResultLine(output)
-	if err != nil {
-		return ReviewResult{}, err
-	}
+// ParseResult validates the verdict JSON the reviewer recorded in the
+// file channel. Strict where it matters, lenient where nothing depends on
+// it: the verdict must be exactly approve or request_changes
+// (case-insensitive) and the JSON must parse; findings with empty titles
+// are dropped and severity ratings are normalized to low/medium/high.
+func ParseResult(raw jsontext.Value) (ReviewResult, error) {
 
 	var parsed struct {
 		Verdict  string          `json:"verdict"`
