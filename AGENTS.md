@@ -103,15 +103,15 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   (NORMAL = checkpoint fsync, lost-tail-tolerant); migrations stay FULL. Claim
   probes use partial RUNNING-only indexes (companion.Migrate), never history;
   idle loops back off (cap `IdlePollMax` 2s).
-- **Task contexts survive pool shutdown** (bounded only by
-  `--task-timeout`) — no shared drain deadline.
+- **Task contexts survive pool shutdown** (bounded only by `--task-timeout`)
+  — no shared drain deadline.
 - **Facts in the same tx as state**, or it didn't happen.
 - **Additive-growth contract for detail structs** (OKF v0.2 §11): a new
   journal-detail field is OPTIONAL, documents its ABSENCE meaning, and gets a
   legacy fallback read — never required, never a second writer.
 - **Unix-milli timestamps**: stored timestamps are MILLISECOND-granular, so
-  ordering-sensitive code must not assume sub-millisecond completion order; sorts
-  need deterministic non-time tiebreaks or set-wise assertions.
+  ordering-sensitive code must not assume sub-millisecond completion order;
+  sorts need deterministic non-time tiebreaks or set-wise assertions.
 
 ### Payload contracts (code owns detail)
 
@@ -135,7 +135,8 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   (raw verdict-channel body + `Verify`/`Attestation` join keys + derived
   outcome counts + session usage) to `$TQ_LOG_DIR/calibration.jsonl`
   (`internal/executor/calibration.go`); best-effort — no TQ_LOG_DIR, no
-  dataset. Auto-dismiss/review rules tune FROM this data, not by feel.- **Batched harvest** (`--batch-items`, default 3): N adjacent same-section
+  dataset. Auto-dismiss/review rules tune FROM this data, not by feel.
+- **Batched harvest** (`--batch-items`, default 3): N adjacent same-section
   items → one task (dedup `batch:` + SORTED-key hash; gates see ONE task);
   direct `tq enqueue` forbidden — work prompts grant the move. Prompts are
   OUTCOME contracts: rails only, AGENTS.md owns the rules.- **`review`/`dlqfix`/`status`/`prioritize`/`depbump`**: verdict-gated or
@@ -233,7 +234,7 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   (force-push hatchless); smoke rule is command-position.
 - docs/status reports follow the a)-g) skeleton; indexed on creation
   (`check-status-index.sh`; daemon bypasses hooks — AMEND MANEUVER for
-  daemon-folded reports); ONE index-row write point (top chronological
+  daemon folds); ONE index-row write point (top chronological
   cluster); CHANGELOG append-only; record `tq verdict` before session end
   (report without verdict = half-closeout).
 - **Dry-run-first for doc/index mutation scripts**: one-off sweeps touching
@@ -294,10 +295,9 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 - `TODO_LIST.md` machine-consumed: `- [ ]`, one per line, never tables;
   `— BLOCKED: <reason>`; items agent-executable (`check-todo-list.sh`);
   DONE-row notes collapse to ONE note + latest-report pointer.
-- Docs formatting MANUAL (dprint on-demand).
-- Evidence archives: `scripts/archive-evidence.sh` (gated by
-  `check-ghost-archives.sh`); `git check-ignore -v` BEFORE copying
-  evidence in.
+- Docs formatting MANUAL (dprint on-demand). Evidence archives:
+  `scripts/archive-evidence.sh` (gated by `check-ghost-archives.sh`);
+  `git check-ignore -v` BEFORE copying evidence in.
 
 ## Known Issues
 
@@ -306,15 +306,14 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   heredocs; /tmp fixtures (gated trees are daemon-food). Footer-less sweeps
   heal via `scripts/heal-daemon-sweep.sh [--from <ref>] [--retitle <s>] <id>`
   (unpushed only; backup on failure; `--self-test` pins rails): REFUSES
-  non-contiguous spans; a refusal naming the span's PARENT (foreign footer
-  BELOW an exactly-mine span) = terminator shape — run its printed
+  non-contiguous spans; a PARENT-naming refusal (foreign footer BELOW an
+  exactly-mine span) = terminator shape — run its printed
   `--from <oldest-blocker>`; residue fallback = amend the unpushed HEAD
   once `git show --stat` proves it mine.
 - **`TestExactlyOnceUnderConcurrency` (worker) and `TestSelfManagingLoop`
   (harvest) are load-flaky**: build storms drop at clean parents — re-run
   before attributing; both ride `KNOWN_FLAKY` in scripts/lib/verify-retry.sh.
-- **Agent shells inherit `TQ_DB`** (PRODUCTION journal) — scratch smokes
-  MUST export `TQ_DB=<scratch>`.
+- **Agent shells inherit `TQ_DB`** (PRODUCTION journal) — scratch smokes MUST export `TQ_DB=<scratch>`.
 - **Session shell hazards**: no `PIPESTATUS`; bare `unset VAR` leaks to
   children (`env -u VAR`); multi-file `tail` fails; zero-repeat `printf`
   format yields empty; chained `&` backgrounds the wrong span; `kill` cannot
@@ -337,11 +336,10 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 - **`tq serve`/`tq api` security**: loopback + read-only default; writes
   CSRF+lockout-guarded; non-loopback needs `--auth-token`; no new write
   endpoint without it (SECURITY.md).
-- **templ + cmd/tq LSP diagnostics are false positives; cmd/tq `GOWORK=off`
-  build/test fails at HEAD** (undefined readmodel/executor/dlqfix internals
-  vs the pinned facade floor) — trust the CLI gates: the tracked go.work
-  workspace or `scripts/test-cmd-tq.sh` is the supported gate until the
-  next internal release (07-28 §d5); never "fix" the diagnostics.
+- **templ + cmd/tq LSP diagnostics are false positives — never "fix" them;
+  cmd/tq `GOWORK=off` build/test fails at HEAD** (undefined internals vs
+  the facade floor) — trust the CLI gates: go.work workspace or
+  `scripts/test-cmd-tq.sh` until the next internal release (07-28 §d5).
 - **erraudit**: HARD gate `scripts/check-erraudit.sh` — ruled flags live
   there (`--max` dev-build-only; CI pin v0.7.0 rejects it), run from EACH
   module root (`lint` REJECTS `--modules`/`--violations-only`). `legacy_as`
@@ -355,8 +353,8 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 - **VendorHash drift**: after a go.mod change run
   `nix build .#checks.x86_64-linux.vendor-hash` and copy `got:` into flake.nix.
 - **readmodel schema drift crash-loops the fold** (planned tables get no
-  column migration): `ConvergeProjectionHome` snapshots divergent homes aside;
-  crash remedy: quarantine `<db>.readmodel.db*` + restart.
+  column migration; `ConvergeProjectionHome` snapshots divergent homes
+  aside): remedy = quarantine `<db>.readmodel.db*` + restart.
 - **History policy**: NEVER reword/amend/rebase PUSHED commits; no force push.
 - **Kernel ETXTBSY**: fresh-binary execve intermittently fails — exec sites
   through `execWithTransientRetry`.
@@ -367,8 +365,8 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   the dep before blaming the flake/vendorHash.
 - **gofmt gates are SCOPED to non-gitignored files**
   (`executor.ScopedGofmtStage`, doctor `gofmt:<repo>`; recipe in the
-  tq-bash-guard deny): unscoped re-plants the vendor-gofmt death class (94% of
-  DLQ) — grep the FULL verify log before attributing.
+  tq-bash-guard deny): unscoped re-plants the vendor-gofmt death class
+  (94% of DLQ) — grep the FULL verify log before attributing.
 - **Flakes see only git-tracked files** — `git add` before `nix build`.
 
 ## Relation to other projects
