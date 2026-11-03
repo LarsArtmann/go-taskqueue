@@ -1,6 +1,9 @@
-// Package effort predicts per-item work effort (minutes) so harvest
-// batches are sized by predicted work instead of raw item count
-// (effort-aware batching, 2026-11-03).
+// This file owns EFFORT ESTIMATION for harvest batch sizing: it
+// predicts per-item work effort (minutes) so batches are sized by
+// predicted work instead of raw item count (effort-aware batching,
+// 2026-11-03). The harvester itself stays OFFLINE unless an estimator
+// is wired via Config.EffortEstimator — the network client below only
+// runs behind that flag.
 //
 // The split follows the TypeSafe integration craft rules: Jev (the
 // System One model behind api.typesafe.ai) supplies the JUDGMENT — one
@@ -24,7 +27,7 @@
 // model: a model swap invalidates every cached verdict (the prioritize
 // scorerSource lesson), so fresh work is never ranked or sized against
 // a retired model's judgment.
-package effort
+package harvest
 
 import (
 	"bytes"
@@ -38,29 +41,27 @@ import (
 	"time"
 
 	"encoding/json/v2"
-
-	"github.com/larsartmann/go-taskqueue/internal/harvest"
 )
 
 const (
-	// DefaultBaseURL is the TypeSafe System One endpoint.
-	DefaultBaseURL = "https://api.typesafe.ai"
+	// DefaultJevBaseURL is the TypeSafe System One endpoint.
+	DefaultJevBaseURL = "https://api.typesafe.ai"
 
-	// DefaultModel is the Jev alias used when none is configured.
-	DefaultModel = "jev-latest"
+	// DefaultJevModel is the Jev alias used when none is configured.
+	DefaultJevModel = "jev-latest"
 
 	// MinMinutes is the floor for any single-item estimate: smaller work
 	// still pays a session start, and a near-zero estimate would pack an
 	// unbounded context into one run.
-	MinMinutes = 10
+	MinEffortMinutes = 10
 
 	// MaxMinutes is the ceiling for any single-item estimate: a monster
 	// item ships as its own batch, and the pool's scaled --task-timeout
 	// default never needs to exceed it while effort mode is on.
-	MaxMinutes = 240
+	MaxEffortMinutes = 240
 
-	// DefaultTimeout bounds one System One request.
-	DefaultTimeout = 30 * time.Second
+	// DefaultJevRequestTimeout bounds one System One request.
+	DefaultJevRequestTimeout = 30 * time.Second
 
 	// maxQuestionsPerRequest caps one request's question count so a big
 	// frontier cannot grow an unbounded payload.
@@ -105,20 +106,20 @@ func RubricSituations() []string {
 // fractional expected values allowed) into estimated minutes:
 // piecewise-linear between level minutes, rounded UP to the next
 // 5-minute step (never under-ask on a fraction), clamped to
-// [MinMinutes, MaxMinutes].
+// [MinEffortMinutes, MaxMinutes].
 func MinutesFromScore(score float64) int {
 	if math.IsNaN(score) {
-		return harvest.DefaultBatchTimeoutMinutes
+		return DefaultBatchTimeoutMinutes
 	}
 
 	top := len(rubric) - 1
 
 	if score <= 0 {
-		return MinMinutes
+		return MinEffortMinutes
 	}
 
 	if score >= float64(top) {
-		return MaxMinutes
+		return MaxEffortMinutes
 	}
 
 	level := int(score)
@@ -127,7 +128,7 @@ func MinutesFromScore(score float64) int {
 
 	rounded := ((int(minutes) + 4) / 5) * 5 // up to the next 5-minute step, exact multiples intact
 
-	return min(max(rounded, MinMinutes), MaxMinutes)
+	return min(max(rounded, MinEffortMinutes), MaxEffortMinutes)
 }
 
 // systemOneRequest is one POST /v1/systemone body (the OpenAPI shape).
@@ -159,11 +160,11 @@ type scoreAnswer struct {
 	Probabilities map[string]float64 `json:"probabilities"`
 }
 
-// Client is a thin TypeSafe System One caller: it builds no judgment,
+// jevClient is a thin TypeSafe System One caller: it builds no judgment,
 // applies no policy — it sends the state and questions and decodes the
 // answers, or returns the error untouched (an API failure is an error,
 // never a quiet "small" answer).
-type Client struct {
+type jevClient struct {
 	BaseURL string
 	APIKey  string
 	Model   string
@@ -171,33 +172,33 @@ type Client struct {
 	Log     *slog.Logger
 }
 
-func (c *Client) baseURL() string {
+func (c *jevClient) baseURL() string {
 	if c.BaseURL == "" {
-		return DefaultBaseURL
+		return DefaultJevBaseURL
 	}
 
 	return c.BaseURL
 }
 
-func (c *Client) model() string {
+func (c *jevClient) model() string {
 	if c.Model == "" {
-		return DefaultModel
+		return DefaultJevModel
 	}
 
 	return c.Model
 }
 
-func (c *Client) httpClient() *http.Client {
+func (c *jevClient) httpClient() *http.Client {
 	if c.HTTP != nil {
 		return c.HTTP
 	}
 
-	return &http.Client{Timeout: DefaultTimeout}
+	return &http.Client{Timeout: DefaultJevRequestTimeout}
 }
 
 // ask posts one System One request and returns the answers keyed by
 // question name.
-func (c *Client) ask(ctx context.Context, state map[string]any, questions map[string]scoreQuestion) (map[string]scoreAnswer, error) {
+func (c *jevClient) ask(ctx context.Context, state map[string]any, questions map[string]scoreQuestion) (map[string]scoreAnswer, error) {
 	body, err := json.Marshal(systemOneRequest{
 		Model:     c.model(),
 		State:     state,
@@ -264,7 +265,7 @@ type JevConfig struct {
 // it once per repo per tick).
 type JevEstimator struct {
 	client JevConfig
-	cache  *Cache
+	cache  *EffortCache
 }
 
 // NewJevEstimator loads the estimate cache (a missing or corrupt
@@ -276,7 +277,7 @@ func NewJevEstimator(cfg JevConfig) (*JevEstimator, error) {
 		return nil, fmt.Errorf("effort: --jev needs a TypeSafe API key (--jev-api-key or $TYPESAFE_API_KEY)")
 	}
 
-	cache := NewCache()
+	cache := NewEffortCache()
 	if cfg.CachePath != "" {
 		if err := cache.Load(cfg.CachePath); err != nil {
 			if cfg.Log != nil {
@@ -289,15 +290,15 @@ func NewJevEstimator(cfg JevConfig) (*JevEstimator, error) {
 }
 
 // EstimateEffort implements harvest.EffortEstimator.
-func (e *JevEstimator) EstimateEffort(ctx context.Context, items []harvest.Item) map[string]int {
+func (e *JevEstimator) EstimateEffort(ctx context.Context, items []Item) map[string]int {
 	out := make(map[string]int, len(items))
 
 	model := e.client.Model
 	if model == "" {
-		model = DefaultModel
+		model = DefaultJevModel
 	}
 
-	var misses []harvest.Item
+	var misses []Item
 
 	for _, item := range items {
 		if entry, ok := e.cache.Get(item.Key, model); ok {
@@ -332,10 +333,10 @@ func (e *JevEstimator) EstimateEffort(ctx context.Context, items []harvest.Item)
 // maxQuestionsPerRequest: one question per item, all sharing the repo
 // state (questions are cheap and parallel on the service side). Any
 // chunk failure degrades to flat for that chunk — logged, never fatal.
-func (e *JevEstimator) estimateMisses(ctx context.Context, misses []harvest.Item, model string) map[string]int {
+func (e *JevEstimator) estimateMisses(ctx context.Context, misses []Item, model string) map[string]int {
 	out := make(map[string]int, len(misses))
 
-	client := Client{
+	client := jevClient{
 		BaseURL: e.client.BaseURL,
 		APIKey:  e.client.APIKey,
 		Model:   model,
@@ -359,7 +360,7 @@ func (e *JevEstimator) estimateMisses(ctx context.Context, misses []harvest.Item
 	}
 
 	if repo != "" {
-		purpose = harvest.RepoPurpose(repo)
+		purpose = RepoPurpose(repo)
 	}
 
 	for start := 0; start < len(misses); start += maxQuestionsPerRequest {
@@ -395,7 +396,7 @@ func (e *JevEstimator) estimateMisses(ctx context.Context, misses []harvest.Item
 // per-item score questions: items live under stable `todos.<name>`
 // paths (named fields beat array positions), each question names its
 // subject by that path, and every question carries the same rubric.
-func jevStateAndQuestions(repoName, purpose string, items []harvest.Item) (map[string]any, map[string]scoreQuestion) {
+func jevStateAndQuestions(repoName, purpose string, items []Item) (map[string]any, map[string]scoreQuestion) {
 	todos := make(map[string]any, len(items))
 	questions := make(map[string]scoreQuestion, len(items))
 
@@ -427,8 +428,8 @@ func jevStateAndQuestions(repoName, purpose string, items []harvest.Item) (map[s
 
 // questionItems mirrors jevStateAndQuestions' naming so answers map
 // back to their items without a second allocation in the hot path.
-func questionItems(items []harvest.Item) map[string]harvest.Item {
-	out := make(map[string]harvest.Item, len(items))
+func questionItems(items []Item) map[string]Item {
+	out := make(map[string]Item, len(items))
 	for i, item := range items {
 		out[fmt.Sprintf("t%d", i)] = item
 	}
@@ -436,15 +437,15 @@ func questionItems(items []harvest.Item) map[string]harvest.Item {
 	return out
 }
 
-// Cache is the file-backed estimate store: JSON sidecar, single writer
+// EffortCache is the file-backed estimate store: JSON sidecar, single writer
 // (the pool process), advisory in every direction — a lost or corrupt
 // cache costs one re-estimate pass, nothing else.
-type Cache struct {
-	entries map[string]Entry
+type EffortCache struct {
+	entries map[string]EffortEntry
 }
 
-// Entry is one cached estimate.
-type Entry struct {
+// EffortEntry is one cached estimate.
+type EffortEntry struct {
 	Minutes    int       `json:"minutes"`
 	Source     string    `json:"source"` // "jev:<model>"
 	Confidence float64   `json:"confidence"`
@@ -452,44 +453,44 @@ type Entry struct {
 }
 
 type cacheFile struct {
-	Version int              `json:"version"`
-	Entries map[string]Entry `json:"entries"`
+	Version int                    `json:"version"`
+	Entries map[string]EffortEntry `json:"entries"`
 }
 
-// NewCache returns an empty cache.
-func NewCache() *Cache {
-	return &Cache{entries: make(map[string]Entry)}
+// NewEffortCache returns an empty estimate cache.
+func NewEffortCache() *EffortCache {
+	return &EffortCache{entries: make(map[string]EffortEntry)}
 }
 
-// SourceFor stamps an estimate with the model that produced it.
-func SourceFor(model string) string {
+// JevSourceFor stamps an estimate with the model that produced it.
+func JevSourceFor(model string) string {
 	return "jev:" + model
 }
 
 // Get returns the cached estimate when it exists AND its source stamp
 // matches the given model (a model swap invalidates everything — never
 // size fresh work against a retired model's judgment).
-func (c *Cache) Get(key, model string) (Entry, bool) {
+func (c *EffortCache) Get(key, model string) (EffortEntry, bool) {
 	entry, ok := c.entries[key]
-	if !ok || entry.Source != SourceFor(model) {
-		return Entry{}, false
+	if !ok || entry.Source != JevSourceFor(model) {
+		return EffortEntry{}, false
 	}
 
 	return entry, true
 }
 
 // Put records an estimate under the given model's stamp.
-func (c *Cache) Put(key string, minutes int, model string, confidence float64) {
-	c.entries[key] = Entry{
+func (c *EffortCache) Put(key string, minutes int, model string, confidence float64) {
+	c.entries[key] = EffortEntry{
 		Minutes:    minutes,
-		Source:     SourceFor(model),
+		Source:     JevSourceFor(model),
 		Confidence: confidence,
 		At:         time.Now(),
 	}
 }
 
 // Load reads the sidecar, pruning entries older than cacheMaxAge.
-func (c *Cache) Load(path string) error {
+func (c *EffortCache) Load(path string) error {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return err
@@ -515,7 +516,7 @@ func (c *Cache) Load(path string) error {
 
 // Save writes the sidecar best-effort (direct write: single writer, a
 // torn write self-heals as an unreadable cache).
-func (c *Cache) Save(path string) error {
+func (c *EffortCache) Save(path string) error {
 	data, err := json.Marshal(cacheFile{Version: cacheVersion, Entries: c.entries})
 	if err != nil {
 		return err
@@ -525,6 +526,6 @@ func (c *Cache) Save(path string) error {
 }
 
 // Len reports the entry count (tests).
-func (c *Cache) Len() int {
+func (c *EffortCache) Len() int {
 	return len(c.entries)
 }

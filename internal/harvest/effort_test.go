@@ -1,4 +1,4 @@
-package effort
+package harvest
 
 import (
 	"context"
@@ -11,7 +11,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/larsartmann/go-taskqueue/internal/harvest"
 )
 
 func TestMinutesFromScore(t *testing.T) {
@@ -41,15 +40,15 @@ func TestMinutesFromScore(t *testing.T) {
 }
 
 // testItems builds harvest items with stable keys.
-func testItems(texts ...string) []harvest.Item {
-	items := make([]harvest.Item, len(texts))
+func testItems(texts ...string) []Item {
+	items := make([]Item, len(texts))
 	for i, text := range texts {
-		items[i] = harvest.Item{
+		items[i] = Item{
 			Repo:     "/repos/proj",
 			RepoName: "proj",
 			Heading:  "## Bugs",
 			Text:     text,
-			Key:      harvest.ItemKey("proj", text),
+			Key:      ItemKey("proj", text),
 		}
 	}
 
@@ -133,11 +132,11 @@ func TestJevEstimatorContractAndCache(t *testing.T) {
 	items := testItems("fix the null deref", "rewrite the scheduler")
 	got := est.EstimateEffort(context.Background(), items)
 
-	if want := harvest.ItemKey("proj", "fix the null deref"); got[want] != 60 {
+	if want := ItemKey("proj", "fix the null deref"); got[want] != 60 {
 		t.Errorf("estimate for the level-2 item = %d, want 60", got[want])
 	}
 
-	if want := harvest.ItemKey("proj", "rewrite the scheduler"); got[want] != 240 {
+	if want := ItemKey("proj", "rewrite the scheduler"); got[want] != 240 {
 		t.Errorf("estimate for the level-4 item = %d, want 240", got[want])
 	}
 
@@ -272,12 +271,12 @@ func TestJevEstimatorModelSwapReEstimates(t *testing.T) {
 
 	item := testItems("one task")[0]
 
-	cache := NewCache()
+	cache := NewEffortCache()
 	cache.Put(item.Key, 200, "jev-a", 0.9)
 
 	est.cache = cache
 
-	got := est.EstimateEffort(context.Background(), []harvest.Item{item})
+	got := est.EstimateEffort(context.Background(), []Item{item})
 	if got[item.Key] != 60 {
 		t.Fatalf("estimate = %d, want 60 (re-estimated by jev-b, not the cached jev-a verdict)", got[item.Key])
 	}
@@ -328,9 +327,9 @@ func TestCacheRoundtripAndPrune(t *testing.T) {
 	// the fresh, prunes the stale.
 	sidecar := cacheFile{
 		Version: cacheVersion,
-		Entries: map[string]Entry{
-			"fresh": {Minutes: 60, Source: SourceFor("jev-latest"), Confidence: 0.9, At: time.Now()},
-			"stale": {Minutes: 30, Source: SourceFor("jev-latest"), At: time.Now().Add(-cacheMaxAge - time.Hour)},
+		Entries: map[string]EffortEntry{
+			"fresh": {Minutes: 60, Source: JevSourceFor("jev-latest"), Confidence: 0.9, At: time.Now()},
+			"stale": {Minutes: 30, Source: JevSourceFor("jev-latest"), At: time.Now().Add(-cacheMaxAge - time.Hour)},
 		},
 	}
 
@@ -343,7 +342,7 @@ func TestCacheRoundtripAndPrune(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	loaded := NewCache()
+	loaded := NewEffortCache()
 	if err := loaded.Load(path); err != nil {
 		t.Fatalf("load: %v", err)
 	}

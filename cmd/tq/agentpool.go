@@ -17,7 +17,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/larsartmann/go-taskqueue/internal/effort"
 	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/harvest"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
@@ -413,7 +412,7 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 		}
 
 		if *jev {
-			scaled = max(scaled, effort.MaxMinutes*time.Minute)
+			scaled = max(scaled, harvest.MaxEffortMinutes*time.Minute)
 		}
 
 		if scaled > *timeout {
@@ -579,7 +578,7 @@ func harvestConfigFromOptions(opts agentPoolOptions) (harvest.Config, error) {
 			cachePath = opts.db + ".effort.json"
 		}
 
-		estimator, err := effort.NewJevEstimator(effort.JevConfig{
+		estimator, err := harvest.NewJevEstimator(harvest.JevConfig{
 			APIKey:    opts.jevAPIKey,
 			Model:     opts.jevModel,
 			CachePath: cachePath,
