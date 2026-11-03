@@ -1817,3 +1817,25 @@ f22962fa982786cd9dbfdbcf13c466871ccc6ad4
 3bf4b6cf18c2d7d4137eee82c01103f8c8acb40b
 #   D3 measured justification in receipt.go
 770310c011b8e336d83868cfa10bd2dacedf730c
+# 2026-11-03 wave-4 close-residue grandfathering (task 000001a1a1fe2e5f…): 13 sweeps
+# from the 2026-11-02 14:36 → 2026-11-03 16:31 windows, each content-verified via
+# git show --stat against the owning lanes' artifacts — receipt/verdict lane executor
+# refactors (b4827193, 870ffdba, 8eee5031, bfbfde6a), done-prompt AGENTS/TODO doc
+# sweeps (2e594766, bb070eb7), check-unticked gate + ci-local wiring (c04d7c49,
+# 5b2dfb5d), dead-sha shrink + rewrite-rate probe + fuzz nightly (75bc68c5, f9fb0d40,
+# 57f36bf0), tq-bash-guard fp triage (ac0da575), concurrent --jev agent-pool sweep
+# (d554f55b). Nothing foreign; owners' sessions closed or footer-committed their own
+# code in adjacent commits.
+b4827193efaa12ba1243a3250c6ce77053d18108
+870ffdba86bb37261432adc6334681d2b993dd73
+8eee5031f0b4a37a657726858437ce2499459ef5
+bfbfde6a1eded1aee7a8b7433a17ac3f0e05b7c1
+2e594766bf7a28f43443df048835e10992c07ed4
+bb070eb706f416d8950e6a3c5b9bb8e06735f931
+c04d7c4946ba6b0c2b873f0efd070df64e645cf1
+5b2dfb5d1c66b9596bfff2a34c125c7922eb419b
+75bc68c5f62746c4ab1f8f618e58acfa9fcb8337
+f9fb0d401328be464ac125a4a5c1b87f4c9bf205
+57f36bf0f987d868c41280ac35fc284380f51f51
+ac0da575766a98a42f31e535fd415d3299ff7d71
+d554f55b51e355d0dbf9e4019c8cb8cde7417959
