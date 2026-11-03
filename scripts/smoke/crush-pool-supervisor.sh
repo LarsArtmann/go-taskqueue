@@ -86,8 +86,8 @@ wait_pattern() { # file pattern timeout_s label
 	return 1
 }
 
-probe_health() { # -> "200" or the error (first line of the shared probe)
-	crush_smoke_probe "$SOCK" /v1/health | head -1
+probe_health() { # -> "200" or the error (status code of the shared probe)
+	crush_smoke_probe "$SOCK" /v1/health | head -1 | awk '{print $2}'
 }
 
 echo "== scratch: $TMP (mock on 127.0.0.1:$PORT)"

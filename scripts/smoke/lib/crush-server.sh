@@ -8,7 +8,11 @@
 # allocation (bind 0, never a pinned port: the zombie-mock hijack class),
 # the scratch crush.json with the mock as the ONLY resolvable provider, the
 # crush dirs isolation gate, the seeded scratch repo, mock/server start-stop,
-# and the de-chunked unix-socket GET probe.
+# and the de-chunked unix-socket GET probe. The server boots with
+# TQ_RESULT_FILE/TQ_QUESTION_FILE stripped: the route smoke's env-gap
+# canary must observe the SERVER env honestly, and a smoke invoked from
+# an agent shell that carries the verdict env would otherwise read
+# inheritance as propagation and fail spuriously.
 #
 # What deliberately does NOT live here: each smoke's mock-provider SCRIPTING
 # (verdict tool_call, 429 mode, stall branches) and — above all — the route
@@ -129,9 +133,11 @@ crush_smoke_start_server() {
 
 	if [ "$mode" = "setsid" ]; then
 		XDG_CONFIG_HOME="$xdg" XDG_DATA_HOME="$data" \
-			setsid crush server --host "unix://$sock" >"$log" 2>&1 &
+			setsid env -u TQ_RESULT_FILE -u TQ_QUESTION_FILE \
+			crush server --host "unix://$sock" >"$log" 2>&1 &
 	else
 		XDG_CONFIG_HOME="$xdg" XDG_DATA_HOME="$data" \
+			env -u TQ_RESULT_FILE -u TQ_QUESTION_FILE \
 			crush server --host "unix://$sock" >"$log" 2>&1 &
 	fi
 
