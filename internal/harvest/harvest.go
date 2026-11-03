@@ -91,8 +91,8 @@ Outcome: the item landed, verified, committed.
 The queue derives what you did — commits via the footer, files via git.`
 
 // DefaultBatchPromptTemplate is the agent contract for BATCHED work items
-// (harvest --batch-items > 1): one task carries a run of adjacent items from
-// the same TODO_LIST.md section, worked in order by ONE session. Outcome-shaped
+// (harvest --batch-items > 1): one task carries a section's open items
+// (chunked to the batch cap), worked in order by ONE session. Outcome-shaped
 // like DefaultPromptTemplate (2026-10-11 redesign; mechanical rails only).
 // Placeholders:
 // {{REPO_ABS}}, {{REPO}}, {{REPO_PURPOSE}}, {{HEADING}}, {{COUNT}}, {{ITEMS}} (numbered list)
@@ -178,14 +178,17 @@ type Config struct {
 	// BatchPromptTemplate overrides DefaultBatchPromptTemplate (used only
 	// when BatchItems > 1).
 	BatchPromptTemplate string
-	// BatchItems groups up to this many ADJACENT open items from the same
-	// TODO_LIST.md section into ONE agent task (one session works the run
+	// BatchItems groups up to this many open items from the same
+	// TODO_LIST.md section into ONE agent task (one session works them
 	// in order): fewer cold sessions, more done per provider window.
-	// 0/1 = off (one item per task). The pool CLI default is 3 since
-	// 2026-10-11 (docs/problems/major-prompting-and-batching.md). A batch
-	// is ONE task against every gate (--max-per-tick, daily budget, repo
-	// pacing) — the per-item cost is amortized, so raise the gates
-	// consciously.
+	// Grouping is SECTION-scoped, not adjacency-scoped: a done, blocked
+	// or already-known item between fresh ones does not fork the batch
+	// (the section-goal form of
+	// docs/problems/major-prompting-and-batching.md, 2026-11-03).
+	// 0/1 = off (one item per task). The pool CLI default is 5 since
+	// 2026-11-03 (3 from 2026-10-11). A batch is ONE task against every
+	// gate (--max-per-tick, daily budget, repo pacing) — the per-item
+	// cost is amortized, so raise the gates consciously.
 	BatchItems int
 	// Model overrides the crush model ("provider/model") in every harvested
 	// agent payload. Empty = the agent binary's default model.
@@ -420,17 +423,50 @@ func (h *Harvester) runRepo(ctx context.Context, repo string, items []Item, res 
 	}
 }
 
+// sectionRuns folds admissible items into same-section runs, chunked to at
+// most cap members each, preserving file order. Inadmissible items never
+// join a run — the caller already reported them skipped — and no longer
+// BREAK one either: a done, blocked or already-known item between two fresh
+// items of the same section does not fork the batch. The section is the
+// work unit, not the run of consecutive lines (the section-goal form of
+// docs/problems/major-prompting-and-batching.md, 2026-11-03).
+func sectionRuns(items []Item, admissible []bool, cap int) [][]Item {
+	var runs [][]Item
+
+	var cur []Item
+
+	for i, item := range items {
+		if !admissible[i] {
+			continue
+		}
+
+		if len(cur) > 0 && (item.Heading != cur[0].Heading || len(cur) >= cap) {
+			runs = append(runs, cur)
+			cur = nil
+		}
+
+		cur = append(cur, item)
+	}
+
+	if len(cur) > 0 {
+		runs = append(runs, cur)
+	}
+
+	return runs
+}
+
 // runRepoBatched is the batched admission path (Config.BatchItems > 1):
-// runs of consecutive ADMISSIBLE items from the same TODO_LIST section
-// become ONE agent task — one session works the run in order. Inadmissible
-// items (blocked, known, paused, poisoned, occupied) are skipped with their
-// own reasons and BREAK a run: a batch never mixes items the single-item
-// path would have skipped. The first admitted run consumes the repo's
-// one-new-task slot exactly like a single enqueue; later runs are paced
-// out with the same reason strings the single path uses.
+// every ADMISSIBLE item of a TODO_LIST section joins the section's run
+// (chunked to BatchItems members, file order) — one session works each
+// chunk in order. Inadmissible items (blocked, known, paused, poisoned,
+// occupied) are skipped with their own reasons and simply EXCLUDED: a
+// fresh item after them still batches with its section siblings. The first
+// admitted run consumes the repo's one-new-task slot exactly like a single
+// enqueue; later runs are paced out with the same reason strings the
+// single path uses.
 func (h *Harvester) runRepoBatched(ctx context.Context, state repoState, items []Item, res *Result) {
 	// Phase 1: base denial per item, pacing EXCLUDED (pacing applies at run
-	// granularity below). Denied items are reported and break runs.
+	// granularity below). Denied items are reported and excluded from runs.
 	admissible := make([]bool, len(items))
 
 	for i, item := range items {
@@ -443,27 +479,10 @@ func (h *Harvester) runRepoBatched(ctx context.Context, state repoState, items [
 		admissible[i] = true
 	}
 
-	// Phase 2: walk runs of consecutive admissible same-heading items.
+	// Phase 2: admit section runs in file order, one new task per repo.
 	enqueuedThisRepo := false
 
-	for i := 0; i < len(items); {
-		if !admissible[i] {
-			i++
-
-			continue
-		}
-
-		end := i + 1
-		for end < len(items) &&
-			admissible[end] &&
-			items[end].Heading == items[i].Heading &&
-			end-i < h.cfg.BatchItems {
-			end++
-		}
-
-		run := items[i:end]
-		i = end
-
+	for _, run := range sectionRuns(items, admissible, h.cfg.BatchItems) {
 		switch {
 		case enqueuedThisRepo:
 			h.skipRun(run, res, "paced: one new item per repo per run")

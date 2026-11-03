@@ -91,6 +91,11 @@ type agentPoolOptions struct {
 // parseAgentPoolOptions owns the agent-pool flag block: define, parse,
 // apply the --config file, resolve env fallbacks, and validate. Precedence
 // everywhere: flag > env > file.
+
+// batchTimeoutPerItem mirrors the harvest payload's per-member timeout
+// scaling (the executor's 30m default; --repo-timeout ladders override per
+// repo — raise --task-timeout consciously when a ladder exceeds this).
+const batchTimeoutPerItem = 30 * time.Minute
 func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 	fs := flag.NewFlagSet("agent-pool", flag.ExitOnError)
 	projectsDir := fs.String(
@@ -112,7 +117,11 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 	conc := fs.Int("concurrency", 1, "parallel agents (repos are paced: one in-flight backlog item per repo)")
 	poll := fs.Duration("poll", 500*time.Millisecond, "idle poll interval")
 	lease := fs.Duration("lease", 5*time.Minute, "claim lease length (agents are slow; heartbeats keep it alive)")
-	timeout := fs.Duration("task-timeout", 45*time.Minute, "per-agent timeout (agent run + verify)")
+	timeout := fs.Duration(
+		"task-timeout",
+		45*time.Minute,
+		"per-agent timeout (agent run + verify); when unset it scales with --batch-items (30m per member, 45m floor) so per-member batch payload timeouts are not truncated mid-run — set it explicitly to pin",
+	)
 	owner := fs.String("owner", "", "lease owner identity")
 	yolo := fs.Bool(
 		"yolo",
@@ -131,8 +140,8 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 	)
 	batchItems := fs.Int(
 		"batch-items",
-		3,
-		"group up to this many adjacent open TODO_LIST items of one section into ONE agent task (one session works them in order): fewer cold sessions, more done per provider window; a batch counts as ONE task against --max-per-tick and the daily budget (per-item cost is amortized — raise the gates consciously, and raise --task-timeout: batch timeouts scale per item; default 3 since 2026-10-11, the micro-batch waste fix; 0/1 = off)",
+		5,
+		"group up to this many open TODO_LIST items of one section into ONE agent task (one session works them in order; grouping is section-scoped: a done/blocked/known item between fresh ones no longer forks a batch): fewer cold sessions, more done per provider window; a batch counts as ONE task against --max-per-tick and the daily budget (per-item cost is amortized — raise the gates consciously); payload timeouts scale per item and the unset --task-timeout default scales with this flag; default 5 since 2026-11-03 (3 2026-10-11..2026-11-03, the micro-batch waste fix); 0/1 = off",
 	)
 	priorityFrom := fs.String(
 		"priority-from",
@@ -353,6 +362,26 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 	if *configPath != "" {
 		if err := applyPoolConfigFile(fs, *configPath); err != nil {
 			return agentPoolOptions{}, err
+		}
+	}
+
+	// Batch-aware default ceiling (2026-11-03): batched payloads scale their
+	// timeout per member (30m each), but the worker's --task-timeout is a hard
+	// ceiling ABOVE them — an unset 45m default truncated the 90m payload of a
+	// 3-batch mid-run and dead-lettered the whole batch. When the operator
+	// pinned nothing (no flag, no config-file line), scale the default with
+	// the batch size; anything explicit stays authoritative.
+	timeoutExplicit := false
+
+	fs.Visit(func(f *flag.Flag) {
+		if f.Name == "task-timeout" {
+			timeoutExplicit = true
+		}
+	})
+
+	if !timeoutExplicit && *batchItems > 1 {
+		if scaled := time.Duration(*batchItems) * batchTimeoutPerItem; scaled > *timeout {
+			*timeout = scaled
 		}
 	}
 
@@ -863,8 +892,9 @@ func printAgentPoolBanner(poolOpts agentPoolOptions) {
 	if poolOpts.batchItems > 1 {
 		fmt.Fprintf(
 			os.Stderr,
-			"tq: agent-pool: batching up to %d items per task — payload timeouts scale per item; raise --task-timeout accordingly (batch deaths dead-letter the whole run: tq dlq is the human surface)\n",
+			"tq: agent-pool: batching up to %d items per task (section-scoped) — payload timeouts scale per item; effective --task-timeout %s; batch deaths dead-letter the whole run: tq dlq is the human surface\n",
 			poolOpts.batchItems,
+			poolOpts.timeout,
 		)
 	}
 

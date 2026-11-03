@@ -99,9 +99,10 @@ func TestHarvestConfigFromOptionsKeepsProjectsDirForDiscovery(t *testing.T) {
 }
 
 // TestParseAgentPoolOptionsBatchItems pins the batching flag: the DEFAULT is
-// 3 (2026-10-11 micro-batch waste fix — docs/problems/major-prompting-and-batching.md),
-// explicit values within 0..10 plumb into the harvest config, values above
-// fail fast (one session working more than ~10 items drowns in its own history).
+// 5 (raised from 3 on 2026-11-03 with section-scoped grouping —
+// docs/problems/major-prompting-and-batching.md), explicit values within 0..10
+// plumb into the harvest config, values above fail fast (one session working
+// more than ~10 items drowns in its own history).
 func TestParseAgentPoolOptionsBatchItems(t *testing.T) {
 	t.Parallel()
 
@@ -128,12 +129,75 @@ func TestParseAgentPoolOptionsBatchItems(t *testing.T) {
 		t.Fatalf("parse defaults: %v", err)
 	}
 
-	if def.batchItems != 3 {
-		t.Fatalf("default batchItems = %d, want 3 (batching on by default)", def.batchItems)
+	if def.batchItems != 5 {
+		t.Fatalf("default batchItems = %d, want 5 (batching on by default)", def.batchItems)
 	}
 
 	if _, err := parseAgentPoolOptions([]string{"--projects-dir", t.TempDir(), "--batch-items", "11"}); err == nil {
 		t.Fatal("--batch-items 11 must fail fast (context-explosion guard)")
+	}
+}
+
+// TestParseAgentPoolOptionsBatchTimeoutDefault pins the batch-aware default
+// ceiling (2026-11-03): an UNSET --task-timeout scales with --batch-items
+// (30m per member over the 45m floor) so per-member payload timeouts are not
+// truncated mid-run by the worker's hard ceiling; an explicit flag (or a
+// config-file task-timeout line) stays authoritative, and batching off keeps
+// the plain 45m default.
+func TestParseAgentPoolOptionsBatchTimeoutDefault(t *testing.T) {
+	t.Parallel()
+
+	def, err := parseAgentPoolOptions([]string{"--projects-dir", t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if def.timeout != 150*time.Minute { // default batch 5 x 30m
+		t.Fatalf("default timeout = %v, want 150m (5 x 30m per member)", def.timeout)
+	}
+
+	big, err := parseAgentPoolOptions([]string{"--projects-dir", t.TempDir(), "--batch-items", "10"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if big.timeout != 300*time.Minute {
+		t.Fatalf("batch-10 timeout = %v, want 300m", big.timeout)
+	}
+
+	pinned, err := parseAgentPoolOptions([]string{"--projects-dir", t.TempDir(), "--batch-items", "10", "--task-timeout", "45m"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if pinned.timeout != 45*time.Minute {
+		t.Fatalf("explicit timeout = %v, want 45m (explicit beats the scaled default)", pinned.timeout)
+	}
+
+	single, err := parseAgentPoolOptions([]string{"--projects-dir", t.TempDir(), "--batch-items", "1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if single.timeout != 45*time.Minute {
+		t.Fatalf("batch-off timeout = %v, want the plain 45m default", single.timeout)
+	}
+
+	// A config-file task-timeout line counts as explicit too (fs.Set marks
+	// the flag visited): the file's value must not be scaled.
+	dir := t.TempDir()
+	conf := dir + "/pool.conf"
+	if err := os.WriteFile(conf, []byte("batch-items=5\ntask-timeout=60m\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	fromFile, err := parseAgentPoolOptions([]string{"--projects-dir", dir, "--config", conf})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if fromFile.timeout != 60*time.Minute {
+		t.Fatalf("config-file timeout = %v, want 60m (file line is explicit)", fromFile.timeout)
 	}
 }
 

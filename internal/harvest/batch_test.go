@@ -11,9 +11,10 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
-// batchedTodo is a two-section backlog: three adjacent Bugs items, a blocked
-// breaker, then two Refactoring items. With BatchItems=3 the Bugs run splits
-// around the blocker; the Refactoring items form their own run.
+// batchedTodo is a two-section backlog: the Bugs section has four fresh
+// items around a blocked breaker; Refactoring has two. With BatchItems=3
+// the Bugs section chunks [3,1]; the blocked breaker is skipped with its
+// own reason and does not fork the chunks; Refactoring forms its own run.
 const batchedTodo = `# Project
 
 ## Bugs
@@ -62,12 +63,12 @@ func decodeBatchPayload(t *testing.T, tk task.Task) harvestPayload {
 	return payload
 }
 
-// TestBatchGroupsAdjacentSameSectionItems pins the grouping contract: with
-// BatchItems=3, the first harvest admits ONE task covering the three adjacent
-// Bugs items; the blocked breaker excluded them from a wider run; the
-// Refactoring run and the leftover Bugs item are paced out (one new task per
-// repo per run).
-func TestBatchGroupsAdjacentSameSectionItems(t *testing.T) {
+// TestBatchGroupsSectionItems pins the grouping contract: with
+// BatchItems=3, the first harvest admits ONE task covering the first three
+// admissible Bugs items; the blocked breaker is excluded with its own skip
+// reason instead of forking the section; the Refactoring run and the
+// leftover Bugs item are paced out (one new task per repo per run).
+func TestBatchGroupsSectionItems(t *testing.T) {
 	dir := t.TempDir()
 	writeRepo(t, dir, "batchy", batchedTodo)
 
@@ -78,7 +79,7 @@ func TestBatchGroupsAdjacentSameSectionItems(t *testing.T) {
 
 	payload := decodeBatchPayload(t, pending[0])
 	if len(payload.ItemKeys) != 3 || len(payload.Items) != 3 {
-		t.Fatalf("batch members = %v, want the three pre-blocker Bugs items", payload.Items)
+		t.Fatalf("batch members = %v, want the first three admissible Bugs items", payload.Items)
 	}
 
 	for _, text := range []string{"fix the null deref in claim", "fix the off-by-one in retry ladder", "fix the leak in heartbeat goroutine"} {
@@ -200,7 +201,7 @@ func TestBatchSurveyTracksMembers(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Bugs batch + the post-blocker single + the Refactoring batch — and NO
+	// Bugs chunk + the leftover Bugs item + the Refactoring batch — and NO
 	// member re-attempt: the survey tracked the first batch's members.
 	if len(pending) != 3 {
 		t.Fatalf("pending tasks after three runs = %d, want 3 (no member re-attempts):\n%+v", len(pending), pending)
@@ -232,6 +233,93 @@ func TestBatchSurveyTracksMembers(t *testing.T) {
 
 	if len(covered) != 6 { // the six open items of batchedTodo
 		t.Errorf("covered items = %d (%v), want all 6 open items", len(covered), covered)
+	}
+}
+
+// TestBatchSpansSectionGaps pins the section-scoped grouping (2026-11-03):
+// a done item BETWEEN fresh items of one section no longer forks the batch —
+// under adjacency grouping this fixture minted a 1-item and a 2-item task;
+// now the three fresh items form ONE batch bridging the ticked gap.
+func TestBatchSpansSectionGaps(t *testing.T) {
+	dir := t.TempDir()
+	writeRepo(t, dir, "batchy", `# Project
+
+## Bugs
+
+- [ ] fix the null deref in claim
+- [x] fix the off-by-one in retry ladder
+- [ ] fix the leak in heartbeat goroutine
+- [ ] fix the race in sweeper watermark
+`)
+
+	pending := harvestBatch(t, dir, 3, 10)
+	if len(pending) != 1 {
+		t.Fatalf("pending tasks = %d, want one gap-bridging batch:\n%+v", len(pending), pending)
+	}
+
+	payload := decodeBatchPayload(t, pending[0])
+
+	want := []string{"fix the null deref in claim", "fix the leak in heartbeat goroutine", "fix the race in sweeper watermark"}
+	if len(payload.Items) != len(want) {
+		t.Fatalf("batch members = %v, want the three fresh items around the ticked gap", payload.Items)
+	}
+
+	for i, text := range want {
+		if payload.Items[i] != text {
+			t.Errorf("member %d = %q, want %q (file order preserved)", i, payload.Items[i], text)
+		}
+	}
+
+	if strings.Contains(strings.Join(payload.Items, "\n"), "off-by-one") {
+		t.Error("batch must not carry the ticked (done) item")
+	}
+}
+
+// TestBatchChunksLargeSections pins the cap chunking: a section with more
+// admissible items than BatchItems splits into file-order chunks (7 items,
+// cap 3 → 3+3+1), admitted one new task per repo per run.
+func TestBatchChunksLargeSections(t *testing.T) {
+	dir := t.TempDir()
+	writeRepo(t, dir, "batchy", `# Project
+
+## Bugs
+
+- [ ] item one
+- [ ] item two
+- [ ] item three
+- [ ] item four
+- [ ] item five
+- [ ] item six
+- [ ] item seven
+`)
+
+	q := openQueue(t)
+	h := New(q, Config{ProjectsDir: dir, BatchItems: 3, MaxPerTick: 10, MaxPendingPerRepo: 7})
+	ctx := context.Background()
+
+	for range 3 {
+		if _, err := h.Run(ctx); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	pending, err := q.List(ctx, pendingFilter("batchy"))
+	if err != nil || len(pending) != 3 {
+		t.Fatalf("pending = %d (err %v), want the three chunks admitted one per run", len(pending), err)
+	}
+
+	wantSizes := map[int]int{3: 2, 1: 1} // two 3-member chunks + one 1-member
+	sizes := map[int]int{}
+
+	for _, tk := range pending {
+		payload := decodeBatchPayload(t, tk)
+		sizes[len(payload.Items)]++
+	}
+
+	for size, count := range wantSizes {
+		if sizes[size] != count {
+			t.Errorf("chunks of size %d = %d, want %d (sizes: %v)", size, sizes[size], count, sizes)
+		}
 	}
 }
 
