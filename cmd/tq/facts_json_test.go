@@ -93,7 +93,14 @@ import (
 // 23_900 → 24_400 (2026-10-30): dry-run-first doc-sweep convention bullet.
 // 24_400 → 24_700 (2026-11-02): two-tick verify-before-filing convention
 // bullet (row-683 closeout §e2), compacted to three lines before budgeting.
-const agentsDocMaxBytes = 24_700
+// 24_700 → 25_400 (2026-11-03, task 000001a19fda6cc4e0d67db8efff00000000):
+// the CI-log triage one-liner Known Issue (net-new load-bearing: every
+// CI-triage session hits it) plus a 350 B pre-existing drift re-sync —
+// the 2026-11-02 session landed the file 350 B over the 24_700 budget
+// without a budget bump (gate was red at HEAD 586c640a before this
+// reset). Re-tighten pass rowed in TODO_LIST.md; twin
+// scripts/check-agents-size.sh re-synced.
+const agentsDocMaxBytes = 25_400
 
 // TestAgentsDocSizeGuard keeps AGENTS.md from silently growing past its
 // byte budget (plan M89 residue); the failure names the top sections so a

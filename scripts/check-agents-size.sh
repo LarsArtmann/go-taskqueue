@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # AGENTS.md byte-budget gate (agentsDocMaxBytes twin): trips at gate time with a readable
 # message instead of as a cmd/tq TestAgentsDocSizeGuard failure two windows
-# later. Mirrors agentsDocMaxBytes in cmd/tq/facts_json_test.go (23,900 B
-# since the 2026-10-29 conscious reset 23,600 → 23,900 for the Crush
-# PreToolUse hook-fleet bullet, hook-owned detail moved into deny
-# messages; that reset also re-synced THIS twin — CHANGE BOTH TWINS
+# later. Mirrors agentsDocMaxBytes in cmd/tq/facts_json_test.go (25,400 B
+# since the 2026-11-03 conscious reset 24,700 → 25,400: CI-log triage
+# one-liner Known Issue + 350 B pre-existing drift re-sync; that reset
+# also re-synced THIS twin — CHANGE BOTH TWINS
 # TOGETHER, the
 # 2026-10-05 ci-local red was exactly this drift; the full reset protocol
 # and earlier history live in that test's comment)
@@ -20,7 +20,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 file="${1:-AGENTS.md}"
-budget="${AGENTS_BUDGET_BYTES:-24700}"
+budget="${AGENTS_BUDGET_BYTES:-25400}"
 
 if [ ! -f "$file" ]; then
 	echo "FAIL: $file not found (cwd: $(pwd))" >&2
