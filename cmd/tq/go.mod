@@ -4,38 +4,38 @@ go 1.27.3
 
 require (
 	github.com/dustin/go-humanize v1.1.0
-	github.com/larsartmann/go-codec v0.3.2
+	github.com/larsartmann/go-codec v0.3.3
 	github.com/larsartmann/go-cqrs-lite/event/v4 v4.15.2
 	github.com/larsartmann/go-cqrs-lite/id/v4 v4.7.3
 	github.com/larsartmann/go-cqrs-lite/projectionhost/v4 v4.7.1
-	github.com/larsartmann/go-cqrs-lite/system/v4 v4.15.4
+	github.com/larsartmann/go-cqrs-lite/system/v4 v4.16.0
 	github.com/larsartmann/go-taskqueue v0.4.1
 	github.com/larsartmann/go-taskqueue/internal/composition v0.4.1
-	github.com/larsartmann/go-taskqueue/internal/config v0.3.4
-	github.com/larsartmann/go-taskqueue/internal/dlqbackoff v0.3.4
+	github.com/larsartmann/go-taskqueue/internal/config v0.4.1
+	github.com/larsartmann/go-taskqueue/internal/dlqbackoff v0.4.1
 	github.com/larsartmann/go-taskqueue/internal/executor v0.4.1
 	github.com/larsartmann/go-taskqueue/internal/journal v0.4.1
-	github.com/larsartmann/go-taskqueue/internal/journal/cqrs v0.3.4
+	github.com/larsartmann/go-taskqueue/internal/journal/cqrs v0.4.1
 	github.com/larsartmann/go-taskqueue/internal/queue v0.4.1
 	github.com/larsartmann/go-taskqueue/internal/queue/postgres v0.3.4
-	github.com/larsartmann/go-taskqueue/internal/queue/sqlite v0.3.4
+	github.com/larsartmann/go-taskqueue/internal/queue/sqlite v0.4.1
 	github.com/larsartmann/go-taskqueue/internal/readmodel v0.4.1
-	github.com/larsartmann/go-taskqueue/internal/task v0.3.4
-	github.com/larsartmann/go-taskqueue/internal/worker v0.4.0
-	modernc.org/sqlite v1.61.0
+	github.com/larsartmann/go-taskqueue/internal/task v0.4.1
+	github.com/larsartmann/go-taskqueue/internal/worker v0.4.1
+	modernc.org/sqlite v1.61.1
 )
 
 require (
 	// Pinned for the replace-based local build graph (internal/executor needs it since v0.3.0); the FOD for the hermetic nix build downloads
 	// per committed go.mod, which is replace-free (ADR-0017).
-	github.com/LarsArtmann/go-crush-data v0.4.0 // indirect
+	github.com/LarsArtmann/go-crush-data v0.5.0 // indirect
 	github.com/Oudwins/tailwind-merge-go v0.2.3 // indirect
 	github.com/ThreeDotsLabs/watermill v1.5.3 // indirect
-	github.com/a-h/templ v0.3.1070 // indirect
+	github.com/a-h/templ v0.3.1100 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/fsnotify/fsnotify v1.10.1 // indirect
-	github.com/fxamacker/cbor/v2 v2.9.6 // indirect
+	github.com/fxamacker/cbor/v2 v2.10.0 // indirect
 	github.com/go-logr/logr v1.4.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
@@ -76,18 +76,18 @@ require (
 	github.com/larsartmann/go-error-family v0.12.0 // indirect
 	github.com/larsartmann/go-flightrecorder v0.2.1 // indirect
 	github.com/larsartmann/go-health v0.8.1 // indirect
-	github.com/larsartmann/go-health-dashboard v0.12.1 // indirect
-	github.com/larsartmann/go-retry v0.8.0 // indirect
+	github.com/larsartmann/go-health-dashboard v0.12.2 // indirect
+	github.com/larsartmann/go-retry v0.9.0 // indirect
 	github.com/larsartmann/go-sse v0.6.2 // indirect
 	github.com/larsartmann/go-taskqueue/internal/queue/companion v0.4.1 // indirect
 	github.com/larsartmann/go-taskqueue/internal/queue/postgresv4 v0.4.0 // indirect
-	github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4 v0.4.0 // indirect
-	github.com/larsartmann/go-taskqueue/internal/retryx v0.3.4 // indirect
-	github.com/larsartmann/templ-components v1.24.0 // indirect
-	github.com/larsartmann/templ-components/datastar v1.24.0 // indirect
-	github.com/larsartmann/templ-components/htmx v1.24.0 // indirect
-	github.com/larsartmann/templ-components/icons v1.24.0 // indirect
-	github.com/larsartmann/templ-components/utils v1.24.0 // indirect
+	github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4 v0.4.1 // indirect
+	github.com/larsartmann/go-taskqueue/internal/retryx v0.4.1 // indirect
+	github.com/larsartmann/templ-components v1.26.0 // indirect
+	github.com/larsartmann/templ-components/datastar v1.26.0 // indirect
+	github.com/larsartmann/templ-components/htmx v1.26.0 // indirect
+	github.com/larsartmann/templ-components/icons v1.26.0 // indirect
+	github.com/larsartmann/templ-components/utils v1.26.0 // indirect
 	github.com/lithammer/shortuuid/v3 v3.0.7 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/maypok86/otter/v2 v2.4.0 // indirect
@@ -110,11 +110,11 @@ require (
 	go.opentelemetry.io/otel/sdk v1.47.0 // indirect
 	go.opentelemetry.io/otel/sdk/metric v1.47.0 // indirect
 	go.opentelemetry.io/otel/trace v1.47.0 // indirect
-	go.yaml.in/yaml/v3 v3.0.5 // indirect
+	go.yaml.in/yaml/v3 v3.0.6 // indirect
 	golang.org/x/sync v0.24.0 // indirect
 	golang.org/x/sys v0.49.0 // indirect
 	golang.org/x/text v0.43.0 // indirect
-	modernc.org/libc v1.79.1 // indirect
+	modernc.org/libc v1.80.0 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.12.1 // indirect
 )
