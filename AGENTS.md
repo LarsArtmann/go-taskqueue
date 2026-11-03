@@ -219,8 +219,7 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   observed — assertion-first pinning burned three windows.
 - **Gate receipts**: a report's "N ok / M fail" count is `grep -c '^ok:'`
   over a CAPTURED gate-output file — never counted in context or from a
-  summary line. Copy-paste: `go test ./... | tee /tmp/gate.log` then
-  `grep -c '^ok:' /tmp/gate.log`.
+  summary line (`go test ./... | tee /tmp/gate.log` then grep it).
 - **Fleet convention — countable gate summaries are PINNED, not
   advisory**: every countable sibling gate (check-script-syntax,
   check-go-mods, check-dead-exports, check-guard-wiring; gosec too)
@@ -245,9 +244,13 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 - **Closeout TICK-AUDIT**: before the FINAL commit of any batch, grep
   TODO_LIST.md for each verbatim batch anchor; finished rows must read
   `- [x]` — landed + unchecked = paid round-trip.
-- **Tick-claims cite the tick commit**: "rows N-M ticked/`[x]`" claims cite
-  the tick commit when the ticks aren't in the report's own commit;
-  WARN gate `check-tick-claims.sh`.
+- **Tick-claims cite the tick commit**: non-report ticks cite the tick
+  commit; WARN gate `check-tick-claims.sh`.
+- **Unpushed-sha cites**: never cite an UNPUSHED commit sha in TODO/docs
+  without a fork record — amending/rebasing orphans the sha and mints a
+  dead cite (02-56 class); push first, or write `old→new` once the
+  successor is known. `check-tick-claims.sh` WARNs on tick cites that are
+  real commits but not HEAD-ancestors.
 - **O14 CHANGELOG policy**: `[Unreleased]` carries OPERATOR-VISIBLE changes
   only — repo-internal tooling and non-operator rows go in the `### Internal`
   subsection at the release section's bottom, never Added/Changed/Fixed;
