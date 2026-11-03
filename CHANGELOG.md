@@ -8,6 +8,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- **Effort-aware batch sizing + optional Jev estimates** (2026-11-03):
+  batched runs now also stop at an effort budget — `--effort-budget`
+  (minutes; 0 = batch-items x 30m, which under the flat default
+  estimates reproduces the count-cap grouping exactly, so nothing
+  changes unless configured) — and `--jev` (default OFF) sizes runs by
+  per-item effort predicted by TypeSafe's Jev: one 5-level rubric
+  score per item, mapped to minutes (clamped 10..240) in code, cached
+  in `<db>.effort.json` keyed by item key and model-stamped. Estimates
+  are scheduling signals only: they may RAISE payload timeouts, never
+  lower them below the count ceiling; the unset `--task-timeout`
+  default covers the clamp while `--jev` is on; any API failure falls
+  back to flat per-item sizing. WARNING: with `--jev`, item texts,
+  section headings, repo name and repo purpose are sent to the
+  TypeSafe API. Payloads record per-member `effortMinutes` for the
+  later estimate-vs-outcome audit.
 - **Failure evidence carries the files a dying run already changed**
   (2026-11-01, row 806): `tq show`'s `failure` section and
   `tq dlq --json` evidence rows gain `files_changed` — the union of

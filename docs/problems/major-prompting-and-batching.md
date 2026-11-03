@@ -16,9 +16,14 @@ shipped as the ceremony cuts (`1d921835`: env-death autopsy refusal via
 floor defaulting to 24h); proposal 1 landed its adjacent-items form (`--batch-items`
 default 3, cap 10) on 2026-10-11, completed as SECTION-scoped grouping with default 5
 on 2026-11-03 (an unset `--task-timeout` now scales 30m/member over the 45m floor, so
-the worker ceiling no longer truncates per-member payload timeouts mid-run). Still
-open: the day-level goal form and the outcome-join / batch-simulation / A-B audits
-from §Sources & method.
+the worker ceiling no longer truncates per-member payload timeouts mid-run), and
+extended to EFFORT-based sizing the same day: runs fold under a summed-effort budget
+(`--effort-budget`, default = batch-items x 30m ≡ the count cap) with optional Jev
+(TypeSafe) per-item estimates (`--jev`, default off, `<db>.effort.json` cache,
+raise-only timeout influence) — batch size now tracks predicted work, not item count.
+Still open: the day-level goal form and the outcome-join / batch-simulation / A-B
+audits from §Sources & method (the `effortMinutes` payload record feeds the
+estimate-vs-outcome join).
 
 ---
 
