@@ -45,7 +45,7 @@ scan() {
 }
 
 run_probe() {
-	local counts=() dates=() day ev msg total=0 ndays=0 hot=0 row
+	local counts=() dates=() day msg total=0 ndays=0 hot=0
 	while IFS='|' read -r day msg; do
 		[ -n "$day" ] || continue
 		case "$day" in

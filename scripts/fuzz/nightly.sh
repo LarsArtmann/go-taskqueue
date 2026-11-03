@@ -28,6 +28,12 @@ bash scripts/rewrite-rate-probe.sh ||
 	echo "WARNING: rewrite-rate probe flagged hot day(s) — audit the reflog before the next rewrite (dead-cite debt class)"
 echo "--- rewrite-rate probe done ---"
 
+# Dead-sha baseline shrink preview rides the rotation too (ADVISORY, no
+# --write): the baseline only grows, so surface droppable rows (tokens with
+# a now-reachable same-tree+subject twin) nightly; the write stays a human
+# periodic pass (2026-11-03 report §f9).
+bash scripts/check-dead-sha-refs.sh --shrink | tail -1
+
 fuzztime="${1:-${FUZZTIME:-60s}}"
 only="${2:-}"
 max_seeds="${MAX_SEEDS:-1000}"

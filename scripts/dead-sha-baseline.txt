@@ -74,8 +74,6 @@ e742fb4
 fddad84
 # Fork-note prose + wrong-twin folds — RESOLVED twins above (kept until the
 # refs/original drop lands):
-dd543ec
-e9ef358
 1537fd2
 c888be6
 4a28269
@@ -91,8 +89,6 @@ c888be6
 # (metadata + net-diff verified identical, refs/original retained). The
 # 06-02 report's History-rewrite record DELIBERATELY cites the dead side
 # (old→new mapping) — RESOLVED-class rows.
-68ffbe2
-f681a02
 # Daemon-amend/rebuild forensics residue (healed 2026-09-26, task
 # 000001a0db839d41103a706b7164e9197520, found by the baseline-regen
 # window's gate run): every citing line DELIBERATELY describes the dead
@@ -209,7 +205,6 @@ e3fcd3c7
 # classes as the 2026-10-01 mass triage above (healers: run patch-id twin checks before
 # repointing; shrink by dropping rows whose cites leave the living docs).
 # 6c6325d7 appears in 8/12/40-hex forms — baseline matching is exact-token, all forms kept.
-058986fc
 0727a2e2
 0e4519f9
 14e594a4
@@ -224,7 +219,6 @@ e3fcd3c7
 3faaf0b
 3ff0877e
 409fa071
-41cb177e
 4f43596e
 56bd235f
 5ac12ba7
@@ -250,7 +244,6 @@ e3fcd3c7
 a317efb
 b2e4696d
 b2fd9f99
-b3c8bc76
 b48fb5ef
 b5b91419
 ba115833
@@ -265,14 +258,12 @@ d258bef5
 d26ed9e5
 d8ecffa7
 dcf2ba20
-dd8a1812
 dda374c6
 df6915f4
 e3135b23
 e487c5ff
 e7953539
 eaf971c5
-eb4dd8c7
 edc228ff
 f055fec0
 f0643178
@@ -350,7 +341,6 @@ ff10a323
 681c4c50
 7029d42d
 706b5030
-7524651b
 7660cde8
 76b33011
 7b11b10b
@@ -497,7 +487,6 @@ e1273b28
 221e432e
 251f9250
 2551dbbe
-269f387c
 278fbc12
 27c21de2
 289628c3
@@ -510,7 +499,6 @@ e1273b28
 2de0c2dd
 2e1f80ff
 2e7facfe
-2e8ef5d7
 2f1b0274
 30b9ac78
 3125a000
@@ -552,7 +540,6 @@ e1273b28
 47c440b0
 4810608c
 48e81fe1
-49864fbe
 49e4159e
 4a309b6f
 4a922c17
@@ -712,7 +699,6 @@ acc519da
 adde9c52
 aeb96824
 aedd7e49
-af241176
 afafe93e
 b0fb2234
 b1004a5e
@@ -742,7 +728,6 @@ cbd413e8
 cc27f0bb
 cc658bbf
 cc8e13b6
-cd0c482a
 cdbac379
 ce0967e1
 ce7324b4
@@ -750,7 +735,6 @@ cf99ecba
 cf9c4cfa
 cfe60879
 d00cd74e
-d015da9f
 d133062d
 d173763f
 d1a062a8
@@ -807,7 +791,6 @@ eaf65a67
 eb016efe
 eb43fb38
 eeb93eb1
-eecd4737
 efad1658
 f0103a7a
 f09673d6

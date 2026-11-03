@@ -290,7 +290,8 @@ EOF
 	baseline="$tmp/base.txt"
 	old_tree=$(git -C "$tmp" log -1 --format='%T' "$old")
 	printf '%s\n' "$third" >>"$tmp/base.txt"
-	twin=$(git -C "$tmp" -c user.email=t@t -c user.name=t commit-tree "$old_tree" -p HEAD -m dangling)
+	twin=$(GIT_AUTHOR_DATE='2020-01-01T00:00:00' GIT_COMMITTER_DATE='2020-01-01T00:00:00' \
+		git -C "$tmp" -c user.email=t@t -c user.name=t commit-tree "$old_tree" -p HEAD -m dangling)
 	git -C "$tmp" merge -q --no-ff -m "merge twin for shrink self-test" "$twin"
 	out=$(cd "$tmp" && shrink_pass)
 	grep -q "^DROP: ${old} → " <<<"$out" || {
@@ -301,13 +302,13 @@ EOF
 		echo "dead-sha self-test FAIL: shrink kept-row verdict missing: $out"
 		exit 1
 	}
-	grep -qF 'shrink: 1 of 3 baselined tokens' <<<"$out" || {
+	grep -qF 'shrink: 1 of 2 baselined tokens' <<<"$out" || {
 		echo "dead-sha self-test FAIL: shrink summary wrong: $out"
 		exit 1
 	}
 	write_mode=1
 	out=$(cd "$tmp" && shrink_pass)
-	[ "$(grep -c '^[0-9a-f]' "$tmp/base.txt")" = 2 ] || {
+	[ "$(grep -c '^[0-9a-f]' "$tmp/base.txt")" = 1 ] || {
 		echo "dead-sha self-test FAIL: --write left wrong baseline: $(cat "$tmp/base.txt")"
 		exit 1
 	}
