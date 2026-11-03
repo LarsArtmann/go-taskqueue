@@ -193,6 +193,9 @@ if [ "${1:-}" = "--self-test" ]; then
 	rcase silent 'grep over a smoke path (FP regression)' 'grep -n TQ_DB scripts/smoke/webui.sh'
 	rcase silent 'cat of a smoke doc (FP regression)' 'cat scripts/smoke/COVERAGE.md'
 	rcase silent 'plain git push' 'git push origin main'
+rcase ctx:'trash' 'plain rm advisory' 'rm -rf /tmp/fixture'
+rcase silent 'git rm is legitimate' 'git rm tracked.txt'
+rcase silent 'rm as substring is not a word match' "grep -rn 'confirm' scripts/"
 	rcase silent 'grep -P carries real escapes' "grep -P '\\t' f"
 	rcase silent 'grep -F literal search' "grep -F '\\t' f"
 	rcase silent 'word PIPESTATUS without shell read' 'grep -rn PIPESTATUS scripts/'
@@ -539,6 +542,10 @@ fi
 
 if has_word unset; then
 	adv bare-unset "bare 'unset VAR' leaks to children in session shells — prefer 'env -u VAR cmd' (AGENTS.md §Session shell hazards)."
+fi
+
+if has_word rm && ! printf '%s' "$cmd" | grep -Eq '(^|[[:space:];&])git[[:space:]]+rm([[:space:]]|$)'; then
+	adv never-rm "global never-rm policy: use 'trash' instead of rm — rm is irreversible data loss, trash is recoverable (AGENTS.md §Critical Prohibitions; git rm of tracked files stays legitimate)."
 fi
 
 if has_word tail; then
