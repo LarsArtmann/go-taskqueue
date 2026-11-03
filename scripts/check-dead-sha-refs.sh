@@ -102,16 +102,24 @@ run_gate() {
 # today, baseline only grows). For each baselined token, TREE-VERIFY whether
 # a NOW-reachable counterpart exists (same tree hash + same subject) — i.e.
 # the cited content survived the rewrite at a commit reachable from HEAD.
-# Print KEEP/DROP verdicts + a summary; with --write, rewrite the baseline
-# dropping DROP rows (never touch arrow/comment lines). DROP rows are still
-# gated safe: dropping a row only re-exposes the cite to the gate, which
-# keeps passing because the counterpart is reachable — a wrong DROP turns
-# RED on the next gate run, never silently white.
+# Print KEEP/DROP verdicts + a summary. With --write, rewrite the baseline
+# dropping only rows that BOTH have a reachable twin AND are no longer a
+# needed escape (the token no longer appears in the gate's own dead-cite
+# emit — arrow-escaped cites need no baseline row). A twinned token still
+# cited bare is KEPT with a fork-record hint: dropping it alone would turn
+# the gate RED (the cite points at the dead token, not the twin).
 shrink_pass() {
 	local tok tok_tree tok_subj twin total=0 drops=0
+	# needed escapes: dead non-arrow tokens currently cited in scope —
+	# exactly the set the gate's emit mode reports.
+	local -A needed=()
+	local k
+	MODE=emit
+	while IFS= read -r k; do [ -n "$k" ] && needed["$k"]=1; done < <(run_gate)
+	MODE=gate
 	# reachable twins: tree|subject -> one reachable sha
 	local -A twins=()
-	local sha tree subj key
+	local sha tree subj
 	while read -r sha tree subj; do
 		twins["${tree}|${subj}"]="$sha"
 	done < <(git log --format='%H %T %s' HEAD 2>/dev/null)
@@ -130,8 +138,13 @@ shrink_pass() {
 		tok_subj=$(git log -1 --format='%s' "$tok" 2>/dev/null) || tok_subj=""
 		twin="${twins[${tok_tree}|${tok_subj}]:-}"
 		if [ -n "$twin" ] && [ "$twin" != "$tok" ]; then
-			echo "DROP: $tok → $twin (same tree + subject, reachable from HEAD)"
-			drops=$((drops + 1))
+			if [ -n "${needed[$tok]:-}" ]; then
+				echo "TWINED (still cited — fork-record ${tok}→${twin} then re-shrink): $tok"
+				[ -n "${write_mode:-}" ] && kept+=("$tok")
+			else
+				echo "DROP: $tok → $twin (same tree + subject, reachable from HEAD, no longer cited)"
+				drops=$((drops + 1))
+			fi
 		else
 			echo "KEEP: $tok"
 			[ -n "${write_mode:-}" ] && kept+=("$tok")
@@ -293,6 +306,11 @@ EOF
 	twin=$(GIT_AUTHOR_DATE='2020-01-01T00:00:00' GIT_COMMITTER_DATE='2020-01-01T00:00:00' \
 		git -C "$tmp" -c user.email=t@t -c user.name=t commit-tree "$old_tree" -p HEAD -m dangling)
 	git -C "$tmp" merge -q --no-ff -m "merge twin for shrink self-test" "$twin"
+	# scope: paired.md carries old only as an arrow MEMBER (no bare cite),
+	# so old is not a needed escape and the twin lets its row drop; third
+	# has no twin and keeps. A still-bare-cited twinned token (mixed.md)
+	# is covered by the TWINED branch pinned right after.
+	files=(docs/status/paired.md)
 	out=$(cd "$tmp" && shrink_pass)
 	grep -q "^DROP: ${old} → " <<<"$out" || {
 		echo "dead-sha self-test FAIL: shrink did not drop the twinned token: $out"
@@ -306,7 +324,14 @@ EOF
 		echo "dead-sha self-test FAIL: shrink summary wrong: $out"
 		exit 1
 	}
+	files=(docs/status/mixed.md)
+	out=$(cd "$tmp" && shrink_pass)
+	grep -q "^TWINED (still cited" <<<"$out" || {
+		echo "dead-sha self-test FAIL: bare-cited twinned token not held as TWINED: $out"
+		exit 1
+	}
 	write_mode=1
+	files=(docs/status/paired.md)
 	out=$(cd "$tmp" && shrink_pass)
 	[ "$(grep -c '^[0-9a-f]' "$tmp/base.txt")" = 1 ] || {
 		echo "dead-sha self-test FAIL: --write left wrong baseline: $(cat "$tmp/base.txt")"

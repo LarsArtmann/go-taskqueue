@@ -13,7 +13,6 @@
 #
 # Env hooks:
 #   TQ_REWRITE_RATE_MAX   threshold per day (default 3)
-#   TQ_REWRITE_DAYS       lookback window in days (default 30)
 #   TQ_REWRITE_REFLOG_FILE  read `date|message` lines from this file instead
 #                         of the live reflog (self-test + replay fixture)
 #
@@ -23,7 +22,6 @@
 set -uo pipefail
 
 threshold="${TQ_REWRITE_RATE_MAX:-3}"
-window="${TQ_REWRITE_DAYS:-30}"
 repo="${TQ_PROBE_REPO:-.}"
 
 is_rewrite() {
