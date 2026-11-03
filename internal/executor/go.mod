@@ -9,6 +9,7 @@ require (
 	github.com/larsartmann/go-taskqueue/internal/queue v0.4.0
 	github.com/larsartmann/go-taskqueue/internal/retryx v0.3.4
 	github.com/larsartmann/go-taskqueue/internal/task v0.3.3
+	github.com/larsartmann/go-taskqueue/internal/testastguard v0.1.0
 	modernc.org/sqlite v1.60.1
 )
 
@@ -31,5 +32,7 @@ replace github.com/larsartmann/go-taskqueue/internal/journal => ../journal
 replace github.com/larsartmann/go-taskqueue/internal/queue => ../queue
 
 replace github.com/larsartmann/go-taskqueue/internal/task => ../task
+
+replace github.com/larsartmann/go-taskqueue/internal/testastguard => ../testastguard
 
 replace github.com/larsartmann/go-taskqueue/internal/retryx => ../retryx

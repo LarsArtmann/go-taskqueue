@@ -81,6 +81,19 @@ func InSpan(start, end, pos token.Pos) bool {
 	return start <= pos && pos < end
 }
 
+// IsMaps reports whether the call's receiver identifier is "maps" (the
+// maps.Copy / maps.Clone census qualifier).
+func IsMaps(call *ast.CallExpr) bool {
+	sel, ok := call.Fun.(*ast.SelectorExpr)
+	if !ok {
+		return false
+	}
+
+	ident, ok := sel.X.(*ast.Ident)
+
+	return ok && ident.Name == "maps"
+}
+
 // CallNames returns the callee names of every call inside node: bare
 // idents by name, selector calls by the selected name.
 func CallNames(node ast.Node) []string {
