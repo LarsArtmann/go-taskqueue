@@ -900,6 +900,7 @@ func TestSecurityDocMatrixMatchesGoMatrix(t *testing.T) {
 	}
 
 	docNames := map[string]bool{}
+	contentTypeRow := ""
 	inMatrix := false
 
 	for line := range strings.SplitSeq(string(raw), "\n") {
@@ -913,6 +914,9 @@ func TestSecurityDocMatrixMatchesGoMatrix(t *testing.T) {
 			_, rest, _ := strings.Cut(line, "`")
 			name, _, _ := strings.Cut(rest, "`")
 			docNames[strings.ToLower(name)] = true
+			if strings.EqualFold(name, "Content-Type") {
+				contentTypeRow = line
+			}
 		}
 	}
 
@@ -929,6 +933,13 @@ func TestSecurityDocMatrixMatchesGoMatrix(t *testing.T) {
 	}
 
 	for name := range docNames {
+		// Content-Type has no matrixRows member by design (transportHeaders;
+		// pinned per-surface via withContentType) — its doc row is pinned by
+		// the media-type census below, not by the name-set equality.
+		if name == "content-type" {
+			continue
+		}
+
 		if !goNames[name] {
 			t.Errorf(
 				"SECURITY.md matrix header %q has no Go matrix row — add it to matrixRows in headermatrix_test.go",
@@ -942,4 +953,62 @@ func TestSecurityDocMatrixMatchesGoMatrix(t *testing.T) {
 			t.Errorf("Go matrix row header %q missing from the SECURITY.md matrix — add a table row", name)
 		}
 	}
+
+	if contentTypeRow == "" {
+		t.Fatal("SECURITY.md matrix has no Content-Type row — the per-surface media types must be mirrored (same-change rule with the withContentType pins)")
+	}
+
+	docMedia := map[string]bool{}
+	for _, span := range backtickSpans(contentTypeRow) {
+		if strings.Contains(span, "/") {
+			docMedia[span] = true
+		}
+	}
+
+	pinned, err := os.ReadFile("headermatrix_test.go")
+	if err != nil {
+		t.Fatalf("read headermatrix_test.go: %v", err)
+	}
+
+	pinMedia := map[string]bool{}
+	for m := range withContentTypeRe.FindAllStringSubmatch(string(pinned), -1) {
+		pinMedia[m[1]] = true
+	}
+
+	if len(pinMedia) == 0 {
+		t.Fatal("no withContentType pins found in headermatrix_test.go — census broke")
+	}
+
+	for media := range pinMedia {
+		if !docMedia[media] {
+			t.Errorf("withContentType pin %q missing from SECURITY.md's Content-Type row — mirror it in the same change", media)
+		}
+	}
+
+	for media := range docMedia {
+		if !pinMedia[media] {
+			t.Errorf("SECURITY.md Content-Type row lists %q but no withContentType pin carries it — the doc column must mirror the pins", media)
+		}
+	}
+}
+
+// backtickSpans returns the backticked spans of a markdown table row.
+func backtickSpans(line string) []string {
+	spans := []string{}
+	for rest := line; ; {
+		_, after, found := strings.Cut(rest, "`")
+		if !found {
+			break
+		}
+
+		span, remainder, found := strings.Cut(after, "`")
+		if !found {
+			break
+		}
+
+		spans = append(spans, span)
+		rest = remainder
+	}
+
+	return spans
 }
