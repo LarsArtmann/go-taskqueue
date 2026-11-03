@@ -98,6 +98,53 @@ run_gate() {
 	return "$fail"
 }
 
+# --shrink: baseline shrink pass (2026-11-03, TODO §f9 — advisory-only
+# today, baseline only grows). For each baselined token, TREE-VERIFY whether
+# a NOW-reachable counterpart exists (same tree hash + same subject) — i.e.
+# the cited content survived the rewrite at a commit reachable from HEAD.
+# Print KEEP/DROP verdicts + a summary; with --write, rewrite the baseline
+# dropping DROP rows (never touch arrow/comment lines). DROP rows are still
+# gated safe: dropping a row only re-exposes the cite to the gate, which
+# keeps passing because the counterpart is reachable — a wrong DROP turns
+# RED on the next gate run, never silently white.
+shrink_pass() {
+	local tok tok_tree tok_subj twin total=0 drops=0
+	# reachable twins: tree|subject -> one reachable sha
+	local -A twins=()
+	local sha tree subj key
+	while read -r sha tree subj; do
+		twins["${tree}|${subj}"]="$sha"
+	done < <(git log --format='%H %T %s' HEAD 2>/dev/null)
+	[ -f "$baseline" ] || {
+		echo "shrink: no baseline at $baseline"
+		return 0
+	}
+	local kept=()
+	while IFS= read -r tok; do
+		[[ "$tok" =~ ^# || -z "$tok" ]] && {
+			[ -n "${write_mode:-}" ] && kept+=("$tok")
+			continue
+		}
+		total=$((total + 1))
+		tok_tree=$(git log -1 --format='%T' "$tok" 2>/dev/null) || tok_tree=""
+		tok_subj=$(git log -1 --format='%s' "$tok" 2>/dev/null) || tok_subj=""
+		twin="${twins[${tok_tree}|${tok_subj}]:-}"
+		if [ -n "$twin" ] && [ "$twin" != "$tok" ]; then
+			echo "DROP: $tok → $twin (same tree + subject, reachable from HEAD)"
+			drops=$((drops + 1))
+		else
+			echo "KEEP: $tok"
+			[ -n "${write_mode:-}" ] && kept+=("$tok")
+		fi
+	done <"$baseline"
+	echo "shrink: $drops of $total baselined tokens have a now-reachable twin (advisory; gate stays green throughout)"
+	if [ -n "${write_mode:-}" ] && [ "$drops" -gt 0 ]; then
+		printf '%s\n' "${kept[@]}" >"$baseline"
+		echo "shrink: rewrote $baseline ($total → $((${total} - drops)) lines)"
+	fi
+	return 0
+}
+
 # --self-test: /tmp fixture git repo with one dangling commit (a commit-tree
 # child of HEAD — real commit object, unreachable, no git reset needed).
 if [ "${1:-}" = "--self-test" ]; then
@@ -237,8 +284,51 @@ EOF
 		exit 1
 	}
 
-	echo "dead-sha self-test ok (clean rc=0, exact file:line on rc=1, per-token arrow escape, comma-separated multi-pair fork-record lines, emit-baseline sorted+pair-excluded, baselined silent unless TQ_DEAD_SHA_VERBOSE=1)"
+	# 6. --shrink: a baselined dangling token WITH a reachable twin (same
+	# tree + subject) drops; a token without one keeps; --write rewrites the
+	# baseline dropping only DROP rows and the gate stays green.
+	baseline="$tmp/base.txt"
+	old_tree=$(git -C "$tmp" log -1 --format='%T' "$old")
+	printf '%s\n' "$third" >>"$tmp/base.txt"
+	twin=$(git -C "$tmp" -c user.email=t@t -c user.name=t commit-tree "$old_tree" -p HEAD -m dangling)
+	git -C "$tmp" merge -q --no-ff -m "merge twin for shrink self-test" "$twin"
+	out=$(cd "$tmp" && shrink_pass)
+	grep -q "^DROP: ${old} → " <<<"$out" || {
+		echo "dead-sha self-test FAIL: shrink did not drop the twinned token: $out"
+		exit 1
+	}
+	grep -q "^KEEP: ${third}$" <<<"$out" || {
+		echo "dead-sha self-test FAIL: shrink kept-row verdict missing: $out"
+		exit 1
+	}
+	grep -qF 'shrink: 1 of 3 baselined tokens' <<<"$out" || {
+		echo "dead-sha self-test FAIL: shrink summary wrong: $out"
+		exit 1
+	}
+	write_mode=1
+	out=$(cd "$tmp" && shrink_pass)
+	[ "$(grep -c '^[0-9a-f]' "$tmp/base.txt")" = 2 ] || {
+		echo "dead-sha self-test FAIL: --write left wrong baseline: $(cat "$tmp/base.txt")"
+		exit 1
+	}
+	write_mode=
+	files=(AGENTS.md)
+	out=$(cd "$tmp" && run_gate) && rc=0 || rc=$?
+	[ "$rc" = 0 ] || {
+		echo "dead-sha self-test FAIL: gate red after shrink --write: $out"
+		exit 1
+	}
+
+	echo "dead-sha self-test ok (clean rc=0, exact file:line on rc=1, per-token arrow escape, comma-separated multi-pair fork-record lines, emit-baseline sorted+pair-excluded, shrink drop/keep/--write, baselined silent unless TQ_DEAD_SHA_VERBOSE=1)"
 	exit 0
+fi
+
+if [ "${1:-}" = "--shrink" ]; then
+	[ "${2:-}" = "--write" ] && write_mode=1
+	cd "$(dirname "$0")/.." || exit 1
+	baseline="${TQ_DEAD_SHA_BASELINE:-scripts/dead-sha-baseline.txt}"
+	shrink_pass
+	exit $?
 fi
 
 cd "$(dirname "$0")/.." || exit 1
