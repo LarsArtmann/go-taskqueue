@@ -351,10 +351,7 @@ fi
 
 if [ "${1:-}" = "--shrink" ]; then
 	[ "${2:-}" = "--write" ] && write_mode=1
-	cd "$(dirname "$0")/.." || exit 1
-	baseline="${TQ_DEAD_SHA_BASELINE:-scripts/dead-sha-baseline.txt}"
-	shrink_pass
-	exit $?
+	SHRINK=1
 fi
 
 cd "$(dirname "$0")/.." || exit 1
@@ -373,6 +370,10 @@ if [ "${1:-}" = "--emit-baseline" ]; then
 	MODE="emit"
 	shift
 fi
+if [ "${1:-}" = "--shrink" ]; then
+	shift
+	[ "${1:-}" = "--write" ] && shift
+fi
 
 if [ "$#" -gt 0 ]; then
 	files=()
@@ -382,6 +383,11 @@ if [ "$#" -gt 0 ]; then
 else
 	files=(AGENTS.md TODO_LIST.md)
 	for f in docs/status/*.md docs/status/tasks/*.md; do [ -f "$f" ] && files+=("$f"); done
+fi
+
+if [ -n "${SHRINK:-}" ]; then
+	shrink_pass
+	exit $?
 fi
 
 run_gate
