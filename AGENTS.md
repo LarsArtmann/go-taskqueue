@@ -352,6 +352,11 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   Bugs: github.com/larsartmann/erraudit.
 - **VendorHash drift**: after a go.mod change run
   `nix build .#checks.x86_64-linux.vendor-hash` and copy `got:` into flake.nix.
+- **New module + unpushed tag = replace in EVERY graph loader**: a fresh
+  internal module's require (real tag, unpushed) 404s the proxy wherever
+  a module graph loads its consumer's go.mod without a local replace —
+  add the replace to root, every facade/internal loader, cmd/tq/go.work,
+  AND examples/embed (embed-tidy gate caught it, 2026-11-03).
 - **readmodel schema drift crash-loops the fold** (planned tables get no
   column migration; `ConvergeProjectionHome` snapshots divergent homes
   aside): remedy = quarantine `<db>.readmodel.db*` + restart.
