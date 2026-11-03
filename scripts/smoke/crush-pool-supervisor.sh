@@ -86,28 +86,8 @@ wait_pattern() { # file pattern timeout_s label
 	return 1
 }
 
-probe_health() { # -> "200" or the error
-	python3 - "$SOCK" <<'PY'
-import http.client, socket, sys
-
-class UnixHTTPConnection(http.client.HTTPConnection):
-    def __init__(self, path):
-        super().__init__("localhost")
-        self.unix_path = path
-    def connect(self):
-        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        s.settimeout(5)
-        s.connect(self.unix_path)
-        self.sock = s
-
-try:
-    conn = UnixHTTPConnection(sys.argv[1])
-    conn.request("GET", "/v1/health")
-    print(conn.getresponse().status)
-    conn.close()
-except OSError as e:
-    print(f"OSError {e}")
-PY
+probe_health() { # -> "200" or the error (first line of the shared probe)
+	crush_smoke_probe "$SOCK" /v1/health | head -1
 }
 
 echo "== scratch: $TMP (mock on 127.0.0.1:$PORT)"
@@ -120,13 +100,16 @@ mkdir -p "$XDG/crush" "$DATA" "$REPO"
 echo "== scratch config (mock provider only; auto-summarize OFF)"
 # pins: XDG isolation leg — mock is the ONLY resolvable provider
 crush_smoke_write_config "$XDG" "$PORT" '"disable_auto_summarize": true'
-#!/usr/bin/env python3
-# Minimal OpenAI-compatible mock for the pool smoke: every completion is
-# either an inert streamed text answer or, with MOCK_429=1, a 429 with
-# rate-limit error text (the fast-refuse signature). MOCK_STALL seconds
-# stall the TOOL-RESULT turn so the mid-run kill leg gets its window; the
-# tool_call scripting keys on "verdict" in the last NON-TEMPLATE user
-# message (the route smoke's proven content-key).
+python3 -m json.tool "$XDG/crush/crush.json" >/dev/null || fail "scratch crush.json does not parse"
+
+echo "== isolation gate (crush dirs under candidate env)"
+crush_smoke_assert_isolation "$XDG" "$DATA"
+
+crush_smoke_seed_repo "$REPO"
+
+echo "== write mock provider (429 mode via MOCK_429=1)"
+# pins: the 429 fast-refuse branch + the inert streamed-text branch
+cat >"$TMP/mock_crush_pool.py" <<'PYEOF'
 import json
 import os
 import re
@@ -239,18 +222,14 @@ if __name__ == "__main__":
 PYEOF
 
 start_mock_429() {
-	pkill -f "mock_crush_pool.py $PORT" 2>/dev/null || true
-	sleep 0.3
-	MOCK_429=1 python3 "$TMP/mock_crush_pool.py" "$PORT" >"$TMP/mock.log" 2>&1 &
-	sleep 1
+	crush_smoke_start_mock "mock_crush_pool.py $PORT" "$TMP/mock.log" \
+		env MOCK_429=1 python3 "$TMP/mock_crush_pool.py" "$PORT"
+	MOCK_PID="$CRUSH_SMOKE_MOCK_PID"
 }
 
 start_server() {
-	pkill -9 -f "crush server --host unix://$SOCK" 2>/dev/null || true
-	sleep 0.3
-	XDG_CONFIG_HOME="$XDG" XDG_DATA_HOME="$DATA" \
-		setsid crush server --host "unix://$SOCK" >"$TMP/server.log" 2>&1 &
-	sleep 2
+	crush_smoke_start_server "$SOCK" "$XDG" "$DATA" "$TMP/server.log" setsid
+	SERVER_PID="$CRUSH_SMOKE_SERVER_PID"
 }
 
 # The executor's exact seam argv: CRUSH_CLIENT_SERVER=1 + -H (agentEnv).
