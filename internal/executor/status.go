@@ -300,6 +300,19 @@ Load and follow the docs-health skill (view its SKILL.md first; it defines the c
 - Archive reports whose items are fully done and no longer referenced: move the file into docs/status/archived/ following the existing convention in docs/status/README.md.
 - Verify every claim against the code before writing it. Never mark planned work as shipped.
 
+## Checkpoint early (non-negotiable)
+
+Before ANY deep analysis, immediately write the report skeleton: create
+docs/status/<YYYY-MM-DD_HH-MM_WELL-NAMED>.md with the a)-h) section headers
+and one-line placeholders, append your first-cut TODO_LIST.md items, and
+COMMIT that skeleton right away (minute ~10 of the run at the latest) with
+the exact Task-Queue-ID footer from the Finish section. If the run later dies
+(lease expiry, crash, timeout), the committed skeleton is the recoverable
+progress — a silent death must never leave zero artifacts. Continue the
+analysis, then FILL IN the skeleton in place and amend that skeleton commit
+(git commit --amend; safe: this commit is never pushed by you). Do NOT skip the
+skeleton commit even if you expect to finish quickly.
+
 ## Hard scope rule
 
 Touch ONLY documentation, nothing else:

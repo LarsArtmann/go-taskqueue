@@ -448,3 +448,32 @@ only via aging + new enqueues.
   the seventeenth's full derivation (13 reports); the two footer-only
   tasks verified via `git show --stat` (0ae5ff83; 3814abe1..ca63b282 +
   tick commits dbcf677e/ca63b282) and row 1064/1077 DONE notes.
+
+---
+
+## Appendix (2026-11-03, silent-death diagnosis — §d1/§d2 evidence pull)
+
+Traces pulled from the production pool journal `/mnt/pool/services/tq/tq.db`
+(facts 17144–17190 verbatim) and `~/.local/state/tq/logs/`:
+
+- **The workers did not hang.** During the target task's hold
+  (task `000001a1815c…`, go-taskqueue status), worker-53564 claimed and
+  preflight-requeued OTHER tasks continuously (facts 17148–17168, CV
+  dirty-tree requeues) and worker-21570 likewise (17173–17184). Both
+  workers' claim loops were alive throughout; only the held status task's
+  slot produced nothing.
+- **The executor never left a trace.** No `<task-id>.log` for the target
+  task exists in TQ_LOG_DIR, and `calibration.jsonl` carries NO row for
+  `000001a1815c…` — the paid turn never recorded session usage. The status
+  run died between claim and any observable agent artifact (spawn-failure /
+  instant-death class), not mid-derivation with lost output.
+- **The 18.6 h hold is lazy reclaim, not a stuck lease.** `task.released`
+  with `reason=lease-expiry` is written by the RECLAIMING claim: worker-21570's
+  release (fact 17185) landed only when worker-10961's claim fired at
+  2026-10-30 02:35 UTC — overnight the pool was budget-gated
+  (17011/17025/17029), so no competing claim ever forced the reclaim.
+  Exclusivity held ~18.6 h as a side effect of pool idleness.
+- **Cure landed**: the done-prompt contract now orders a checkpoint-early
+  skeleton commit (internal/executor/status.go, `statusPrompt`) so any
+  future lease-expiry death leaves a committed report skeleton + TODO
+  appends instead of zero artifacts.
