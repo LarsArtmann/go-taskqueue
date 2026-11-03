@@ -31,5 +31,6 @@ use (
 	../../internal/readmodel
 	../../internal/retryx
 	../../internal/task
+	../../internal/testastguard
 	../../internal/worker
 )

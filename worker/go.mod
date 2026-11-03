@@ -43,3 +43,5 @@ replace github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4 => ../intern
 replace github.com/larsartmann/go-taskqueue/internal/queue/companion => ../internal/queue/companion
 
 replace github.com/larsartmann/go-taskqueue/internal/retryx => ../internal/retryx
+
+replace github.com/larsartmann/go-taskqueue/internal/testastguard => ../internal/testastguard
