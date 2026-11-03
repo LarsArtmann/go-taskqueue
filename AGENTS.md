@@ -211,10 +211,10 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   build+vet, check-dead-sha-refs, date-named report) + one fresh delta;
   expensive gates inherit a same-HEAD report; nested-module claims
   need in-module `GOWORK=off` tests; root-parsed-file closeouts cite
-  ROOT build+vet+test -race rc. Re-dispatch: `scripts/redispatch-brief.sh`;
-  rc TO A FILE (no PIPESTATUS); dated DONE re-verified note; `-v` + PASS
+  ROOT build+vet+test -race rc. Re-dispatch: `scripts/redispatch-brief.sh`
+  (stamp partial-landed rows: `--stamp-residue`, dry-run first); rc TO A FILE (no PIPESTATUS); dated DONE re-verified note; `-v` + PASS
   COUNT for conform `-run`. **Premise-check first**: RUN a batch item's
-  premise gate (e.g. `check-agents-size.sh`) BEFORE planning — a stale
+  premise gate BEFORE planning — a stale
   premise ("zero headroom" was actually 380 B red) burned a window.
   **Observe-first for pinning**: CAPTURE live output and pin what was
   observed — assertion-first pinning burned three windows.
@@ -246,8 +246,7 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   TODO_LIST.md for each verbatim batch anchor; finished rows must read
   `- [x]` — landed + unchecked = paid round-trip.
 - **Tick-claims cite the tick commit**: non-report ticks cite the tick
-  commit; WARN gate `check-tick-claims.sh` (also WARNs on tick cites that
-  resolve but are not HEAD-ancestors — never cite an UNPUSHED sha without
+  commit; WARN gate `check-tick-claims.sh` (WARNs on non-HEAD-ancestor tick cites — never cite an UNPUSHED sha without
   an `old→new` fork record; amending orphans it, 02-56 class).
 - **O14 CHANGELOG policy**: `[Unreleased]` carries OPERATOR-VISIBLE changes
   only — repo-internal tooling and non-operator rows go in the `### Internal`
@@ -326,7 +325,7 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 - **GOEXPERIMENT/GOTOOLCHAIN**: ci-local exports jsonv2; CI setup-go + go.mod
   floors + flake tarball PINNED IN LOCKSTEP (1.27.3); NEVER lower a `go`
   directive (`check-go-mods.sh`).
-- **`fetch` empty ≠ URL dead**: an empty body is a tool mismatch — retry with `download`.
+- **`fetch` empty ≠ URL dead**: an empty body is a tool mismatch — retry `download`.
 - **Host GOCACHE/GOROOT hazards**: gates run `GOCACHE=/tmp/go-build-cache`
   (host symlink → /nix/store ENOSPCs); "package X is not in std" +
   `$GOMODCACHE/toolchain@…` GOROOT = corrupt extraction (chmod -R u+w + trash).
