@@ -68,7 +68,7 @@ unchecked rows (672 open; the 26th-dispatch append block; rows 45/385,
 1. **Dangling-SHA census grown again: 15 → 23 cites** — `check-dead-sha-refs.sh`
    rc=1 at this HEAD; the NEW source is `tasks/2026-11-02_22-23_task-…9e61356b…`
    (the parked-trio closeout of the LATER 2026-11-02 window, not this window's
-   work), propagating `e404fd14`/`6bbe6ed3`/`dddd507b`. Same self-replicating
+   work), propagating `e404fd14→0843a8d8`/`6bbe6ed3→2d3b1702`/`dddd507b→7abed40d`. Same self-replicating
    dynamic the tenth pass named: each verification/closeout pass's report cites
    heal-orphaned SHAs and grows the next pass's census. Consolidated cure row 45
    owns the cluster; the convention line (cite the reachable successor or write

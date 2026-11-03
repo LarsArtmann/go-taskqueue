@@ -61,8 +61,8 @@ rows (the 26th-dispatch append block; rows 45/385, 1497/1498/1499/1514/1515/1516
 
 1. **check-dead-sha-refs RED at HEAD — 11 dangling cites (up from 3)**, all the
    same daemon-heal class: the eighth-pass report itself and `docs/status/README.md:131`
-   now propagate the three original fresh cites (`d7c25ae8`, `719d980e`, `ff0f16d6`),
-   plus one NEW source — `tasks/2026-11-02_20-32_…:48/:51` citing `16ef4072`
+   now propagate the three original fresh cites (`d7c25ae8 (no reachable counterpart, baselined 2026-11-03)`, `719d980e→73fc92da`, `ff0f16d6→b88e2fa9`),
+   plus one NEW source — `tasks/2026-11-02_20-32_…:48/:51` citing `16ef4072→357bb74e`
    (twice), written by the 20-32 push-timing batch's closeout. The rate is the
    finding: 4 distinct dangling-SHA sources minted in one afternoon by concurrent
    dispatches. Tracked by the standing consolidated dangling-citation cure row
@@ -80,8 +80,8 @@ rows (the 26th-dispatch append block; rows 45/385, 1497/1498/1499/1514/1515/1516
 1. **Dispatch-side window dedup is still the single highest-value unblock** —
    nine paid passes over one window; every pass since the fifth proposed the same
    refusal/degrade rule. Owner ruling needed (row 1515).
-2. **Heal-created SHA citations need gate-visible provenance** — the 16ef4072 and
-   d7c25ae8-class cites all originate in reports written BEFORE the heal orphaned
+2. **Heal-created SHA citations need gate-visible provenance** — the 16ef4072→357bb74e and
+   d7c25ae8 (no reachable counterpart, baselined 2026-11-03)-class cites all originate in reports written BEFORE the heal orphaned
    the cited commit. The "cite the reachable successor, or write the fork record
    BEFORE the heal" convention line (eighth pass §e2) would kill the class at
    source; still unwritten.

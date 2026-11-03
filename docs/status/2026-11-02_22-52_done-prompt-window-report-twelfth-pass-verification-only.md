@@ -62,10 +62,10 @@ owns the rows-1251-1253 finding).
 
 1. **Dangling-SHA census grown again: 23 → 28 cites** — `check-dead-sha-refs.sh`
    rc=1 at this HEAD. NEW sources since the tenth pass's count:
-   `tasks/2026-11-02_22-45_task-…2c1cfb65628cce…` cites `479f18ff` ×2
+   `tasks/2026-11-02_22-45_task-…2c1cfb65628cce…` cites `479f18ff→9af1014c` ×2
    (unreachable), joining the 22-23 parked-trio closeout's
-   `32461c7f`/`e404fd14`/`6bbe6ed3`/`dddd507b` and the 20-18/20-43 pass
-   reports' `719d980e`/`d7c25ae8`/`ff0f16d6`/`16ef4072`. Same self-replicating
+   `32461c7f→bed52bca`/`e404fd14→0843a8d8`/`6bbe6ed3→2d3b1702`/`dddd507b→7abed40d` and the 20-18/20-43 pass
+   reports' `719d980e→73fc92da`/`d7c25ae8 (no reachable counterpart, baselined 2026-11-03)`/`ff0f16d6→b88e2fa9`/`16ef4072→357bb74e`. Same self-replicating
    dynamic named since the eighth pass: every verification pass's own report
    cites heal-orphaned SHAs and grows the next census. Consolidated cure row
    45 owns the cluster; the cite-the-reachable-successor convention line still
