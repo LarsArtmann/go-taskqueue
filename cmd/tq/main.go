@@ -9,6 +9,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -2567,16 +2568,23 @@ func cmdShow(args []string) error {
 	if err != nil {
 		return err
 	}
-	// Include the task'store fact trail: for completed agent tasks this is
-	// where the structured result detail lives (session id, verify tail).
-	id := t.ID.String()
+	return showTaskJSON(ctx, store, os.Stdout, t, *commits)
+}
 
-	trail, err := store.FactsForTask(ctx, id, 0)
+// showTaskJSON renders one task's full show wire (task, fact trail,
+// failure/verify evidence, window, questions, priority, liveness) to w.
+// The writer is a parameter so JSON tests need no process-global os.Stdout
+// capture: a t.Parallel sibling writing during a global capture window
+// corrupted the JSON stream (order-dependence proven at 105c1cb6→0960e857).
+func showTaskJSON(ctx context.Context, store *sqlite.Store, w io.Writer, t task.Task, withCommits bool) error {
+	// The fact trail carries the structured result detail of completed
+	// agent tasks (session id, verify tail).
+	trail, err := store.FactsForTask(ctx, t.ID.String(), 0)
 	if err != nil {
 		return err
 	}
 
-	enc := json.NewEncoder(os.Stdout)
+	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
 
 	var (
@@ -2584,7 +2592,7 @@ func cmdShow(args []string) error {
 		failureView *failureEvidenceView
 	)
 
-	if *commits {
+	if withCommits {
 		commitView = commitsForTask(t)
 	}
 

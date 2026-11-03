@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"path/filepath"
@@ -327,6 +328,12 @@ func TestCmdDLQEvidenceStageFilter(t *testing.T) {
 // TestShowJSONCarriesFailureEvidence pins the tq show failure section:
 // a dead task's last task.failed fact surfaces as structured evidence
 // (stage, verify_stage, exit code, tail) on the show wire.
+//
+// Renders via showTaskJSON into a bytes.Buffer, NOT via a captureStdout
+// window over cmdShow: a t.Parallel sibling writing to the process-global
+// os.Stdout during the capture window corrupted the JSON stream
+// (order-dependence proven at 105c1cb6→0960e857, foreign session). The
+// writer-parameterized helper is immune — no global state in play.
 func TestShowJSONCarriesFailureEvidence(t *testing.T) {
 	t.Parallel()
 
@@ -373,11 +380,22 @@ func TestShowJSONCarriesFailureEvidence(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	out := captureStdout(t, func() {
-		if err := cmdShow([]string{"--db", dbPath, enq.ID.String()}); err != nil {
-			t.Errorf("cmdShow: %v", err)
-		}
-	})
+	reader, err := sqlite.Open(dbPath)
+	if err != nil {
+		t.Fatalf("reopen store: %v", err)
+	}
+	defer reader.Close()
+
+	resolved, err := resolveTask(ctx, reader, enq.ID.String())
+	if err != nil {
+		t.Fatalf("resolve task: %v", err)
+	}
+
+	var buf bytes.Buffer
+	if err := showTaskJSON(ctx, reader, &buf, resolved, false); err != nil {
+		t.Fatalf("showTaskJSON: %v", err)
+	}
+	out := buf.String()
 
 	var doc struct {
 		Failure *struct {
