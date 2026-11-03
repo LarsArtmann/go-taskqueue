@@ -68,8 +68,8 @@ pass deduped against the standing rows (the 26th-dispatch append block, rows
 
 1. **check-dead-sha-refs RED at HEAD — 3 FRESH dangling cites**, all in reports
    written TODAY by concurrent dispatches: `tasks/2026-11-02_18-47…:27` cites
-   `d7c25ae8`, `tasks/2026-11-02_19-43…:8` cites `719d980e`,
-   `tasks/2026-11-02_20-04…:48` cites `ff0f16d6` (each "commit exists, unreachable
+   `d7c25ae8 (no reachable counterpart, baselined 2026-11-03)`, `tasks/2026-11-02_19-43…:8` cites `719d980e→73fc92da`,
+   `tasks/2026-11-02_20-04…:48` cites `ff0f16d6→b88e2fa9` (each "commit exists, unreachable
    from HEAD"). Same recurring class (daemon-sweep heals orphan the cited commit);
    tracked by the standing consolidated dangling-citation cure row — NOT
    re-minted, but the rate (3 in one afternoon) is the finding.

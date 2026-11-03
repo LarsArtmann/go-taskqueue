@@ -836,3 +836,5 @@ fd95b61f
 fdaca3b4
 fdb258b9
 ff573eff
+# 2026-11-03 incident heal (row 1378, filter-branch dead-cite class): d7c25ae8 is a 2026-11-02 23:xx daemon auto-commit with no reachable post-rewrite counterpart (tree unmatched across all refs, content absorbed piecemeal by later reachable commits)
+d7c25ae8
