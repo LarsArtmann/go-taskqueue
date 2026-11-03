@@ -14,6 +14,18 @@ Items carry their evidence: a code path and/or the status report that filed
 them (`docs/status/<date>_<slug>.md`). Completed items live in CHANGELOG.md,
 not here.
 
+- [ ] Fix heal-daemon-sweep.sh blocker-walk oscillation (now twice-live: 2026-11-02 + 2026-11-03 task …918bf0): detect ever-older-blocker cycles, print the amend-fallback inline on cap, pin the walk as a --self-test fixture (docs/status/tasks/2026-11-03_02-06_task-000001a19ee7ce01918bf068c85900000000.md §e1)
+- [ ] Add --apply-forks mode to scripts/check-dead-sha-refs.sh: consume old=new token pairs, tree-verify each counterpart reachable, rewrite citing lines to arrow fork-record form deterministically (§e3)
+- [ ] Pin the dead-SHA counterpart heuristic order (tree-match → -S content-match → subject NEVER alone for auto-commit subjects) in the gate header comment; reword the d7c25ae8 baseline comment to the verified tree-unmatch fact or run the -S absorption proof (§e4, §d2)
+- [ ] PreToolUse advisory: warn when a repo-scope gate script (check-dead-sha-refs, check-doc-refs, …) runs while the tree is dirty inside its own scope — the commit-before-gate violation cost the …918bf0 session a daemon sweep + full recover loop (§e2)
+- [ ] Rewrite-rate probe: nightly reflog scan counting filter-branch/rebase events per day — three rewrites landed 11-02→11-03 alone; surface repeat offenders before they mint the next dead-cite debt batch (§e5)
+- [ ] Periodic dead-sha-baseline shrink pass: tree-verify each baselined token for a NOW-reachable counterpart and drop matches (shrink is advisory-only today, baseline only grows: 1764 lines) (§f9)
+- [ ] Batch-row residue-note convention: when a dispatch row's premise partially landed before the session (row 1378's "top cites" were already healed), the re-dispatch check should stamp a residue note on the row so the next dispatch doesn't re-chase healed cites (§f8)
+- [ ] check-dead-sha-refs --self-test: add the twice-on-a-line dangling-token case (first occurrence healthy, second dangling) and the baselined-token-on-arrow-line precedence case (§f12, §f13)
+- [ ] Index-row same-day ordering: docs/status/README.md inserts at block top but same-day rows are insertion-order, not HH-MM desc — add a sort tiebreak or a check (§f14)
+- [ ] Verify the "~2,800 commits orphaned" figure in row 1378's text against the reflog (never re-counted; folklore from the source report) and correct the row if off (§f15)
+
+## Filter-branch dead-cite heal follow-ups (2026-11-03 02-06; source: docs/status/tasks/2026-11-03_02-06_task-000001a19ee7ce01918bf068c85900000000.md §e/§f; deduped — rewrite guard is row 728, the heal-walk oscillation advisory row already exists, d7c25ae8 baseline item folded into the pin row)
 ## 16-42 closeout appends (2026-10-25; source: docs/status/tasks/2026-10-25_16-42_task-000001a173b7428adb624902cd4e00000000.md §e/§f; deduped vs rows 196-202)
 
 - [ ] journal-drift.sh: negative-path self-test for the fakeAuditProbe extraction — env hook (e.g. TQ_PROBE_FILE) forcing the empty-grep FAIL branch, per the countable-gate self-test convention (2026-10-26 02-34 closeout §e1/§f1)
