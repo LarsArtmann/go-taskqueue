@@ -48,8 +48,9 @@ if [ "${1:-}" = "--self-test" ]; then
 	# function calls returned, and set -u would kill it on a local name.
 	tmp="$(mktemp -d)"
 	trap 'rm -rf "$tmp"' EXIT
-	mkdir -p "$tmp/docs/status"
+	mkdir -p "$tmp/docs/status" "$tmp/docs/planning"
 	: >"$tmp/docs/status/2026-10-01_00-00_exists.md"
+	: >"$tmp/docs/planning/2026-10-01_00-00_note.md"
 
 	st_pass=0 st_fail=0 n_adv=0 n_sil=0
 	rcase() {
@@ -88,7 +89,9 @@ if [ "${1:-}" = "--self-test" ]; then
 	rcase ctx:'### Internal' 'CHANGELOG edit advice' "$tmp/CHANGELOG.md"
 	rcase ctx:'check-go-mods.sh' 'go.mod edit advice' "$tmp/go.mod"
 	rcase ctx:'date +%Y-%m-%d_%H-%M' 'docs/status creation advice' "$tmp/docs/status/2026-10-29_10-00_task-1.md"
+	rcase ctx:'<ts>_<slug>' 'docs/planning creation advice' "$tmp/docs/planning/2026-10-29_10-00_note.md"
 	rcase silent 'existing docs/status edit stays silent' "$tmp/docs/status/2026-10-01_00-00_exists.md"
+	rcase silent 'existing docs/planning edit stays silent' "$tmp/docs/planning/2026-10-01_00-00_note.md"
 	rcase silent 'README edit stays silent' "$tmp/README.md"
 	rcase silent 'Go file edit stays silent' "$tmp/internal/foo.go"
 
@@ -151,6 +154,11 @@ if [ -z "$note" ]; then
 	*/docs/status/*)
 		if [ ! -f "$fp" ]; then
 			note="new docs/status report: run 'date +%Y-%m-%d_%H-%M' BEFORE composing the filename (a guessed <ts> lies); follow the a)-g) skeleton; index on creation (check-status-index.sh); daemon-folded reports need the AMEND MANEUVER."
+		fi
+		;;
+	*/docs/planning/*)
+		if [ ! -f "$fp" ]; then
+			note="new docs/planning note: run 'date +%Y-%m-%d_%H-%M' BEFORE composing the <ts>_<slug> filename (a guessed <ts> lies)."
 		fi
 		;;
 	esac
