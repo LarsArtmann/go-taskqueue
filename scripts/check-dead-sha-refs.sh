@@ -41,14 +41,28 @@ MODE="gate" # overridden to "emit" by --emit-baseline
 # matching inside a longer hex token.
 token_arrow_escaped() {
 	local tok=$1 text=$2
-	if grep -qE "(^|[^0-9a-f])${tok}(→|<-)[0-9a-f]{7,40}" <<<"$text"; then return 0; fi
-	if grep -qE "[0-9a-f]{7,40}(→|<-)${tok}([^0-9a-f]|$)" <<<"$text"; then return 0; fi
+	# pure-bash ERE (no grep spawn): this runs per (line, token) pair —
+	# spawned greps dominated the gate pass (§f9 perf)
+	if [[ "$text" =~ (^|[^0-9a-f])${tok}(→|<-)[0-9a-f]{7,40} ]]; then return 0; fi
+	if [[ "$text" =~ [0-9a-f]{7,40}(→|<-)${tok}([^0-9a-f]|$) ]]; then return 0; fi
 	return 1
 }
 
 # run_gate / emit: cwd must be the fixture/real git repo root; caller sets
 # the `baseline` path and the `files` array. gate: returns 1 on any new
 # (non-baselined, non-arrow) dead SHA. emit: prints sorted dead tokens.
+# hex_tokens TEXT: successive leftmost [0-9a-f]{7,40} matches, pure-bash
+# regex (no grep spawn — this runs once per hex-bearing line, ~5.7k lines
+# in the default scope; spawned greps dominated the pass, §f9 perf).
+hex_tokens() {
+	local t=$1
+	local re='[0-9a-f]{7,40}'
+	while [[ "$t" =~ $re ]]; do
+		printf '%s\n' "${BASH_REMATCH[0]}"
+		t=${t#*"${BASH_REMATCH[0]}"}
+	done
+}
+
 run_gate() {
 	local f line linenum text tok
 	local fail=0 new_hits=0 baselined_hits=0
@@ -56,7 +70,7 @@ run_gate() {
 	# Phase 1: collect the unique hex tokens across the whole scope.
 	for f in "${files[@]}"; do
 		while IFS= read -r line; do
-			for tok in $(grep -oE '[0-9a-f]{7,40}' <<<"${line#*:}"); do alltok["$tok"]=1; done
+			for tok in $(hex_tokens "${line#*:}"); do alltok["$tok"]=1; done
 		done < <(grep -nE '[0-9a-f]{7,40}' "$f")
 	done
 	# Phase 2 (BATCHED, 2026-11-03 §f9): ONE `git cat-file --batch-check`
@@ -78,21 +92,25 @@ run_gate() {
 		done
 		while read -r o; do anc["$o"]=1; done < <(git rev-list HEAD 2>/dev/null)
 	fi
-	in_baseline() {
-		local tok=$1 bl
-		[ -f "$baseline" ] || return 1
+	local -A bl_set=()
+	if [ -f "$baseline" ]; then
 		while IFS= read -r bl; do
 			[[ "$bl" =~ ^# ]] && continue
 			[ -z "$bl" ] && continue
-			[ "$bl" = "$tok" ] && return 0
+			bl_set["$bl"]=1
 		done <"$baseline"
-		return 1
+	fi
+	in_baseline() {
+		[ -n "${bl_set[$1]:-}" ]
 	}
 	for f in "${files[@]}"; do
 		while IFS= read -r line; do
 			linenum=${line%%:*}
 			text=${line#*:}
-			for tok in $(grep -oE '[0-9a-f]{7,40}' <<<"$text" | sort -u); do
+			local -A seen=()
+		for tok in $(hex_tokens "$text"); do
+			[ -n "${seen[$tok]:-}" ] && continue
+			seen["$tok"]=1
 				[ -n "${oid[$tok]:-}" ] || continue
 				[ -n "${anc[${oid[$tok]}]:-}" ] && continue
 				token_arrow_escaped "$tok" "$text" && continue
