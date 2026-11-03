@@ -111,6 +111,14 @@ cancel (including cooperative stop of running tasks) and rescue, CSRF-guarded
 forms with a failed-attempt lockout — via `tq serve --allow-writes`, off by
 default.
 
+**Two serves on one queue home:** the projection fold is guarded by a lock
+file, so a second `tq serve` on an already-locked home mounts read-only
+instead of failing. That second dashboard freezes at mount — it shows a
+STALE FOLD banner and its `/readyz` reports the `fold: follower` WARN
+(read-only projection mount; the fold lock is held by another serve). Trust
+ruling: read the lock-holding dashboard, and restart this serve once the
+lock frees — never treat the frozen one as current.
+
 **Serving beyond localhost:** the dashboard renders every task payload and
 error tail, so `tq serve` refuses to bind a non-loopback address (including
 `:port` / `0.0.0.0`) without `--auth-token` / `$TQ_SERVE_TOKEN`. With a token
