@@ -57,6 +57,14 @@ type (
 // functions read, and the matchers behind `tq dlq --evidence-stage`.
 type FactTrailReader = internalexecutor.FactTrailReader
 
+// Calibration dataset (calibration.go): one row per paid run, joined by
+// value to the run's verify receipt/attestation facts.
+type CalibrationRow = internalexecutor.CalibrationRow
+
+// CalibrationDataset is the JSONL file name of the dataset under the
+// pool's log dir (one row per line; absent without a log dir).
+const CalibrationDataset = internalexecutor.CalibrationDataset
+
 var (
 	LastFailureEvidence          = internalexecutor.LastFailureEvidence
 	LastFailureEvidenceFromTrail = internalexecutor.LastFailureEvidenceFromTrail
