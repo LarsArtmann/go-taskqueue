@@ -16,7 +16,7 @@ not here.
 
 ## 24th-dispatch closeout appends (2026-11-03; source: docs/status/tasks/2026-11-03_05-12_task-000001a19f836b538429f6b0fe4b00000000.md §e/§f; deduped)
 
-- [ ] Audit the 4 UNREACHABLE fork-record partners shipped in eb401d1a (25631367, a7f60f6c, 057b0164, 3e5e2d76, d3df022a — tree-identical to their dangling sides but themselves unreachable from HEAD): confirm each is still the best-documented successor or re-point to a reachable descendant / convert to a dated baseline row (report §f1)
+- [ ] Audit the 4 UNREACHABLE fork-record partners shipped in eb401d1a (afe706ca→25631367, ad95e368→a7f60f6c, 847554e0→057b0164, 6366ed6e→3e5e2d76, 098324f6→d3df022a — tree-identical to their dangling sides but themselves unreachable from HEAD): confirm each is still the best-documented successor or re-point to a reachable descendant / convert to a dated baseline row (report §f1)
 - [ ] Add scripts/verify-fork-record.sh <old> <new> (patch-id + merge-base ancestry + tree-identity fallback, rc=0/1) with a --self-test; make it the mechanical receipt for the next dead-sha mass heal (report §f2/§e2)
 - [ ] redispatch-brief.sh: add a --residue-report mode listing every TODO row already carrying a RESIDUE note so residue stamps stay auditable across dispatches (report §f3)
 - [ ] check-tick-claims.sh: also flag tick/DONE-note commit cites that resolve but are not HEAD-ancestors (today only explicit tick-cite claims are checked; the DONE-note cite class escapes) (report §f4)
