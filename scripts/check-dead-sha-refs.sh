@@ -52,7 +52,32 @@ token_arrow_escaped() {
 run_gate() {
 	local f line linenum text tok
 	local fail=0 new_hits=0 baselined_hits=0
-	local -A emit=()
+	local -A emit=() alltok=() oid=() anc=()
+	# Phase 1: collect the unique hex tokens across the whole scope.
+	for f in "${files[@]}"; do
+		while IFS= read -r line; do
+			for tok in $(grep -oE '[0-9a-f]{7,40}' <<<"${line#*:}"); do alltok["$tok"]=1; done
+		done < <(grep -nE '[0-9a-f]{7,40}' "$f")
+	done
+	# Phase 2 (BATCHED, 2026-11-03 §f9): ONE `git cat-file --batch-check`
+	# (existence + resolved oid, order-preserving) plus ONE `git rev-list
+	# HEAD` (ancestor set) replace the per-token `cat-file -t` +
+	# `merge-base --is-ancestor` spawns — the gate pass itself was ~54 s
+	# over the living-docs scope, now two invocations total.
+	local -a toks=() chk=()
+	local k i o typ
+	for k in "${!alltok[@]}"; do toks+=("$k"); done
+	if [ ${#toks[@]} -gt 0 ]; then
+		mapfile -t chk < <(printf '%s\n' "${toks[@]}" | git cat-file --batch-check 2>/dev/null)
+		for i in "${!toks[@]}"; do
+			[ -n "${chk[$i]:-}" ] || continue
+			o=${chk[$i]%% *}
+			typ=${chk[$i]#* }
+			typ=${typ%% *}
+			[ "$typ" = commit ] && oid["${toks[$i]}"]=$o
+		done
+		while read -r o; do anc["$o"]=1; done < <(git rev-list HEAD 2>/dev/null)
+	fi
 	in_baseline() {
 		local tok=$1 bl
 		[ -f "$baseline" ] || return 1
@@ -68,8 +93,8 @@ run_gate() {
 			linenum=${line%%:*}
 			text=${line#*:}
 			for tok in $(grep -oE '[0-9a-f]{7,40}' <<<"$text" | sort -u); do
-				[ "$(git cat-file -t "$tok" 2>/dev/null)" = commit ] || continue
-				git merge-base --is-ancestor "$tok" HEAD >/dev/null 2>&1 && continue
+				[ -n "${oid[$tok]:-}" ] || continue
+				[ -n "${anc[${oid[$tok]}]:-}" ] && continue
 				token_arrow_escaped "$tok" "$text" && continue
 				if [ "$MODE" = emit ]; then
 					emit["$tok"]=1
