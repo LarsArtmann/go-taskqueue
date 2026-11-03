@@ -19,6 +19,15 @@ set -euo pipefail
 
 cd "$(dirname "$0")/../.."
 
+# Rewrite-rate probe rides the nightly rotation (ADVISORY): history rewrites
+# mint dead-cite debt (check-dead-sha-refs.sh baseline only grows), so surface
+# per-day filter-branch/rebase rates loudly in the job log — a hot day warns,
+# it must not fail the corpus rotation (2026-11-03 report §e5).
+echo "--- rewrite-rate probe (advisory) ---"
+bash scripts/rewrite-rate-probe.sh ||
+	echo "WARNING: rewrite-rate probe flagged hot day(s) — audit the reflog before the next rewrite (dead-cite debt class)"
+echo "--- rewrite-rate probe done ---"
+
 fuzztime="${1:-${FUZZTIME:-60s}}"
 only="${2:-}"
 max_seeds="${MAX_SEEDS:-1000}"
