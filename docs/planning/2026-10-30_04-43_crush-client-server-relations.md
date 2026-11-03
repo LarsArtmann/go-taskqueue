@@ -89,7 +89,12 @@ recommended first rung.**
   at once (requeue recovers, attempts burn unless `IsEnvironmentalDeath`
   classifies it). L1–L3 keep the blast radius of today.
 - **Memory accumulation**: N concurrent agent goroutines in one process vs N
-  processes; unmeasured. Measure in an L1 pilot before L4.
+  processes; MEASURED 2026-11-03 (scripts/smoke/crush-server-memory.sh, the
+  L1 pilot protocol at zero spend: one isolated server, 2 waves x 4
+  concurrent routed turns, mock provider): baseline 55-58 MB, wave peak
+  110-135 MB at 4 concurrent, quiescent 87-120 MB; wave-2 quiescent never
+  above wave-1 — shared-server RSS does NOT accumulate per wave (4/4 green
+  runs). Concurrency sweep beyond N=4 still open (TODO_LIST row 1519).
 - **Idle-suicide churn** (M7): without an attached keeper, the server dies
   between waves and respawns per task (fine functionally; wasted spawn).
 - **Version coupling**: server and client are the same binary today; a
