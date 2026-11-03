@@ -3,7 +3,7 @@ module github.com/larsartmann/go-taskqueue/examples/embed
 go 1.27.3
 
 require (
-	github.com/jackc/pgx/v5 v5.11.0
+	github.com/jackc/pgx/v5 v5.12.0
 	github.com/larsartmann/go-taskqueue/executor v0.4.0
 	github.com/larsartmann/go-taskqueue/queue v0.4.0
 	github.com/larsartmann/go-taskqueue/queue/postgres v0.3.3
