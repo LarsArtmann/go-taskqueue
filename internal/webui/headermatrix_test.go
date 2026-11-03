@@ -261,7 +261,7 @@ func getContextGET(t testing.TB, url string) *http.Response {
 	return resp
 }
 
-func positiveSeconds(t testing.TB, got string) {
+func retryAfterPositiveSeconds(t testing.TB, got string) {
 	t.Helper()
 
 	if n, err := strconv.Atoi(got); err != nil || n < 1 {
@@ -296,7 +296,7 @@ var serve401Row = mergeRow(serveDashboardRow, matrixHeaders{
 // serve429Row is the write-route CSRF-lockout 429: the full task-page set
 // plus the Retry-After second count.
 var serve429Row = mergeRow(serveDashboardRow, matrixHeaders{
-	"retry-after": positiveSeconds,
+	"retry-after": retryAfterPositiveSeconds,
 })
 
 // serveFaviconRow is the `/health/favicon.svg` row: the health set with a
@@ -319,7 +319,7 @@ var (
 	}
 	apiLockedRow = matrixHeaders{
 		"x-content-type-options": eq("nosniff"),
-		"retry-after":            positiveSeconds,
+		"retry-after":            retryAfterPositiveSeconds,
 	}
 )
 
