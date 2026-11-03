@@ -36,3 +36,5 @@ replace github.com/larsartmann/go-taskqueue/internal/queue => ../internal/queue
 replace github.com/larsartmann/go-taskqueue/internal/task => ../internal/task
 
 replace github.com/larsartmann/go-taskqueue/internal/retryx => ../internal/retryx
+
+replace github.com/larsartmann/go-taskqueue/internal/testastguard => ../internal/testastguard
