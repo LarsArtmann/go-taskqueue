@@ -2,26 +2,27 @@
 
 Projects-aware task queue / worker pool for Go — see README.md.
 
-**STATUS: v0.4.1 shipped; MULTIPLE concurrent agents** — re-read files,
-re-run tests; uncommitted parallel
-changes: read, judge, build on, never revert (size guard: TestAgentsDocSizeGuard)
+**STATUS: v0.4.1 shipped; concurrent agents** — re-read files,
+re-run tests; uncommitted changes: read, judge, build on, never revert (size: TestAgentsDocSizeGuard)
 
-**MAJOR OPEN PROBLEMS**: [dispatch prompting + batch granularity](docs/problems/major-prompting-and-batching.md) —
-redesign SHIPPED v0.3.4; follow-ups in the doc.
+**MAJOR OPEN PROBLEMS**: [dispatch prompting + batch granularity](docs/problems/major-prompting-and-batching.md) — shipped
+v0.3.4; follow-ups in the doc.
 
-**READER ROUTE — read only your lanes**: executors → §Payload contracts +
+**READER ROUTE — your lanes only**: executors → §Payload contracts +
 §Conventions; review/dlqfix/status → §Conventions + §Operational contracts; gate
 runners → §Commands + §Known Issues; store/queue → §Store invariants;
 platform/docs → §Relation to other projects. Scan §Known Issues before attributing
-failures; per-package maps live in doc comments.
+failures; per-package maps: doc comments.
 
 ## Commands
 
 ```bash
-./scripts/ci-local.sh # pre-push gate; transient foreign breaks retry 45s ×3
+./scripts/ci-local.sh # pre-push gate; foreign breaks retry 45sx3
   # TRANSIENT_MAX_POLLS=0: NO retry (pinned); nix/check-ci/daemon-attribution
-  # unwrapped. Preflight EVERY battery: agents-size + dead-exports --self-test
-  # + module test + facade-parity + ROOT vet + quiet tree.
+  # unwrapped. Battery preflight: agents-size + dead-exports --self-test +
+  # module test + facade-parity + ROOT vet + quiet tree. Comparability
+  # removal (slice/map): zero-literal AND named-var == greps + ROOT-test
+  # compile.
 ./scripts/root-gate.sh # root verify gate; ONE retry on known-flaky signatures
 ./scripts/lint-baseline.sh --check --clean-cache # opt-in; regen ALWAYS cleans
 nix build # nix run .#test; .#webui-css
@@ -44,15 +45,14 @@ for m in $(find internal task journal queue executor worker -name go.mod -printf
 queue/postgres/ executor/ worker/` re-export internals via type aliases —
 the only external import surface; in-repo code imports `internal/…`.
 Facades: require (real tag) + relative replace; tests import internals, never
-sibling facades; parity via `scripts/check-facade-parity.sh` BEFORE staging;
+sibling facades; parity via `check-facade-parity.sh` BEFORE staging;
 postgres `OpenWithPool` pools CALLER-OWNED. No root go.work — replace-only
 (exception: tracked `cmd/tq/go.work`, ADR-0017); a module `go`-directive bump
 bumps its `go` line (`go work edit -go=<ver>`) in the same change — stale
 lines fail every cmd/tq go command. Release flow: docs/release/.
 
-Smokes (CI-safe): `scripts/smoke/`. Guards: check-*.sh (incl. `check-cite-drift`,
-`check-research-note-shape`) + release-gates + lint-baseline;
-`scripts/new-module.sh <dir> [deps…]` scaffolds go.mods.
+Smokes (CI-safe): `scripts/smoke/`. Guards: check-*.sh (cite-drift, research-note-shape) + release-gates + lint-baseline;
+`new-module.sh <dir> [deps…]` scaffolds go.mods.
 
 ## Architecture
 
