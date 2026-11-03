@@ -96,6 +96,7 @@ type agentPoolOptions struct {
 // scaling (the executor's 30m default; --repo-timeout ladders override per
 // repo — raise --task-timeout consciously when a ladder exceeds this).
 const batchTimeoutPerItem = 30 * time.Minute
+
 func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 	fs := flag.NewFlagSet("agent-pool", flag.ExitOnError)
 	projectsDir := fs.String(
