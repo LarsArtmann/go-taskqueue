@@ -48,7 +48,7 @@ if [ "${1:-}" = "--self-test" ]; then
 	# function calls returned, and set -u would kill it on a local name.
 	tmp="$(mktemp -d)"
 	trap 'rm -rf "$tmp"' EXIT
-	mkdir -p "$tmp/docs/status" "$tmp/docs/planning"
+	mkdir -p "$tmp/docs/status" "$tmp/docs/planning" "$tmp/internal/webui"
 	: >"$tmp/docs/status/2026-10-01_00-00_exists.md"
 	: >"$tmp/docs/planning/2026-10-01_00-00_note.md"
 
@@ -86,6 +86,7 @@ if [ "${1:-}" = "--self-test" ]; then
 	rcase ctx:'templ generate' 'templ edit advice' "$tmp/layout.templ"
 	rcase ctx:'machine-consumed' 'TODO_LIST edit advice' "$tmp/TODO_LIST.md"
 	rcase ctx:'size-guarded' 'AGENTS edit advice' "$tmp/AGENTS.md"
+rcase ctx:'display.Eyebrow' 'webui ADOPTION edit advice' "$tmp/internal/webui/ADOPTION.md"
 	rcase ctx:'### Internal' 'CHANGELOG edit advice' "$tmp/CHANGELOG.md"
 	rcase ctx:'check-go-mods.sh' 'go.mod edit advice' "$tmp/go.mod"
 	rcase ctx:'date +%Y-%m-%d_%H-%M' 'docs/status creation advice' "$tmp/docs/status/2026-10-29_10-00_task-1.md"
@@ -148,6 +149,10 @@ go.mod)
 	note="go.mod: NEVER lower the 'go' directive (check-go-mods.sh); a bumped directive requires 'go work edit -go=<ver>' on cmd/tq/go.work in the same change; per-module tidy + vendor sync follow (check-gomod-vendor-sync.sh)."
 	;;
 esac
+
+if [ -z "$note" ] && [ "$base" = "ADOPTION.md" ] && [ "${fp#*/internal/webui/}" != "$fp" ]; then
+	note="internal/webui/ADOPTION.md is the guard-pinned templ-components adoption table: REJECTED components stay rejected (display.Eyebrow, KanbanBoard, errorpage, icons.Render) — new adoption or an un-reject needs the guard table + ADOPTION.md row updated together, never prose alone."
+fi
 
 if [ -z "$note" ]; then
 	case "$fp" in
