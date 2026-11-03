@@ -2,13 +2,12 @@ package executor
 
 import (
 	"go/ast"
-	"go/parser"
-	"go/token"
-	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/larsartmann/go-taskqueue/internal/testastguard"
 )
 
 // TestTailHelpersDelegateRedaction is the structural guard (02-26 §b2/§f4):
@@ -29,66 +28,33 @@ func TestTailHelpersDelegateRedaction(t *testing.T) {
 		t.Fatalf("glob package sources: %v", err)
 	}
 
-	type helper struct{ file string }
-
-	census := map[string]helper{}
+	census := map[string]bool{}
 
 	for _, file := range files {
 		if strings.HasSuffix(file, "_test.go") {
 			continue
 		}
 
-		src, err := os.ReadFile(file)
-		if err != nil {
-			t.Fatalf("read %s: %v", file, err)
-		}
+		f := testastguard.Parse(t, file)
 
-		fset := token.NewFileSet()
+		f.FuncDecls(
+			func(name string) bool { return namesTailWord(name) },
+			func(name string, body ast.Node) {
+				census[name] = true
 
-		node, err := parser.ParseFile(fset, file, src, 0)
-		if err != nil {
-			t.Fatalf("parse %s: %v", file, err)
-		}
+				delegates := slices.ContainsFunc(testastguard.CallNames(body), func(callee string) bool {
+					return callee == "redactOutput" || callee == "redactBytes" || namesTailWord(callee)
+				})
 
-		for _, decl := range node.Decls {
-			fn, ok := decl.(*ast.FuncDecl)
-			if !ok || fn.Body == nil || !namesTailWord(fn.Name.Name) {
-				continue
-			}
-
-			census[fn.Name.Name] = helper{file: file}
-
-			var calls []string
-
-			ast.Inspect(fn.Body, func(n ast.Node) bool {
-				if call, ok := n.(*ast.CallExpr); ok {
-					switch callee := call.Fun.(type) {
-					case *ast.Ident:
-						calls = append(calls, callee.Name)
-					case *ast.SelectorExpr:
-						calls = append(calls, callee.Sel.Name)
-					}
+				if !delegates {
+					t.Errorf(
+						"%s: tail helper %s does not call redactOutput/redactBytes (nor a tail helper that does) â output tails must pass the secrets-in-logs pass before reaching journal facts",
+						file,
+						name,
+					)
 				}
-
-				return true
-			})
-
-			delegates := slices.ContainsFunc(calls, func(name string) bool {
-				if name == "redactOutput" || name == "redactBytes" {
-					return true
-				}
-
-				return namesTailWord(name)
-			})
-
-			if !delegates {
-				t.Errorf(
-					"%s: tail helper %s does not call redactOutput/redactBytes (nor a tail helper that does) — output tails must pass the secrets-in-logs pass before reaching journal facts",
-					file,
-					fn.Name.Name,
-				)
-			}
-		}
+			},
+		)
 	}
 
 	want := []string{"tailBytes", "tailOutput"}
@@ -102,7 +68,7 @@ func TestTailHelpersDelegateRedaction(t *testing.T) {
 
 	if !slices.Equal(got, want) {
 		t.Errorf(
-			"tail-helper census = %v, want %v — a new tail helper must delegate to redactOutput/redactBytes and join this pin (or justify its absence here)",
+			"tail-helper census = %v, want %v â a new tail helper must delegate to redactOutput/redactBytes and join this pin (or justify its absence here)",
 			got,
 			want,
 		)

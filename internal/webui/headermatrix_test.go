@@ -3,9 +3,9 @@ package webui
 import (
 	"fmt"
 	"go/ast"
-	"go/parser"
-	"go/token"
 	"maps"
+
+	"github.com/larsartmann/go-taskqueue/internal/testastguard"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -163,63 +163,29 @@ func mergeRow(base, additions matrixHeaders) matrixHeaders {
 func TestWithIsOnlyMergeMechanism(t *testing.T) {
 	t.Parallel()
 
-	const file = "headermatrix_test.go"
-
-	src, err := os.ReadFile(file)
-	if err != nil {
-		t.Fatalf("read %s: %v", file, err)
-	}
-
-	fset := token.NewFileSet()
-
-	node, err := parser.ParseFile(fset, file, src, 0)
-	if err != nil {
-		t.Fatalf("parse %s: %v", file, err)
-	}
-
-	var withBody ast.Node
-	ast.Inspect(node, func(n ast.Node) bool {
-		if fn, ok := n.(*ast.FuncDecl); ok && fn.Name.Name == "with" && fn.Body != nil {
-			withBody = fn.Body
-		}
-
-		return true
-	})
-
-	if withBody == nil {
-		t.Fatal("with func not found in headermatrix_test.go")
-	}
+	f := testastguard.Parse(t, "headermatrix_test.go")
+	withBody := f.FuncBody(t, "with")
 
 	calls := 0
 
-	ast.Inspect(node, func(n ast.Node) bool {
-		call, ok := n.(*ast.CallExpr)
-		if !ok {
-			return true
-		}
+	f.CensusCalls(
+		func(call *ast.CallExpr) bool {
+			sel, ok := call.Fun.(*ast.SelectorExpr)
 
-		sel, ok := call.Fun.(*ast.SelectorExpr)
-		if !ok {
-			return true
-		}
+			return ok && sel.Sel.Name == "Copy" && testastguard.IsMaps(call)
+		},
+		func(call *ast.CallExpr) {
+			calls++
 
-		ident, ok := sel.X.(*ast.Ident)
-		if !ok || ident.Name != "maps" || sel.Sel.Name != "Copy" {
-			return true
-		}
-
-		calls++
-
-		if !(withBody.Pos() <= call.Pos() && call.Pos() < withBody.End()) {
-			t.Errorf("%s: maps.Copy outside the with body (line %d) — with is the file's ONLY merge mechanism; route the site through with/mergeRow",
-				file, fset.Position(call.Pos()).Line)
-		}
-
-		return true
-	})
+			if !testastguard.InSpan(withBody.Pos(), withBody.End(), call.Pos()) {
+				t.Errorf("%s: maps.Copy outside the with body (line %d) â with is the file's ONLY merge mechanism; route the site through with/mergeRow",
+					f.Path, f.FSet.Position(call.Pos()).Line)
+			}
+		},
+	)
 
 	if calls == 0 {
-		t.Error("no maps.Copy calls found — the census should see with's merge site")
+		t.Error("no maps.Copy calls found â the census should see with's merge site")
 	}
 }
 

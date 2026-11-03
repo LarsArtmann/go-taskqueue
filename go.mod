@@ -121,6 +121,7 @@ require (
 	github.com/larsartmann/go-taskqueue/internal/queue/sqlite v0.3.4
 	github.com/larsartmann/go-taskqueue/internal/readmodel v0.4.1
 	github.com/larsartmann/go-taskqueue/internal/task v0.3.4
+	github.com/larsartmann/go-taskqueue/internal/testastguard v0.1.0
 	github.com/larsartmann/go-taskqueue/internal/worker v0.4.0
 	github.com/larsartmann/templ-components v1.24.0
 	github.com/larsartmann/templ-components/icons v1.24.0
@@ -131,6 +132,8 @@ require (
 retract v0.3.1 // broken module graph: the v0.3.1 sweep left three-segment internal requires (queue/sqlite, journal/cqrs, companion, v4 drivers) at v0.3.0, so the proxy graph cannot close
 
 replace github.com/larsartmann/go-taskqueue/internal/task => ./internal/task
+
+replace github.com/larsartmann/go-taskqueue/internal/testastguard => ./internal/testastguard
 
 replace github.com/larsartmann/go-taskqueue/internal/journal => ./internal/journal
 

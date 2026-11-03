@@ -100,7 +100,7 @@ func TestCallNamesAndFuncDecls(t *testing.T) {
 		func(name string, body ast.Node) { got[name] = CallNames(body) },
 	)
 
-	if want := []string{"maps", "Copy", "Copy"}; !slices.Equal(got["with"], want) {
+	if want := []string{"Copy", "Copy"}; !slices.Equal(got["with"], want) {
 		t.Errorf("with calls = %v, want %v", got["with"], want)
 	}
 
@@ -133,6 +133,12 @@ type mockT struct {
 }
 
 func newMockT(t *testing.T) *mockT { return &mockT{T: t} }
+
+func (m *mockT) Fatalf(_ string, _ ...any) {
+	m.failed = true
+
+	panic(mockAbort{})
+}
 
 func (m *mockT) FailNow() {
 	m.failed = true
