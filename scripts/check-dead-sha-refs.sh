@@ -117,11 +117,17 @@ shrink_pass() {
 	MODE=emit
 	while IFS= read -r k; do [ -n "$k" ] && needed["$k"]=1; done < <(run_gate)
 	MODE=gate
-	# reachable twins: tree|subject -> one reachable sha
+	# reachable twins: tree|subject -> candidate shas (newline-separated).
+	# Tiebreak, documented (TODO 02-56 §f6): commits with IDENTICAL tree and
+	# subject (daemon re-sweeps, squash duplicates) collapse to ONE key; on
+	# lookup the FIRST candidate wins, and git log is newest-first, so the
+	# NEWEST reachable commit wins. For daemon tokens that is purely
+	# cosmetic (identical tree = identical content); non-daemon tokens take
+	# the body-verified branch below instead of trusting the order.
 	local -A twins=()
 	local sha tree subj
 	while read -r sha tree subj; do
-		twins["${tree}|${subj}"]="$sha"
+		twins["${tree}|${subj}"]="${twins[${tree}|${subj}]:-}${sha}"$'\n'
 	done < <(git log --format='%H %T %s' HEAD 2>/dev/null)
 	[ -f "$baseline" ] || {
 		echo "shrink: no baseline at $baseline"
@@ -136,13 +142,33 @@ shrink_pass() {
 		total=$((total + 1))
 		tok_tree=$(git log -1 --format='%T' "$tok" 2>/dev/null) || tok_tree=""
 		tok_subj=$(git log -1 --format='%s' "$tok" 2>/dev/null) || tok_subj=""
-		twin="${twins[${tok_tree}|${tok_subj}]:-}"
+		twin=""
+		if [ -n "$tok_tree" ] && [ -n "${twins[${tok_tree}|${tok_subj}]:-}" ]; then
+			if git log -1 --format=%B "$tok" 2>/dev/null | grep -q '^Task-Queue-ID:'; then
+				# daemon commit: the body is queue boilerplate keyed by the
+				# task id, so tree+subject suffices; newest candidate wins
+				# (tiebreak above)
+				twin="${twins[${tok_tree}|${tok_subj}]%%$'\n'*}"
+			else
+				# non-daemon (TODO 02-56 §f21): verify the message BODY too —
+				# a tree+subject twin with a different body is a DIFFERENT
+				# commit; only a body-exact candidate counts as the twin
+				tok_body="$(git log -1 --format=%B "$tok" 2>/dev/null)"
+				for cand in ${twins[${tok_tree}|${tok_subj}]}; do
+					[ -n "$cand" ] || continue
+					if [ "$(git log -1 --format=%B "$cand" 2>/dev/null)" = "$tok_body" ]; then
+						twin="$cand"
+						break
+					fi
+				done
+			fi
+		fi
 		if [ -n "$twin" ] && [ "$twin" != "$tok" ]; then
 			if [ -n "${needed[$tok]:-}" ]; then
 				echo "TWINED (still cited — fork-record ${tok}→${twin} then re-shrink): $tok"
 				[ -n "${write_mode:-}" ] && kept+=("$tok")
 			else
-				echo "DROP: $tok → $twin (same tree + subject, reachable from HEAD, no longer cited)"
+				echo "DROP: $tok → $twin (twin-verified: tree + subject + body for non-daemon, reachable from HEAD, no longer cited)"
 				drops=$((drops + 1))
 			fi
 		else
@@ -345,7 +371,40 @@ EOF
 		exit 1
 	}
 
-	echo "dead-sha self-test ok (clean rc=0, exact file:line on rc=1, per-token arrow escape, comma-separated multi-pair fork-record lines, emit-baseline sorted+pair-excluded, shrink drop/keep/--write, baselined silent unless TQ_DEAD_SHA_VERBOSE=1)"
+	# 7. twin-map collision + body tiebreak (TODO 02-56 §f6/§f21): two
+	# reachable commits with IDENTICAL tree+subject collapse to one twins
+	# key — a non-daemon token must pick the BODY-exact twin (not the
+	# last-wins order winner), a body-less-matching token keeps, and a
+	# daemon token still twins on tree+subject alone (body is boilerplate).
+	twin2=$(GIT_AUTHOR_DATE='2020-01-02T00:00:00' GIT_COMMITTER_DATE='2020-01-02T00:00:00' \
+		git -C "$tmp" -c user.email=t@t -c user.name=t commit-tree "$old_tree" -p HEAD -m dangling -m "twin2 body variant")
+	git -C "$tmp" merge -q --no-ff -m "merge twin2 (same tree+subject, different body)" "$twin2"
+	dtok=$(git -C "$tmp" -c user.email=t@t -c user.name=t commit-tree "$old_tree" -p HEAD -m "dangling daemon" -m "Task-Queue-ID: 0000000000000000000000000000000000000000")
+	dtwin=$(GIT_AUTHOR_DATE='2020-01-03T00:00:00' GIT_COMMITTER_DATE='2020-01-03T00:00:00' \
+		git -C "$tmp" -c user.email=t@t -c user.name=t commit-tree "$old_tree" -p HEAD -m "dangling daemon" -m "DIFFERENT daemon body")
+	git -C "$tmp" merge -q --no-ff -m "merge daemon twin" "$dtwin"
+	tok3=$(git -C "$tmp" -c user.email=t@t -c user.name=t commit-tree "$old_tree" -p HEAD -m dangling -m "unrelated body no twin")
+	printf '%s\n' "$old" "$dtok" "$tok3" >"$tmp/base.txt"
+	files=(docs/status/paired.md)
+	out=$(cd "$tmp" && shrink_pass)
+	grep -qF "DROP: ${old} → ${twin}" <<<"$out" || {
+		echo "dead-sha self-test FAIL: collision did not pick the body-exact twin (want ${twin}): $out"
+		exit 1
+	}
+	grep -qF "DROP: ${dtok} → ${dtwin}" <<<"$out" || {
+		echo "dead-sha self-test FAIL: daemon token did not twin on tree+subject alone (want ${dtwin}): $out"
+		exit 1
+	}
+	grep -q "^KEEP: ${tok3}$" <<<"$out" || {
+		echo "dead-sha self-test FAIL: body-less token wrongly twinned: $out"
+		exit 1
+	}
+	grep -qF 'shrink: 2 of 3 baselined tokens' <<<"$out" || {
+		echo "dead-sha self-test FAIL: collision summary wrong: $out"
+		exit 1
+	}
+
+	echo "dead-sha self-test ok (clean rc=0, exact file:line on rc=1, per-token arrow escape, comma-separated multi-pair fork-record lines, emit-baseline sorted+pair-excluded, shrink drop/keep/--write, twin-map collision body tiebreak + daemon tree+subject path, baselined silent unless TQ_DEAD_SHA_VERBOSE=1)"
 	exit 0
 fi
 
