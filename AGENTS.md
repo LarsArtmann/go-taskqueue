@@ -230,7 +230,7 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   `tq-bash-guard` (^bash$) denies the paid-trap classes (PIPESTATUS,
   `printf %.0s`, ERE bracket `\t/\d`, unscoped `gofmt`, smokes w/o `TQ_DB=`,
   force-push, `filter-branch`, redirect→`*.go`) and advises TQ_DB/unset/
-  multi-tail/chained-`&`/stale vendor/GOCACHE/GOWORK/nix rows;
+  multi-tail/chained-`&`/stale vendor/GOCACHE/GOWORK/nix/dirty-tree-gate rows;
   `tq-edit-advice`: per-path notes (templ, TODO_LIST, AGENTS size, CHANGELOG
   O14, go.mod floor, docs/status creation). Hatches in deny messages
   (force-push hatchless); smoke rule is command-position.

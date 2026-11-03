@@ -34,6 +34,10 @@
 #   - GOCACHE resolving into /nix/store (ENOSPC death)
 #   - nested-module go commands missing GOEXPERIMENT=jsonv2 GOWORK=off
 #   - nix build/run/flake with untracked files (flakes see tracked only)
+#   - repo-scope gate script (scripts/check-*.sh, ci-local.sh, root-gate.sh)
+#     executed while the tree is dirty — commit-before-gate class: the
+#     …918bf0 session ran gates on uncommitted state and paid a daemon
+#     sweep + full recover loop (2026-11-03 report §e2/§e5)
 #
 # Noise policy: silent (exit 0, no stdout) unless a rule fires; git is
 # consulted only when a go/nix command makes a rule relevant.
@@ -206,6 +210,10 @@ if [ "${1:-}" = "--self-test" ]; then
 	GOCACHE="$tmp/poisoncache" rcase ctx:'/tmp/go-build-cache' 'poisoned GOCACHE advisory' 'go build ./...'
 	CRUSH_CWD="$tmp/nest/internal/queue" rcase ctx:'GOWORK=off' 'nested-module advisory' 'go test ./...'
 	CRUSH_CWD="$tmp/dirtyrepo" CRUSH_PROJECT_DIR="$tmp/dirtyrepo" rcase ctx:'git add' 'nix untracked-files advisory' 'nix build .#test'
+	CRUSH_CWD="$tmp/dirtyrepo" CRUSH_PROJECT_DIR="$tmp/dirtyrepo" rcase ctx:'commit-before-gate' 'gate on dirty tree advisory' 'scripts/check-doc-refs.sh'
+	rcase silent 'gate on clean tree is silent' './scripts/ci-local.sh'
+	rcase silent 'gate path mention (not execution) is silent' 'git add scripts/check-doc-refs.sh'
+	rcase silent 'bash-wrapped gate on clean tree is silent' 'bash scripts/root-gate.sh'
 
 	# Deny-log side-channel (T6/H4): a deny appends ts|rule|cmd naming the
 	# rule; a silent run appends nothing.
@@ -567,6 +575,31 @@ if printf '%s' "$cmd" | grep -Eq '(^|[[:space:];&])nix[[:space:]]+(build|run|fla
 	[ -n "${CRUSH_PROJECT_DIR:-}" ] &&
 	git -C "$CRUSH_PROJECT_DIR" status --porcelain 2>/dev/null | grep -q '^??'; then
 	notes+=("flakes see only git-tracked files and untracked files exist — 'git add' them before nix build (AGENTS.md §Known Issues).")
+fi
+
+gate_invoked() {
+	# Repo-scope gate scripts in command position (same segment/walk shape
+	# as smoke_invoked; env-var prefixes skipped). Only EXECUTION advises.
+	printf '%s' "$cmd" | awk '
+		{
+			n = split($0, segs, /[;|&]+/)
+			for (s = 1; s <= n; s++) {
+				m = split(segs[s], w, /[[:space:]]+/)
+				i = 1
+				while (i <= m && (w[i] == "" || w[i] ~ /^[A-Za-z_][A-Za-z0-9_]*=/)) i++
+				if (i > m) continue
+				t = w[i]
+				if (t == "bash" || t == "sh") { i++; while (i <= m && w[i] == "") i++; if (i > m) continue; t = w[i] }
+				if (t ~ /^(\.\/)?scripts\/check-[A-Za-z0-9_-]+\.sh$/ ||
+				    t ~ /^(\.\/)?scripts\/ci-local\.sh$/ ||
+				    t ~ /^(\.\/)?scripts\/root-gate\.sh$/) { print "hit"; exit }
+			}
+		}'
+}
+
+if [ -n "$(gate_invoked)" ] && [ -n "${CRUSH_PROJECT_DIR:-}" ] &&
+	[ -n "$(git -C "$CRUSH_PROJECT_DIR" status --porcelain 2>/dev/null | head -1)" ]; then
+	notes+=("commit-before-gate: the tree is dirty and a repo-scope gate is about to run on uncommitted state — the …918bf0 session paid a daemon sweep + full recover loop for exactly this (2026-11-03 report §e2). Stage+commit FIRST (daemon sweeps <60s, take STAGED files too), then run the gate.")
 fi
 
 if [ "${#notes[@]}" -gt 0 ]; then
