@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"os"
@@ -14,7 +15,6 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/harvest"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
-	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
 // enqueueQuietly runs cmdEnqueue with stdout captured: enqueue prints the
@@ -102,52 +102,30 @@ func TestCmdEnqueueWaitStreamsFacts(t *testing.T) {
 
 		ctx := context.Background()
 
+		if err := enqueueQuietly(t, []string{
+			"--type", "sh",
+			"--payload", `echo hi`,
+			"--db", dbPath,
+		}); err != nil {
+			t.Fatalf("enqueue: %v", err)
+		}
+
 		store, err := sqlite.Open(dbPath)
 		if err != nil {
 			t.Fatalf("open store: %v", err)
 		}
 		defer store.Close()
 
-		done := make(chan error, 1)
-
-		go func() {
-			var enqErr error
-
-			captureStdoutFn(func() {
-				enqErr = cmdEnqueue([]string{
-					"--type", "sh",
-					"--payload", `echo hi`,
-					"--db", dbPath,
-					"--wait",
-					"--timeout", "15s",
-				})
-			})
-
-			done <- enqErr
-		}()
-
-		// The command prints the task ID then blocks; find the task through
-		// the store instead of parsing stdout.
-		var tsk task.Task
-
-		for range 100 {
-			tasks, err := store.List(ctx, queue.Filter{})
-			if err != nil {
-				t.Fatalf("list: %v", err)
-			}
-
-			if len(tasks) == 1 {
-				tsk = tasks[0]
-
-				break
-			}
-
-			time.Sleep(10 * time.Millisecond)
+		tasks, err := store.List(ctx, queue.Filter{})
+		if err != nil {
+			t.Fatalf("list: %v", err)
 		}
 
-		if tsk.ID == "" {
-			t.Fatal("task never appeared")
+		if len(tasks) != 1 {
+			t.Fatalf("got %d task(s), want 1", len(tasks))
 		}
+
+		tsk := tasks[0]
 
 		claimed, claimWorker, err := store.ClaimDue(ctx, "test-worker", time.Minute)
 		if err != nil {
@@ -157,6 +135,18 @@ func TestCmdEnqueueWaitStreamsFacts(t *testing.T) {
 		if claimed.ID != tsk.ID {
 			t.Fatalf("claimed %s, want %s", claimed.ID, tsk.ID)
 		}
+
+		done := make(chan error, 1)
+
+		// waitForTaskTo streams into a buffer, never a captureStdout window:
+		// this test runs t.Parallel and a sibling writing to the
+		// process-global os.Stdout during a capture window corrupts the
+		// stream (the showTaskJSON pattern).
+		go func() {
+			var buf bytes.Buffer
+
+			done <- waitForTaskTo(ctx, store, tsk.ID, 15*time.Second, &buf)
+		}()
 
 		if failTask {
 			err = store.FailPermanent(ctx, tsk.ID, claimWorker, "boom", nil)
@@ -210,13 +200,34 @@ func TestCmdEnqueueWaitStreamsFacts(t *testing.T) {
 		dir := t.TempDir()
 		dbPath := filepath.Join(dir, "timeout.db")
 
-		err := enqueueQuietly(t, []string{
+		if err := enqueueQuietly(t, []string{
 			"--type", "sh",
 			"--payload", `echo hi`,
 			"--db", dbPath,
-			"--wait",
-			"--timeout", "150ms",
-		})
+		}); err != nil {
+			t.Fatalf("enqueue: %v", err)
+		}
+
+		store, err := sqlite.Open(dbPath)
+		if err != nil {
+			t.Fatalf("open store: %v", err)
+		}
+		defer store.Close()
+
+		tasks, err := store.List(context.Background(), queue.Filter{})
+		if err != nil {
+			t.Fatalf("list: %v", err)
+		}
+
+		if len(tasks) != 1 {
+			t.Fatalf("got %d task(s), want 1", len(tasks))
+		}
+
+		var buf bytes.Buffer
+
+		// waitForTaskTo streams into a buffer: no captureStdout window in a
+		// t.Parallel test (the showTaskJSON pattern).
+		err = waitForTaskTo(context.Background(), store, tasks[0].ID, 150*time.Millisecond, &buf)
 		if err == nil {
 			t.Fatal("expired wait must fail the run")
 		}

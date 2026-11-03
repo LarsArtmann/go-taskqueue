@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"path/filepath"
@@ -104,11 +105,12 @@ func TestCmdDLQJSONStream(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	out := captureStdout(t, func() {
-		if err := cmdDLQ([]string{"--db", dbPath, "--json"}); err != nil {
-			t.Errorf("cmdDLQ --json: %v", err)
-		}
-	})
+	var buf bytes.Buffer
+	if err := runDLQ([]string{"--db", dbPath, "--json"}, &buf); err != nil {
+		t.Errorf("runDLQ --json: %v", err)
+	}
+
+	out := buf.String()
 
 	lines := strings.Split(strings.TrimSpace(out), "\n")
 	if len(lines) != 2 {
@@ -165,11 +167,12 @@ func TestCmdDLQEvidenceReadCap(t *testing.T) {
 	runJSON := func(args ...string) (dlqJSONSummary, []dlqJSONRow) {
 		t.Helper()
 
-		out := captureStdout(t, func() {
-			if err := cmdDLQ(append([]string{"--db", dbPath, "--json"}, args...)); err != nil {
-				t.Errorf("cmdDLQ: %v", err)
-			}
-		})
+		var buf bytes.Buffer
+		if err := runDLQ(append([]string{"--db", dbPath, "--json"}, args...), &buf); err != nil {
+			t.Errorf("runDLQ: %v", err)
+		}
+
+		out := buf.String()
 
 		lines := strings.Split(strings.TrimSpace(out), "\n")
 
@@ -264,13 +267,15 @@ func TestCmdDLQDismissDeadTask(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	cmdOut := captureStdout(t, func() {
-		if err := cmdDLQ(
-			[]string{"--db", dbPath, "--dismiss", enq.ID.String(), "--reason", "autopsy ruled it unfixable"},
-		); err != nil {
-			t.Errorf("cmdDLQ: %v", err)
-		}
-	})
+	var buf bytes.Buffer
+	if err := runDLQ(
+		[]string{"--db", dbPath, "--dismiss", enq.ID.String(), "--reason", "autopsy ruled it unfixable"},
+		&buf,
+	); err != nil {
+		t.Errorf("runDLQ: %v", err)
+	}
+
+	cmdOut := buf.String()
 
 	if !strings.Contains(cmdOut, "dismissed "+enq.ID.String()) {
 		t.Fatalf("output %q missing dismissal line", cmdOut)
@@ -337,11 +342,12 @@ func TestCmdDLQCrossLinksPoisonedBackoff(t *testing.T) {
 		dbPath := filepath.Join(t.TempDir(), "dlq.db")
 		enqID := deadIn(t, dbPath, "poisoned")
 
-		out := captureStdout(t, func() {
-			if err := cmdDLQ([]string{"--db", dbPath, "--dlq-backoff", "1h"}); err != nil {
-				t.Errorf("cmdDLQ: %v", err)
-			}
-		})
+		var buf bytes.Buffer
+		if err := runDLQ([]string{"--db", dbPath, "--dlq-backoff", "1h"}, &buf); err != nil {
+			t.Errorf("runDLQ: %v", err)
+		}
+
+		out := buf.String()
 
 		for _, want := range []string{
 			enqID.String(),
@@ -385,11 +391,12 @@ func TestCmdDLQCrossLinksPoisonedBackoff(t *testing.T) {
 
 		deadIn(t, dbPath, "mixed")
 
-		out := captureStdout(t, func() {
-			if err := cmdDLQ([]string{"--db", dbPath, "--dlq-backoff", "1h"}); err != nil {
-				t.Errorf("cmdDLQ: %v", err)
-			}
-		})
+		var buf bytes.Buffer
+		if err := runDLQ([]string{"--db", dbPath, "--dlq-backoff", "1h"}, &buf); err != nil {
+			t.Errorf("runDLQ: %v", err)
+		}
+
+		out := buf.String()
 
 		if strings.Contains(out, "poisoned:") {
 			t.Fatalf("output %q cross-links backoff despite the repo's completion", out)
@@ -404,11 +411,12 @@ func TestCmdDLQCrossLinksPoisonedBackoff(t *testing.T) {
 		dbPath := filepath.Join(t.TempDir(), "dlq.db")
 		deadIn(t, dbPath, "quiet")
 
-		out := captureStdout(t, func() {
-			if err := cmdDLQ([]string{"--db", dbPath}); err != nil {
-				t.Errorf("cmdDLQ: %v", err)
-			}
-		})
+		var buf bytes.Buffer
+		if err := runDLQ([]string{"--db", dbPath}, &buf); err != nil {
+			t.Errorf("runDLQ: %v", err)
+		}
+
+		out := buf.String()
 
 		if strings.Contains(out, "poisoned:") {
 			t.Fatalf("output %q cross-links backoff with the flag off", out)
@@ -478,11 +486,12 @@ func TestCmdDLQRowsCarryEvidenceSuffix(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	out := captureStdout(t, func() {
-		if err := cmdDLQ([]string{"--db", dbPath}); err != nil {
-			t.Errorf("cmdDLQ: %v", err)
-		}
-	})
+	var buf bytes.Buffer
+	if err := runDLQ([]string{"--db", dbPath}, &buf); err != nil {
+		t.Errorf("runDLQ: %v", err)
+	}
+
+	out := buf.String()
 
 	if !strings.Contains(out, withEvidence.String()) ||
 		!strings.Contains(out, "evidence=verify/"+string(executor.VerifyStageE2ETimeout)+" exit=2") {

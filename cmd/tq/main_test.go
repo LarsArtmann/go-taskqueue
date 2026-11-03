@@ -244,6 +244,15 @@ func TestPrintDriftJSONGolden(t *testing.T) {
 // each other's output ("jsontext: unexpected EOF", 2026-09-21). The mutex
 // makes the previously convention-only discipline (sequential-by-contract,
 // show_test.go nolint note) mechanically safe instead.
+//
+// Scope of that safety: captureMu protects capture-vs-capture races ONLY.
+// A t.Parallel sibling that writes to os.Stdout outside a capture window
+// still corrupts an open window's stream (the TestShowJSONCarriesFailureEvidence
+// exposure class, 105c1cb6→0960e857). Every parallel test therefore renders
+// through a writer-parameterized function (showTaskJSON, runDLQ,
+// renderJournalAudit, printPoolHealthTo, waitForTaskTo) into a bytes.Buffer;
+// non-parallel ("cold") sites keep the captureStdout window under captureMu.
+// TestNoParallelGlobalStdoutCapture pins the discipline mechanically.
 var captureMu sync.Mutex
 
 func captureStdout(t *testing.T, fn func()) string {

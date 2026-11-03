@@ -7,6 +7,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"encoding/json"
@@ -645,11 +646,12 @@ func TestJournalAuditBudgetHintRenders(t *testing.T) {
 		t.Fatalf("Requeue: %v", err)
 	}
 
-	out := captureStdout(t, func() {
-		if err := cmdJournalAudit(ctx, store, false, ""); err != nil {
-			t.Errorf("cmdJournalAudit: %v", err)
-		}
-	})
+	var buf bytes.Buffer
+	if err := renderJournalAudit(ctx, store, false, "", &buf); err != nil {
+		t.Errorf("renderJournalAudit: %v", err)
+	}
+
+	out := buf.String()
 
 	if !strings.Contains(out, "budget: 1") {
 		t.Errorf("class line missing from audit output:\n%s", out)

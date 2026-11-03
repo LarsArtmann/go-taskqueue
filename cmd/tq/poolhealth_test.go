@@ -4,6 +4,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"flag"
@@ -757,7 +758,10 @@ func TestPoolHealthSummaryCountsBackoff(t *testing.T) {
 		},
 	}
 
-	out := captureStdout(t, func() { printPoolHealth(report) })
+	var buf bytes.Buffer
+	printPoolHealthTo(&buf, report)
+
+	out := buf.String()
 
 	for _, want := range []string{
 		"3 repos, 1 in DLQ backoff, 2 warn",
@@ -770,7 +774,10 @@ func TestPoolHealthSummaryCountsBackoff(t *testing.T) {
 
 	report.Repos[0].DLQBackoffUntil = nil
 
-	out = captureStdout(t, func() { printPoolHealth(report) })
+	buf.Reset()
+	printPoolHealthTo(&buf, report)
+
+	out = buf.String()
 
 	if !strings.Contains(out, "3 repos, 0 in DLQ backoff, 2 warn") {
 		t.Fatalf("summary %q lacks the explicit zero count", out)

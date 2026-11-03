@@ -287,24 +287,25 @@ func TestCmdDLQEvidenceStageFilter(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	var out string
+	var buf bytes.Buffer
+	if err := runDLQ([]string{"--db", dbPath, "--evidence-stage", "e2e-timeout"}, &buf); err != nil {
+		t.Errorf("runDLQ: %v", err)
+	}
 
-	out = captureStdout(t, func() {
-		if err := cmdDLQ([]string{"--db", dbPath, "--evidence-stage", "e2e-timeout"}); err != nil {
-			t.Errorf("cmdDLQ: %v", err)
-		}
-	})
+	out := buf.String()
 
 	if !strings.Contains(out, timeoutID.String()) || strings.Contains(out, gateDeadID.String()) ||
 		strings.Contains(out, plainID.String()) {
 		t.Fatalf("--evidence-stage e2e-timeout picked wrong tasks:\n%s", out)
 	}
 
-	out = captureStdout(t, func() {
-		if err := cmdDLQ([]string{"--db", dbPath, "--evidence-stage", "gate-dead"}); err != nil {
-			t.Errorf("cmdDLQ: %v", err)
-		}
-	})
+	buf.Reset()
+
+	if err := runDLQ([]string{"--db", dbPath, "--evidence-stage", "gate-dead"}, &buf); err != nil {
+		t.Errorf("runDLQ: %v", err)
+	}
+
+	out = buf.String()
 
 	if !strings.Contains(out, gateDeadID.String()) || strings.Contains(out, timeoutID.String()) ||
 		strings.Contains(out, plainID.String()) {
@@ -313,11 +314,13 @@ func TestCmdDLQEvidenceStageFilter(t *testing.T) {
 
 	// Set spec with negation (2026-10-26 01-40 §f4): the e2e-timeout task
 	// survives `verify,!gate-dead` while the gate-dead task is excluded.
-	out = captureStdout(t, func() {
-		if err := cmdDLQ([]string{"--db", dbPath, "--evidence-stage", "verify,!gate-dead"}); err != nil {
-			t.Errorf("cmdDLQ: %v", err)
-		}
-	})
+	buf.Reset()
+
+	if err := runDLQ([]string{"--db", dbPath, "--evidence-stage", "verify,!gate-dead"}, &buf); err != nil {
+		t.Errorf("runDLQ: %v", err)
+	}
+
+	out = buf.String()
 
 	if !strings.Contains(out, timeoutID.String()) || strings.Contains(out, gateDeadID.String()) ||
 		strings.Contains(out, plainID.String()) {

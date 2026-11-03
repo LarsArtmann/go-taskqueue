@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"path/filepath"
@@ -105,11 +106,23 @@ func TestCmdShowRendersVerifySection(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	out := captureStdout(t, func() {
-		if err := cmdShow([]string{"--db", dbPath, id.String()}); err != nil {
-			t.Errorf("cmdShow: %v", err)
-		}
-	})
+	reader, err := sqlite.Open(dbPath)
+	if err != nil {
+		t.Fatalf("reopen store: %v", err)
+	}
+	defer reader.Close()
+
+	resolved, err := resolveTask(ctx, reader, id.String())
+	if err != nil {
+		t.Fatalf("resolve task: %v", err)
+	}
+
+	var buf bytes.Buffer
+	if err := showTaskJSON(ctx, reader, &buf, resolved, false); err != nil {
+		t.Fatalf("showTaskJSON: %v", err)
+	}
+
+	out := buf.String()
 
 	var doc struct {
 		Verify *struct {
@@ -185,11 +198,12 @@ func TestCmdDLQRowsCarryVerifySuffix(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	out := captureStdout(t, func() {
-		if err := cmdDLQ([]string{"--db", dbPath}); err != nil {
-			t.Errorf("cmdDLQ: %v", err)
-		}
-	})
+	var buf bytes.Buffer
+	if err := runDLQ([]string{"--db", dbPath}, &buf); err != nil {
+		t.Errorf("runDLQ: %v", err)
+	}
+
+	out := buf.String()
 
 	if !strings.Contains(out, "evidence=verify/test") {
 		t.Fatalf("row lost the evidence= suffix:\n%s", out)
