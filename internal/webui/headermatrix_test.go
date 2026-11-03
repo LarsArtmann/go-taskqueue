@@ -771,8 +771,9 @@ func TestMatrixCheckNegativePath(t *testing.T) {
 	row := serveDashboardRow.surface()
 
 	fixtures := []struct {
-		name   string
-		header http.Header
+		name        string
+		header      http.Header
+		contentType string
 	}{
 		{
 			name: "clean fixture passes",
@@ -814,6 +815,18 @@ func TestMatrixCheckNegativePath(t *testing.T) {
 				"X-Powered-By":            []string{"broken"},
 			},
 		},
+		{
+			name: "wrong Content-Type pin fails",
+			header: http.Header{
+				"Content-Security-Policy": []string{`default-src 'none'; frame-ancestors 'none'; form-action 'self'`},
+				"X-Content-Type-Options":  []string{"nosniff"},
+				"X-Frame-Options":         []string{"DENY"},
+				"Referrer-Policy":         []string{"no-referrer"},
+				"Permissions-Policy":      []string{"camera=(), microphone=(), geolocation=()"},
+				"Content-Type":            []string{"text/html; charset=utf-8"},
+			},
+			contentType: "application/json",
+		},
 	}
 
 	for _, fixture := range fixtures {
@@ -834,7 +847,11 @@ func TestMatrixCheckNegativePath(t *testing.T) {
 			resp.Body.Close()
 
 			tb := &failingTB{TB: t}
-			row.check(tb, resp.Header, "fixture")
+			surf := row
+			if fixture.contentType != "" {
+				surf = row.withContentType(fixture.contentType)
+			}
+			surf.check(tb, resp.Header, "fixture")
 
 			if fixture.name == "clean fixture passes" {
 				if len(tb.failures) != 0 {
@@ -846,6 +863,12 @@ func TestMatrixCheckNegativePath(t *testing.T) {
 
 			if len(tb.failures) == 0 {
 				t.Error("deliberately broken fixture header passed the matrix check — the pin is vacuous")
+
+				return
+			}
+
+			if fixture.contentType != "" && !slices.Contains(tb.failures, fmt.Sprintf("header = %q, want %q", "text/html; charset=utf-8", fixture.contentType)) {
+				t.Errorf("Content-Type mismatch not reported: %v", tb.failures)
 			}
 		})
 	}
