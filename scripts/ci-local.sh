@@ -826,11 +826,13 @@ if ! ./scripts/rewrite-rate-probe.sh; then
 	echo "WARN: rewrite-rate probe flagged hot days (advisory — continuing)"
 fi
 
-# Advisory dead-sha baseline shrink pass (dry, no --write): surfaces baselined
-# tokens with a now-reachable twin. WARN-only; gate stays green throughout.
-step "dead-sha shrink dry pass (advisory WARN; reachable twins in baseline)"
-if ! ./scripts/check-dead-sha-refs.sh --shrink; then
-	echo "WARN: dead-sha shrink pass failed (advisory — continuing)"
+# Advisory dead-sha baseline shrink pass (dry, no --write) with snapshot
+# check: surfaces baselined tokens with a now-reachable twin AND diffs the
+# verdicts against the committed last-shrink snapshot so drift between runs
+# is visible. WARN-only; gate stays green throughout.
+step "dead-sha shrink dry pass + drift check (advisory WARN)"
+if ! ./scripts/check-dead-sha-refs.sh --shrink --check; then
+	echo "WARN: dead-sha shrink pass drifted vs the last-shrink snapshot (advisory — continuing)"
 fi
 
 # Security-invariant drift gate: the "learned checks may only narrow" promise
