@@ -50,8 +50,12 @@ fail() {
 	exit 1
 }
 
-command -v crush >/dev/null 2>&1 || fail "crush binary not on PATH — this smoke routes real crush runs through a scratch server"
-command -v python3 >/dev/null 2>&1 || fail "python3 required (mock provider + HTTP probes)"
+# Shared boot plumbing (third-duplication cure): bins, port, scratch
+# config, isolation gate, seed repo, mock/server start-stop, probe.
+# THIS smoke keeps its own mock-provider scripting and the header-carrying
+# SSE chunk logic verbatim (the raw-SSE bug class was debugged in place).
+. "$(dirname "${BASH_SOURCE[0]}")/lib/crush-server.sh"
+crush_smoke_require_bins
 
 TMP="$(mktemp -d /tmp/tq-crush-route-smoke.XXXXXX)"
 REPO_ROOT="$(pwd)" # the bridge leg builds tq via scripts/build-tq.sh
@@ -61,7 +65,7 @@ cleanup() {
 	[ -n "$MOCK_PID" ] && kill "$MOCK_PID" 2>/dev/null || true
 	# The respawn leg's client-spawned server is not our child; match the
 	# exact scratch socket so nothing else is touched.
-	pkill -9 -f "crush server --host unix://$TMP/crush.sock" 2>/dev/null || true
+	crush_smoke_kill_server "$SOCK"
 	[ -n "$SERVER_PID" ] && kill "$SERVER_PID" 2>/dev/null || true
 	rm -rf "$TMP"
 }
@@ -74,62 +78,22 @@ XDG="$TMP/xdg"
 DATA="$TMP/data"
 REPO="$TMP/repo"
 SOCK="$TMP/crush.sock"
-mkdir -p "$XDG/crush" "$DATA" "$REPO"
+mkdir -p "$DATA" "$REPO"
 
 echo "== scratch: $TMP"
 
-# ---------------------------------------------------------------------------
-# Port allocation: bind port 0, take the port, close, let the mock race for
-# it (the 2026-11-01 probe session died to a zombie mock that kept a fixed
-# port and hijacked every later run — never pin a fixed port).
-# ---------------------------------------------------------------------------
-PORT="$(python3 -c 'import socket
-s = socket.socket()
-s.bind(("127.0.0.1", 0))
-print(s.getsockname()[1])
-s.close()')"
+PORT="$(crush_smoke_alloc_port)"
 
 echo "== scratch config (mock provider only, defaults disabled)"
-# pins: XDG isolation gate — mock is the ONLY resolvable provider
-cat >"$XDG/crush/crush.json" <<EOF
-{
-  "\$schema": "https://charm.land/crush.json",
-  "providers": {
-    "mock": {
-      "api_key": "smoke-key",
-      "base_url": "http://127.0.0.1:$PORT/v1",
-      "type": "completions",
-      "models": [
-        {"id": "mock-1", "name": "Mock 1", "context_window": 200000, "max_tokens": 1024}
-      ]
-    }
-  },
-  "models": {
-    "large": {"provider": "mock", "model": "mock-1"},
-    "small": {"provider": "mock", "model": "mock-1"}
-  },
-  "permissions": {"allowed_tools": ["bash", "write", "edit", "read", "view"]},
-  "options": {"disable_default_providers": true}
-}
-EOF
-python3 -c 'import json,sys; json.load(open(sys.argv[1]))' "$XDG/crush/crush.json" || fail "scratch crush.json does not parse"
+crush_smoke_write_config "$XDG" "$PORT"
 echo "PASS: config parses (snake_case, disable_default_providers)"
 
-# crush dirs prints its report on stderr (a 2>/dev/null swallow reads as
-# "no output" — proven the hard way), and head -1 SIGPIPEs the writer under
-# pipefail — the || true is load-bearing.
 echo "== isolation gate (crush dirs under candidate env)"
-DIRS_LINE1="$(XDG_CONFIG_HOME="$XDG" XDG_DATA_HOME="$DATA" crush dirs 2>&1 | head -1 || true)"
-[ "$DIRS_LINE1" = "$XDG/crush" ] || fail "crush dirs first line is '$DIRS_LINE1', want the scratch config dir '$XDG/crush' — isolation NOT proven, refusing to run anything"
+crush_smoke_assert_isolation "$XDG" "$DATA"
 echo "PASS: candidate config dir resolves inside the scratch"
 
 echo "== seed scratch repo"
-git -C "$REPO" init -q
-git -C "$REPO" config user.email smoke@tq.local
-git -C "$REPO" config user.name "tq smoke"
-printf 'scratch\n' >"$REPO/f.txt"
-git -C "$REPO" add -A
-git -C "$REPO" commit -qm seed
+crush_smoke_seed_repo "$REPO"
 
 # ---------------------------------------------------------------------------
 # Mock provider: OpenAI-compatible, scripted by request content (see the
@@ -251,56 +215,13 @@ if __name__ == "__main__":
 PYEOF
 
 start_mock() { # <verdict-cmd> <final-text> [stall]
-	pkill -9 -f "mock_provider.py $PORT " 2>/dev/null || true
-	python3 "$TMP/mock_provider.py" "$PORT" "$1" "$2" "${3:-0}" "$TMP/mock-requests.log" >"$TMP/mock.log" 2>&1 &
-	MOCK_PID=$!
-	sleep 1
-	kill -0 "$MOCK_PID" 2>/dev/null || {
-		cat "$TMP/mock.log"
-		fail "mock provider died on startup (port $PORT busy?)"
-	}
+	crush_smoke_start_mock "mock_provider.py $PORT " "$TMP/mock.log" \
+		python3 "$TMP/mock_provider.py" "$PORT" "$1" "$2" "${3:-0}" "$TMP/mock-requests.log"
+	MOCK_PID="$CRUSH_SMOKE_MOCK_PID"
 }
 
-probe() { # <path> — GET on the scratch socket, de-chunked body on stdout
-	python3 - "$SOCK" "$1" <<'PYEOF'
-import re
-import socket
-import sys
-
-sock, path = sys.argv[1], sys.argv[2]
-try:
-    s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    s.settimeout(5)
-    s.connect(sock)
-    s.sendall(f"GET {path} HTTP/1.1\r\nHost: localhost\r\nAccept: application/json\r\nConnection: close\r\n\r\n".encode())
-    buf = b""
-    while True:
-        d = s.recv(65536)
-        if not d:
-            break
-        buf += d
-    s.close()
-except OSError as e:
-    print(f"PROBE_ERROR {e}")
-    sys.exit(0)
-head, _, body = buf.partition(b"\r\n\r\n")
-status = head.split(b"\r\n")[0].decode()
-txt = body.decode(errors="replace")
-m = re.match(r"^[0-9a-f]+\r\n", txt)
-if m:  # de-chunk transfer-encoded bodies
-    out, rest = [], txt
-    while True:
-        cm = re.match(r"^([0-9a-f]+)\r\n", rest)
-        if not cm:
-            break
-        n = int(cm.group(1), 16)
-        if n == 0:
-            break
-        out.append(rest[cm.end():cm.end() + n])
-        rest = rest[cm.end() + n + 2:]
-    txt = "".join(out)
-print(f"{status}\n{txt}")
-PYEOF
+probe() { # <path> — GET on the scratch socket via the shared probe
+	crush_smoke_probe "$SOCK" "$1"
 }
 
 routed_run() { # <log-name> — one CRUSH_CLIENT_SERVER run; rc on stdout
@@ -316,11 +237,9 @@ routed_run() { # <log-name> — one CRUSH_CLIENT_SERVER run; rc on stdout
 
 echo "== boot isolated server"
 start_mock 'printf %s "{\"verdict\":\"ok-routed\"}" > smoke-verdict.json' 'mock done' 0
-XDG_CONFIG_HOME="$XDG" XDG_DATA_HOME="$DATA" "$CRUSH_BIN" server --host "unix://$SOCK" >"$TMP/server.log" 2>&1 &
-SERVER_PID=$!
-sleep 2
-HEALTH="$(probe /v1/health | head -1)"
-echo "$HEALTH" | grep -q "200" || fail "server health probe: '$HEALTH'"
+crush_smoke_start_server "$SOCK" "$XDG" "$DATA" "$TMP/server.log"
+SERVER_PID="$CRUSH_SMOKE_SERVER_PID"
+crush_smoke_health_ok "$SOCK" || fail "server health probe failed"
 echo "PASS: /v1/health 200 on the scratch socket"
 
 echo "== leg: routed verdict round-trip (M1/M4)"
@@ -406,11 +325,9 @@ echo "== leg: env-gap canary (two-sided, v0.99.0 — see header)"
 # WE booted: if the pid changed, restart ours first.
 ensure_our_server() {
 	kill -0 "$SERVER_PID" 2>/dev/null && return 0
-	pkill -9 -f "crush server --host unix://$SOCK" 2>/dev/null || true
-	XDG_CONFIG_HOME="$XDG" XDG_DATA_HOME="$DATA" "$CRUSH_BIN" server --host "unix://$SOCK" >>"$TMP/server.log" 2>&1 &
-	SERVER_PID=$!
-	sleep 2
-	probe /v1/health | head -1 | grep -q 200 || fail "could not re-boot our server for the canary leg"
+	crush_smoke_start_server "$SOCK" "$XDG" "$DATA" "$TMP/server.log"
+	SERVER_PID="$CRUSH_SMOKE_SERVER_PID"
+	crush_smoke_health_ok "$SOCK" || fail "could not re-boot our server for the canary leg"
 	echo "note: server had been respawned by a client (env adopted); re-booted ours for the canary"
 }
 ensure_our_server
