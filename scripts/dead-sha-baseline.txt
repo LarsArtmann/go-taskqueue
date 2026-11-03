@@ -840,4 +840,9 @@ ff573eff
 d7c25ae8
 
 # legacy dangle named in docs/status/tasks/2026-11-03_02-06_task-…918bf0 §f3 line 68 (15-file auto-commit, no documented successor; owner-convert note in the same line)
+
+# legacy dangle named in docs/status/tasks/2026-11-03_02-06_task-…918bf0 (15-file auto-commit; documented fork bf93485c→a22aa57c)
 bf93485c
+
+# legacy dangle named in docs/status/tasks/2026-11-03_02-06_task-…918bf0 line 31 (footer-less daemon sweep, no successor; subject-match non-derivable)
+b3dc12af
