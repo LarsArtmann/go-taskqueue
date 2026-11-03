@@ -323,6 +323,215 @@ func TestBatchChunksLargeSections(t *testing.T) {
 	}
 }
 
+// TestSectionRunsFoldsByEffortBudget pins the effort-aware fold
+// (2026-11-03): the summed member estimates cap a run below the context
+// cap, a monster estimate ships solo (never starves its siblings), and
+// FLAT estimates under the derived budget (BatchItems x
+// DefaultBatchTimeoutMinutes) reproduce the count cap exactly — the
+// estimator-less default changes nothing.
+func TestSectionRunsFoldsByEffortBudget(t *testing.T) {
+	t.Parallel()
+
+	items := []Item{
+		{Heading: "A", Key: "a1"},
+		{Heading: "A", Key: "a2"},
+		{Heading: "A", Key: "a3"},
+		{Heading: "B", Key: "b1"},
+	}
+	all := []bool{true, true, true, true}
+	effort := map[string]int{"a1": 60, "a2": 60, "a3": 60, "b1": 10}
+	effortOf := func(item Item) int { return effort[item.Key] }
+
+	// Budget 150: a1+a2=120 fits, +a3=180 exceeds → [a1,a2] then [a3];
+	// the section boundary starts b1 fresh.
+	runs := sectionRuns(items, all, 10, 150, effortOf)
+
+	if got, want := runKeys(runs), [][]string{{"a1", "a2"}, {"a3"}, {"b1"}}; !sameRuns(got, want) {
+		t.Fatalf("runs = %v, want %v", got, want)
+	}
+
+	// A monster estimate (240) over the budget still forms its own run;
+	// the sibling after it is not swallowed or starved.
+	monster := []Item{{Heading: "A", Key: "m1"}, {Heading: "A", Key: "a1"}}
+	monsterEffort := func(item Item) int {
+		if item.Key == "m1" {
+			return 240
+		}
+
+		return 30
+	}
+
+	runs = sectionRuns(monster, []bool{true, true}, 10, 150, monsterEffort)
+	if got := runKeys(runs); !sameRuns(got, [][]string{{"m1"}, {"a1"}}) {
+		t.Fatalf("monster runs = %v, want the 240m item solo then its sibling", got)
+	}
+
+	// Flat equivalence: flat DefaultBatchTimeoutMinutes estimates under
+	// the derived budget (3 x 30) chunk exactly at the count cap.
+	flat := func(Item) int { return DefaultBatchTimeoutMinutes }
+	four := []Item{{Heading: "A", Key: "f1"}, {Heading: "A", Key: "f2"}, {Heading: "A", Key: "f3"}, {Heading: "A", Key: "f4"}}
+
+	runs = sectionRuns(four, all, 3, 3*DefaultBatchTimeoutMinutes, flat)
+	if got := runKeys(runs); !sameRuns(got, [][]string{{"f1", "f2", "f3"}, {"f4"}}) {
+		t.Fatalf("flat runs = %v, want count-cap chunking 3+1", got)
+	}
+}
+
+func runKeys(runs [][]Item) [][]string {
+	out := make([][]string, len(runs))
+	for i, run := range runs {
+		out[i] = make([]string, len(run))
+		for j, item := range run {
+			out[i][j] = item.Key
+		}
+	}
+
+	return out
+}
+
+func sameRuns(got, want [][]string) bool {
+	if len(got) != len(want) {
+		return false
+	}
+
+	for i := range got {
+		if len(got[i]) != len(want[i]) {
+			return false
+		}
+
+		for j := range got[i] {
+			if got[i][j] != want[i][j] {
+				return false
+			}
+		}
+	}
+
+	return true
+}
+
+// fakeEffortEstimator stubs Config.EffortEstimator with a text→minutes
+// table for the end-to-end effort tests.
+type fakeEffortEstimator struct {
+	minutes map[string]int
+}
+
+func (f fakeEffortEstimator) EstimateEffort(_ context.Context, items []Item) map[string]int {
+	out := make(map[string]int)
+	for _, item := range items {
+		if minutes, ok := f.minutes[item.Text]; ok {
+			out[item.Key] = minutes
+		}
+	}
+
+	return out
+}
+
+// TestBatchSizesRunsByEffort pins the estimator-driven sizing end to
+// end: estimates split a section below the context cap, the minted
+// payload records per-member EffortMinutes, and the payload timeout is
+// the MAX of the count ceiling and the effort sum (estimates raise, the
+// count floor holds).
+func TestBatchSizesRunsByEffort(t *testing.T) {
+	dir := t.TempDir()
+	writeRepo(t, dir, "batchy", `# Project
+
+## Bugs
+
+- [ ] item one
+- [ ] item two
+- [ ] item three
+- [ ] item four
+`)
+
+	q := openQueue(t)
+	h := New(q, Config{
+		ProjectsDir:        dir,
+		BatchItems:         10,
+		BatchEffortMinutes: 150,
+		MaxPerTick:         10,
+		EffortEstimator: fakeEffortEstimator{minutes: map[string]int{
+			"item one":   40,
+			"item two":   45,
+			"item three": 80,
+			"item four":  15,
+		}},
+	})
+
+	if _, err := h.Run(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+
+	pending, err := q.List(context.Background(), pendingFilter("batchy"))
+	if err != nil || len(pending) != 1 {
+		t.Fatalf("pending = %d (err %v), want the first effort-sized batch", len(pending), err)
+	}
+
+	payload := decodeBatchPayload(t, pending[0])
+
+	// 40+45=85 fits the 150 budget; +80 exceeds → the run stops at two.
+	if len(payload.Items) != 2 || payload.Items[0] != "item one" || payload.Items[1] != "item two" {
+		t.Fatalf("batch members = %v, want [item one, item two] (effort split below the cap)", payload.Items)
+	}
+
+	if len(payload.EffortMinutes) != 2 || payload.EffortMinutes[0] != 40 || payload.EffortMinutes[1] != 45 {
+		t.Fatalf("effortMinutes = %v, want [40 45] aligned with Items", payload.EffortMinutes)
+	}
+
+	if payload.TimeoutMinutes != 85 { // max(count 2x30=60, effort 40+45=85)
+		t.Errorf("timeout = %d min, want 85 (effort sum over the count floor)", payload.TimeoutMinutes)
+	}
+}
+
+// TestBatchEffortNeverShrinksTimeout pins the floor: under-estimates
+// cannot truncate a batch — the count ceiling always holds, while the
+// low estimates are still recorded for the later outcome-join audit.
+func TestBatchEffortNeverShrinksTimeout(t *testing.T) {
+	dir := t.TempDir()
+	writeRepo(t, dir, "batchy", `# Project
+
+## Bugs
+
+- [ ] item one
+- [ ] item two
+- [ ] item three
+`)
+
+	q := openQueue(t)
+	h := New(q, Config{
+		ProjectsDir: dir,
+		BatchItems:  3,
+		MaxPerTick:  10,
+		EffortEstimator: fakeEffortEstimator{minutes: map[string]int{
+			"item one":   5,
+			"item two":   5,
+			"item three": 5,
+		}},
+	})
+
+	if _, err := h.Run(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+
+	pending, err := q.List(context.Background(), pendingFilter("batchy"))
+	if err != nil || len(pending) != 1 {
+		t.Fatalf("pending = %d (err %v), want one batch", len(pending), err)
+	}
+
+	payload := decodeBatchPayload(t, pending[0])
+
+	if len(payload.Items) != 3 {
+		t.Fatalf("batch members = %v, want all three (5m estimates pack under any budget)", payload.Items)
+	}
+
+	if payload.TimeoutMinutes != 90 { // max(3x30 floor, 15 sum) — never below count
+		t.Errorf("timeout = %d min, want 90 (the count floor; estimates only raise)", payload.TimeoutMinutes)
+	}
+
+	if len(payload.EffortMinutes) != 3 || payload.EffortMinutes[2] != 5 {
+		t.Fatalf("effortMinutes = %v, want the low estimates recorded anyway", payload.EffortMinutes)
+	}
+}
+
 // TestBatchPriorityTakesMax pins that a batch never sinks below its hottest
 // member: one P1 marker item lifts the whole batch to the marker band.
 func TestBatchPriorityTakesMax(t *testing.T) {

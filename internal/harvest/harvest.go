@@ -190,6 +190,22 @@ type Config struct {
 	// gate (--max-per-tick, daily budget, repo pacing) — the per-item
 	// cost is amortized, so raise the gates consciously.
 	BatchItems int
+	// BatchEffortMinutes caps the SUMMED per-item effort estimates of
+	// one batched run (effort-aware batching, 2026-11-03): a 3-hour item
+	// ships alone while ten 10-minute items ride together, all under
+	// the same context cap. 0 = BatchItems x DefaultBatchTimeoutMinutes,
+	// which under flat estimates is exactly the count cap (zero behavior
+	// change without an estimator). Estimates are SCHEDULING SIGNALS
+	// (ADR-0015 §signals): they size runs and raise payload timeouts,
+	// never lower them, and never touch trust or priority.
+	BatchEffortMinutes int
+	// EffortEstimator, when set, predicts per-item work minutes (keyed
+	// by Item.Key) for run sizing and timeout budgets. nil keeps the
+	// flat per-item default (count-equivalent grouping). Called once per
+	// repo with the admissible candidates; a missing key or non-positive
+	// value falls back to the flat default, so a failed estimation can
+	// never drop or stall work.
+	EffortEstimator EffortEstimator
 	// Model overrides the crush model ("provider/model") in every harvested
 	// agent payload. Empty = the agent binary's default model.
 	Model string
@@ -260,7 +276,23 @@ func (c Config) withDefaults() Config {
 		c.BatchItems = 1
 	}
 
+	if c.BatchEffortMinutes <= 0 {
+		c.BatchEffortMinutes = c.BatchItems * DefaultBatchTimeoutMinutes
+	}
+
 	return c
+}
+
+// EffortEstimator predicts per-item work effort (minutes) so batched
+// runs are sized by predicted work, not raw item count. Estimates are
+// advisory scheduling signals, never trust or priority (ADR-0015
+// §signals): implementations must treat failures as "no estimate"
+// (omit the key) rather than errors — the harvester falls back to the
+// flat per-item default for anything missing.
+type EffortEstimator interface {
+	// EstimateEffort returns predicted minutes keyed by Item.Key.
+	// Missing keys and non-positive values use the flat default.
+	EstimateEffort(ctx context.Context, items []Item) map[string]int
 }
 
 // Item is one checkbox found in a repo's todo file.
@@ -423,29 +455,44 @@ func (h *Harvester) runRepo(ctx context.Context, repo string, items []Item, res 
 	}
 }
 
-// sectionRuns folds admissible items into same-section runs, chunked to at
-// most cap members each, preserving file order. Inadmissible items never
-// join a run — the caller already reported them skipped — and no longer
-// BREAK one either: a done, blocked or already-known item between two fresh
-// items of the same section does not fork the batch. The section is the
-// work unit, not the run of consecutive lines (the section-goal form of
-// docs/problems/major-prompting-and-batching.md, 2026-11-03).
-func sectionRuns(items []Item, admissible []bool, cap int) [][]Item {
+// sectionRuns folds admissible items into same-section runs, preserving
+// file order. A run stops at THREE walls: a section boundary, the
+// maxItems context cap, and the effort budget — the summed estimated
+// minutes of the members may not exceed budgetMinutes (effort-aware
+// batching, 2026-11-03: a 3-hour item ships alone, ten 10-minute items
+// ride together). A single item whose estimate alone exceeds the budget
+// still forms its own run — every admissible item joins exactly one.
+// Inadmissible items never join a run — the caller already reported
+// them skipped — and no longer BREAK one either: a done, blocked or
+// already-known item between two fresh items of the same section does
+// not fork the batch. The section is the work unit, not the run of
+// consecutive lines (the section-goal form of
+// docs/problems/major-prompting-and-batching.md, 2026-11-03). With
+// flat estimates and the derived budget (BatchItems x
+// DefaultBatchTimeoutMinutes) the fold is exactly the count cap.
+func sectionRuns(items []Item, admissible []bool, maxItems, budgetMinutes int, effortOf func(Item) int) [][]Item {
 	var runs [][]Item
 
 	var cur []Item
+
+	curEffort := 0
 
 	for i, item := range items {
 		if !admissible[i] {
 			continue
 		}
 
-		if len(cur) > 0 && (item.Heading != cur[0].Heading || len(cur) >= cap) {
+		effort := effortOf(item)
+
+		if len(cur) > 0 &&
+			(item.Heading != cur[0].Heading || len(cur) >= maxItems || curEffort+effort > budgetMinutes) {
 			runs = append(runs, cur)
 			cur = nil
+			curEffort = 0
 		}
 
 		cur = append(cur, item)
+		curEffort += effort
 	}
 
 	if len(cur) > 0 {
@@ -479,17 +526,38 @@ func (h *Harvester) runRepoBatched(ctx context.Context, state repoState, items [
 		admissible[i] = true
 	}
 
-	// Phase 2: admit section runs in file order, one new task per repo.
+	// Phase 2: effort estimates for the admissible candidates (one
+	// estimator pass per repo), then admit section runs in file order,
+	// one new task per repo. A missing estimate is the flat default —
+	// estimation trouble can never drop or stall work.
+	var candidates []Item
+
+	for i, ok := range admissible {
+		if ok {
+			candidates = append(candidates, items[i])
+		}
+	}
+
+	estimates := h.estimateEffort(ctx, candidates)
+
+	effortOf := func(item Item) int {
+		if minutes, ok := estimates[item.Key]; ok && minutes > 0 {
+			return minutes
+		}
+
+		return DefaultBatchTimeoutMinutes
+	}
+
 	enqueuedThisRepo := false
 
-	for _, run := range sectionRuns(items, admissible, h.cfg.BatchItems) {
+	for _, run := range sectionRuns(items, admissible, h.cfg.BatchItems, h.cfg.BatchEffortMinutes, effortOf) {
 		switch {
 		case enqueuedThisRepo:
 			h.skipRun(run, res, "paced: one new item per repo per run")
 		case len(res.Enqueued) >= h.cfg.MaxPerTick:
 			h.skipRun(run, res, "tick cap reached (--max-per-tick)")
 		default:
-			if h.admitRun(ctx, run, state.importance, res) {
+			if h.admitRun(ctx, run, effortOf, state.importance, res) {
 				enqueuedThisRepo = true
 
 				for _, item := range run {
@@ -498,6 +566,18 @@ func (h *Harvester) runRepoBatched(ctx context.Context, state repoState, items [
 			}
 		}
 	}
+}
+
+// estimateEffort asks the configured estimator for per-item effort
+// minutes over the repo's admissible candidates. nil (no estimator, or
+// nothing to estimate) keeps the flat DefaultBatchTimeoutMinutes per
+// item — grouping and timeouts then behave exactly count-scoped.
+func (h *Harvester) estimateEffort(ctx context.Context, candidates []Item) map[string]int {
+	if h.cfg.EffortEstimator == nil || len(candidates) == 0 {
+		return nil
+	}
+
+	return h.cfg.EffortEstimator.EstimateEffort(ctx, candidates)
 }
 
 // skipRun reports every member of a paced-out run with one reason.
@@ -510,7 +590,13 @@ func (h *Harvester) skipRun(run []Item, res *Result, reason string) {
 // admitRun enqueues one batched run and records every member under
 // res.Enqueued with the SAME TaskID (one task, many items). Failure and
 // store-dedup semantics mirror admitItem, reported per member.
-func (h *Harvester) admitRun(ctx context.Context, run []Item, importance int, res *Result) bool {
+func (h *Harvester) admitRun(
+	ctx context.Context,
+	run []Item,
+	effortOf func(Item) int,
+	importance int,
+	res *Result,
+) bool {
 	if h.cfg.DryRun {
 		for _, item := range run {
 			res.Enqueued = append(
@@ -522,7 +608,7 @@ func (h *Harvester) admitRun(ctx context.Context, run []Item, importance int, re
 		return true
 	}
 
-	t, err := h.enqueueBatch(ctx, run, importance)
+	t, err := h.enqueueBatch(ctx, run, effortOf, importance)
 	if err != nil {
 		for _, item := range run {
 			res.Skipped = append(res.Skipped, Skipped{Item: item, Reason: enqueueSkipReason(err)})
@@ -570,8 +656,13 @@ func batchKeyOf(run []Item) string {
 // BatchKeyPrefix marks a batched task's dedup key (harvest --batch-items).
 const BatchKeyPrefix = "batch:"
 
-func (h *Harvester) enqueueBatch(ctx context.Context, run []Item, importance int) (task.Task, error) {
-	payload, err := h.buildBatchPayload(ctx, run)
+func (h *Harvester) enqueueBatch(
+	ctx context.Context,
+	run []Item,
+	effortOf func(Item) int,
+	importance int,
+) (task.Task, error) {
+	payload, err := h.buildBatchPayload(ctx, run, effortOf)
 	if err != nil {
 		return task.Task{}, err
 	}
@@ -620,17 +711,25 @@ func (h *Harvester) enqueueBatch(ctx context.Context, run []Item, importance int
 	return h.q.Enqueue(ctx, candidate)
 }
 
-// defaultBatchTimeoutMinutes is the per-item ceiling a batch scales from
-// when the repo timeout ladder has no entry (executor default: 30).
-const defaultBatchTimeoutMinutes = 30
+// DefaultBatchTimeoutMinutes is the per-item ceiling a batch scales
+// from when the repo timeout ladder has no entry (executor default:
+// 30). It is also the flat per-item EFFORT estimate used when no
+// estimator is configured, and the unit the derived effort budget
+// (BatchItems x this) counts in — one number, three roles, never
+// forked (2026-11-03 single-sourcing: the pool's scaled --task-timeout
+// default derives from it too).
+const DefaultBatchTimeoutMinutes = 30
 
 // buildBatchPayload renders the batch prompt for one run and encodes the
 // members' texts and keys into the payload (Item stays the FIRST member so
 // review quoting, status windows and `tq show` provenance keep working).
 // The payload timeout scales with the member count — one ladder/default
 // ceiling per item — so a batch is not killed by a single-item ceiling;
-// the pool's --task-timeout stays the hard cap above it.
-func (h *Harvester) buildBatchPayload(ctx context.Context, run []Item) ([]byte, error) {
+// effort estimates may only RAISE it (sum of estimates, never below the
+// count ceiling — an underestimated batch must not die truncated, the
+// 2026-11-03 worst finding); the pool's --task-timeout stays the hard cap
+// above it.
+func (h *Harvester) buildBatchPayload(ctx context.Context, run []Item, effortOf func(Item) int) ([]byte, error) {
 	first := run[0]
 
 	texts := make([]string, len(run))
@@ -669,9 +768,28 @@ func (h *Harvester) buildBatchPayload(ctx context.Context, run []Item) ([]byte, 
 		}
 	}
 
-	perItemMinutes := defaultBatchTimeoutMinutes
+	perItemMinutes := DefaultBatchTimeoutMinutes
 	if d, ok := h.cfg.RepoTimeouts[first.RepoName]; ok && d > 0 {
 		perItemMinutes = int(d / time.Minute)
+	}
+
+	countCeiling := perItemMinutes * len(run)
+
+	effortSum := 0
+
+	efforts := make([]int, len(run))
+
+	for i, item := range run {
+		efforts[i] = effortOf(item)
+		effortSum += efforts[i]
+	}
+
+	// Flat fallback estimates are not signal: record per-member effort
+	// only when a real estimator produced them (legacy payloads and
+	// estimator-less runs keep effortMinutes absent — OKF v0.2 §11
+	// additive: absent = no estimates recorded).
+	if h.cfg.EffortEstimator == nil {
+		efforts = nil
 	}
 
 	payload := harvestPayload{
@@ -683,9 +801,10 @@ func (h *Harvester) buildBatchPayload(ctx context.Context, run []Item) ([]byte, 
 		Verify:       executor.ReadTQVerify(first.Repo),
 		RequireClean: h.cfg.RequireClean,
 
-		TimeoutMinutes: perItemMinutes * len(run),
+		TimeoutMinutes: max(countCeiling, effortSum),
 		Dedup:          batchKeyOf(run),
 		ItemKeys:       keys,
+		EffortMinutes:  efforts,
 		MarkerLevel:    maxMarker,
 	}
 
@@ -1096,9 +1215,14 @@ func (h *Harvester) buildPayload(ctx context.Context, item Item, prompt, dedupKe
 type harvestPayload struct {
 	executor.AgentPayload
 
-	Dedup       string   `json:"dedup,omitempty"`
-	MarkerLevel int      `json:"markerLevel,omitempty"`
-	ItemKeys    []string `json:"itemKeys,omitempty"`
+	Dedup string `json:"dedup,omitempty"`
+	// EffortMinutes is the per-member effort estimate (minutes), aligned
+	// with Items/ItemKeys. Absent (legacy payloads, or no estimator
+	// configured) means no estimates were recorded — the count-scaled
+	// timeout already carries the safe ceiling (OKF v0.2 §11 additive).
+	EffortMinutes []int   `json:"effortMinutes,omitempty"`
+	MarkerLevel   int     `json:"markerLevel,omitempty"`
+	ItemKeys      []string `json:"itemKeys,omitempty"`
 }
 
 // PayloadItem is the harvested backlog-item identity carried by a task

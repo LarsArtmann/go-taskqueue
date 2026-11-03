@@ -141,7 +141,9 @@ func TestBuildBatchPayloadAppendsCitationWarning(t *testing.T) {
 		{Repo: repo, RepoName: filepath.Base(repo), Text: "item two"},
 	}
 
-	payload, err := h.buildBatchPayload(context.Background(), run)
+	flatEffort := func(Item) int { return DefaultBatchTimeoutMinutes }
+
+	payload, err := h.buildBatchPayload(context.Background(), run, flatEffort)
 	if err != nil {
 		t.Fatalf("buildBatchPayload: %v", err)
 	}
