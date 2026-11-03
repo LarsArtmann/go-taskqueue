@@ -120,7 +120,9 @@ run_gate() {
 			t=${t#*"$tok"}
 			pre=${text:0:$(( ${#text} - ${#t} ))}  # text up to and incl. tok
 			pos=$((${#pre} - ${#tok}))
-			win=${text:$((pos > 45 ? pos - 45 : 0)):$(( ${#tok} + 90 ))}
+			# suffix must reach the pair's partner hex (up to 40 + arrow) even
+			# when the pair's own token sits at the window edge
+			win=${text:$((pos > 45 ? pos - 45 : 0)):$(( ${#tok} + 140 ))}
 			[ -n "${seen[$tok]:-}" ] && continue
 			[ -n "${oid[$tok]:-}" ] || continue
 			[ -n "${anc[${oid[$tok]}]:-}" ] && continue
