@@ -388,3 +388,27 @@ func TestStatusPromptCarriesBandDriftSection(t *testing.T) {
 		}
 	}
 }
+
+// TestStatusPromptCarriesCheckpointEarly pins the silent-death cure
+// (2026-10-30 03-35 done-prompt report §e2): workers 53564/21570 each held
+// the done-prompt claim ~45min+ with ZERO recoverable artifacts; the
+// contract must order a skeleton report + TODO appends committed EARLY so a
+// lease-expiry release leaves recoverable progress.
+func TestStatusPromptCarriesCheckpointEarly(t *testing.T) {
+	t.Parallel()
+
+	prompt := statusPrompt(StatusPayload{Repo: "demo", Completed: []StatusCompletion{
+		{TaskID: "000test", Item: "ship the thing"},
+	}})
+
+	for _, want := range []string{
+		"Checkpoint early",
+		"report skeleton",
+		"git commit --amend",
+		"never leave zero artifacts",
+	} {
+		if !strings.Contains(prompt, want) {
+			t.Fatalf("prompt lacks %q (checkpoint-early section missing)", want)
+		}
+	}
+}
