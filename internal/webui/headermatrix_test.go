@@ -2,6 +2,9 @@ package webui
 
 import (
 	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"maps"
 	"net/http"
 	"net/http/httptest"
@@ -148,6 +151,76 @@ func with(rows ...matrixHeaders) matrixHeaders {
 // mergeRow overlays additions onto a base row (shared matrix idiom).
 func mergeRow(base, additions matrixHeaders) matrixHeaders {
 	return with(base, additions)
+}
+
+// TestWithIsOnlyMergeMechanism is the structural guard for the single
+// merge mechanism (2026-10-30 05-31 §f3): every maps.Copy into a
+// matrixHeaders{} in this file must live inside with's body. A second
+// merge site would fork the merge semantics (later-rows-win, fresh map)
+// that the matrix's row-composition relies on, so the guard is
+// syntactic: go/parser over this file, census every maps.Copy call, and
+// require each one's position inside the with FuncDecl's body span.
+func TestWithIsOnlyMergeMechanism(t *testing.T) {
+	t.Parallel()
+
+	const file = "headermatrix_test.go"
+
+	src, err := os.ReadFile(file)
+	if err != nil {
+		t.Fatalf("read %s: %v", file, err)
+	}
+
+	fset := token.NewFileSet()
+
+	node, err := parser.ParseFile(fset, file, src, 0)
+	if err != nil {
+		t.Fatalf("parse %s: %v", file, err)
+	}
+
+	var withBody ast.Node
+	ast.Inspect(node, func(n ast.Node) bool {
+		if fn, ok := n.(*ast.FuncDecl); ok && fn.Name.Name == "with" && fn.Body != nil {
+			withBody = fn.Body
+		}
+
+		return true
+	})
+
+	if withBody == nil {
+		t.Fatal("with func not found in headermatrix_test.go")
+	}
+
+	calls := 0
+
+	ast.Inspect(node, func(n ast.Node) bool {
+		call, ok := n.(*ast.CallExpr)
+		if !ok {
+			return true
+		}
+
+		sel, ok := call.Fun.(*ast.SelectorExpr)
+		if !ok {
+			return true
+		}
+
+		ident, ok := sel.X.(*ast.Ident)
+		if !ok || ident.Name != "maps" || sel.Sel.Name != "Copy" {
+			return true
+		}
+
+		calls++
+
+		if !(withBody.Pos() <= call.Pos() && call.Pos() < withBody.End()) {
+			t.Errorf("%s: maps.Copy outside the with body (line %d) — with is the file's ONLY merge mechanism; route the site through with/mergeRow",
+				file, fset.Position(call.Pos()).Line)
+		}
+
+		return true
+	})
+
+	if calls == 0 {
+		t.Error("no maps.Copy calls found — the census should see with's merge site")
+	}
 }
 
 // getContextGET issues a GET via NewRequestWithContext + client.Do (the
