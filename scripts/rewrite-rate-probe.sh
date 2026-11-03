@@ -61,7 +61,7 @@ is_rewrite() {
 	# an amend orphans every sha cited before it (2 dead cites this session
 	# via pre-amend shas) — a rewrite event in every way that matters.
 	case "$1" in
-	*filter-branch* | *rebase*\ \(start\)* | rebase | rebase\ -i* | commit\ \(amend\)* ) return 0 ;;
+	*filter-branch* | *rebase*\ \(start\)* | rebase | rebase\ -i* | commit\ \(amend\)*) return 0 ;;
 	esac
 	return 1
 }
@@ -77,8 +77,8 @@ scan() {
 }
 
 run_probe() {
-local counts=() dates=() day msg an ae total=0 ndays=0 hot=0 today_count=0
-local actors=() acounts=() actor afound offenders=()
+	local counts=() dates=() day msg an ae total=0 ndays=0 hot=0 today_count=0
+	local actors=() acounts=() actor afound offenders=()
 	while IFS='|' read -r day msg an ae; do
 		[ -n "$day" ] || continue
 		case "$day" in

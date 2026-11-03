@@ -457,18 +457,18 @@ VSTATE=""
 for _ in $(seq 1 100); do
 	VSTATE="$(task_state "$VERDICT_ID")"
 	case "$VSTATE" in
-		completed* | dead* | failed* | cancelled*) break ;;
+	completed* | dead* | failed* | cancelled*) break ;;
 	esac
 	size_guard
 	sleep 0.3
 done
 case "$VSTATE" in
-	completed*) : ;;
-	*)
-		tail -25 "$TMP/pool.log"
-		"$TMP/tq" show --db "$TMP/pool.db" "$VERDICT_ID" 2>/dev/null | head -40
-		fail "verdict probe task state = '$VSTATE', want completed"
-		;;
+completed*) : ;;
+*)
+	tail -25 "$TMP/pool.log"
+	"$TMP/tq" show --db "$TMP/pool.db" "$VERDICT_ID" 2>/dev/null | head -40
+	fail "verdict probe task state = '$VSTATE', want completed"
+	;;
 esac
 "$TMP/tq" show --db "$TMP/pool.db" "$VERDICT_ID" 2>/dev/null | grep -q "routed e2e" || {
 	"$TMP/tq" show --db "$TMP/pool.db" "$VERDICT_ID" 2>/dev/null | head -50
@@ -571,8 +571,8 @@ done
 }
 CSTATE="$(task_state "$CANCEL_ID")"
 case "$CSTATE" in
-	cancelled*) : ;;
-	*) fail "cancel probe task state = '$CSTATE', want cancelled" ;;
+cancelled*) : ;;
+*) fail "cancel probe task state = '$CSTATE', want cancelled" ;;
 esac
 echo "PASS: cancel leg — client exited, server reaped the turn, task cancelled"
 

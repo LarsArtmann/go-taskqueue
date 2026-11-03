@@ -86,7 +86,7 @@ if [ "${1:-}" = "--self-test" ]; then
 	rcase ctx:'templ generate' 'templ edit advice' "$tmp/layout.templ"
 	rcase ctx:'machine-consumed' 'TODO_LIST edit advice' "$tmp/TODO_LIST.md"
 	rcase ctx:'size-guarded' 'AGENTS edit advice' "$tmp/AGENTS.md"
-rcase ctx:'display.Eyebrow' 'webui ADOPTION edit advice' "$tmp/internal/webui/ADOPTION.md"
+	rcase ctx:'display.Eyebrow' 'webui ADOPTION edit advice' "$tmp/internal/webui/ADOPTION.md"
 	rcase ctx:'### Internal' 'CHANGELOG edit advice' "$tmp/CHANGELOG.md"
 	rcase ctx:'check-go-mods.sh' 'go.mod edit advice' "$tmp/go.mod"
 	rcase ctx:'date +%Y-%m-%d_%H-%M' 'docs/status creation advice' "$tmp/docs/status/2026-10-29_10-00_task-1.md"

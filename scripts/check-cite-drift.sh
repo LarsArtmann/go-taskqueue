@@ -177,7 +177,7 @@ run_gate() {
 					else
 						# anchor: the first identifier-shaped backticked token on
 						# the citing line that actually occurs in the cited file
-						for raw in $( [ "$single_cite" = 1 ] && grep -oE '`[^`]+`' <<<"$text" | tr -d '`' ); do
+						for raw in $([ "$single_cite" = 1 ] && grep -oE '`[^`]+`' <<<"$text" | tr -d '`'); do
 							tok=$(normalize_token "$raw")
 							[ -z "$tok" ] && continue
 							# An anchor must be UNIQUE in the file: a symbol that
@@ -186,7 +186,10 @@ run_gate() {
 							# false-positive machine on any prose that names it.
 							[ "$(grep -cF -- "$tok" "$resolved" 2>/dev/null)" = 1 ] || continue
 							found=1
-							in_window "$resolved" "$lineno" "$tok" && { found=2; break; }
+							in_window "$resolved" "$lineno" "$tok" && {
+								found=2
+								break
+							}
 						done
 						if [ "$found" = 1 ]; then
 							finding="ANCHOR DRIFT: $f:$linenum cites '$cite' — the identifier it names is not within +/-$WINDOW line(s) of $lineno"
@@ -348,7 +351,10 @@ EOF
 		echo "cite-drift self-test FAIL: emit expected 3 keys: $out"
 		exit 1
 	}
-	{ echo "# emitted"; cat <<<"$out"; } >"$baseline"
+	{
+		echo "# emitted"
+		cat <<<"$out"
+	} >"$baseline"
 	MODE=gate
 	files=(docs/drift.md docs/pasteof.md docs/missing.md)
 	out=$(run_gate) && rc=0 || rc=$?

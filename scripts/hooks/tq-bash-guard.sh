@@ -193,12 +193,12 @@ if [ "${1:-}" = "--self-test" ]; then
 	rcase silent 'grep over a smoke path (FP regression)' 'grep -n TQ_DB scripts/smoke/webui.sh'
 	rcase silent 'cat of a smoke doc (FP regression)' 'cat scripts/smoke/COVERAGE.md'
 	rcase silent 'plain git push' 'git push origin main'
-rcase ctx:'trash' 'plain rm advisory' 'rm -rf /tmp/fixture'
-rcase silent 'git rm is legitimate' 'git rm tracked.txt'
-rcase silent 'rm as substring is not a word match' "grep -rn 'confirm' scripts/"
-rcase ctx:'/tmp' 'repo-tree heredoc fixture advisory' "cat > fixtures/tree.txt <<'EOF'"
-rcase silent 'heredoc fixture under /tmp is silent' "cat > /tmp/tree.txt <<'EOF'"
-rcase silent 'stdin-only heredoc is silent' "grep -c x <<'EOF'"
+	rcase ctx:'trash' 'plain rm advisory' 'rm -rf /tmp/fixture'
+	rcase silent 'git rm is legitimate' 'git rm tracked.txt'
+	rcase silent 'rm as substring is not a word match' "grep -rn 'confirm' scripts/"
+	rcase ctx:'/tmp' 'repo-tree heredoc fixture advisory' "cat > fixtures/tree.txt <<'EOF'"
+	rcase silent 'heredoc fixture under /tmp is silent' "cat > /tmp/tree.txt <<'EOF'"
+	rcase silent 'stdin-only heredoc is silent' "grep -c x <<'EOF'"
 	rcase silent 'grep -P carries real escapes' "grep -P '\\t' f"
 	rcase silent 'grep -F literal search' "grep -F '\\t' f"
 	rcase silent 'word PIPESTATUS without shell read' 'grep -rn PIPESTATUS scripts/'
@@ -548,7 +548,7 @@ if has_word unset; then
 fi
 
 if printf '%s' "$cmd" | grep -Eq '<<-?[[:space:]]*["'\'']?[A-Za-z]'; then
-	heredoc_target="$( { printf '%s' "$cmd" | grep -Eo '>[[:space:]]*[^[:space:];|&]+' || true; } | head -1 | sed 's/^>[[:space:]]*//')"
+	heredoc_target="$({ printf '%s' "$cmd" | grep -Eo '>[[:space:]]*[^[:space:];|&]+' || true; } | head -1 | sed 's/^>[[:space:]]*//')"
 	case "$heredoc_target" in
 	'' | /tmp/* | *.go) ;; # stdin-only / under /tmp / gofile-redirect deny owns .go
 	*)

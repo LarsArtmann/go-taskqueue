@@ -101,14 +101,14 @@ flush_row() {
 	# Backticked tokens; skip file:// style noise and the script's own name.
 	while IFS= read -r tok; do
 		case "$tok" in
-			'' | '`') continue ;;
-			-*) continue ;;          # CLI flags are prose, not identifiers
-			*' '*) continue ;;       # multi-word tokens are prose (commands, snippets)
-			*'$'*) continue ;;
-			*'`'*) continue ;;
+		'' | '`') continue ;;
+		-*) continue ;;    # CLI flags are prose, not identifiers
+		*' '*) continue ;; # multi-word tokens are prose (commands, snippets)
+		*'$'*) continue ;;
+		*'`'*) continue ;;
 		esac
 		case "$tok" in
-			"$self_abs") continue ;;
+		"$self_abs") continue ;;
 		esac
 		# PATH probe: exact tracked-file match at HEAD.
 		if git ls-files --error-unmatch "$tok" >/dev/null 2>&1; then
@@ -121,9 +121,9 @@ flush_row() {
 		fi
 		if [ -z "${TQ_UNTICKED_SKIP_GATES:-}" ]; then
 			case "$tok" in
-				scripts/check-*.sh | scripts/smoke/*.sh | scripts/tq-*.sh | scripts/*.sh)
-					continue
-					;;
+			scripts/check-*.sh | scripts/smoke/*.sh | scripts/tq-*.sh | scripts/*.sh)
+				continue
+				;;
 			esac
 		fi
 		# GOTEST probe: TestXxx symbols resolved through go test -list in
@@ -150,7 +150,11 @@ flush_row() {
 
 probe_test_symbol() {
 	local sym="$1" mods m
-	mods="$(scripts/for-each-module.sh 2>/dev/null; echo .; echo cmd/tq)"
+	mods="$(
+		scripts/for-each-module.sh 2>/dev/null
+		echo .
+		echo cmd/tq
+	)"
 	for m in $mods; do
 		[ -f "$m/go.mod" ] || continue
 		if (cd "$m" && GOWORK=off go list ./... >/dev/null 2>&1 && GOWORK=off go test -list "^${sym}$" ./... 2>/dev/null) | grep -q "^${sym}$"; then

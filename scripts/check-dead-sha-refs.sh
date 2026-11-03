@@ -108,26 +108,26 @@ run_gate() {
 			linenum=${line%%:*}
 			text=${line#*:}
 			local -A seen=()
-		# per-OCCURRENCE scan (TODO §f12): the same token may appear twice
-		# on a line — first as a fork-record member (healthy), then bare
-		# (dangling). Arrow-escape is tested against a WINDOW around the
-		# occurrence (±45 chars), so a pair elsewhere on the line cannot
-		# whitewash a second bare cite; the dedup marks a token seen only
-		# once CLASSIFIED (dead/baselined), never on a mere escape.
-		local t=$text tok pos pre win
-		while [[ "$t" =~ [0-9a-f]{7,40} ]]; do
-			tok=${BASH_REMATCH[0]}
-			t=${t#*"$tok"}
-			pre=${text:0:$(( ${#text} - ${#t} ))}  # text up to and incl. tok
-			pos=$((${#pre} - ${#tok}))
-			# suffix must reach the pair's partner hex (up to 40 + arrow) even
-			# when the pair's own token sits at the window edge
-			win=${text:$((pos > 45 ? pos - 45 : 0)):$(( ${#tok} + 140 ))}
-			[ -n "${seen[$tok]:-}" ] && continue
-			[ -n "${oid[$tok]:-}" ] || continue
-			[ -n "${anc[${oid[$tok]}]:-}" ] && continue
-			token_arrow_escaped "$tok" "$win" && continue
-			seen["$tok"]=1
+			# per-OCCURRENCE scan (TODO §f12): the same token may appear twice
+			# on a line — first as a fork-record member (healthy), then bare
+			# (dangling). Arrow-escape is tested against a WINDOW around the
+			# occurrence (±45 chars), so a pair elsewhere on the line cannot
+			# whitewash a second bare cite; the dedup marks a token seen only
+			# once CLASSIFIED (dead/baselined), never on a mere escape.
+			local t=$text tok pos pre win
+			while [[ "$t" =~ [0-9a-f]{7,40} ]]; do
+				tok=${BASH_REMATCH[0]}
+				t=${t#*"$tok"}
+				pre=${text:0:$((${#text} - ${#t}))} # text up to and incl. tok
+				pos=$((${#pre} - ${#tok}))
+				# suffix must reach the pair's partner hex (up to 40 + arrow) even
+				# when the pair's own token sits at the window edge
+				win=${text:$((pos > 45 ? pos - 45 : 0)):$((${#tok} + 140))}
+				[ -n "${seen[$tok]:-}" ] && continue
+				[ -n "${oid[$tok]:-}" ] || continue
+				[ -n "${anc[${oid[$tok]}]:-}" ] && continue
+				token_arrow_escaped "$tok" "$win" && continue
+				seen["$tok"]=1
 				if [ "$MODE" = emit ]; then
 					emit["$tok"]=1
 					continue
@@ -195,7 +195,7 @@ shrink_pass() {
 	local -A twins=()
 	local sha tree subj
 	while read -r sha tree subj; do
-		twins["${tree}|${subj}"]="${twins[${tree}|${subj}]:-}${sha}"$'\n'
+		twins["${tree}|${subj}"]="${twins[${tree} | ${subj}]:-}${sha}"$'\n'
 	done < <(git log --format='%H %T %s' HEAD 2>/dev/null)
 	[ -f "$baseline" ] || {
 		echo "shrink: no baseline at $baseline"
@@ -253,17 +253,17 @@ shrink_pass() {
 			tok_body=${rest#*$'\n'}
 		fi
 		twin=""
-		if [ -n "$tok_tree" ] && [ -n "${twins[${tok_tree}|${tok_subj}]:-}" ]; then
+		if [ -n "$tok_tree" ] && [ -n "${twins[${tok_tree} | ${tok_subj}]:-}" ]; then
 			if grep -q '^Task-Queue-ID:' <<<"$tok_body"; then
 				# daemon commit: the body is queue boilerplate keyed by the
 				# task id, so tree+subject suffices; newest candidate wins
 				# (tiebreak above)
-				twin="${twins[${tok_tree}|${tok_subj}]%%$'\n'*}"
+				twin="${twins[${tok_tree} | ${tok_subj}]%%$'\n'*}"
 			else
 				# non-daemon (TODO 02-56 §f21): verify the message BODY too —
 				# a tree+subject twin with a different body is a DIFFERENT
 				# commit; only a body-exact candidate counts as the twin
-				for cand in ${twins[${tok_tree}|${tok_subj}]}; do
+				for cand in ${twins[${tok_tree} | ${tok_subj}]}; do
 					[ -n "$cand" ] || continue
 					if [ "$(git log -1 --format=%B "$cand" 2>/dev/null)" = "$tok_body" ]; then
 						twin="$cand"
@@ -292,7 +292,10 @@ shrink_pass() {
 		fi
 	done
 	if [ -n "${json_mode:-}" ]; then
-		printf '{"shrink":{"total":%d,"drops":%d,"verdicts":[%s]}}\n' "$total" "$drops" "$(IFS=,; [ ${#json[@]} -gt 0 ] && echo "${json[*]}")"
+		printf '{"shrink":{"total":%d,"drops":%d,"verdicts":[%s]}}\n' "$total" "$drops" "$(
+			IFS=,
+			[ ${#json[@]} -gt 0 ] && echo "${json[*]}"
+		)"
 		return 0
 	fi
 	echo "shrink: $drops of $total baselined tokens have a now-reachable twin (advisory; gate stays green throughout)"
