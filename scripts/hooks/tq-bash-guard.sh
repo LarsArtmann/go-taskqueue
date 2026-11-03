@@ -196,6 +196,9 @@ if [ "${1:-}" = "--self-test" ]; then
 rcase ctx:'trash' 'plain rm advisory' 'rm -rf /tmp/fixture'
 rcase silent 'git rm is legitimate' 'git rm tracked.txt'
 rcase silent 'rm as substring is not a word match' "grep -rn 'confirm' scripts/"
+rcase ctx:'/tmp' 'repo-tree heredoc fixture advisory' "cat > fixtures/tree.txt <<'EOF'"
+rcase silent 'heredoc fixture under /tmp is silent' "cat > /tmp/tree.txt <<'EOF'"
+rcase silent 'stdin-only heredoc is silent' "grep -c x <<'EOF'"
 	rcase silent 'grep -P carries real escapes' "grep -P '\\t' f"
 	rcase silent 'grep -F literal search' "grep -F '\\t' f"
 	rcase silent 'word PIPESTATUS without shell read' 'grep -rn PIPESTATUS scripts/'
@@ -542,6 +545,16 @@ fi
 
 if has_word unset; then
 	adv bare-unset "bare 'unset VAR' leaks to children in session shells — prefer 'env -u VAR cmd' (AGENTS.md §Session shell hazards)."
+fi
+
+if printf '%s' "$cmd" | grep -Eq '<<-?[[:space:]]*["'\'']?[A-Za-z]'; then
+	heredoc_target="$( { printf '%s' "$cmd" | grep -Eo '>[[:space:]]*[^[:space:];|&]+' || true; } | head -1 | sed 's/^>[[:space:]]*//')"
+	case "$heredoc_target" in
+	'' | /tmp/* | *.go) ;; # stdin-only / under /tmp / gofile-redirect deny owns .go
+	*)
+		adv heredoc-fixture-tmp "non-Go heredoc fixtures belong under /tmp: untracked files inside gated trees are daemon sweep food (AGENTS.md §Known Issues) — write to /tmp/… instead of $heredoc_target. Go-source heredocs are denied outright."
+		;;
+	esac
 fi
 
 if has_word rm && ! printf '%s' "$cmd" | grep -Eq '(^|[[:space:];&])git[[:space:]]+rm([[:space:]]|$)'; then
