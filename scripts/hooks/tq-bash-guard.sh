@@ -239,6 +239,27 @@ if [ "${1:-}" = "--self-test" ]; then
 		cat "$dlog"
 	fi
 
+	# pins: advisory-log-branch — an advisory appends a ts|rule|cmd row to
+	# TQ_HOOK_ADVISORY_LOG; a silent run appends none (row 23, 02-56 §e2).
+	alog="$tmp/adv.log"
+	: >"$alog"
+	TQ_HOOK_ADVISORY_LOG="$alog" rcase ctx:'THAT journal' 'advisory-log smoke case' 'tq tasks'
+	if grep -qE '^[^|]+\|tq-db-inherit\|tq tasks$' "$alog"; then
+		st_pass=$((st_pass + 1))
+	else
+		st_fail=$((st_fail + 1))
+		echo "FAIL: advisory-log row not appended in ts|rule|cmd shape"
+		cat "$alog"
+	fi
+	TQ_HOOK_ADVISORY_LOG="$alog" rcase silent 'silent run appends no advisory-log row' 'echo fine'
+	if [ "$(wc -l <"$alog")" = 1 ]; then
+		st_pass=$((st_pass + 1))
+	else
+		st_fail=$((st_fail + 1))
+		echo "FAIL: silent run grew the advisory log"
+		cat "$alog"
+	fi
+
 	# Benign-corpus runner (T6/H2): positive corpus pins the ok summary;
 	# negative corpus (one loud line via the env hook) must FAIL naming it.
 	pos="$tmp/corpus-ok.txt"
@@ -265,7 +286,7 @@ if [ "${1:-}" = "--self-test" ]; then
 		echo "tq-bash-guard self-test FAILED ($st_fail of $((st_pass + st_fail)) cases)"
 		exit 1
 	fi
-	echo "tq-bash-guard self-test ok ($st_pass cases: deny=$n_deny advise=$n_adv silent=$n_sil)"
+	echo "tq-bash-guard self-test ok ($st_pass cases: deny=$n_deny advise=$n_adv silent=$n_sil, advisory-log pinned)"
 	exit 0
 fi
 
@@ -306,6 +327,16 @@ log_deny() {
 	if [ -n "${TQ_HOOK_DENY_LOG:-}" ]; then
 		printf '%s|%s|%s\n' "$(date -u +%FT%TZ)" "$1" \
 			"$(printf '%s' "$cmd" | tr '\n\r' '  ')" >>"$TQ_HOOK_DENY_LOG" 2>/dev/null || true
+	fi
+}
+
+log_advisory() {
+	# Mirror of log_deny for the advisory side-channel (TQ_HOOK_ADVISORY_LOG):
+	# same ts|rule|cmd row shape so check-hook-fp-triage.sh can render
+	# advisory FP pressure per rule. Best-effort; never fires the advisory.
+	if [ -n "${TQ_HOOK_ADVISORY_LOG:-}" ]; then
+		printf '%s|%s|%s\n' "$(date -u +%FT%TZ)" "$1" \
+			"$(printf '%s' "$cmd" | tr '\n\r' '  ')" >>"$TQ_HOOK_ADVISORY_LOG" 2>/dev/null || true
 	fi
 }
 
@@ -493,14 +524,21 @@ fi
 
 notes=()
 
+# adv <rule-id> <text>: record the advisory under its rule id (both the
+# user-facing note and the TQ_HOOK_ADVISORY_LOG row).
+adv() {
+	log_advisory "$1"
+	notes+=("$2")
+}
+
 if [ -n "${TQ_DB:-}" ] &&
 	printf '%s' "$cmd" | grep -Eq '(^|[[:space:];&])tq([[:space:]]|$)|build-tq\.sh|cmd/tq' &&
 	! printf '%s' "$cmd" | grep -q 'TQ_DB='; then
-	notes+=("inherited TQ_DB=$TQ_DB: tq in this call hits THAT journal (production?). Scratch/verify work needs an explicit TQ_DB=<scratch>; smokes without one are denied outright.")
+	adv tq-db-inherit "inherited TQ_DB=$TQ_DB: tq in this call hits THAT journal (production?). Scratch/verify work needs an explicit TQ_DB=<scratch>; smokes without one are denied outright."
 fi
 
 if has_word unset; then
-	notes+=("bare 'unset VAR' leaks to children in session shells — prefer 'env -u VAR cmd' (AGENTS.md §Session shell hazards).")
+	adv bare-unset "bare 'unset VAR' leaks to children in session shells — prefer 'env -u VAR cmd' (AGENTS.md §Session shell hazards)."
 fi
 
 if has_word tail; then
@@ -522,7 +560,7 @@ if has_word tail; then
 		esac
 		[ "$tail_files" -ge 2 ] && break
 	done
-	[ "$tail_files" -ge 2 ] && notes+=("multi-file tail fails in session shells — one tail per file (or awk).")
+	[ "$tail_files" -ge 2 ] && adv multi-tail "multi-file tail fails in session shells — one tail per file (or awk)."
 fi
 
 # Count single-& background operators, ignoring redirect forms (2>&1, >&x,
@@ -531,17 +569,17 @@ amp_sanitized="${cmd//>&/xx}"
 amp_sanitized="${amp_sanitized//&>/xx}"
 chain_count="$({ printf '%s' "$amp_sanitized" | grep -o '[^&]&[^&]' || true; } | wc -l)"
 if [ "$chain_count" -ge 2 ]; then
-	notes+=("chained single & backgrounds the wrong span in session shells — use the bash tool's run_in_background instead.")
+	adv chained-amp "chained single & backgrounds the wrong span in session shells — use the bash tool's run_in_background instead."
 fi
 
 if uses_posix_regex && ! has_pcre_or_fixed_grep && printf '%s' "$sanitized" | grep -Eq '\\[dt]'; then
-	notes+=("POSIX ERE: \\d and \\t match literal 'd'/'t' — use [[:digit:]]/[[:space:]] classes or grep -P (2026-10-27 silent-skip incident).")
+	adv ere-bracket-class "POSIX ERE: \\d and \\t match literal 'd'/'t' — use [[:digit:]]/[[:space:]] classes or grep -P (2026-10-27 silent-skip incident)."
 fi
 
 if has_go_tool_cmd && [ -n "${CRUSH_PROJECT_DIR:-}" ] && [ "${CRUSH_CWD:-}" = "$CRUSH_PROJECT_DIR" ] &&
 	! printf '%s' "$cmd" | grep -q 'go mod vendor' &&
 	[ -n "$(git -C "$CRUSH_PROJECT_DIR" status --porcelain -- internal task journal queue executor worker cmd 2>/dev/null | head -1)" ]; then
-	notes+=("root go build/test reads vendor/ and internal-module dirs have uncommitted changes — run 'go mod vendor' first (check-gomod-vendor-sync.sh gates this).")
+	adv stale-vendor "root go build/test reads vendor/ and internal-module dirs have uncommitted changes — run 'go mod vendor' first (check-gomod-vendor-sync.sh gates this)."
 fi
 
 go_cache_hazard() {
@@ -552,7 +590,7 @@ go_cache_hazard() {
 	return 1
 }
 if has_go_tool_cmd && go_cache_hazard; then
-	notes+=("host GOCACHE resolves into /nix/store (ENOSPC death class): prefix GOCACHE=/tmp/go-build-cache (AGENTS.md §Host GOCACHE hazards).")
+	adv poisoned-gocache "host GOCACHE resolves into /nix/store (ENOSPC death class): prefix GOCACHE=/tmp/go-build-cache (AGENTS.md §Host GOCACHE hazards)."
 fi
 
 is_nested_module_dir() {
@@ -571,13 +609,13 @@ is_nested_module_dir() {
 
 if has_go_tool_cmd && [ -n "${CRUSH_CWD:-}" ] && is_nested_module_dir "$CRUSH_CWD" &&
 	! printf '%s' "$cmd" | grep -q 'GOWORK=off'; then
-	notes+=("nested module: run gates as GOEXPERIMENT=jsonv2 GOWORK=off go ... (AGENTS.md §Commands, per-module gate).")
+	adv nested-module "nested module: run gates as GOEXPERIMENT=jsonv2 GOWORK=off go ... (AGENTS.md §Commands, per-module gate)."
 fi
 
 if printf '%s' "$cmd" | grep -Eq '(^|[[:space:];&])nix[[:space:]]+(build|run|flake)([[:space:]]|$)' &&
 	[ -n "${CRUSH_PROJECT_DIR:-}" ] &&
 	git -C "$CRUSH_PROJECT_DIR" status --porcelain 2>/dev/null | grep -q '^??'; then
-	notes+=("flakes see only git-tracked files and untracked files exist — 'git add' them before nix build (AGENTS.md §Known Issues).")
+	adv nix-untracked "flakes see only git-tracked files and untracked files exist — 'git add' them before nix build (AGENTS.md §Known Issues)."
 fi
 
 gate_invoked() {
@@ -633,9 +671,9 @@ if [ -n "$gate" ] && [ -n "${CRUSH_PROJECT_DIR:-}" ]; then
 	fi
 	if [ -n "$(git -C "$CRUSH_PROJECT_DIR" status --porcelain $scope 2>/dev/null | head -1)" ]; then
 		if [ "$scope_ok" = 1 ]; then
-			notes+=("commit-before-gate: the tree is dirty INSIDE $gate's own scope and the gate is about to run on uncommitted state — the …918bf0 session paid a daemon sweep + full recover loop for exactly this (2026-11-03 report §e2). Stage+commit FIRST (daemon sweeps <60s, take STAGED files too), then run the gate.")
+			adv dirty-tree-gate "commit-before-gate: the tree is dirty INSIDE $gate's own scope and the gate is about to run on uncommitted state — the …918bf0 session paid a daemon sweep + full recover loop for exactly this (2026-11-03 report §e2). Stage+commit FIRST (daemon sweeps <60s, take STAGED files too), then run the gate."
 		else
-			notes+=("commit-before-gate: the tree is dirty and a repo-scope gate is about to run on uncommitted state — the …918bf0 session paid a daemon sweep + full recover loop for exactly this (2026-11-03 report §e2). Stage+commit FIRST (daemon sweeps <60s, take STAGED files too), then run the gate.")
+			adv dirty-tree-gate "commit-before-gate: the tree is dirty and a repo-scope gate is about to run on uncommitted state — the …918bf0 session paid a daemon sweep + full recover loop for exactly this (2026-11-03 report §e2). Stage+commit FIRST (daemon sweeps <60s, take STAGED files too), then run the gate."
 		fi
 	fi
 fi
