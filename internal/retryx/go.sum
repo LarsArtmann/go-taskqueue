@@ -1,4 +1,4 @@
 github.com/larsartmann/go-error-family v0.11.0 h1:xqXLKrTMznStmHUapxd/6Fj5/878sb4SIZiy4JvCItQ=
 github.com/larsartmann/go-error-family v0.11.0/go.mod h1:CAzjAVWjAFDUXEaaRqIgjW28i/NrQ07OsE9Dffhx29c=
-github.com/larsartmann/go-retry v0.8.0 h1:R7twMiRiZNWQKryF3nqtE/3R3Td5xkhiHIoXEnlCZNM=
-github.com/larsartmann/go-retry v0.8.0/go.mod h1:p1ITwjm4NMVRhJHV/23ymaIbAdGuvufounnvFbgItXs=
+github.com/larsartmann/go-retry v0.9.0 h1:/JXHkKjzx5io0kMvHWQuhW1pCVC0vohFAT5zqDdRKes=
+github.com/larsartmann/go-retry v0.9.0/go.mod h1:p1ITwjm4NMVRhJHV/23ymaIbAdGuvufounnvFbgItXs=
