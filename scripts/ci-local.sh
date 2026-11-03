@@ -710,6 +710,13 @@ else
 	echo "SKIP: crush not on PATH — crush route smoke is host-pinned"
 fi
 
+step "crush shared-server memory smoke (L4 measurement; skips crush-less hosts)"
+if command -v crush >/dev/null 2>&1; then
+	TQ_DB=/tmp/tq-ci-scratch.db ./scripts/smoke/crush-server-memory.sh
+else
+	echo "SKIP: crush not on PATH — crush memory smoke is host-pinned"
+fi
+
 step "crush pool supervisor smoke (routed 429 + keeper; skips crush-less hosts)"
 if command -v crush >/dev/null 2>&1; then
 	./scripts/smoke/crush-pool-supervisor.sh

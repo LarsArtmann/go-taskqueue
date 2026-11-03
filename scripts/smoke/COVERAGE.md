@@ -34,6 +34,7 @@ signal (`exec.ExitError`, code −1).
 | `consumer-install.sh`      | journal consumer wiring                       |
 | `crush-pool-supervisor.sh` | routed 429 fast-refuse + pool keeper/supervisor (table below) |
 | `crush-server-route.sh`    | crush client/server route wire legs (table below) |
+| `crush-server-memory.sh`   | L4 shared-server memory measurement: 2 waves x 4 concurrent routed turns (mock provider, ONE repo, ONE server), RSS sampler baseline/peak/quiescent per wave + 3x-baseline accumulation guard; M7 idle-exit races healed by a keeper-shaped respawn + one turn retry |
 | `dep-sweep.sh`             | `--dep-sweep` sweeper turn                    |
 | `dlq-evidence-stage.sh`   | `tq dlq --evidence-stage` filter vs real DLQ  |
 | `doctor-hygiene.sh`       | `tq doctor` hygiene probes                    |
