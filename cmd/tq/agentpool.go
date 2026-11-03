@@ -44,7 +44,7 @@ type agentPoolOptions struct {
 	reresolveVerify bool
 	maxPerTick      int
 	batchItems      int
-	effortBudget   int
+	effortBudget    int
 	jev             bool
 	jevModel        string
 	jevAPIKey       string
@@ -488,7 +488,7 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 		reresolveVerify: *reresolveVerify,
 		maxPerTick:      *maxPerTick,
 		batchItems:      *batchItems,
-		effortBudget:   *effortBudget,
+		effortBudget:    *effortBudget,
 		jev:             *jev,
 		jevModel:        *jevModel,
 		jevAPIKey:       *jevAPIKey,
@@ -559,15 +559,15 @@ func harvestConfigFromOptions(opts agentPoolOptions) (harvest.Config, error) {
 	}
 
 	cfg := harvest.Config{
-		ProjectsDir:       opts.projectsDir,
-		DiscoveryAddr:     opts.discoveryAddr,
-		MaxPerTick:        opts.maxPerTick,
-		BatchItems:        opts.batchItems,
+		ProjectsDir:        opts.projectsDir,
+		DiscoveryAddr:      opts.discoveryAddr,
+		MaxPerTick:         opts.maxPerTick,
+		BatchItems:         opts.batchItems,
 		BatchEffortMinutes: opts.effortBudget,
-		Model:             opts.model,
-		DLQBackoff:        opts.dlqBackoff,
-		UseImportance:     opts.priorityFrom == priorityFromImportance,
-		MaxPendingPerRepo: opts.maxPending,
+		Model:              opts.model,
+		DLQBackoff:         opts.dlqBackoff,
+		UseImportance:      opts.priorityFrom == priorityFromImportance,
+		MaxPendingPerRepo:  opts.maxPending,
 	}
 
 	// Effort-aware batching (2026-11-03): Jev sizes runs by predicted

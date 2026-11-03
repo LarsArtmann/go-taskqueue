@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -17,6 +18,103 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/readmodel"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
+
+// TestParseAgentPoolOptionsJev pins the effort-aware batching flags
+// (2026-11-03): --jev defaults OFF (flat sizing, no estimator, no API
+// traffic); with a key it wires the Jev estimator into the harvest
+// config; a missing key fails startup loudly; the unset --task-timeout
+// ceiling covers what effort sizing can grant (the 240m estimate clamp,
+// and any explicit budget above the count scale) while an explicit pin
+// stays authoritative.
+func TestParseAgentPoolOptionsJev(t *testing.T) {
+	t.Parallel()
+
+	base := []string{"--projects-dir", t.TempDir()}
+
+	def, err := parseAgentPoolOptions(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if def.jev {
+		t.Fatal("--jev must default OFF")
+	}
+
+	defCfg, err := harvestConfigFromOptions(def)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if defCfg.EffortEstimator != nil {
+		t.Fatal("harvest config must carry no estimator without --jev")
+	}
+
+	if defCfg.BatchEffortMinutes != 0 {
+		t.Fatalf("BatchEffortMinutes = %d, want 0 (harvest derives batch-items x 30m)", defCfg.BatchEffortMinutes)
+	}
+
+	noKey, err := parseAgentPoolOptions(append(slices.Clone(base), "--jev"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := harvestConfigFromOptions(noKey); err == nil {
+		t.Fatal("--jev without a key must fail fast (misconfiguration is loud, not silent flat sizing)")
+	}
+
+	db := filepath.Join(t.TempDir(), "tq.db")
+
+	on, err := parseAgentPoolOptions(
+		append(slices.Clone(base), "--jev", "--jev-api-key", "k", "--db", db),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	onCfg, err := harvestConfigFromOptions(on)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if onCfg.EffortEstimator == nil {
+		t.Fatal("--jev with a key must wire the estimator into the harvest config")
+	}
+
+	if on.timeout != 240*time.Minute {
+		t.Fatalf("jev ceiling = %v, want 240m (the MaxMinutes estimate clamp)", on.timeout)
+	}
+
+	budget, err := parseAgentPoolOptions(
+		append(slices.Clone(base), "--jev", "--jev-api-key", "k", "--db", db, "--effort-budget", "200"),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	budgetCfg, err := harvestConfigFromOptions(budget)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if budgetCfg.BatchEffortMinutes != 200 {
+		t.Fatalf("BatchEffortMinutes = %d, want the explicit 200", budgetCfg.BatchEffortMinutes)
+	}
+
+	if budget.timeout != 240*time.Minute { // max(count 150, budget 200, clamp 240)
+		t.Fatalf("jev budget ceiling = %v, want 240m", budget.timeout)
+	}
+
+	pinned, err := parseAgentPoolOptions(
+		append(slices.Clone(base), "--jev", "--jev-api-key", "k", "--task-timeout", "45m"),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if pinned.timeout != 45*time.Minute {
+		t.Fatalf("pinned timeout = %v, want 45m (explicit beats every scale)", pinned.timeout)
+	}
+}
 
 func TestHarvestConfigFromOptionsExpandsBareRepoNames(t *testing.T) {
 	t.Parallel()
