@@ -14,8 +14,11 @@ markers 5→2 hard safety rails (pinned by `TestAgentPromptsOutcomeShaped`); pro
 shipped as the ceremony cuts (`1d921835`: env-death autopsy refusal via
 `executor.IsEnvironmentalDeath`, docs-only review skip, status `--status-min-interval`
 floor defaulting to 24h); proposal 1 landed its adjacent-items form (`--batch-items`
-default 3, cap 10). Still open: the full section/day-level goal batching and the
-outcome-join / batch-simulation / A-B audits from §Sources & method.
+default 3, cap 10) on 2026-10-11, completed as SECTION-scoped grouping with default 5
+on 2026-11-03 (an unset `--task-timeout` now scales 30m/member over the 45m floor, so
+the worker ceiling no longer truncates per-member payload timeouts mid-run). Still
+open: the day-level goal form and the outcome-join / batch-simulation / A-B audits
+from §Sources & method.
 
 ---
 

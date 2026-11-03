@@ -106,6 +106,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Changed
 
+- **(BEHAVIOR CHANGE for agent pools using default batching)** Batches are
+  section-scoped and bigger (2026-11-03): harvest groups EVERY admissible
+  open item of a TODO_LIST section into chunks of `--batch-items` members
+  (default raised 3 → 5; cap stays 10) instead of runs of
+  consecutively-admissible items — a ticked/blocked/already-queued item
+  between fresh ones no longer forks a section into 1-item tasks (the
+  section-goal form of docs/problems/major-prompting-and-batching.md
+  proposal 1). An UNSET `--task-timeout` now scales with the batch
+  (30m per member over the 45m floor; an explicit flag or pool-config
+  line stays authoritative), fixing the silent truncation where the 45m
+  worker ceiling killed the per-member-scaled payload timeout mid-run
+  (90m for a 3-batch) and dead-lettered whole batches; the startup
+  banner prints the effective ceiling.
 - **(BEHAVIOR CHANGE for postgres filter users)** `Query` /
   `PayloadContains` filters are now case-insensitive on postgres
   (2026-10-31): companion list-where wraps both LIKE sides in

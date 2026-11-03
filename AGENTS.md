@@ -137,10 +137,13 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   outcome counts + session usage) to `$TQ_LOG_DIR/calibration.jsonl`
   (`internal/executor/calibration.go`); best-effort — no TQ_LOG_DIR, no
   dataset. Auto-dismiss/review rules tune FROM this data, not by feel.
-- **Batched harvest** (`--batch-items`, default 3): N adjacent same-section
-  items → one task (dedup `batch:` + SORTED-key hash; gates see ONE task);
-  direct `tq enqueue` forbidden — work prompts grant the move. Prompts are
-  OUTCOME contracts: rails only, AGENTS.md owns the rules.- **`review`/`dlqfix`/`status`/`prioritize`/`depbump`**: verdict-gated or
+- **Batched harvest** (`--batch-items`, default 5, section-scoped): all open
+  same-section items → chunks of N → one task (`batch:` dedup over SORTED
+  keys; inadmissible items never fork a chunk; ONE task per gate; unset
+  `--task-timeout` scales 30m/member over the 45m floor); direct
+  `tq enqueue` forbidden — work prompts grant the move. Prompts are
+  OUTCOME contracts: rails only, AGENTS.md owns the rules.
+- **`review`/`dlqfix`/`status`/`prioritize`/`depbump`**: verdict-gated or
   deterministic turns on the closeout-free agent clone; usage derived for ALL
   paid turns; findings commit-anchored (verbatim `anchor` or REJECTED); dead
   agent tasks mint ONE autopsy (`dlqfix:<id>`); gate-artifact death WITH
