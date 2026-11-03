@@ -224,12 +224,10 @@ PYEOF
 start_mock_429() {
 	crush_smoke_start_mock "mock_crush_pool.py $PORT" "$TMP/mock.log" \
 		env MOCK_429=1 python3 "$TMP/mock_crush_pool.py" "$PORT"
-	MOCK_PID="$CRUSH_SMOKE_MOCK_PID"
 }
 
 start_server() {
 	crush_smoke_start_server "$SOCK" "$XDG" "$DATA" "$TMP/server.log" setsid
-	SERVER_PID="$CRUSH_SMOKE_SERVER_PID"
 }
 
 # The executor's exact seam argv: CRUSH_CLIENT_SERVER=1 + -H (agentEnv).

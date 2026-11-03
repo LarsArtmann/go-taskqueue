@@ -108,6 +108,7 @@ crush_smoke_start_mock() {
 	sleep 0.3
 
 	"$@" >"$log" 2>&1 &
+	# shellcheck disable=SC2034 # consumed by the sourcing smoke
 	CRUSH_SMOKE_MOCK_PID=$!
 	sleep 1
 	kill -0 "$CRUSH_SMOKE_MOCK_PID" 2>/dev/null || {
@@ -134,6 +135,7 @@ crush_smoke_start_server() {
 			crush server --host "unix://$sock" >"$log" 2>&1 &
 	fi
 
+	# shellcheck disable=SC2034 # consumed by the sourcing smoke
 	CRUSH_SMOKE_SERVER_PID=$!
 	sleep 2
 }
