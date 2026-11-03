@@ -44,15 +44,6 @@ jobs:
         run: go vet ./...
       - name: Build
         run: go build ./...
-      - name: Windows build (cross-compile gate)
-        run: |
-          GOOS=windows go build ./... && GOOS=windows go vet ./...
-          mods="$(./scripts/for-each-module.sh)"
-          for m in $mods; do
-            ( cd "$m" && GOWORK=off GOOS=windows go build ./... && GOWORK=off GOOS=windows go vet ./... ) || exit 1
-          done
-          # cmd/tq is its own replace-free module (ADR-0017): devmod shim gate.
-          CMD_TQ_OS=windows ./scripts/test-cmd-tq.sh
       - name: Test
         run: go test ./... -count=1 -race -timeout 120s
       - name: Module isolation gates (GOWORK=off per sub-module)
@@ -235,6 +226,21 @@ jobs:
         # warning-only wrapper.
         continue-on-error: true
         run: ./scripts/smoke/journal-drift.sh
+      - name: Windows build (cross-compile gate)
+        # Deliberately AFTER the E2E smoke cluster (2026-10-28): a
+        # windows-only break (untagged test file referencing a unix-tagged
+        # helper — the prompt_footer_test.go/statusPayloadT class, origin
+        # runs 40618199506+40626592985) must not skip every linux E2E
+        # signal for the whole push; the smoke that confirms SIGSEGV-class
+        # fixes ran for nothing for days under the old ordering.
+        run: |
+          GOOS=windows go build ./... && GOOS=windows go vet ./...
+          mods="$(./scripts/for-each-module.sh)"
+          for m in $mods; do
+            ( cd "$m" && GOWORK=off GOOS=windows go build ./... && GOWORK=off GOOS=windows go vet ./... ) || exit 1
+          done
+          # cmd/tq is its own replace-free module (ADR-0017): devmod shim gate.
+          CMD_TQ_OS=windows ./scripts/test-cmd-tq.sh
       - name: Module-loop capture check (for-each-module feed)
         # Parity with ci-local.sh: pins the per-module loops in THIS file and
         # ci-local.sh to the disk-derived enumeration.
