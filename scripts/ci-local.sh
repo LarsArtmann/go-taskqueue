@@ -305,6 +305,12 @@ with_transient_retry "cmd/tq gate" ./scripts/test-cmd-tq.sh
 step "embed example builds on facade paths (adopter on-ramp rot guard)"
 with_transient_retry "embed example (facade paths)" bash -c 'cd examples/embed && GOWORK=off go build ./... && GOWORK=off go vet ./...' || exit 1
 
+# Embed-adoptions tidy gate (twentyfifth-dispatch §e1): catch the tag-wave/
+# go.sum-refresh class at push time (countable convention).
+step "check-embed-tidy self-test (adopter tidy drift)"
+./scripts/check-embed-tidy.sh --self-test || exit 1
+with_transient_retry "embed tidy (adopter graph)" ./scripts/check-embed-tidy.sh || exit 1
+
 # Fleet convention (2026-10-24, TODO 01-12 §e7/§g2): countable gate
 # summaries are PINNED, not advisory — the self-test fails here, not at the
 # next silent counter rot. Self-test FIRST, then the real gate (dep-bump
