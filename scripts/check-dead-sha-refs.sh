@@ -115,8 +115,12 @@ run_gate() {
 # write one, rc=0. Drift (any token's verdict/twin changed) → print each
 # changed row as NEWLY-TWINED / NO-LONGER-TWINED / VERDICT-CHANGED, rc=1.
 # --write also refreshes the snapshot so the check re-arms green.
+# --json: suppress the human verdict lines + summary and emit ONE
+# machine-parseable JSON object instead (TODO 02-56 §f10):
+#   {"shrink":{"total":N,"drops":D,"verdicts":[{"token":…,"verdict":"DROP|KEEP|TWINED","twin":…}]}}
+# Verdict order = baseline order; KEEP rows carry "twin":null.
 shrink_pass() {
-	local tok tok_tree tok_subj twin total=0 drops=0
+	local tok tok_tree tok_subj twin total=0 drops=0 cand
 	# needed escapes: dead non-arrow tokens currently cited in scope —
 	# exactly the set the gate's emit mode reports.
 	local -A needed=()
@@ -142,17 +146,58 @@ shrink_pass() {
 	}
 	local kept=()
 	local -a verdicts=()
+	local -a toks=()
 	while IFS= read -r tok; do
 		[[ "$tok" =~ ^# || -z "$tok" ]] && {
 			[ -n "${write_mode:-}" ] && kept+=("$tok")
 			continue
 		}
+		toks+=("$tok")
+	done <"$baseline"
+	# BATCHED metadata (2026-11-03 §f9): the per-token calls (tree, subject,
+	# body) cost 3 process spawns × ~670 tokens ≈ 25 s per pass; ONE
+	# `git cat-file --batch-check` (existence + resolved oid, order-preserving,
+	# missing lines echo the input) plus ONE `git log --stdin --no-walk`
+	# (NUL-framed %H/%T/%s/%B records) replace them with TWO invocations
+	# total. Nonexistent tokens keep the old KEEP fallthrough (no meta).
+	local -A full=() meta=()
+	local -a valid=() chk=()
+	if [ ${#toks[@]} -gt 0 ]; then
+		mapfile -t chk < <(printf '%s\n' "${toks[@]}" | git cat-file --batch-check 2>/dev/null)
+		local i oid typ
+		for i in "${!toks[@]}"; do
+			[ -n "${chk[$i]:-}" ] || continue
+			oid=${chk[$i]%% *}
+			typ=${chk[$i]#* }
+			typ=${typ%% *}
+			if [ "$typ" = commit ]; then
+				valid+=("${toks[$i]}")
+				full["${toks[$i]}"]=$oid
+			fi
+		done
+		if [ ${#valid[@]} -gt 0 ]; then
+			local osha otree osubj obody
+			while read -r -d '' osha && read -r -d '' otree && read -r -d '' osubj && read -r -d '' obody; do
+				meta["$osha"]="$otree"$'\n'"$osubj"$'\n'"$obody"
+			done < <(printf '%s\n' "${valid[@]}" | git log --no-walk=unsorted --format='%H%x00%T%x00%s%x00%B%x00' --stdin 2>/dev/null)
+		fi
+	fi
+	local -a json=()
+	local m rest tok tok_tree tok_subj tok_body fsha
+	for tok in "${toks[@]}"; do
 		total=$((total + 1))
-		tok_tree=$(git log -1 --format='%T' "$tok" 2>/dev/null) || tok_tree=""
-		tok_subj=$(git log -1 --format='%s' "$tok" 2>/dev/null) || tok_subj=""
+		tok_tree="" tok_subj="" tok_body=""
+		fsha=${full[$tok]:-}
+		if [ -n "$fsha" ] && [ -n "${meta[$fsha]:-}" ]; then
+			m=${meta[$fsha]}
+			tok_tree=${m%%$'\n'*}
+			rest=${m#*$'\n'}
+			tok_subj=${rest%%$'\n'*}
+			tok_body=${rest#*$'\n'}
+		fi
 		twin=""
 		if [ -n "$tok_tree" ] && [ -n "${twins[${tok_tree}|${tok_subj}]:-}" ]; then
-			if git log -1 --format=%B "$tok" 2>/dev/null | grep -q '^Task-Queue-ID:'; then
+			if grep -q '^Task-Queue-ID:' <<<"$tok_body"; then
 				# daemon commit: the body is queue boilerplate keyed by the
 				# task id, so tree+subject suffices; newest candidate wins
 				# (tiebreak above)
@@ -161,7 +206,6 @@ shrink_pass() {
 				# non-daemon (TODO 02-56 §f21): verify the message BODY too —
 				# a tree+subject twin with a different body is a DIFFERENT
 				# commit; only a body-exact candidate counts as the twin
-				tok_body="$(git log -1 --format=%B "$tok" 2>/dev/null)"
 				for cand in ${twins[${tok_tree}|${tok_subj}]}; do
 					[ -n "$cand" ] || continue
 					if [ "$(git log -1 --format=%B "$cand" 2>/dev/null)" = "$tok_body" ]; then
@@ -173,20 +217,27 @@ shrink_pass() {
 		fi
 		if [ -n "$twin" ] && [ "$twin" != "$tok" ]; then
 			if [ -n "${needed[$tok]:-}" ]; then
-				echo "TWINED (still cited — fork-record ${tok}→${twin} then re-shrink): $tok"
+				[ -z "${json_mode:-}" ] && echo "TWINED (still cited — fork-record ${tok}→${twin} then re-shrink): $tok"
 				verdicts+=("TWINED $tok $twin")
+				json+=("{\"token\":\"$tok\",\"verdict\":\"TWINED\",\"twin\":\"$twin\"}")
 				[ -n "${write_mode:-}" ] && kept+=("$tok")
 			else
-				echo "DROP: $tok → $twin (twin-verified: tree + subject + body for non-daemon, reachable from HEAD, no longer cited)"
+				[ -z "${json_mode:-}" ] && echo "DROP: $tok → $twin (twin-verified: tree + subject + body for non-daemon, reachable from HEAD, no longer cited)"
 				verdicts+=("DROP $tok $twin")
+				json+=("{\"token\":\"$tok\",\"verdict\":\"DROP\",\"twin\":\"$twin\"}")
 				drops=$((drops + 1))
 			fi
 		else
-			echo "KEEP: $tok"
+			[ -z "${json_mode:-}" ] && echo "KEEP: $tok"
 			verdicts+=("KEEP $tok")
+			json+=("{\"token\":\"$tok\",\"verdict\":\"KEEP\",\"twin\":null}")
 			[ -n "${write_mode:-}" ] && kept+=("$tok")
 		fi
-	done <"$baseline"
+	done
+	if [ -n "${json_mode:-}" ]; then
+		printf '{"shrink":{"total":%d,"drops":%d,"verdicts":[%s]}}\n' "$total" "$drops" "$(IFS=,; [ ${#json[@]} -gt 0 ] && echo "${json[*]}")"
+		return 0
+	fi
 	echo "shrink: $drops of $total baselined tokens have a now-reachable twin (advisory; gate stays green throughout)"
 	# --write lands FIRST: --check then verifies the (possibly just-refreshed)
 	# state, so --shrink --check --write re-arms green even on drift.
@@ -468,7 +519,28 @@ EOF
 	check_mode=
 	write_mode=
 
-	echo "dead-sha self-test ok (clean rc=0, exact file:line on rc=1, per-token arrow escape, comma-separated multi-pair fork-record lines, emit-baseline sorted+pair-excluded, shrink drop/keep/--write, twin-map collision body tiebreak + daemon tree+subject path, shrink --check snapshot drift, baselined silent unless TQ_DEAD_SHA_VERBOSE=1)"
+	# 9. --shrink --json (TODO 02-56 §f10): machine output only — one JSON
+	# object, verdicts in baseline order, DROP carries the twin, KEEP
+	# carries "twin":null, no human lines.
+	printf '%s\n' "$tok3" "$third" >"$tmp/base.txt"
+	json_mode=1
+	files=(docs/status/paired.md)
+	out=$(cd "$tmp" && shrink_pass)
+	json_ok=1
+	grep -qF "{\"shrink\":{\"total\":2,\"drops\":1,\"verdicts\":" <<<"$out" || json_ok=0
+	grep -qF "{\"token\":\"$tok3\",\"verdict\":\"DROP\",\"twin\":\"$tok3twin\"}" <<<"$out" || json_ok=0
+	grep -qF "{\"token\":\"$third\",\"verdict\":\"KEEP\",\"twin\":null}" <<<"$out" || json_ok=0
+	[ "$(grep -cE '^(DROP|KEEP|TWINED|shrink):' <<<"$out")" = 0 ] || json_ok=0
+	if command -v jq >/dev/null 2>&1; then
+		jq -e '.shrink.total == 2 and .shrink.drops == 1' <<<"$out" >/dev/null || json_ok=0
+	fi
+	[ "$json_ok" = 1 ] || {
+		echo "dead-sha self-test FAIL: --json output wrong: $out"
+		exit 1
+	}
+	json_mode=
+
+	echo "dead-sha self-test ok (clean rc=0, exact file:line on rc=1, per-token arrow escape, comma-separated multi-pair fork-record lines, emit-baseline sorted+pair-excluded, shrink drop/keep/--write, twin-map collision body tiebreak + daemon tree+subject path, shrink --check snapshot drift, shrink --json machine output, baselined silent unless TQ_DEAD_SHA_VERBOSE=1)"
 	exit 0
 fi
 
@@ -478,6 +550,7 @@ if [ "${1:-}" = "--shrink" ]; then
 		case "$1" in
 		--write) write_mode=1 ;;
 		--check) check_mode=1 ;;
+		--json) json_mode=1 ;;
 		esac
 		shift
 	done
@@ -506,6 +579,7 @@ if [ "${1:-}" = "--shrink" ]; then
 		case "$1" in
 		--write) write_mode=1 ;;
 		--check) check_mode=1 ;;
+		--json) json_mode=1 ;;
 		esac
 		shift
 	done
