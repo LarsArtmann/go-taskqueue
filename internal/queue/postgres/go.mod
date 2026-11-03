@@ -3,7 +3,7 @@ module github.com/larsartmann/go-taskqueue/internal/queue/postgres
 go 1.27.3
 
 require (
-	github.com/jackc/pgx/v5 v5.11.0
+	github.com/jackc/pgx/v5 v5.12.0
 	github.com/larsartmann/go-taskqueue/internal/queue/postgresv4 v0.4.0
 )
 
