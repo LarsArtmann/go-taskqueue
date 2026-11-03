@@ -95,6 +95,34 @@ LOG
 	exit 0
 fi
 
+window="since forever"
+[ "$days" -gt 0 ] && window="in the last ${days}d"
+
+# Advisory mirror (TQ_HOOK_ADVISORY_LOG): same shape validation, rendered
+# before the deny section so it survives the deny-log-missing early exit —
+# advisory FP pressure is as actionable as deny pressure but was previously
+# untraceable.
+if [ -f "$advlog" ]; then
+	arows="$(cat "$advlog")"
+	if [ -n "${cutoff:-}" ]; then
+		arows="$(printf '%s\n' "$arows" | awk -F'|' -v c="$cutoff" '$1 >= c || $0 !~ /[|]/ {print}')"
+	fi
+	abad=0
+	while IFS= read -r row; do
+		[ -n "$row" ] || continue
+		if ! printf '%s' "$row" | grep -qE '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[^|]+\|[a-z0-9-]+\|.'; then
+			echo "FAIL: malformed advisory-log row (want ts|rule|cmd): $row" >&2
+			abad=1
+		fi
+	done <<<"$arows"
+	[ "$abad" = 0 ] || exit 1
+	atotal="$(printf '%s\n' "$arows" | grep -c '|' || true)"
+	arules="$(printf '%s\n' "$arows" | awk -F'|' 'NF >= 2 && $2 != "" {print $2}' | sort -u | wc -l)"
+	echo "hook-advisory triage: ${atotal} advise(${arules} rule) $window"
+	printf '%s\n' "$arows" | awk -F'|' 'NF >= 3 {count[$2]++; last[$2]=$0} END {for (r in count) printf "  %-20s %d×  last: %s\n", r, count[r], last[r]}' | sort
+fi
+
+# Deny section (TQ_HOOK_DENY_LOG): the original triage surface.
 if [ ! -f "$log" ]; then
 	echo "hook-deny triage: no deny log yet ($log) — nothing to triage, hooks not denying or TQ_HOOK_DENY_LOG unset"
 	exit 0
@@ -121,31 +149,6 @@ done <<<"$rows"
 
 total="$(printf '%s\n' "$rows" | grep -c '|' || true)"
 rules="$(printf '%s\n' "$rows" | awk -F'|' 'NF >= 2 && $2 != "" {print $2}' | sort -u | wc -l)"
-window="since forever"
-[ "$days" -gt 0 ] && window="in the last ${days}d"
 echo "hook-deny triage: ${total} deny($rules rule) $window"
 printf '%s\n' "$rows" | awk -F'|' 'NF >= 3 {count[$2]++; last[$2]=$0} END {for (r in count) printf "  %-20s %d×  last: %s\n", r, count[r], last[r]}' | sort
 echo "review: a rule denying constantly is either miscalibrated or missing its benign shape in scripts/hooks/benign-corpus-bash.txt"
-
-# Advisory mirror (TQ_HOOK_ADVISORY_LOG): same shape validation, rendered
-# after the deny breakdown — advisory FP pressure is as actionable as deny
-# pressure but was previously untraceable.
-if [ -f "$advlog" ]; then
-	arows="$(cat "$advlog")"
-	if [ -n "${cutoff:-}" ]; then
-		arows="$(printf '%s\n' "$arows" | awk -F'|' -v c="$cutoff" '$1 >= c || $0 !~ /[|]/ {print}')"
-	fi
-	abad=0
-	while IFS= read -r row; do
-		[ -n "$row" ] || continue
-		if ! printf '%s' "$row" | grep -qE '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[^|]+\|[a-z0-9-]+\|.'; then
-			echo "FAIL: malformed advisory-log row (want ts|rule|cmd): $row" >&2
-			abad=1
-		fi
-	done <<<"$arows"
-	[ "$abad" = 0 ] || exit 1
-	atotal="$(printf '%s\n' "$arows" | grep -c '|' || true)"
-	arules="$(printf '%s\n' "$arows" | awk -F'|' 'NF >= 2 && $2 != "" {print $2}' | sort -u | wc -l)"
-	echo "hook-advisory triage: ${atotal} advise(${arules} rule) $window"
-	printf '%s\n' "$arows" | awk -F'|' 'NF >= 3 {count[$2]++; last[$2]=$0} END {for (r in count) printf "  %-20s %d×  last: %s\n", r, count[r], last[r]}' | sort
-fi

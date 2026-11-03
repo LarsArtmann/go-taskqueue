@@ -243,8 +243,8 @@ if [ "${1:-}" = "--self-test" ]; then
 	# TQ_HOOK_ADVISORY_LOG; a silent run appends none (row 23, 02-56 §e2).
 	alog="$tmp/adv.log"
 	: >"$alog"
-	TQ_HOOK_ADVISORY_LOG="$alog" rcase ctx:'THAT journal' 'advisory-log smoke case' 'tq tasks'
-	if grep -qE '^[^|]+\|tq-db-inherit\|tq tasks$' "$alog"; then
+	TQ_HOOK_ADVISORY_LOG="$alog" rcase ctx:'one tail per file' 'advisory-log smoke case' 'tail -n 5 a.log b.log'
+	if grep -qE '^[^|]+\|multi-tail\|tail -n 5 a\.log b\.log$' "$alog"; then
 		st_pass=$((st_pass + 1))
 	else
 		st_fail=$((st_fail + 1))
