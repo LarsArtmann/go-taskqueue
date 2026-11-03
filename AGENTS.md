@@ -314,9 +314,7 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   exactly-mine span) = terminator shape — run its printed
   `--from <oldest-blocker>`; fallback = amend the unpushed HEAD
   once `git show --stat` proves it mine.
-- **`TestExactlyOnceUnderConcurrency` (worker) and `TestSelfManagingLoop`
-  (harvest) are load-flaky**: build storms drop at clean parents — re-run
-  before attributing; both ride KNOWN_FLAKY (scripts/lib/verify-retry.sh).
+- **`TestExactlyOnceUnderConcurrency` is load-flaky and `TestSelfManagingLoop` is load-flaky**: build storms drop at clean parents — re-run before attributing; both ride KNOWN_FLAKY (scripts/lib/verify-retry.sh).
 - **Agent shells inherit `TQ_DB`** (PRODUCTION journal) — scratch smokes MUST export TQ_DB=<scratch>.
 - **Session shell hazards**: no `PIPESTATUS`; bare `unset VAR` leaks to
   children (`env -u VAR`); multi-file `tail` fails; zero-repeat `printf`
