@@ -54,11 +54,15 @@ require (
 	modernc.org/sqlite v1.60.1 // indirect
 )
 
-// Local-dev replaces: exactly what an external consumer needs ONLY until
-// the facade tags ship on the proxy; after that, `go get` resolves them
-// and these lines can go. Replace directives apply from the main module,
-// so every module in the transitive graph (facades AND the internal
-// modules they require) needs one here.
+// Local-dev replaces (OWNER RULING 2026-11-03, task
+// 000001a19fbef62f653cfc535d6c00000000 §g1: KEEP-FOREVER): the facade
+// tags now resolve on the proxy (CI consumer-install proves the tag
+// path), but these lines stay — they make this example an adopter of the
+// LOCAL tree, which is what ci-local's "adopter on-ramp rot guard" (and
+// check-embed-tidy) actually guards; dropping them would turn the build
+// into a stale-tag canary. Replace directives apply from the main
+// module, so every module in the transitive graph (facades AND the
+// internal modules they require) needs one here.
 replace (
 	github.com/larsartmann/go-taskqueue/executor => ../../executor
 	github.com/larsartmann/go-taskqueue/internal/executor => ../../internal/executor
@@ -71,6 +75,7 @@ replace (
 	github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4 => ../../internal/queue/sqlitev4
 	github.com/larsartmann/go-taskqueue/internal/retryx => ../../internal/retryx
 	github.com/larsartmann/go-taskqueue/internal/task => ../../internal/task
+	github.com/larsartmann/go-taskqueue/internal/testastguard => ../../internal/testastguard
 	github.com/larsartmann/go-taskqueue/internal/worker => ../../internal/worker
 	github.com/larsartmann/go-taskqueue/queue => ../../queue
 	github.com/larsartmann/go-taskqueue/queue/postgres => ../../queue/postgres
