@@ -752,7 +752,7 @@ func (h *Harvester) buildBatchPayload(ctx context.Context, run []Item, effortOf 
 	prompt = strings.ReplaceAll(prompt, "{{HEADING}}", first.Heading)
 	prompt = strings.ReplaceAll(prompt, "{{COUNT}}", strconv.Itoa(len(run)))
 	prompt = strings.ReplaceAll(prompt, "{{ITEMS}}", strings.TrimRight(list.String(), "\n"))
-	prompt = strings.ReplaceAll(prompt, "{{REPO_PURPOSE}}", repoPurpose(first.Repo))
+	prompt = strings.ReplaceAll(prompt, "{{REPO_PURPOSE}}", RepoPurpose(first.Repo))
 
 	if dangles := danglingSHAs(ctx, first.Repo, strings.Join(texts, "\n")); len(dangles) > 0 {
 		prompt += "\n\n" + citationBlock(dangles)
@@ -1162,7 +1162,7 @@ func (h *Harvester) buildPayload(ctx context.Context, item Item, prompt, dedupKe
 	prompt = strings.ReplaceAll(prompt, "{{REPO}}", item.RepoName)
 	prompt = strings.ReplaceAll(prompt, "{{HEADING}}", item.Heading)
 	prompt = strings.ReplaceAll(prompt, "{{ITEM}}", item.Text)
-	prompt = strings.ReplaceAll(prompt, "{{REPO_PURPOSE}}", repoPurpose(item.Repo))
+	prompt = strings.ReplaceAll(prompt, "{{REPO_PURPOSE}}", RepoPurpose(item.Repo))
 
 	if dangles := danglingSHAs(ctx, item.Repo, item.Text); len(dangles) > 0 {
 		prompt += "\n\n" + citationBlock(dangles)
@@ -1220,8 +1220,8 @@ type harvestPayload struct {
 	// with Items/ItemKeys. Absent (legacy payloads, or no estimator
 	// configured) means no estimates were recorded — the count-scaled
 	// timeout already carries the safe ceiling (OKF v0.2 §11 additive).
-	EffortMinutes []int   `json:"effortMinutes,omitempty"`
-	MarkerLevel   int     `json:"markerLevel,omitempty"`
+	EffortMinutes []int    `json:"effortMinutes,omitempty"`
+	MarkerLevel   int      `json:"markerLevel,omitempty"`
 	ItemKeys      []string `json:"itemKeys,omitempty"`
 }
 

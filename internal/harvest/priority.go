@@ -184,13 +184,13 @@ func topLevelScalar(data, key string) (string, bool) {
 	return "", false
 }
 
-// repoPurpose reads a repo's one-line purpose from .config/metadata.yaml's
+// RepoPurpose reads a repo's one-line purpose from .config/metadata.yaml's
 // top-level `purpose:` scalar — the goal-ancestry rung above the item and
 // its section heading: an agent that knows WHY the repo exists stops
 // asking whether its work item even matters (M23). Absent file, absent
 // key, or parse trouble: the honest fallback names the README, never an
 // invented purpose.
-func repoPurpose(repo string) string {
+func RepoPurpose(repo string) string {
 	data, err := os.ReadFile(filepath.Join(repo, ".config", "metadata.yaml"))
 	if err != nil {
 		return "(unstated — see the repo's README)"

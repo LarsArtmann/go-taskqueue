@@ -862,7 +862,7 @@ func TestRepoPurposeAncestryInPrompt(t *testing.T) {
 		t.Fatalf("write metadata: %v", err)
 	}
 
-	if got, want := repoPurpose(repo), "keep the fleet's paperclip lessons durable"; got != want {
+	if got, want := RepoPurpose(repo), "keep the fleet's paperclip lessons durable"; got != want {
 		t.Errorf("repoPurpose = %q, want %q", got, want)
 	}
 
@@ -872,7 +872,7 @@ func TestRepoPurposeAncestryInPrompt(t *testing.T) {
 	prompt = strings.ReplaceAll(prompt, "{{REPO}}", item.RepoName)
 	prompt = strings.ReplaceAll(prompt, "{{HEADING}}", item.Heading)
 	prompt = strings.ReplaceAll(prompt, "{{ITEM}}", item.Text)
-	prompt = strings.ReplaceAll(prompt, "{{REPO_PURPOSE}}", repoPurpose(item.Repo))
+	prompt = strings.ReplaceAll(prompt, "{{REPO_PURPOSE}}", RepoPurpose(item.Repo))
 
 	for _, want := range []string{"Repo purpose: keep the fleet's paperclip lessons durable", `section "backlog"`, "do a thing"} {
 		if !strings.Contains(prompt, want) {
@@ -889,12 +889,12 @@ func TestRepoPurposeAncestryInPrompt(t *testing.T) {
 		t.Fatalf("rewrite metadata: %v", err)
 	}
 
-	if got := repoPurpose(repo); got != "quoted purpose" {
+	if got := RepoPurpose(repo); got != "quoted purpose" {
 		t.Errorf("quoted purpose = %q", got)
 	}
 
 	// Absent metadata falls back to the honest pointer, never an invention.
-	if got := repoPurpose(t.TempDir()); got != "(unstated — see the repo's README)" {
+	if got := RepoPurpose(t.TempDir()); got != "(unstated — see the repo's README)" {
 		t.Errorf("absent metadata purpose = %q", got)
 	}
 }
