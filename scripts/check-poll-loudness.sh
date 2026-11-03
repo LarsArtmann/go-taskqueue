@@ -5,10 +5,13 @@
 # their window; this gate makes the next silent clone a gate event instead
 # of a point-in-time grep — 2026-10-14_03-46 §f4/e4).
 #
-# A "poll loop" is a for/while/until whose body contains `sleep` or whose
-# header iterates `$(seq …)` (bounded retry windows). The loudness window
-# is the loop body PLUS the 6 lines following the matching `done` (the
-# canonical shapes put the exhaust message right after the loop:
+# A "poll loop" is a for/while/until whose body contains `sleep` — a loop
+# that actually WAITS between attempts. A `$(seq …)` header alone does NOT
+# make a poll: spawn loops (`for i in $(seq 1 N); do run & done`) iterate
+# without pacing, have no window to exhaust silently, and were a 2026-11-03
+# false-positive class on crush-server-memory.sh's launch loops. The
+# loudness window is the loop body PLUS the 6 lines following the matching
+# `done` (the canonical shapes put the exhaust message right after the loop:
 # `if ! probe; then echo "WARN: …"` / `[ -n "$x" ] || { echo "FAIL: …" }`).
 # `return N` alone is NOT loudness — a bare return is exactly the silent
 # absorption this gate exists to prevent. The smoke `fail "…"` helper
@@ -42,7 +45,7 @@ scan_file() {
 			if ($0 ~ /(^|[;&|[:space:]])(done)([[:space:]]|$)/) {
 				depth--
 				if (depth == 0) {
-					is_poll = (body ~ /sleep/ || header ~ /\$\(seq/)
+					is_poll = (body ~ /sleep/)
 					if (is_poll) print FILENAME ":" start ":" NR ":" ((body_loud) ? 1 : 0)
 					body = ""
 					next
@@ -132,14 +135,21 @@ for _ in $(seq 1 5); do
 done
 [ -n "$x" ] || { fail "never came up"; }
 EOF
-	# pins: exempt-branch — loop with neither sleep nor seq is not a poll loop
+	# pins: exempt-branch — loop with no sleep in the body is not a poll
+	# loop, even with a $(seq …) header (spawn-loop class, not a window)
 	cat >"$tmp/nonpoll.sh" <<'EOF'
 for f in a b c; do
 	echo "$f"
 done
 EOF
+	cat >"$tmp/spawn.sh" <<'EOF'
+for i in $(seq 1 4); do
+	run_task &
+done
+wait
+EOF
 	local files out rc=0
-	files="$(printf '%s\n' "$tmp/good.sh" "$tmp/helper.sh" "$tmp/bad.sh" "$tmp/nonpoll.sh")"
+	files="$(printf '%s\n' "$tmp/good.sh" "$tmp/helper.sh" "$tmp/bad.sh" "$tmp/nonpoll.sh" "$tmp/spawn.sh")"
 	out="$(TQ_POLL_FILES="$files" "$self_abs" 2>&1)" || rc=$?
 	if [ "$rc" -ne 1 ]; then
 		echo "FAIL: negative battery (want rc=1, got rc=$rc)"
@@ -148,7 +158,7 @@ EOF
 	fi
 	# nonpoll.sh is exempt (no sleep, no seq) and therefore absent from the
 	# counters entirely — its non-detection is pinned by the exact counters.
-	must_mention 'poll-loudness summary: 2 loops ok, 1 failed' "$out" "summary pins exact counters (good+helper ok; bad failed; nonpoll exempt and uncounted)"
+	must_mention 'poll-loudness summary: 2 loops ok, 1 failed' "$out" "summary pins exact counters (good+helper ok; bad failed; nonpoll+spawn exempt and uncounted)"
 	must_mention "bad.sh:1 poll loop has no FAIL/WARN" "$out" "silent fixture is named with file:line"
 	# positive-path: only the good fixture
 	rc=0

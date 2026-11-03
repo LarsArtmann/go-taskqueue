@@ -154,6 +154,7 @@ run_wave() { # <wave-n> — CONCURRENCY concurrent routed turns; echoes peak rss
 			rss_kb >>"$TMP/rss-$n.log"
 			sleep 0.2
 		done
+		echo "WARN: rss sampler ended early — server exited mid-wave" >&2
 	) &
 	SAMPLER=$!
 	pids=""
