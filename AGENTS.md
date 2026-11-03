@@ -189,7 +189,8 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   DLQ by the failed fact's Stage/VerifyStage/Class plus gate-env/gate-dead/
   gate-slow aliases — comma-separated, `!`-negation; `tq show` renders a
   `failure` JSON section; `tq dlq` rows + webui timeline lines carry an
-  `evidence=` suffix (matcher `executor.MatchesEvidenceStageSet`, ONE copy).- **Claim-time budget gate**: paid turns block once the daily cap/budget-cmd
+  `evidence=` suffix (matcher `executor.MatchesEvidenceStageSet`, ONE copy).
+- **Claim-time budget gate**: paid turns block once the daily cap/budget-cmd
   is spent — class `budget`, no burn, parked to midnight (cap) / 15m (cmd),
   outside env-streak. Claim checks run CHEAP-FIRST (budget → preflight →
   executor: gated pools never spawn a process the hook can refuse).
@@ -214,8 +215,8 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   rc TO A FILE (no PIPESTATUS); dated DONE re-verified note; `-v` + PASS
   COUNT for conform `-run`. **Premise-check first**: RUN a batch item's
   premise gate (e.g. `check-agents-size.sh`) BEFORE planning — a stale
-  premise ("zero headroom" was actually 380 B red) burned a window. **Observe-first for pinning**:
-  CAPTURE live output (observation test or smoke run) and pin what was
+  premise ("zero headroom" was actually 380 B red) burned a window.
+  **Observe-first for pinning**: CAPTURE live output and pin what was
   observed — assertion-first pinning burned three windows.
 - **Gate receipts**: a report's "N ok / M fail" count is `grep -c '^ok:'`
   over a CAPTURED gate-output file — never counted in context or from a
@@ -239,18 +240,15 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   (report without verdict = half-closeout).
 - **Dry-run-first for doc/index mutation scripts**: one-off
   AGENTS/TODO_LIST/status-index sweeps print computed rows first; the FIRST
-  filter runs against a copy of the real file shape — a wrong filter is free
-  to print, fatal to run.
+  filter runs against a copy of the real file shape — a wrong filter is
+  free to print, fatal to run.
 - **Closeout TICK-AUDIT**: before the FINAL commit of any batch, grep
   TODO_LIST.md for each verbatim batch anchor; finished rows must read
   `- [x]` — landed + unchecked = paid round-trip.
 - **Tick-claims cite the tick commit**: non-report ticks cite the tick
-  commit; WARN gate `check-tick-claims.sh`.
-- **Unpushed-sha cites**: never cite an UNPUSHED commit sha in TODO/docs
-  without a fork record — amending/rebasing orphans the sha and mints a
-  dead cite (02-56 class); push first, or write `old→new` once the
-  successor is known. `check-tick-claims.sh` WARNs on tick cites that are
-  real commits but not HEAD-ancestors.
+  commit; WARN gate `check-tick-claims.sh` (also WARNs on tick cites that
+  are real commits but not HEAD-ancestors — never cite an UNPUSHED sha
+  without a fork record `old→new`; amending orphans the sha, 02-56 class).
 - **O14 CHANGELOG policy**: `[Unreleased]` carries OPERATOR-VISIBLE changes
   only — repo-internal tooling and non-operator rows go in the `### Internal`
   subsection at the release section's bottom, never Added/Changed/Fixed;
@@ -265,8 +263,8 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   while the unpushed window is open). Fold only while
   local-only + contiguous + exactly-mine (`scripts/commit-task.sh <id>
   <subject> <file>…`). In MULTI-STEP git surgery, modified-unstaged AND
-  untracked files are daemon-food: a mid-sequence sweep breaks span contiguity
-  and the heal refuses, so between steps the tree must be CLEAN, not merely
+  untracked files are daemon-food: a mid-sequence sweep breaks span
+  contiguity, so between steps the tree must be CLEAN, not merely
   "nothing left to stage".
 - **Prompt-content changes are dedup-invisible when daemon-folded**:
   re-dispatch dedup scans footer-bearing commits only — prompt-const work
