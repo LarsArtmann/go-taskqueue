@@ -220,7 +220,7 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   observed — assertion-first pinning burned three windows.
 - **Gate receipts**: a report's "N ok / M fail" count is `grep -c '^ok:'`
   over a CAPTURED gate-output file — never counted in context or from a
-  summary line (`go test ./... | tee /tmp/gate.log` then grep it).
+  summary line (tee the log, grep the file).
 - **Fleet convention — countable gate summaries are PINNED, not
   advisory**: every countable sibling gate (check-script-syntax,
   check-go-mods, check-dead-exports, check-guard-wiring; gosec too)
@@ -247,8 +247,8 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   `- [x]` — landed + unchecked = paid round-trip.
 - **Tick-claims cite the tick commit**: non-report ticks cite the tick
   commit; WARN gate `check-tick-claims.sh` (also WARNs on tick cites that
-  are real commits but not HEAD-ancestors — never cite an UNPUSHED sha
-  without a fork record `old→new`; amending orphans the sha, 02-56 class).
+  resolve but are not HEAD-ancestors — never cite an UNPUSHED sha without
+  an `old→new` fork record; amending orphans it, 02-56 class).
 - **O14 CHANGELOG policy**: `[Unreleased]` carries OPERATOR-VISIBLE changes
   only — repo-internal tooling and non-operator rows go in the `### Internal`
   subsection at the release section's bottom, never Added/Changed/Fixed;
