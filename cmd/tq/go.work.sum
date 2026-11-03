@@ -150,8 +150,10 @@ github.com/larsartmann/go-health v0.7.0/go.mod h1:r0Lh5t786Za1uh/7XqdDIZH+b3GiJU
 github.com/larsartmann/go-sse/sseparse v0.1.0/go.mod h1:1Nql3y1hf9v/IVd4/26AfRilz0/OiDyF7YA2mvwwtHw=
 github.com/larsartmann/templ-components v1.23.0/go.mod h1:hiciCVhFi8tMLAVNpJ/WAxWZiTiw66yHxCaD5tG78LQ=
 github.com/larsartmann/templ-components/charts/echarts v1.24.0/go.mod h1:Lb8XHczLrrmSCMXWDLO4c9d8xu8F6TcuXiIlWYwEl/Y=
+github.com/larsartmann/templ-components/charts/echarts v1.26.0/go.mod h1:BxuoyBPt67IgPXY73EmdjvW3Jhba5Oy5wbEpLoLre1c=
 github.com/larsartmann/templ-components/datastar v1.23.0/go.mod h1:xDYmrfGY86Og60Ft5REHtlU+AboaUlk5+5e+rDibkbc=
 github.com/larsartmann/templ-components/errorpage v1.24.0/go.mod h1:KPygTKMXTmffz7CsoIZ9LP1gA2vKPxXcrE5RbR6Q8pQ=
+github.com/larsartmann/templ-components/errorpage v1.26.0/go.mod h1:skrXUZZyGIfpDI8vROhv8VMJXh7W9Qtq0yBnP0DpibM=
 github.com/larsartmann/templ-components/htmx v1.23.0/go.mod h1:3nxRevv2bOkZ0IbEeSAI7ZWkv/ie0GvdrF13A5G9Vbk=
 github.com/larsartmann/templ-components/icons v1.23.0/go.mod h1:/6A7WzidvtUB1lKlCuM1sE9TDKUqNSLvsOAKF4NcjXk=
 github.com/larsartmann/templ-components/utils v1.23.0/go.mod h1:BURiNlU0euT637JDbo1klsPuJeBQ30flHZs1STunT+w=

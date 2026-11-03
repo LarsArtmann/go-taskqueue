@@ -95,8 +95,8 @@ github.com/jackc/pgpassfile v1.0.0 h1:/6Hmqy13Ss2zCq62VdNG8tM1wchn8zjSGOBJ6icpsI
 github.com/jackc/pgpassfile v1.0.0/go.mod h1:CEx0iS5ambNFdcRtxPj5JhEz+xB6uRky5eyVu/W2HEg=
 github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 h1:iCEnooe7UlwOQYpKFhBabPMi4aNAfoODPEFNiAnClxo=
 github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761/go.mod h1:5TJZWKEWniPve33vlWYSoGYefn3gLQRzjfDlhSJ9ZKM=
-github.com/jackc/pgx/v5 v5.11.0 h1:IzBBtyK9AHqf98cctWFifYSci2hgQR/cd56wB4p+ogg=
-github.com/jackc/pgx/v5 v5.11.0/go.mod h1:mal1tBGAFfLHvZzaYh77YS/eC6IX9OWbRV1QIIM0Jn4=
+github.com/jackc/pgx/v5 v5.12.0 h1:hWwax8YiGT0YiN50U1oIDn5kgR7KC2tG3rmavwpPkxY=
+github.com/jackc/pgx/v5 v5.12.0/go.mod h1:u2Fi6no03HCSBYE+ZVdLxbwdu3xyi2vU+K/YNJioSds=
 github.com/jackc/puddle/v2 v2.2.3 h1:f8HoREISb3l5eO9coPgK7U3hKLhWGokOFVcThl5jrao=
 github.com/jackc/puddle/v2 v2.2.3/go.mod h1:vriiEXHvEE654aYKXXjOvZM39qJ0q+azkZFrfEOc3H4=
 github.com/klauspost/compress v1.20.1 h1:T7kKElXUMXrUJ2E9QhQhxFtcK5rPyLdsGZvdbLMPdiQ=
@@ -231,8 +231,8 @@ github.com/larsartmann/go-taskqueue/internal/queue v0.4.1 h1:cRMJbMA+rAEa3/Ys/GG
 github.com/larsartmann/go-taskqueue/internal/queue v0.4.1/go.mod h1:LE1lwnJMAozoZgQDZjbuuPx1PQJuu5h+9O9TFwnXmnM=
 github.com/larsartmann/go-taskqueue/internal/queue/companion v0.4.1 h1:qK0+4Gl+Fv9mh76vGSopwHASx7CV23bJ6PQPjPaDTp8=
 github.com/larsartmann/go-taskqueue/internal/queue/companion v0.4.1/go.mod h1:LQMVt6/1jeXRUqb2MFTqwLI1NXodyut+kgOROnGo0Vk=
-github.com/larsartmann/go-taskqueue/internal/queue/postgres v0.3.4 h1:9j1A0gjtXCS1JL7gCJe0OOjkPyw00ie3YT2YnF/My5w=
-github.com/larsartmann/go-taskqueue/internal/queue/postgres v0.3.4/go.mod h1:De23oqWbes52u2VV0+0mS+iIn1rpBbioseSSW4OPjDk=
+github.com/larsartmann/go-taskqueue/internal/queue/postgres v0.4.1 h1:K0jnT9f2DBIsMMUbcajoitLHT2/Pz1sY2DTzLsY5szg=
+github.com/larsartmann/go-taskqueue/internal/queue/postgres v0.4.1/go.mod h1:ETai0LStSgba8ovrqVzgpqQUnJPi95b2DQHLJIOiADc=
 github.com/larsartmann/go-taskqueue/internal/queue/postgresv4 v0.4.0 h1:vXbfk9msvLv6/Jo+n6rYuhaTjPstOxCHrKofnIErh7g=
 github.com/larsartmann/go-taskqueue/internal/queue/postgresv4 v0.4.0/go.mod h1:HJbxXo8WJ0rM5lqJxBwen6pNjv/jmvlkpj77yupdz88=
 github.com/larsartmann/go-taskqueue/internal/queue/sqlite v0.4.1 h1:Epg9XHf/1DOR7yYvS+KAfjzPakHLks/rHRK1SstUAL0=
