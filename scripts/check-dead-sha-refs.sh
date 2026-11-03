@@ -108,6 +108,13 @@ run_gate() {
 # emit — arrow-escaped cites need no baseline row). A twinned token still
 # cited bare is KEPT with a fork-record hint: dropping it alone would turn
 # the gate RED (the cite points at the dead token, not the twin).
+# --check: diff this pass's verdicts against the stored last-shrink snapshot
+# (${baseline}.last-shrink, git-tracked) so silent drift/regression between
+# runs is visible (2026-11-03, TODO 02-56 §b4: live shrink went 17→2 drops
+# across runs and only manual accounting explained it). No snapshot yet →
+# write one, rc=0. Drift (any token's verdict/twin changed) → print each
+# changed row as NEWLY-TWINED / NO-LONGER-TWINED / VERDICT-CHANGED, rc=1.
+# --write also refreshes the snapshot so the check re-arms green.
 shrink_pass() {
 	local tok tok_tree tok_subj twin total=0 drops=0
 	# needed escapes: dead non-arrow tokens currently cited in scope —
@@ -134,6 +141,7 @@ shrink_pass() {
 		return 0
 	}
 	local kept=()
+	local -a verdicts=()
 	while IFS= read -r tok; do
 		[[ "$tok" =~ ^# || -z "$tok" ]] && {
 			[ -n "${write_mode:-}" ] && kept+=("$tok")
@@ -166,20 +174,47 @@ shrink_pass() {
 		if [ -n "$twin" ] && [ "$twin" != "$tok" ]; then
 			if [ -n "${needed[$tok]:-}" ]; then
 				echo "TWINED (still cited — fork-record ${tok}→${twin} then re-shrink): $tok"
+				verdicts+=("TWINED $tok $twin")
 				[ -n "${write_mode:-}" ] && kept+=("$tok")
 			else
 				echo "DROP: $tok → $twin (twin-verified: tree + subject + body for non-daemon, reachable from HEAD, no longer cited)"
+				verdicts+=("DROP $tok $twin")
 				drops=$((drops + 1))
 			fi
 		else
 			echo "KEEP: $tok"
+			verdicts+=("KEEP $tok")
 			[ -n "${write_mode:-}" ] && kept+=("$tok")
 		fi
 	done <"$baseline"
 	echo "shrink: $drops of $total baselined tokens have a now-reachable twin (advisory; gate stays green throughout)"
+	# --write lands FIRST: --check then verifies the (possibly just-refreshed)
+	# state, so --shrink --check --write re-arms green even on drift.
 	if [ -n "${write_mode:-}" ] && [ "$drops" -gt 0 ]; then
 		printf '%s\n' "${kept[@]}" >"$baseline"
 		echo "shrink: rewrote $baseline ($total → $((${total} - drops)) lines)"
+	fi
+	if [ -n "${write_mode:-}" ] && [ -n "${check_mode:-}" ]; then
+		printf '%s\n' "$(printf '%s\n' "${verdicts[@]}" | sort)" >"${baseline}.last-shrink"
+		echo "shrink-check: refreshed the last-shrink snapshot"
+	fi
+	if [ -n "${check_mode:-}" ]; then
+		snapshot="${baseline}.last-shrink"
+		current=$(printf '%s\n' "${verdicts[@]}" | sort)
+		if [ ! -f "$snapshot" ]; then
+			printf '%s\n' "$current" >"$snapshot"
+			echo "shrink-check: no last-shrink snapshot — wrote first one ($total rows)"
+			return 0
+		fi
+		stored=$(grep -vE '^#|^$' "$snapshot" | sort)
+		drift=$(diff <(printf '%s\n' "$stored") <(printf '%s\n' "$current") | grep -E '^[<>]' || true)
+		if [ -z "$drift" ]; then
+			echo "shrink-check: ok — verdicts match the last-shrink snapshot ($total rows)"
+			return 0
+		fi
+		echo "shrink-check: DRIFT vs $(basename "$snapshot") — shrink verdicts changed between runs:"
+		printf '%s\n' "$drift"
+		return 1
 	fi
 	return 0
 }
@@ -404,12 +439,48 @@ EOF
 		exit 1
 	}
 
-	echo "dead-sha self-test ok (clean rc=0, exact file:line on rc=1, per-token arrow escape, comma-separated multi-pair fork-record lines, emit-baseline sorted+pair-excluded, shrink drop/keep/--write, twin-map collision body tiebreak + daemon tree+subject path, baselined silent unless TQ_DEAD_SHA_VERBOSE=1)"
+	# 8. --shrink --check: last-shrink snapshot diff (TODO 02-56 §b4) —
+	# first run writes the snapshot rc=0; a verdict change (KEEP→DROP) is
+	# DRIFT rc=1 naming the token; --write refreshes the snapshot and the
+	# check re-arms green.
+	check_mode=1
+	files=(docs/status/paired.md)
+	out=$(cd "$tmp" && shrink_pass) && rc=0 || rc=$?
+	if [ "$rc" != 0 ] || ! grep -q 'shrink-check: no last-shrink snapshot' <<<"$out"; then
+		echo "dead-sha self-test FAIL: shrink --check first run did not seed the snapshot: rc=$rc out: $out"
+		exit 1
+	fi
+	tok3twin=$(GIT_AUTHOR_DATE='2020-01-04T00:00:00' GIT_COMMITTER_DATE='2020-01-04T00:00:00' \
+		git -C "$tmp" -c user.email=t@t -c user.name=t commit-tree "$old_tree" -p HEAD -m dangling -m "unrelated body no twin")
+	git -C "$tmp" merge -q --no-ff -m "merge tok3 twin" "$tok3twin"
+	out=$(cd "$tmp" && shrink_pass) && rc=0 || rc=$?
+	if [ "$rc" != 1 ] || ! grep -q "^> DROP ${tok3} " <<<"$out"; then
+		echo "dead-sha self-test FAIL: shrink --check missed the verdict drift on ${tok3}: rc=$rc out: $out"
+		exit 1
+	fi
+	write_mode=1
+	out=$(cd "$tmp" && shrink_pass) && rc=0 || rc=$?
+	out=$(cd "$tmp" && shrink_pass) && rc=0 || rc=$?
+	if [ "$rc" != 0 ] || ! grep -q 'shrink-check: ok' <<<"$out"; then
+		echo "dead-sha self-test FAIL: shrink --check not green after --write refresh: rc=$rc out: $out"
+		exit 1
+	fi
+	check_mode=
+	write_mode=
+
+	echo "dead-sha self-test ok (clean rc=0, exact file:line on rc=1, per-token arrow escape, comma-separated multi-pair fork-record lines, emit-baseline sorted+pair-excluded, shrink drop/keep/--write, twin-map collision body tiebreak + daemon tree+subject path, shrink --check snapshot drift, baselined silent unless TQ_DEAD_SHA_VERBOSE=1)"
 	exit 0
 fi
 
 if [ "${1:-}" = "--shrink" ]; then
-	[ "${2:-}" = "--write" ] && write_mode=1
+	shift
+	while [ "$#" -gt 0 ]; do
+		case "$1" in
+		--write) write_mode=1 ;;
+		--check) check_mode=1 ;;
+		esac
+		shift
+	done
 	SHRINK=1
 fi
 
@@ -431,7 +502,13 @@ if [ "${1:-}" = "--emit-baseline" ]; then
 fi
 if [ "${1:-}" = "--shrink" ]; then
 	shift
-	[ "${1:-}" = "--write" ] && shift
+	while [ "$#" -gt 0 ]; do
+		case "$1" in
+		--write) write_mode=1 ;;
+		--check) check_mode=1 ;;
+		esac
+		shift
+	done
 fi
 
 if [ "$#" -gt 0 ]; then
