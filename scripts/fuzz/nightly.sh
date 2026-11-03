@@ -24,7 +24,13 @@ cd "$(dirname "$0")/../.."
 # per-day filter-branch/rebase rates loudly in the job log — a hot day warns,
 # it must not fail the corpus rotation (2026-11-03 report §e5).
 echo "--- rewrite-rate probe (advisory) ---"
-bash scripts/rewrite-rate-probe.sh ||
+# Ledger (TODO 02-56 §g2): append/replace today's `date|events|hot` row in a
+# TRACKED file so day-over-day rewrite trends survive the rotation; the
+# nightly job/daemon commits it like the corpus. Threshold calibration
+# (p95 of the trailing 30 days vs the constant MAX) stays an owner call —
+# opt-in via TQ_REWRITE_RATE_ADAPTIVE=1, default unchanged.
+TQ_REWRITE_RATE_LEDGER=scripts/fuzz/rewrite-rate-ledger.csv \
+	bash scripts/rewrite-rate-probe.sh ||
 	echo "WARNING: rewrite-rate probe flagged hot day(s) — audit the reflog before the next rewrite (dead-cite debt class)"
 echo "--- rewrite-rate probe done ---"
 
