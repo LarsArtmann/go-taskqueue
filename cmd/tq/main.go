@@ -500,10 +500,15 @@ func cmdEnqueue(args []string) error {
 }
 
 // waitForTask blocks until the task reaches a terminal status, printing each
-// new journal fact as it lands (seq-ordered, never re-printed). It returns a
-// non-nil error for a non-Completed terminal status or a --timeout expiry, so
-// a cron one-shot can gate on the exit code instead of tail+grep.
+// new journal fact as it lands (seq-ordered, never re-printed) to os.Stdout.
 func waitForTask(ctx context.Context, s *sqlite.Store, id task.ID, timeout time.Duration) error {
+	return waitForTaskTo(ctx, s, id, timeout, os.Stdout)
+}
+
+// waitForTaskTo is waitForTask with the writer parameterized: --wait tests
+// run t.Parallel and stream into a bytes.Buffer, never a captureStdout
+// window over the process-global os.Stdout (the showTaskJSON pattern).
+func waitForTaskTo(ctx context.Context, s *sqlite.Store, id task.ID, timeout time.Duration, w io.Writer) error {
 	if timeout > 0 {
 		var cancel context.CancelFunc
 
@@ -521,7 +526,7 @@ func waitForTask(ctx context.Context, s *sqlite.Store, id task.ID, timeout time.
 
 		for _, f := range facts {
 			if f.Seq > lastSeq {
-				fmt.Println(formatFact(f))
+				fmt.Fprintln(w, formatFact(f))
 				lastSeq = f.Seq
 			}
 		}
@@ -532,7 +537,7 @@ func waitForTask(ctx context.Context, s *sqlite.Store, id task.ID, timeout time.
 		}
 
 		if task.Terminal(t.Status) {
-			fmt.Printf("task %s: %s\n", t.ID, t.Status)
+			fmt.Fprintf(w, "task %s: %s\n", t.ID, t.Status)
 
 			if t.Status != task.Completed {
 				return fmt.Errorf("task %s finished %s", t.ID, t.Status)
@@ -3141,6 +3146,14 @@ func resultDetail(t task.Task, trail []journal.Fact) any {
 
 // cmdDLQ inspects and rescues the dead-letter queue.
 func cmdDLQ(args []string) error {
+	return runDLQ(args, os.Stdout)
+}
+
+// runDLQ is cmdDLQ with the writer parameterized: JSON/evidence tests run
+// t.Parallel and render into a bytes.Buffer instead of a captureStdout
+// window — a sibling writing to the process-global os.Stdout during a
+// capture window corrupted the stream (the showTaskJSON pattern).
+func runDLQ(args []string, stdout io.Writer) error {
 	fs := flag.NewFlagSet("dlq", flag.ExitOnError)
 	rescue := fs.String("rescue", "", "re-queue this dead task ID")
 	rescueAll := fs.Bool("rescue-all", false, "re-queue EVERY dead task (only after a human decided they can succeed)")
@@ -3197,7 +3210,7 @@ func cmdDLQ(args []string) error {
 			return err
 		}
 
-		fmt.Printf("rescued %s\n", *rescue)
+		fmt.Fprintf(stdout, "rescued %s\n", *rescue)
 
 		return nil
 	}
@@ -3212,7 +3225,11 @@ func cmdDLQ(args []string) error {
 			return err
 		}
 
-		fmt.Printf("dismissed %s  (reason recorded on the cancelled fact)\n", *dismiss)
+		fmt.Fprintf(
+			stdout,
+			"dismissed %s  (reason recorded on the cancelled fact)\n",
+			*dismiss,
+		)
 
 		return nil
 	}
@@ -3280,12 +3297,12 @@ func cmdDLQ(args []string) error {
 	}
 
 	if *jsonOut {
-		printDLQJSON(tasks, total, evidence, receipts, deadlines, evidenceRead)
+		printDLQJSON(stdout, tasks, total, evidence, receipts, deadlines, evidenceRead)
 
 		return nil
 	}
 
-	printDLQ(tasks, deadlines, evidence, receipts)
+	printDLQ(stdout, tasks, deadlines, evidence, receipts)
 
 	return nil
 }
@@ -3359,6 +3376,7 @@ type dlqJSONRow struct {
 }
 
 func printDLQJSON(
+	w io.Writer,
 	tasks []task.Task,
 	total int,
 	evidence map[task.ID]executor.FailureEvidence,
@@ -3366,7 +3384,7 @@ func printDLQJSON(
 	dlqBackoff map[string]time.Time,
 	evidenceRead bool,
 ) {
-	enc := json.NewEncoder(os.Stdout)
+	enc := json.NewEncoder(w)
 
 	_ = enc.Encode(dlqJSONSummary{Count: len(tasks), Total: total, EvidenceRead: evidenceRead})
 
@@ -3403,13 +3421,14 @@ func printDLQJSON(
 }
 
 func printDLQ(
+	w io.Writer,
 	tasks []task.Task,
 	dlqBackoff map[string]time.Time,
 	evidence map[task.ID]executor.FailureEvidence,
 	receipts map[task.ID]*verifyReceiptView,
 ) {
 	if len(tasks) == 0 {
-		fmt.Println("(empty)")
+		fmt.Fprintln(w, "(empty)")
 
 		return
 	}
@@ -3426,10 +3445,10 @@ func printDLQ(
 			row += "  " + suffix
 		}
 
-		fmt.Println(row)
+		fmt.Fprintln(w, row)
 
 		if until, ok := dlqBackoff[t.Project]; ok {
-			fmt.Printf("       ↳ poisoned: repo in DLQ backoff until %s (%s)\n",
+			fmt.Fprintf(w, "       ↳ poisoned: repo in DLQ backoff until %s (%s)\n",
 				until.Format(time.RFC3339), dlqbackoff.PoisonedAdvice)
 		}
 	}

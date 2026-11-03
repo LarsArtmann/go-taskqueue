@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"sort"
 	"strconv"
@@ -555,7 +556,17 @@ func scanFactSecrets(facts []journal.Fact) []SecretHit {
 // cmdJournalAudit runs the drift audit and renders it (text or JSON).
 // Advisory-first (TODO row, 08-01 §f5): divergence prints loudly but never
 // fails the command. A non-empty taskID scopes the replay to one task.
+// cmdJournalAudit runs the drift audit and renders it (text or JSON) to
+// os.Stdout; renderJournalAudit is the writer-parameterized form the
+// t.Parallel budget-hint test uses (the showTaskJSON pattern).
 func cmdJournalAudit(ctx context.Context, store queue.Store, asJSON bool, taskID string) error {
+	return renderJournalAudit(ctx, store, asJSON, taskID, os.Stdout)
+}
+
+// renderJournalAudit is cmdJournalAudit with the writer parameterized:
+// render tests run t.Parallel and write into a bytes.Buffer instead of a
+// captureStdout window over the process-global os.Stdout.
+func renderJournalAudit(ctx context.Context, store queue.Store, asJSON bool, taskID string, w io.Writer) error {
 	var (
 		report DriftReport
 		err    error
@@ -572,24 +583,24 @@ func cmdJournalAudit(ctx context.Context, store queue.Store, asJSON bool, taskID
 	}
 
 	if asJSON {
-		return json.NewEncoder(os.Stdout).Encode(report)
+		return json.NewEncoder(w).Encode(report)
 	}
 
 	if report.TaskID != "" {
-		fmt.Printf(
+		fmt.Fprintf(w,
 			"journal drift audit (task %s): 1 task compared against %d fact(s) (status, attempts, priority, dedup key)\n",
 			report.TaskID,
 			report.FactsReplayed,
 		)
 	} else {
-		fmt.Printf(
+		fmt.Fprintf(w,
 			"journal drift audit: %d task(s) compared against %d fact(s) (status, attempts, priority, dedup key)\n",
 			report.TasksCompared,
 			report.FactsReplayed,
 		)
 	}
 
-	fmt.Printf("coverage: status %d/%d, attempts %d/%d, priority %d/%d, dedup key %d/%d\n",
+	fmt.Fprintf(w, "coverage: status %d/%d, attempts %d/%d, priority %d/%d, dedup key %d/%d\n",
 		report.Coverage.Status, report.TasksCompared,
 		report.Coverage.Attempts, report.TasksCompared,
 		report.Coverage.Priority, report.TasksCompared,
@@ -597,29 +608,29 @@ func cmdJournalAudit(ctx context.Context, store queue.Store, asJSON bool, taskID
 
 	switch {
 	case report.TasksCompared > 0 && report.Coverage.Priority == 0 && report.Coverage.DedupKey == 0:
-		fmt.Println(
-			"priority/dedup key: NOT REPLAYABLE — engine enqueue details are thin {project,type}" +
+		fmt.Fprintln(w,
+			"priority/dedup key: NOT REPLAYABLE — engine enqueue details are thin {project,type}"+
 				" (S1 divergence D2, M4-gated); 0/N does NOT mean the tasks lack priorities",
 		)
 	case report.Coverage.Priority < report.TasksCompared || report.Coverage.DedupKey < report.TasksCompared:
-		fmt.Println("(below-total priority/dedup means legacy facts predate enrichment)")
+		fmt.Fprintln(w, "(below-total priority/dedup means legacy facts predate enrichment)")
 	}
 
 	if !report.HasDrift() {
-		fmt.Println("no drift: stored projections equal the fact replay (ADR-0001 invariant holds)")
+		fmt.Fprintln(w, "no drift: stored projections equal the fact replay (ADR-0001 invariant holds)")
 	} else {
-		fmt.Printf("DRIFT: %d field(s) diverge between the tasks table and the fact journal:\n", len(report.Drift))
+		fmt.Fprintf(w, "DRIFT: %d field(s) diverge between the tasks table and the fact journal:\n", len(report.Drift))
 
 		for _, row := range report.Drift {
-			fmt.Printf("  %s: %s stored=%s replayed=%s\n", row.TaskID, row.Field, row.Stored, row.Replayed)
+			fmt.Fprintf(w, "  %s: %s stored=%s replayed=%s\n", row.TaskID, row.Field, row.Stored, row.Replayed)
 		}
 	}
 
 	switch report.Requeues.Total {
 	case 0:
-		fmt.Println("requeues: none in the replayed fact range")
+		fmt.Fprintln(w, "requeues: none in the replayed fact range")
 	default:
-		fmt.Printf("requeues: %d not-the-task's-fault return(s) to Pending, by class:\n", report.Requeues.Total)
+		fmt.Fprintf(w, "requeues: %d not-the-task's-fault return(s) to Pending, by class:\n", report.Requeues.Total)
 
 		classes := make([]string, 0, len(report.Requeues.ByClass))
 		for class := range report.Requeues.ByClass {
@@ -629,30 +640,30 @@ func cmdJournalAudit(ctx context.Context, store queue.Store, asJSON bool, taskID
 		sort.Strings(classes)
 
 		for _, class := range classes {
-			fmt.Printf("  %s: %d\n", class, report.Requeues.ByClass[class])
+			fmt.Fprintf(w, "  %s: %d\n", class, report.Requeues.ByClass[class])
 		}
 
 		if report.Requeues.ResumeCloseout > 0 {
-			fmt.Printf("  (%d parked an owed close-out — re-claim resumes at close-out, not a re-run)\n",
+			fmt.Fprintf(w, "  (%d parked an owed close-out — re-claim resumes at close-out, not a re-run)\n",
 				report.Requeues.ResumeCloseout)
 		}
 
 		if n := report.Requeues.ByClass[queue.RequeueClassRateLimit] +
 			report.Requeues.ByClass[queue.RequeueClassRateLimitGate]; n > 0 {
-			fmt.Println(
+			fmt.Fprintln(w,
 				"  (rate-limit requeues never burn an attempt; 3 consecutive ENVIRONMENTAL ones escalate — see the env-streak breaker)",
 			)
 		}
 
 		if n := report.Requeues.ByClass[queue.RequeueClassBudget]; n > 0 {
-			fmt.Println(
+			fmt.Fprintln(w,
 				"  (budget requeues park paid turns until the daily cap or budget-cmd window resets — no attempt burn, outside the env-streak breaker; the pool LOOKS idle on purpose)",
 			)
 		}
 	}
 
 	if f := report.Failures; f.Total > 0 && f.EnvStreakBurns > 0 {
-		fmt.Printf(
+		fmt.Fprintf(w,
 			"failures: %d total, %d env-streak breaker burn(s) — sustained environmental requeues escalated to an attempt burn, NOT judged execution failures\n",
 			f.Total,
 			f.EnvStreakBurns,
@@ -668,15 +679,15 @@ func cmdJournalAudit(ctx context.Context, store queue.Store, asJSON bool, taskID
 		sort.Strings(stages)
 
 		for _, stage := range stages {
-			fmt.Printf("verify deaths by stage: %s=%d\n", stage, f.ByVerifyStage[stage])
+			fmt.Fprintf(w, "verify deaths by stage: %s=%d\n", stage, f.ByVerifyStage[stage])
 		}
 	}
 
 	switch y := report.Autopsies; y.Autopsies {
 	case 0:
-		fmt.Println("autopsy yield: no dlqfix autopsies in the journal")
+		fmt.Fprintln(w, "autopsy yield: no dlqfix autopsies in the journal")
 	default:
-		fmt.Printf(
+		fmt.Fprintf(w,
 			"autopsy yield: %d minted — %d fix(es) landed, %d wontfix, %d rescue(s) in flight, %d dead again, %d unrun\n",
 			y.Autopsies,
 			y.Fixes,
@@ -685,28 +696,28 @@ func cmdJournalAudit(ctx context.Context, store queue.Store, asJSON bool, taskID
 			y.FailedAgain,
 			y.Unrun,
 		)
-		fmt.Println("  (environmental deaths no longer mint autopsies — the ceremony cut refuses them at sweep time)")
+		fmt.Fprintln(w, "  (environmental deaths no longer mint autopsies — the ceremony cut refuses them at sweep time)")
 	}
 
 	if len(report.SecretEvidence) == 0 {
-		fmt.Println("secret scan: no provider-token-shaped strings in fact evidence")
+		fmt.Fprintln(w, "secret scan: no provider-token-shaped strings in fact evidence")
 	} else {
-		fmt.Printf(
+		fmt.Fprintf(w,
 			"SECRET EVIDENCE: %d fact field(s) carry provider-token-shaped strings:\n",
 			len(report.SecretEvidence),
 		)
 
 		for _, hit := range report.SecretEvidence {
-			fmt.Printf("  seq=%d %s %s field=%s locations=%d\n", hit.Seq, hit.Type, hit.TaskID, hit.Field, hit.Count)
+			fmt.Fprintf(w, "  seq=%d %s %s field=%s locations=%d\n", hit.Seq, hit.Type, hit.TaskID, hit.Field, hit.Count)
 		}
 
-		fmt.Println(
-			"  (advisory: facts written before the redaction pass are the likely source; " +
+		fmt.Fprintln(w,
+			"  (advisory: facts written before the redaction pass are the likely source; "+
 				"inspect with `tq show <id>`, never re-print the secret)",
 		)
 	}
 
-	fmt.Println("(advisory: investigate with `tq show <id>` and `tq facts -detail` before repairing)")
+	fmt.Fprintln(w, "(advisory: investigate with `tq show <id>` and `tq facts -detail` before repairing)")
 
 	return nil
 }

@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -520,21 +521,28 @@ func cmdPoolHealth(args []string) error {
 		return nil
 	}
 
-	printPoolHealth(report)
+	printPoolHealthTo(os.Stdout, report)
 
 	return nil
 }
 
-// printPoolHealth renders the per-repo table: verdict, outcome counts,
-// streak, and recency of harvest vs any activity.
+// printPoolHealth renders the per-repo table to os.Stdout.
 func printPoolHealth(report PoolHealthReport) {
+	printPoolHealthTo(os.Stdout, report)
+}
+
+// printPoolHealthTo is printPoolHealth with the writer parameterized:
+// summary-count tests run t.Parallel and render into a bytes.Buffer instead
+// of a captureStdout window over the process-global os.Stdout (the
+// showTaskJSON pattern).
+func printPoolHealthTo(w io.Writer, report PoolHealthReport) {
 	if rss := report.CrushServerRSS; rss != nil {
 		note := ""
 		if rss.Warn {
 			note = fmt.Sprintf("  WARN: last sample above the %d kB band", crushServerRSSWarnKB)
 		}
 
-		fmt.Printf(
+		fmt.Fprintf(w,
 			"crush-server rss: %d sample(s), last %d kB, max %d kB%s\n",
 			rss.Samples,
 			rss.LastKB,
@@ -544,7 +552,7 @@ func printPoolHealth(report PoolHealthReport) {
 	}
 
 	if len(report.Repos) == 0 {
-		fmt.Println("(no task-bearing repos in journal)")
+		fmt.Fprintln(w, "(no task-bearing repos in journal)")
 	}
 
 	warned := 0
@@ -556,7 +564,7 @@ func printPoolHealth(report PoolHealthReport) {
 			requeues += n
 		}
 
-		fmt.Printf(
+		fmt.Fprintf(w,
 			"%-4s %-24s enq=%-4d done=%-4d fail=%-3d dead=%-3d requeues=%-3d streak=%-3d harvest=%s activity=%s\n",
 			r.Verdict,
 			r.Repo,
@@ -571,11 +579,11 @@ func printPoolHealth(report PoolHealthReport) {
 		)
 
 		if r.DirtyTreeStreak > 0 {
-			fmt.Printf("       ↳ dirtyTreeStreak=%d (own lane; no attempt burn)\n", r.DirtyTreeStreak)
+			fmt.Fprintf(w, "       ↳ dirtyTreeStreak=%d (own lane; no attempt burn)\n", r.DirtyTreeStreak)
 		}
 
-		for _, w := range r.Warnings {
-			fmt.Printf("       ↳ %s\n", w)
+		for _, warn := range r.Warnings {
+			fmt.Fprintf(w, "       ↳ %s\n", warn)
 		}
 
 		if r.Verdict == poolVerdictWarn {
@@ -587,7 +595,7 @@ func printPoolHealth(report PoolHealthReport) {
 		}
 	}
 
-	fmt.Printf("pool-health: %d repos, %d in DLQ backoff, %d warn, %d facts folded, window since %s\n",
+	fmt.Fprintf(w, "pool-health: %d repos, %d in DLQ backoff, %d warn, %d facts folded, window since %s\n",
 		len(report.Repos), backingOff, warned, report.FactsFolded, report.Since)
 }
 
