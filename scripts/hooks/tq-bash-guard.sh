@@ -115,6 +115,7 @@ if [ "${1:-}" = "--self-test" ]; then
 	git -C "$tmp/dirtyrepo" add internal/queue/x.go
 	git -C "$tmp/dirtyrepo" -c user.email=t@t -c user.name=t commit -qm base
 	echo changed >>"$tmp/dirtyrepo/internal/queue/x.go"
+	echo dirty >>"$tmp/dirtyrepo/AGENTS.md" # in check-doc-refs scope (dirty-gate scope-match)
 	# nested module fixture (A8): go.mod with a parent go.mod
 	mkdir -p "$tmp/nest/internal/queue"
 	: >"$tmp/nest/go.mod"
@@ -210,7 +211,9 @@ if [ "${1:-}" = "--self-test" ]; then
 	GOCACHE="$tmp/poisoncache" rcase ctx:'/tmp/go-build-cache' 'poisoned GOCACHE advisory' 'go build ./...'
 	CRUSH_CWD="$tmp/nest/internal/queue" rcase ctx:'GOWORK=off' 'nested-module advisory' 'go test ./...'
 	CRUSH_CWD="$tmp/dirtyrepo" CRUSH_PROJECT_DIR="$tmp/dirtyrepo" rcase ctx:'git add' 'nix untracked-files advisory' 'nix build .#test'
-	CRUSH_CWD="$tmp/dirtyrepo" CRUSH_PROJECT_DIR="$tmp/dirtyrepo" rcase ctx:'commit-before-gate' 'gate on dirty tree advisory' 'scripts/check-doc-refs.sh'
+	CRUSH_CWD="$tmp/dirtyrepo" CRUSH_PROJECT_DIR="$tmp/dirtyrepo" rcase silent 'gate dirt OUTSIDE the gate scope is silent (FP cut)' 'scripts/check-report-secrets.sh'
+	CRUSH_CWD="$tmp/dirtyrepo" CRUSH_PROJECT_DIR="$tmp/dirtyrepo" rcase ctx:'commit-before-gate' 'gate dirt INSIDE the gate scope advises' 'scripts/check-dead-sha-refs.sh'
+	CRUSH_CWD="$tmp/dirtyrepo" CRUSH_PROJECT_DIR="$tmp/dirtyrepo" rcase ctx:'commit-before-gate' 'whole-repo gate advises on any dirt' './scripts/ci-local.sh'
 	rcase silent 'gate on clean tree is silent' './scripts/ci-local.sh'
 	rcase silent 'gate path mention (not execution) is silent' 'git add scripts/check-doc-refs.sh'
 	rcase silent 'bash-wrapped gate on clean tree is silent' 'bash scripts/root-gate.sh'
@@ -580,6 +583,10 @@ fi
 gate_invoked() {
 	# Repo-scope gate scripts in command position (same segment/walk shape
 	# as smoke_invoked; env-var prefixes skipped). Only EXECUTION advises.
+	# Prints the matched gate basename (or "repo" for whole-repo gates) so
+	# the caller can scope-match the dirty paths against the gate's own
+	# scope instead of any-dirt (the 4dcac812 version fired on unrelated
+	# dirty files).
 	printf '%s' "$cmd" | awk '
 		{
 			n = split($0, segs, /[;|&]+/)
@@ -592,14 +599,45 @@ gate_invoked() {
 				if (t == "bash" || t == "sh") { i++; while (i <= m && w[i] == "") i++; if (i > m) continue; t = w[i] }
 				if (t ~ /^(\.\/)?scripts\/check-[A-Za-z0-9_-]+\.sh$/ ||
 				    t ~ /^(\.\/)?scripts\/ci-local\.sh$/ ||
-				    t ~ /^(\.\/)?scripts\/root-gate\.sh$/) { print "hit"; exit }
+				    t ~ /^(\.\/)?scripts\/root-gate\.sh$/) {
+					g = t
+					sub(/^.*\//, "", g)
+					print g
+					exit
+				}
 			}
 		}'
 }
 
-if [ -n "$(gate_invoked)" ] && [ -n "${CRUSH_PROJECT_DIR:-}" ] &&
-	[ -n "$(git -C "$CRUSH_PROJECT_DIR" status --porcelain 2>/dev/null | head -1)" ]; then
-	notes+=("commit-before-gate: the tree is dirty and a repo-scope gate is about to run on uncommitted state — the …918bf0 session paid a daemon sweep + full recover loop for exactly this (2026-11-03 report §e2). Stage+commit FIRST (daemon sweeps <60s, take STAGED files too), then run the gate.")
+# Pathspecs the named gate actually scans; rc 1 = whole-repo/unknown gate
+# (any dirt counts, conservative fallback).
+gate_scope_paths() {
+	case "$1" in
+	check-dead-sha-refs.sh) printf '%s\n' AGENTS.md TODO_LIST.md docs/status ;;
+	check-doc-refs.sh) printf '%s\n' README.md AGENTS.md CONTRIBUTING.md CHANGELOG.md FEATURES.md ROADMAP.md docs ;;
+	check-report-secrets.sh) printf '%s\n' docs/status ;;
+	check-index-phrase-drift.sh | check-tick-claims.sh) printf '%s\n' docs/status TODO_LIST.md ;;
+	ci-local.sh | root-gate.sh) return 1 ;;
+	*) return 1 ;;
+	esac
+}
+
+gate="$(gate_invoked)"
+if [ -n "$gate" ] && [ -n "${CRUSH_PROJECT_DIR:-}" ]; then
+	scope_ok=1
+	scope=""
+	if paths="$(gate_scope_paths "$gate")"; then
+		scope="$paths"
+	else
+		scope_ok=0
+	fi
+	if [ -n "$(git -C "$CRUSH_PROJECT_DIR" status --porcelain $scope 2>/dev/null | head -1)" ]; then
+		if [ "$scope_ok" = 1 ]; then
+			notes+=("commit-before-gate: the tree is dirty INSIDE $gate's own scope and the gate is about to run on uncommitted state — the …918bf0 session paid a daemon sweep + full recover loop for exactly this (2026-11-03 report §e2). Stage+commit FIRST (daemon sweeps <60s, take STAGED files too), then run the gate.")
+		else
+			notes+=("commit-before-gate: the tree is dirty and a repo-scope gate is about to run on uncommitted state — the …918bf0 session paid a daemon sweep + full recover loop for exactly this (2026-11-03 report §e2). Stage+commit FIRST (daemon sweeps <60s, take STAGED files too), then run the gate.")
+		fi
+	fi
 fi
 
 if [ "${#notes[@]}" -gt 0 ]; then
