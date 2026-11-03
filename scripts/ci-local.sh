@@ -818,6 +818,21 @@ step "tick-claim check (advisory WARN; tick-claims cite the tick commit)"
 ./scripts/check-tick-claims.sh --self-test
 ./scripts/check-tick-claims.sh
 
+# Advisory rewrite-rate probe (2026-11-03 rows 20/21): the nightly wiring
+# rides fuzz.yml, which may not run for this PRIVATE repo — local periodicity
+# needs ci-local. WARN-only; the probe exits 1 on hot days, never gates.
+step "rewrite-rate probe (advisory WARN; reflog rewrite events/day)"
+if ! ./scripts/rewrite-rate-probe.sh; then
+	echo "WARN: rewrite-rate probe flagged hot days (advisory — continuing)"
+fi
+
+# Advisory dead-sha baseline shrink pass (dry, no --write): surfaces baselined
+# tokens with a now-reachable twin. WARN-only; gate stays green throughout.
+step "dead-sha shrink dry pass (advisory WARN; reachable twins in baseline)"
+if ! ./scripts/check-dead-sha-refs.sh --shrink; then
+	echo "WARN: dead-sha shrink pass failed (advisory — continuing)"
+fi
+
 # Security-invariant drift gate: the "learned checks may only narrow" promise
 # must hold in BOTH SECURITY.md prose and executor.MergeFindings code — a
 # rename or wording drift degrades the promise to stale prose (turnstone
