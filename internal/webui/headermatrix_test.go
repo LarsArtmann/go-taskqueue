@@ -189,6 +189,60 @@ func TestWithIsOnlyMergeMechanism(t *testing.T) {
 	}
 }
 
+// TestWithIsOnlyMergeMechanismNegativeFixture keeps the guard's negative
+// path permanently verified: a synthetic source file carrying a bare
+// maps.Copy OUTSIDE its with body, run through the SAME census predicate,
+// must trip — so the fixture proves the guard detects the violation class
+// without a live insert-then-revert ritual (the --self-test convention).
+func TestWithIsOnlyMergeMechanismNegativeFixture(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	src := "package webui\n" +
+		"\n" +
+		"import \"maps\"\n" +
+		"\n" +
+		"func with(rows ...matrixHeaders) matrixHeaders {\n" +
+		"\tmerged := matrixHeaders{}\n" +
+		"\tfor _, row := range rows {\n" +
+		"\t\tmaps.Copy(merged, row)\n" +
+		"\t}\n" +
+		"\treturn merged\n" +
+		"}\n" +
+		"\n" +
+		"func rogue(base, extra matrixHeaders) matrixHeaders {\n" +
+		"\tmerged := matrixHeaders{}\n" +
+		"\tmaps.Copy(merged, base)\n" +
+		"\treturn merged\n" +
+		"}\n"
+	path := filepath.Join(dir, "fixture_test.go")
+	if err := os.WriteFile(path, []byte(src), 0o600); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+
+	f := testastguard.Parse(t, path)
+	withBody := f.FuncBody(t, "with")
+
+	outside := 0
+
+	f.CensusCalls(
+		func(call *ast.CallExpr) bool {
+			sel, ok := call.Fun.(*ast.SelectorExpr)
+
+			return ok && sel.Sel.Name == "Copy" && testastguard.IsMaps(call)
+		},
+		func(call *ast.CallExpr) {
+			if !testastguard.InSpan(withBody.Pos(), withBody.End(), call.Pos()) {
+				outside++
+			}
+		},
+	)
+
+	if outside == 0 {
+		t.Fatal("fixture's bare maps.Copy in rogue was NOT flagged outside the with body — the guard's negative path is dead")
+	}
+}
+
 // getContextGET issues a GET via NewRequestWithContext + client.Do (the
 // noctx-clean form) for the matrix family.
 func getContextGET(t testing.TB, url string) *http.Response {
