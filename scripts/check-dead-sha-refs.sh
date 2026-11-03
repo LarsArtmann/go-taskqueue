@@ -108,12 +108,24 @@ run_gate() {
 			linenum=${line%%:*}
 			text=${line#*:}
 			local -A seen=()
-		for tok in $(hex_tokens "$text"); do
+		# per-OCCURRENCE scan (TODO §f12): the same token may appear twice
+		# on a line — first as a fork-record member (healthy), then bare
+		# (dangling). Arrow-escape is tested against a WINDOW around the
+		# occurrence (±45 chars), so a pair elsewhere on the line cannot
+		# whitewash a second bare cite; the dedup marks a token seen only
+		# once CLASSIFIED (dead/baselined), never on a mere escape.
+		local t=$text tok pos pre win
+		while [[ "$t" =~ [0-9a-f]{7,40} ]]; do
+			tok=${BASH_REMATCH[0]}
+			t=${t#*"$tok"}
+			pre=${text:0:$(( ${#text} - ${#t} ))}  # text up to and incl. tok
+			pos=$((${#pre} - ${#tok}))
+			win=${text:$((pos > 45 ? pos - 45 : 0)):$(( ${#tok} + 90 ))}
 			[ -n "${seen[$tok]:-}" ] && continue
+			[ -n "${oid[$tok]:-}" ] || continue
+			[ -n "${anc[${oid[$tok]}]:-}" ] && continue
+			token_arrow_escaped "$tok" "$win" && continue
 			seen["$tok"]=1
-				[ -n "${oid[$tok]:-}" ] || continue
-				[ -n "${anc[${oid[$tok]}]:-}" ] && continue
-				token_arrow_escaped "$tok" "$text" && continue
 				if [ "$MODE" = emit ]; then
 					emit["$tok"]=1
 					continue
@@ -583,7 +595,55 @@ EOF
 	}
 	json_mode=
 
-	echo "dead-sha self-test ok (clean rc=0, exact file:line on rc=1, per-token arrow escape, comma-separated multi-pair fork-record lines, emit-baseline sorted+pair-excluded, shrink drop/keep/--write, twin-map collision body tiebreak + daemon tree+subject path, shrink --check snapshot drift, shrink --json machine output, baselined silent unless TQ_DEAD_SHA_VERBOSE=1)"
+	# 10. twice-on-a-line dangling token (TODO §f12): the token is a
+	# fork-record MEMBER at its first occurrence (healthy) and cited BARE at
+	# its second (dangling) — the per-line dedup must not swallow the bare
+	# cite just because the first occurrence escaped via the arrow.
+	cat >"$tmp/docs/status/twice.md" <<EOF
+first as a pair member: ${old}→${new} — then cited bare again: ${old}
+EOF
+	files=(docs/status/twice.md)
+	out=$(cd "$tmp" && run_gate) && rc=0 || rc=$?
+	if [ "$rc" != 1 ] || ! grep -q "DEAD SHA: docs/status/twice.md:1 cites '${old}'" <<<"$out"; then
+		echo "dead-sha self-test FAIL: twice-on-a-line dangling cite swallowed by the first-occurrence arrow escape: rc=$rc out: $out"
+		exit 1
+	fi
+	# healthy-side inverse: both occurrences clean → green
+	cat >"$tmp/docs/status/twice-ok.md" <<EOF
+pair first: ${old}→${new} — bare but reachable: ${new}
+EOF
+	files=(docs/status/twice-ok.md)
+	out=$(cd "$tmp" && run_gate) && rc=0 || rc=$?
+	[ "$rc" = 0 ] || {
+		echo "dead-sha self-test FAIL: twice-on-a-line healthy pair flagged: rc=$rc out: $out"
+		exit 1
+	}
+
+	# 11. baselined-token-on-arrow-line precedence (TODO §f13): a baselined
+	# token on a line ONLY as a fork-record member is escaped by the arrow
+	# BEFORE the baseline branch — no baselined hit, gate green (arrow
+	# escape outranks baseline membership); the BARE baselined cite still
+	# rides the baseline branch and counts a hit.
+	printf '%s\n' "$old" >"$tmp/base.txt"
+	cat >"$tmp/AGENTS.md" <<EOF
+fork playbook: history rewrote ${old}→${new}
+EOF
+	files=(AGENTS.md)
+	out=$(cd "$tmp" && run_gate) && rc=0 || rc=$?
+	if [ "$rc" != 0 ] || ! grep -q 'dead-sha refs ok (0 baselined, 0 new)' <<<"$out"; then
+		echo "dead-sha self-test FAIL: baselined token on an arrow line must be arrow-escaped, not a baselined hit: rc=$rc out: $out"
+		exit 1
+	fi
+	cat >"$tmp/AGENTS.md" <<EOF
+legacy bare cite survives: ${old}
+EOF
+	out=$(cd "$tmp" && run_gate) && rc=0 || rc=$?
+	if [ "$rc" != 0 ] || ! grep -q 'dead-sha refs ok (1 baselined, 0 new)' <<<"$out"; then
+		echo "dead-sha self-test FAIL: bare baselined cite did not count a baselined hit: rc=$rc out: $out"
+		exit 1
+	fi
+
+	echo "dead-sha self-test ok (clean rc=0, exact file:line on rc=1, per-token arrow escape, comma-separated multi-pair fork-record lines, emit-baseline sorted+pair-excluded, shrink drop/keep/--write, twin-map collision body tiebreak + daemon tree+subject path, shrink --check snapshot drift, shrink --json machine output, twice-on-a-line dangling token, baselined-on-arrow-line precedence, baselined silent unless TQ_DEAD_SHA_VERBOSE=1)"
 	exit 0
 fi
 
