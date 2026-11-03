@@ -325,6 +325,9 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 - **GOEXPERIMENT/GOTOOLCHAIN**: ci-local exports jsonv2; CI setup-go + go.mod
   floors + flake tarball PINNED IN LOCKSTEP (1.27.3); NEVER lower a `go`
   directive (`check-go-mods.sh`).
+- **CI-log triage one-liner**: `gh run view <id> --log-failed | grep -i '##\[error\]'`
+  extracts the failing-job error lines directly — skip broad greps over the
+  full log (two burned before landing on it; 2026-11-03 task 000001a19fb137e9 §e5/§f10).
 - **`fetch` empty ≠ URL dead**: an empty body is a tool mismatch — retry `download`.
 - **Host GOCACHE/GOROOT hazards**: gates run `GOCACHE=/tmp/go-build-cache`
   (host symlink → /nix/store ENOSPCs); "package X is not in std" +
