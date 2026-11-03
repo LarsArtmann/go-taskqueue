@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -16,6 +17,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/larsartmann/go-taskqueue/internal/effort"
 	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/harvest"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
@@ -42,6 +44,10 @@ type agentPoolOptions struct {
 	reresolveVerify bool
 	maxPerTick      int
 	batchItems      int
+	effortBudget   int
+	jev             bool
+	jevModel        string
+	jevAPIKey       string
 	priorityFrom    string
 	maxPending      int
 	allowDirty      bool
@@ -95,7 +101,10 @@ type agentPoolOptions struct {
 // batchTimeoutPerItem mirrors the harvest payload's per-member timeout
 // scaling (the executor's 30m default; --repo-timeout ladders override per
 // repo — raise --task-timeout consciously when a ladder exceeds this).
-const batchTimeoutPerItem = 30 * time.Minute
+// Single-sourced from harvest.DefaultBatchTimeoutMinutes so the flat
+// effort estimate, the derived effort budget and this ceiling can never
+// fork (2026-11-03).
+const batchTimeoutPerItem = harvest.DefaultBatchTimeoutMinutes * time.Minute
 
 func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 	fs := flag.NewFlagSet("agent-pool", flag.ExitOnError)
@@ -139,6 +148,18 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 		harvest.DefaultMaxPerTick,
 		"max new agent tasks per harvest tick (cost throttle)",
 	)
+	effortBudget := fs.Int(
+		"effort-budget",
+		0,
+		"cap the summed per-item effort estimates of one batched run, in minutes (0 = batch-items x 30m — exactly the count cap under flat estimates; with --jev the estimates size runs: a 3-hour item ships alone, small items pack together)",
+	)
+	jev := fs.Bool(
+		"jev",
+		false,
+		"effort-aware batching via TypeSafe Jev (default OFF): every harvested item is scored once against a 5-level effort rubric and cached (<db>.effort.json, model-stamped); estimates size runs and may only RAISE payload timeouts; any API failure falls back to flat per-item sizing; WARNING: item texts, section headings, repo name and repo purpose are sent to the TypeSafe API (default https://api.typesafe.ai)",
+	)
+	jevModel := fs.String("jev-model", os.Getenv("TQ_JEV_MODEL"), "jev: TypeSafe model alias (default jev-latest; $TQ_JEV_MODEL)")
+	jevAPIKey := fs.String("jev-api-key", os.Getenv("TYPESAFE_API_KEY"), "jev: TypeSafe API key (Bearer; $TYPESAFE_API_KEY)")
 	batchItems := fs.Int(
 		"batch-items",
 		5,
@@ -381,7 +402,21 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 	})
 
 	if !timeoutExplicit && *batchItems > 1 {
-		if scaled := time.Duration(*batchItems) * batchTimeoutPerItem; scaled > *timeout {
+		scaled := time.Duration(*batchItems) * batchTimeoutPerItem
+
+		// Effort mode can grant a run more than the count ceiling: an
+		// explicit --effort-budget fills runs to it, and a Jev-estimated
+		// monster item may ask its full clamp alone — cover both so the
+		// worker ceiling never truncates what effort sizing granted.
+		if *effortBudget > 0 {
+			scaled = max(scaled, time.Duration(*effortBudget)*time.Minute)
+		}
+
+		if *jev {
+			scaled = max(scaled, effort.MaxMinutes*time.Minute)
+		}
+
+		if scaled > *timeout {
 			*timeout = scaled
 		}
 	}
@@ -453,6 +488,10 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 		reresolveVerify: *reresolveVerify,
 		maxPerTick:      *maxPerTick,
 		batchItems:      *batchItems,
+		effortBudget:   *effortBudget,
+		jev:             *jev,
+		jevModel:        *jevModel,
+		jevAPIKey:       *jevAPIKey,
 		priorityFrom:    *priorityFrom,
 		maxPending:      *maxPending,
 		allowDirty:      *allowDirty,
@@ -500,6 +539,17 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 	}, nil
 }
 
+// effortBudgetOrDerived reports the effective effort budget in minutes
+// for the startup banner (0 derives batch-items x 30m, mirroring the
+// harvest default).
+func effortBudgetOrDerived(opts agentPoolOptions) int {
+	if opts.effortBudget > 0 {
+		return opts.effortBudget
+	}
+
+	return opts.batchItems * harvest.DefaultBatchTimeoutMinutes
+}
+
 // harvestConfigFromOptions assembles the harvester configuration, parsing
 // the name=duration ladder flags (--repo-timeout, --repo-interval).
 func harvestConfigFromOptions(opts agentPoolOptions) (harvest.Config, error) {
@@ -513,10 +563,33 @@ func harvestConfigFromOptions(opts agentPoolOptions) (harvest.Config, error) {
 		DiscoveryAddr:     opts.discoveryAddr,
 		MaxPerTick:        opts.maxPerTick,
 		BatchItems:        opts.batchItems,
+		BatchEffortMinutes: opts.effortBudget,
 		Model:             opts.model,
 		DLQBackoff:        opts.dlqBackoff,
 		UseImportance:     opts.priorityFrom == priorityFromImportance,
 		MaxPendingPerRepo: opts.maxPending,
+	}
+
+	// Effort-aware batching (2026-11-03): Jev sizes runs by predicted
+	// work. Constructed here so a missing key fails the pool STARTUP
+	// loudly (a runtime API failure degrades to flat sizing instead).
+	if opts.jev {
+		cachePath := ""
+		if opts.db != "" {
+			cachePath = opts.db + ".effort.json"
+		}
+
+		estimator, err := effort.NewJevEstimator(effort.JevConfig{
+			APIKey:    opts.jevAPIKey,
+			Model:     opts.jevModel,
+			CachePath: cachePath,
+			Log:       slog.Default(),
+		})
+		if err != nil {
+			return harvest.Config{}, err
+		}
+
+		cfg.EffortEstimator = estimator
 	}
 
 	if opts.repoTimeout != "" {
@@ -896,6 +969,20 @@ func printAgentPoolBanner(poolOpts agentPoolOptions) {
 			"tq: agent-pool: batching up to %d items per task (section-scoped) — payload timeouts scale per item; effective --task-timeout %s; batch deaths dead-letter the whole run: tq dlq is the human surface\n",
 			poolOpts.batchItems,
 			poolOpts.timeout,
+		)
+	}
+
+	if poolOpts.jev {
+		cacheNote := "no db sidecar: estimates re-ask each pass"
+		if poolOpts.db != "" {
+			cacheNote = poolOpts.db + ".effort.json"
+		}
+
+		fmt.Fprintf(
+			os.Stderr,
+			"tq: agent-pool: effort-aware batching on (jev) — runs sized by estimated effort, budget %dm; estimates cached in %s; API failures fall back to flat sizing\n",
+			effortBudgetOrDerived(poolOpts),
+			cacheNote,
 		)
 	}
 
