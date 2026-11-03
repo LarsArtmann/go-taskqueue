@@ -4,25 +4,25 @@ go 1.27.3
 
 require (
 	github.com/dustin/go-humanize v1.1.0
-	github.com/larsartmann/go-codec v0.3.2
+	github.com/larsartmann/go-codec v0.3.3
 	github.com/larsartmann/go-cqrs-lite/event/v4 v4.15.2
 	github.com/larsartmann/go-cqrs-lite/id/v4 v4.7.3
 	github.com/larsartmann/go-cqrs-lite/projectionhost/v4 v4.7.1
-	github.com/larsartmann/go-cqrs-lite/system/v4 v4.15.4
+	github.com/larsartmann/go-cqrs-lite/system/v4 v4.16.0
 	github.com/larsartmann/go-taskqueue v0.4.1
 	github.com/larsartmann/go-taskqueue/internal/composition v0.4.1
-	github.com/larsartmann/go-taskqueue/internal/config v0.3.4
-	github.com/larsartmann/go-taskqueue/internal/dlqbackoff v0.3.4
+	github.com/larsartmann/go-taskqueue/internal/config v0.4.1
+	github.com/larsartmann/go-taskqueue/internal/dlqbackoff v0.4.1
 	github.com/larsartmann/go-taskqueue/internal/executor v0.4.1
 	github.com/larsartmann/go-taskqueue/internal/journal v0.4.1
-	github.com/larsartmann/go-taskqueue/internal/journal/cqrs v0.3.4
+	github.com/larsartmann/go-taskqueue/internal/journal/cqrs v0.4.1
 	github.com/larsartmann/go-taskqueue/internal/queue v0.4.1
-	github.com/larsartmann/go-taskqueue/internal/queue/postgres v0.3.4
-	github.com/larsartmann/go-taskqueue/internal/queue/sqlite v0.3.4
+	github.com/larsartmann/go-taskqueue/internal/queue/postgres v0.4.1
+	github.com/larsartmann/go-taskqueue/internal/queue/sqlite v0.4.1
 	github.com/larsartmann/go-taskqueue/internal/readmodel v0.4.1
-	github.com/larsartmann/go-taskqueue/internal/task v0.3.4
-	github.com/larsartmann/go-taskqueue/internal/worker v0.4.0
-	modernc.org/sqlite v1.61.0
+	github.com/larsartmann/go-taskqueue/internal/task v0.4.1
+	github.com/larsartmann/go-taskqueue/internal/worker v0.4.1
+	modernc.org/sqlite v1.61.1
 )
 
 require (
