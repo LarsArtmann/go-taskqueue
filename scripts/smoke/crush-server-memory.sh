@@ -1,0 +1,254 @@
+#!/usr/bin/env bash
+# Shared-server memory measurement (TODO row: "L4 pilot on ONE repo +
+# shared-server memory measurement before any fleet-wide client-server
+# rollout", 13-48 §f6 / planning doc 2026-10-30_04-43 "Memory
+# accumulation: N concurrent agent goroutines in one process vs N
+# processes; unmeasured").
+#
+# Boots ONE isolated `crush server` (XDG-redirected scratch config, mock
+# OpenAI-compatible provider — ZERO spend) and drives TWO waves of N
+# CONCURRENT routed agent turns through it, all against ONE scratch repo
+# (the pilot's "one repo"). A background sampler records the server
+# process RSS across the storm; the summary reports baseline, per-wave
+# peak and post-quiescence RSS, and the accumulation guard FAILS only on
+# a runaway (quiescent RSS > 3x baseline after both waves).
+#
+# Measures the shared-server accumulation shape, not the exact fleet
+# numbers: the mock provider keeps turns small and fast, so absolute RSS
+# is a floor for real routed runs. The output lines (baseline/peak/
+# quiescent per wave) are the measurement record the rollout decision
+# reads — capture them, do not eyeball them.
+#
+# Requires `crush` and `python3` on PATH (fails loudly otherwise).
+set -euo pipefail
+
+fail() {
+	echo "FAIL: $*"
+	exit 1
+}
+
+command -v crush >/dev/null 2>&1 || fail "crush binary not on PATH — this smoke drives real routed runs through a scratch shared server"
+command -v python3 >/dev/null 2>&1 || fail "python3 required (mock provider + HTTP probe)"
+
+TMP="$(mktemp -d /tmp/tq-crush-memory-smoke.XXXXXX)"
+PORT=""
+MOCK_PID=""
+SERVER_PID=""
+SOCK="$TMP/crush.sock"
+XDG="$TMP/xdg"
+DATA="$TMP/data"
+REPO="$TMP/repo"
+CONCURRENCY=4
+WAVES=2
+cleanup() {
+	pkill -9 -f "crush server --host unix://$SOCK" 2>/dev/null || true
+	[ -n "$SERVER_PID" ] && kill "$SERVER_PID" 2>/dev/null || true
+	[ -n "$MOCK_PID" ] && kill "$MOCK_PID" 2>/dev/null || true
+}
+trap cleanup EXIT
+
+while [ -z "$PORT" ] || ! python3 -c "import socket;s=socket.socket();s.bind(('127.0.0.1',$PORT));s.close()" 2>/dev/null; do
+	PORT=$((10000 + RANDOM % 20000))
+done
+
+mkdir -p "$XDG" "$DATA" "$REPO" "$XDG/crush"
+
+cat >"$XDG/crush/crush.json" <<EOF
+{
+  "\$schema": "https://charm.land/crush.json",
+  "providers": {
+    "mock": {
+      "api_key": "smoke-key",
+      "base_url": "http://127.0.0.1:$PORT/v1",
+      "type": "completions",
+      "models": [
+        {"id": "mock-1", "name": "Mock 1", "context_window": 200000, "max_tokens": 1024}
+      ]
+    }
+  },
+  "models": {
+    "large": {"provider": "mock", "model": "mock-1"},
+    "small": {"provider": "mock", "model": "mock-1"}
+  },
+  "permissions": {"allowed_tools": ["bash", "write", "edit", "read", "view"]},
+  "options": {"disable_default_providers": true}
+}
+EOF
+
+cat >"$TMP/mock_provider.py" <<'PYEOF'
+#!/usr/bin/env python3
+import json
+import sys
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+REQ_LOG = open(sys.argv[2], "a", buffering=1)
+
+
+class Handler(BaseHTTPRequestHandler):
+	protocol_version = "HTTP/1.1"
+
+	def log_message(self, *_args):
+		pass
+
+	def _json(self, status, body):
+		payload = json.dumps(body).encode()
+		self.send_response(status)
+		self.send_header("Content-Type", "application/json")
+		self.send_header("Content-Length", str(len(payload)))
+		self.end_headers()
+		self.wfile.write(payload)
+
+	def do_GET(self):
+		if self.path.startswith("/v1/models"):
+			self._json(200, {"object": "list", "data": [{"id": "mock-1", "object": "model", "created": 0, "owned_by": "smoke"}]})
+			return
+		self._json(404, {"error": "not found"})
+
+	def do_POST(self):
+		if not self.path.startswith("/v1/chat/completions"):
+			self._json(404, {"error": "not found"})
+			return
+		length = int(self.headers.get("Content-Length", "0"))
+		req = json.loads(self.rfile.read(length) or b"{}")
+		REQ_LOG.write(f"turn stream={req.get('stream')}\n")
+		delta = {"role": "assistant", "content": "done"}
+		if req.get("stream"):
+			self.send_response(200)
+			self.send_header("Content-Type", "text/event-stream")
+			self.send_header("Transfer-Encoding", "chunked")
+			self.end_headers()
+			base = {"id": "chatcmpl-mock", "object": "chat.completion.chunk", "created": 0, "model": "mock-1"}
+
+			def chunk(obj):
+				body = f"data: {json.dumps(obj)}\n\n".encode()
+				self.wfile.write(f"{len(body):x}\r\n".encode() + body + b"\r\n")
+
+			chunk({**base, "choices": [{"index": 0, "delta": delta, "finish_reason": None}]})
+			chunk({**base, "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}]})
+			self.wfile.write(b"0\r\n\r\n")
+			self.wfile.flush()
+			return
+		self._json(200, {"id": "chatcmpl-mock", "object": "chat.completion", "created": 0, "model": "mock-1", "choices": [{"index": 0, "message": delta, "finish_reason": "stop"}]})
+
+
+if __name__ == "__main__":
+	ThreadingHTTPServer(("127.0.0.1", int(sys.argv[1])), Handler).serve_forever()
+PYEOF
+
+echo "== boot mock provider + isolated shared server"
+python3 "$TMP/mock_provider.py" "$PORT" "$TMP/mock-requests.log" >"$TMP/mock.log" 2>&1 &
+MOCK_PID=$!
+sleep 1
+kill -0 "$MOCK_PID" 2>/dev/null || {
+	cat "$TMP/mock.log"
+	fail "mock provider died on startup (port $PORT busy?)"
+}
+XDG_CONFIG_HOME="$XDG" XDG_DATA_HOME="$DATA" crush server --host "unix://$SOCK" >"$TMP/server.log" 2>&1 &
+SERVER_PID=$!
+sleep 2
+python3 - "$SOCK" <<'PYEOF' | head -1 | grep -q 200 || fail "server health probe failed"
+import re, socket, sys
+s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+s.settimeout(5)
+s.connect(sys.argv[1])
+s.sendall(b"GET /v1/health HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n")
+buf = b""
+while True:
+    d = s.recv(65536)
+    if not d:
+        break
+    buf += d
+print(buf.split(b"\r\n")[0].decode())
+PYEOF
+echo "PASS: server healthy on the scratch socket"
+
+rss_kb() {
+	ps -o rss= -p "$SERVER_PID" 2>/dev/null | tr -d ' ' || echo 0
+}
+
+git -C "$REPO" init -q
+git -C "$REPO" config user.email smoke@tq.local
+git -C "$REPO" config user.name "tq smoke"
+printf 'scratch\n' >"$REPO/f.txt"
+git -C "$REPO" add -A
+git -C "$REPO" commit -qm seed
+
+BASELINE=$(rss_kb)
+echo "baseline rss: ${BASELINE} KB"
+
+probe() { # <path> — GET on the scratch socket, status on stdout
+	python3 - "$SOCK" "$1" <<'PYEOF'
+import re, socket, sys
+sock, path = sys.argv[1], sys.argv[2]
+try:
+    s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    s.settimeout(5)
+    s.connect(sock)
+    s.sendall(f"GET {path} HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n".encode())
+    buf = b""
+    while True:
+        d = s.recv(65536)
+        if not d:
+            break
+        buf += d
+    print(buf.split(b"\r\n")[0].decode())
+except OSError as e:
+    print("PROBE_ERROR")
+PYEOF
+}
+
+routed_run() { # <log> — one routed turn; rc on stdout
+	(
+		cd "$REPO"
+		XDG_CONFIG_HOME="$XDG" XDG_DATA_HOME="$DATA" \
+			CRUSH_CLIENT_SERVER=1 \
+			timeout 90 crush run -H "unix://$SOCK" --verbose \
+			"reply done" >"$TMP/$1" 2>&1
+	)
+}
+
+run_wave() { # <wave-n> — CONCURRENCY concurrent routed turns; echoes peak rss
+	n="$1"
+	: >"$TMP/rss-$n.log"
+	(
+		while kill -0 "$SERVER_PID" 2>/dev/null; do
+			rss_kb >>"$TMP/rss-$n.log"
+			sleep 0.2
+		done
+	) &
+	SAMPLER=$!
+	pids=""
+	for i in $(seq 1 "$CONCURRENCY"); do
+		routed_run "run-$n-$i.log" &
+		pids="$pids $!"
+	done
+	rc_total=0
+	for p in $pids; do
+		wait "$p" || rc_total=$((rc_total + 1))
+	done
+	kill "$SAMPLER" 2>/dev/null || true
+	wait "$SAMPLER" 2>/dev/null || true
+	echo "$rc_total"
+}
+
+for w in $(seq 1 "$WAVES"); do
+	echo "== wave $w: $CONCURRENCY concurrent routed turns (ONE repo, ONE server)"
+	RC_TOTAL=$(run_wave "$w")
+	[ "$RC_TOTAL" -eq 0 ] || {
+		cat "$TMP"/run-"$w"-*.log 2>/dev/null | head -20
+		fail "wave $w had $RC_TOTAL failed routed turns"
+	}
+	PEAK=$(sort -n "$TMP/rss-$w.log" | tail -1)
+	kill -0 "$SERVER_PID" 2>/dev/null || fail "server died during wave $w"
+	probe /v1/health | head -1 | grep -q 200 || fail "server unhealthy after wave $w"
+	sleep 3 # quiesce: let the runtime settle before sampling steady RSS
+	QUIESCENT=$(rss_kb)
+	echo "wave $w: peak=${PEAK} KB quiescent=${QUIESCENT} KB"
+done
+
+FINAL=$(rss_kb)
+[ "$FINAL" -gt 0 ] || fail "server process gone before the accumulation guard"
+[ "$FINAL" -le $((BASELINE * 3)) ] || fail "accumulation guard: quiescent rss $FINAL KB exceeds 3x baseline $BASELINE KB — runaway growth under concurrent routed load"
+
+echo "MEMORY-SMOKE ok (waves=$WAVES concurrency=$CONCURRENCY baseline=${BASELINE}KB final=${FINAL}KB)"
+echo "measurement record: baseline=${BASELINE} $(for w in $(seq 1 "$WAVES"); do printf 'wave%s_peak=%s wave%s_quiescent=%s ' "$w" "$(sort -n "$TMP/rss-$w.log" | tail -1)" "$w" "$(rss_kb)"; done)KB"
