@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"go/ast"
 	"maps"
+	"regexp"
 
 	"github.com/larsartmann/go-taskqueue/internal/testastguard"
 	"net/http"
@@ -17,6 +18,11 @@ import (
 
 	"github.com/larsartmann/go-taskqueue/internal/httpapi"
 )
+
+// withContentTypeRe extracts the media-type literal of every withContentType
+// call site so the SECURITY.md Content-Type row can be pinned against the
+// live pins.
+var withContentTypeRe = regexp.MustCompile(`withContentType\("([^"]+)"\)`)
 
 // This file pins the SECURITY.md "Response headers, per surface" matrix:
 // every surface's response-header SET must match its matrix row — a header
@@ -971,7 +977,7 @@ func TestSecurityDocMatrixMatchesGoMatrix(t *testing.T) {
 	}
 
 	pinMedia := map[string]bool{}
-	for m := range withContentTypeRe.FindAllStringSubmatch(string(pinned), -1) {
+	for _, m := range withContentTypeRe.FindAllStringSubmatch(string(pinned), -1) {
 		pinMedia[m[1]] = true
 	}
 
