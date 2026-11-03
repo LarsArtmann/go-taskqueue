@@ -94,6 +94,21 @@ diff_at() {
 	fi
 }
 
+is_head_ancestor() {
+	# rc=0 iff the sha is NOT a real-commit non-ancestor (i.e. nonexistent
+	# → skip the rail, ancestor → skip the rail); rc=1 iff it IS a real
+	# commit unreachable from HEAD (the dead-cite class). TQ_TICK_ANCESTOR_CMD
+	# overrides for the self-test negative battery (same KEY contract:
+	# exit 0 = fine, exit 1 = unreachable real commit).
+	if [ -n "${TQ_TICK_ANCESTOR_CMD:-}" ]; then
+		"$TQ_TICK_ANCESTOR_CMD" "$1"
+		return $?
+	fi
+	git cat-file -e "$1^{commit}" 2>/dev/null || return 0
+	git merge-base --is-ancestor "$1" HEAD 2>/dev/null && return 0
+	return 1
+}
+
 verify_claim() {
 	local file="$1" lineno="$2" span="$3" rows="$4" key="$5" explicit="${6:-0}"
 	local at="$key" list n row
@@ -245,7 +260,22 @@ scan_line() {
 		elif [[ "$window" =~ [[:space:]](in|by|at|via)[[:space:]]+([0-9a-f]{8,40}) ]]; then
 			key="${BASH_REMATCH[2]}"
 			explicit=1
-		elif [ "$readme" = 1 ]; then
+		fi
+		# 2026-11-03 unpushed-sha convention (AGENTS.md): a tick cite naming
+		# a REAL commit that is NOT reachable from HEAD is a dead cite in
+		# the making — amending the unpushed commit orphans the sha (the
+		# 02-56 closeout class). WARN with the fork-record rails;
+		# nonexistent shas stay under the other rails.
+		if [ "$explicit" = 1 ]; then
+			if is_head_ancestor "$key"; then
+				:
+			else
+				warns=$((warns + 1))
+				echo "TICK-CLAIM WARN: $file:$lineno \"$span\" — cited tick commit $key is NOT reachable from HEAD"
+				echo "  an unpushed/amended sha is a dead cite in the making — push first, or cite a fork record (old→new) — AGENTS.md unpushed-sha convention"
+			fi
+		fi
+		if [ "$explicit" = 0 ] && [ "$readme" = 1 ]; then
 			# README.md has no file-level authorship commit; the pickaxe
 			# commit that last changed this exact claim span is the closest
 			# authorship-time numbering context (falls back to the date cell).
@@ -367,10 +397,20 @@ printf '%s\t%s\n' \
 	8888888888888888 'chore: unrelated subject with no claim'
 EOF
 	chmod +x "$tmp/msgcmd.sh"
+	# pins: ancestor rail (2026-11-03 unpushed-sha convention) — 1111… is a
+	# REAL commit unreachable from HEAD (WARN), everything else fine.
+	cat >"$tmp/ancmd.sh" <<'EOF'
+#!/bin/sh
+[ "$1" = 1111222233334444 ] && exit 1
+exit 0
+EOF
+	chmod +x "$tmp/ancmd.sh"
 	printf 'report says row 1 ticked, rows 1/3 [x], and rows 1-3 [x]\n' >"$tmp/f1.md"
 	printf 'sha-cited rows 1-2 ticked in aaaaaaaaaaaaaaaa plus row 2 ticked in bbbbbbbbbbbbbbbb\n' >"$tmp/f2.md"
 	printf 'negatives: rows 1-2 unticked, row 3 not ticked, row 4 was UNCHECKED\n' >"$tmp/f3.md"
 	printf 'broken row 1 ticked in deadbeef00\n' >"$tmp/f4.md"
+	printf 'orphan cite: row 1 ticked (1111222233334444)\n' >"$tmp/f7.md"
+	printf 'real-ancestor cite: row 1 ticked (2222333344445555)\n' >"$tmp/f8.md"
 	printf 'dated claim: row 2 ticked\n' >"$tmp/2026-01-01_00-00_selftest.md"
 	# T14 shapes: wide-window claim (row 1114), explicit-sha no-flip
 	# (row 22), BLOCKED-claim diff verification (row 1405).
@@ -378,18 +418,29 @@ EOF
 	printf 'then row 1 ticked (dddddddddddddddd)\n' >>"$tmp/f5.md"
 	printf 'blocked claim: BLOCKED rows written (dddddddddddddddd)\nBLOCKED rows written (cccccccccccccccc)\n' >"$tmp/f6.md"
 	local files out out2
-	files="$(printf '%s\n' "$tmp/f1.md" "$tmp/f2.md" "$tmp/f3.md" "$tmp/f4.md" "$tmp/2026-01-01_00-00_selftest.md" "$tmp/f5.md" "$tmp/f6.md")"
-	out="$(TQ_TICK_LIST_CMD="$tmp/listcmd.sh" TQ_TICK_DIFF_CMD="$tmp/diffcmd.sh" TQ_TICK_MSG_CMD="$tmp/msgcmd.sh" TQ_TICK_CLAIM_FILES="$files" "$self_abs" 2>&1)"
-	# file-claims: 5 ok / 5 warned / 1 skipped (as before); message-claims:
+	files="$(printf '%s\n' "$tmp/f1.md" "$tmp/f2.md" "$tmp/f3.md" "$tmp/f4.md" "$tmp/2026-01-01_00-00_selftest.md" "$tmp/f5.md" "$tmp/f6.md" "$tmp/f7.md" "$tmp/f8.md")"
+	out="$(TQ_TICK_LIST_CMD="$tmp/listcmd.sh" TQ_TICK_DIFF_CMD="$tmp/diffcmd.sh" TQ_TICK_MSG_CMD="$tmp/msgcmd.sh" TQ_TICK_ANCESTOR_CMD="$tmp/ancmd.sh" TQ_TICK_CLAIM_FILES="$files" "$self_abs" 2>&1)"
+	# file-claims: 5 ok / 5 warned / 1 skipped (as before) + the new
+	# ancestor rail: f7 +1 warn, f8 silent → 6/8/1; message-claims:
 	# eeee bare-claim ok (+1), ffff "both … (cccc)" needs 2 but cccc adds 1
-	# (+1 warn), 9999 bare claim with an empty diff (+1 warn) → 6/7/1.
-	if ! grep -qF 'tick-claims summary: 6 ok, 7 warned, 1 skipped' <<<"$out"; then
-		echo "FAIL: negative battery counters off (want 6 ok, 7 warned, 1 skipped)"
+	# (+1 warn), 9999 bare claim with an empty diff (+1 warn) → 6/8/1.
+	if ! grep -qF 'tick-claims summary: 6 ok, 8 warned, 3 skipped' <<<"$out"; then
+		echo "FAIL: negative battery counters off (want 6 ok, 8 warned, 3 skipped)"
 		printf '%s\n' "$out"
 		exit 1
 	fi
-	if [ "$(grep -c 'TICK-CLAIM WARN' <<<"$out")" -ne 7 ]; then
-		echo "FAIL: expected exactly 7 WARNs (bad-HEAD range + wrong-cited-sha + stale-day + explicit-no-flip + blocked-no-evidence + msg-count + msg-no-evidence)"
+	if [ "$(grep -c 'TICK-CLAIM WARN' <<<"$out")" -ne 8 ]; then
+		echo "FAIL: expected exactly 8 WARNs (bad-HEAD range + wrong-cited-sha + stale-day + explicit-no-flip + blocked-no-evidence + msg-count + msg-no-evidence + unpushed-sha)"
+		printf '%s\n' "$out"
+		exit 1
+	fi
+	if ! grep -q 'NOT reachable from HEAD' <<<"$out"; then
+		echo "FAIL: unpushed-sha ancestry WARN missing"
+		printf '%s\n' "$out"
+		exit 1
+	fi
+	if grep -q '2222333344445555 is NOT reachable' <<<"$out"; then
+		echo "FAIL: HEAD-ancestor cite was flagged by the ancestry rail"
 		printf '%s\n' "$out"
 		exit 1
 	fi
@@ -451,7 +502,7 @@ EOF
 		echo "FAIL: batch-anchors rail (want clean=0 bad=1, got $rc2/$rc3)"
 		exit 1
 	fi
-	echo "tick-claims self-test ok (summary format pin + negative counter battery + no-flip/blocked/wide-window/batch-anchors/commit-message rails)"
+	echo "tick-claims self-test ok (summary format pin + negative counter battery + no-flip/blocked/wide-window/batch-anchors/commit-message rails + unpushed-sha ancestry rail)"
 	exit 0
 }
 
