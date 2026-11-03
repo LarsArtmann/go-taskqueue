@@ -14,6 +14,19 @@ Items carry their evidence: a code path and/or the status report that filed
 them (`docs/status/<date>_<slug>.md`). Completed items live in CHANGELOG.md,
 not here.
 
+## 24th-dispatch closeout appends (2026-11-03; source: docs/status/tasks/2026-11-03_05-12_task-000001a19f836b538429f6b0fe4b00000000.md §e/§f; deduped)
+
+- [ ] Audit the 4 UNREACHABLE fork-record partners shipped in eb401d1a (25631367, a7f60f6c, 057b0164, 3e5e2d76, d3df022a — tree-identical to their dangling sides but themselves unreachable from HEAD): confirm each is still the best-documented successor or re-point to a reachable descendant / convert to a dated baseline row (report §f1)
+- [ ] Add scripts/verify-fork-record.sh <old> <new> (patch-id + merge-base ancestry + tree-identity fallback, rc=0/1) with a --self-test; make it the mechanical receipt for the next dead-sha mass heal (report §f2/§e2)
+- [ ] redispatch-brief.sh: add a --residue-report mode listing every TODO row already carrying a RESIDUE note so residue stamps stay auditable across dispatches (report §f3)
+- [ ] check-tick-claims.sh: also flag tick/DONE-note commit cites that resolve but are not HEAD-ancestors (today only explicit tick-cite claims are checked; the DONE-note cite class escapes) (report §f4)
+- [ ] rewrite-rate-probe: emit per-actor attribution into the ledger row (`date|events|hot|actors`) so the nightly trend can attribute repeat offenders over time (report §f5)
+- [ ] shrink pass: consider arrow-MEMBER baselined tokens for drops (§f13's arrow-before-baseline ordering means a baselined token cited only as a pair member needs no baseline row — today shrink only checks bare-cite "needed" escapes) (report §f6)
+- [ ] Measure the dead-sha gate runtime delta from the per-occurrence ±45/+140-char windows vs the §f9 batching baseline and shrink the window bounds if the pass got measurably slower (report §f7)
+- [ ] Detect a daemon sweep landing BELOW a commit-task.sh fold: after the fold commit, diff `git log --oneline -3` against the pre-fold snapshot and WARN naming the unclaimed footer-less commit (2026-11-03 live: 6b23554e rode below the fold unclaimed) (report §f12/§e3)
+- [ ] Pin the three-occurrence branch in check-dead-sha-refs --self-test: token as pair member → bare → pair member again on one line (report §f14)
+- [ ] Emit the dead-sha gate's DEAD SHA findings in a machine-parseable form (file:line:token on a dedicated line or TQ_DEAD_SHA_JSON=1) so heal tooling can consume failures directly (report §f15)
+
 - [ ] Fix heal-daemon-sweep.sh blocker-walk oscillation (now twice-live: 2026-11-02 + 2026-11-03 task …918bf0): detect ever-older-blocker cycles, print the amend-fallback inline on cap, pin the walk as a --self-test fixture (docs/status/tasks/2026-11-03_02-06_task-000001a19ee7ce01918bf068c85900000000.md §e1)
 - [ ] Add --apply-forks mode to scripts/check-dead-sha-refs.sh: consume old=new token pairs, tree-verify each counterpart reachable, rewrite citing lines to arrow fork-record form deterministically (§e3)
 - [ ] Pin the dead-SHA counterpart heuristic order (tree-match → -S content-match → subject NEVER alone for auto-commit subjects) in the gate header comment; reword the d7c25ae8 baseline comment to the verified tree-unmatch fact or run the -S absorption proof (§e4, §d2)
