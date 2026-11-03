@@ -47,17 +47,15 @@ fail() {
 	exit 1
 }
 
-command -v crush >/dev/null 2>&1 || fail "crush binary not on PATH"
-command -v python3 >/dev/null 2>&1 || fail "python3 required (mock provider)"
+# Shared boot plumbing (third-duplication cure). This smoke keeps its own
+# 429/stall mock-provider scripting.
+. "$(dirname "${BASH_SOURCE[0]}")/lib/crush-server.sh"
+crush_smoke_require_bins
 
 TMP="$(mktemp -d /tmp/tq-crush-pool-smoke.XXXXXX)"
 export TQ_DB="$TMP/tasks.db" # hook contract: smokes never ride the production journal
 SOCK="$TMP/crush.sock"
-PORT="${CRUSH_MOCK_PORT:-$(python3 -c 'import socket
-s = socket.socket()
-s.bind(("127.0.0.1", 0))
-print(s.getsockname()[1])
-s.close()')}"
+PORT="${CRUSH_MOCK_PORT:-$(crush_smoke_alloc_port)}"
 
 cleanup() {
 	pkill -9 -f "crush server --host unix://$SOCK" 2>/dev/null || true
@@ -121,43 +119,7 @@ mkdir -p "$XDG/crush" "$DATA" "$REPO"
 
 echo "== scratch config (mock provider only; auto-summarize OFF)"
 # pins: XDG isolation leg — mock is the ONLY resolvable provider
-cat >"$XDG/crush/crush.json" <<EOF
-{
-	"\$schema": "https://charm.land/crush.json",
-	"providers": {
-		"mock": {
-			"api_key": "smoke-key",
-			"base_url": "http://127.0.0.1:$PORT/v1",
-			"type": "completions",
-			"models": [
-				{"id": "mock-1", "name": "Mock 1", "context_window": 200000, "max_tokens": 1024}
-			]
-		}
-	},
-	"models": {
-		"large": {"provider": "mock", "model": "mock-1"},
-		"small": {"provider": "mock", "model": "mock-1"}
-	},
-	"permissions": {"allowed_tools": ["bash", "write", "edit", "read", "view"]},
-	"options": {"disable_default_providers": true, "disable_auto_summarize": true}
-}
-EOF
-python3 -m json.tool "$XDG/crush/crush.json" >/dev/null || fail "scratch crush.json does not parse"
-
-echo "== isolation gate (crush dirs under candidate env)"
-DIRS_LINE1="$(XDG_CONFIG_HOME="$XDG" XDG_DATA_HOME="$DATA" crush dirs 2>&1 | head -1 || true)"
-[ "$DIRS_LINE1" = "$XDG/crush" ] || fail "crush dirs first line is '$DIRS_LINE1', want '$XDG/crush' — isolation NOT proven, refusing to run anything"
-
-git -C "$REPO" init -q
-git -C "$REPO" config user.email smoke@tq.local
-git -C "$REPO" config user.name "tq smoke"
-printf 'scratch\n' >"$REPO/f.txt"
-git -C "$REPO" add -A
-git -C "$REPO" commit -qm seed
-
-echo "== write mock provider (429 mode via MOCK_429=1)"
-# pins: the 429 fast-refuse branch + the inert streamed-text branch
-cat >"$TMP/mock_crush_pool.py" <<'PYEOF'
+crush_smoke_write_config "$XDG" "$PORT" '"disable_auto_summarize": true'
 #!/usr/bin/env python3
 # Minimal OpenAI-compatible mock for the pool smoke: every completion is
 # either an inert streamed text answer or, with MOCK_429=1, a 429 with

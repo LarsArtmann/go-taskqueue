@@ -27,8 +27,10 @@ fail() {
 	exit 1
 }
 
-command -v crush >/dev/null 2>&1 || fail "crush binary not on PATH — this smoke drives real routed runs through a scratch shared server"
-command -v python3 >/dev/null 2>&1 || fail "python3 required (mock provider + HTTP probe)"
+# Shared boot plumbing (third-duplication cure). This smoke keeps its own
+# minimal inert mock-provider scripting.
+. "$(dirname "${BASH_SOURCE[0]}")/lib/crush-server.sh"
+crush_smoke_require_bins
 
 TMP="$(mktemp -d /tmp/tq-crush-memory-smoke.XXXXXX)"
 PORT=""
@@ -41,39 +43,17 @@ REPO="$TMP/repo"
 CONCURRENCY=4
 WAVES=2
 cleanup() {
-	pkill -9 -f "crush server --host unix://$SOCK" 2>/dev/null || true
+	crush_smoke_kill_server "$SOCK"
 	[ -n "$SERVER_PID" ] && kill "$SERVER_PID" 2>/dev/null || true
 	[ -n "$MOCK_PID" ] && kill "$MOCK_PID" 2>/dev/null || true
 }
 trap cleanup EXIT
 
-while [ -z "$PORT" ] || ! python3 -c "import socket;s=socket.socket();s.bind(('127.0.0.1',$PORT));s.close()" 2>/dev/null; do
-	PORT=$((10000 + RANDOM % 20000))
-done
+PORT="$(crush_smoke_alloc_port)"
 
 mkdir -p "$XDG" "$DATA" "$REPO" "$XDG/crush"
 
-cat >"$XDG/crush/crush.json" <<EOF
-{
-  "\$schema": "https://charm.land/crush.json",
-  "providers": {
-    "mock": {
-      "api_key": "smoke-key",
-      "base_url": "http://127.0.0.1:$PORT/v1",
-      "type": "completions",
-      "models": [
-        {"id": "mock-1", "name": "Mock 1", "context_window": 200000, "max_tokens": 1024}
-      ]
-    }
-  },
-  "models": {
-    "large": {"provider": "mock", "model": "mock-1"},
-    "small": {"provider": "mock", "model": "mock-1"}
-  },
-  "permissions": {"allowed_tools": ["bash", "write", "edit", "read", "view"]},
-  "options": {"disable_default_providers": true}
-}
-EOF
+crush_smoke_write_config "$XDG" "$PORT"
 
 cat >"$TMP/mock_provider.py" <<'PYEOF'
 #!/usr/bin/env python3
@@ -136,65 +116,24 @@ if __name__ == "__main__":
 PYEOF
 
 echo "== boot mock provider + isolated shared server"
-python3 "$TMP/mock_provider.py" "$PORT" "$TMP/mock-requests.log" >"$TMP/mock.log" 2>&1 &
-MOCK_PID=$!
-sleep 1
-kill -0 "$MOCK_PID" 2>/dev/null || {
-	cat "$TMP/mock.log"
-	fail "mock provider died on startup (port $PORT busy?)"
-}
-XDG_CONFIG_HOME="$XDG" XDG_DATA_HOME="$DATA" crush server --host "unix://$SOCK" >"$TMP/server.log" 2>&1 &
-SERVER_PID=$!
-sleep 2
-python3 - "$SOCK" <<'PYEOF' | head -1 | grep -q 200 || fail "server health probe failed"
-import re, socket, sys
-s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-s.settimeout(5)
-s.connect(sys.argv[1])
-s.sendall(b"GET /v1/health HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n")
-buf = b""
-while True:
-    d = s.recv(65536)
-    if not d:
-        break
-    buf += d
-print(buf.split(b"\r\n")[0].decode())
-PYEOF
-echo "PASS: server healthy on the scratch socket"
+crush_smoke_start_mock "mock_provider.py $PORT" "$TMP/mock.log" \
+	python3 "$TMP/mock_provider.py" "$PORT" "$TMP/mock-requests.log"
+MOCK_PID="$CRUSH_SMOKE_MOCK_PID"
+crush_smoke_start_server "$SOCK" "$XDG" "$DATA" "$TMP/server.log"
+SERVER_PID="$CRUSH_SMOKE_SERVER_PID"
+crush_smoke_health_ok "$SOCK" || fail "server health probe failed"
 
 rss_kb() {
 	ps -o rss= -p "$SERVER_PID" 2>/dev/null | tr -d ' ' || echo 0
 }
 
-git -C "$REPO" init -q
-git -C "$REPO" config user.email smoke@tq.local
-git -C "$REPO" config user.name "tq smoke"
-printf 'scratch\n' >"$REPO/f.txt"
-git -C "$REPO" add -A
-git -C "$REPO" commit -qm seed
+crush_smoke_seed_repo "$REPO"
 
 BASELINE=$(rss_kb)
 echo "baseline rss: ${BASELINE} KB"
 
-probe() { # <path> — GET on the scratch socket, status on stdout
-	python3 - "$SOCK" "$1" <<'PYEOF'
-import re, socket, sys
-sock, path = sys.argv[1], sys.argv[2]
-try:
-    s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    s.settimeout(5)
-    s.connect(sock)
-    s.sendall(f"GET {path} HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n".encode())
-    buf = b""
-    while True:
-        d = s.recv(65536)
-        if not d:
-            break
-        buf += d
-    print(buf.split(b"\r\n")[0].decode())
-except OSError as e:
-    print("PROBE_ERROR")
-PYEOF
+probe() { # <path> — status-only view of the shared probe
+	crush_smoke_probe "$SOCK" "$1" | head -1
 }
 
 routed_run() { # <log> — one routed turn; rc on stdout
@@ -256,11 +195,8 @@ ensure_server() { # health-or-respawn: an idle server may self-terminate (M7)
 		return 0
 	fi
 	echo "note: server not serving between waves (idle self-termination, M7) — respawning as the pool keeper would"
-	pkill -9 -f "crush server --host unix://$SOCK" 2>/dev/null || true
-	[ -n "$SERVER_PID" ] && kill "$SERVER_PID" 2>/dev/null || true
-	XDG_CONFIG_HOME="$XDG" XDG_DATA_HOME="$DATA" crush server --host "unix://$SOCK" >>"$TMP/server.log" 2>&1 &
-	SERVER_PID=$!
-	sleep 2
+	crush_smoke_start_server "$SOCK" "$XDG" "$DATA" "$TMP/server.log"
+	SERVER_PID="$CRUSH_SMOKE_SERVER_PID"
 	probe /v1/health | head -1 | grep -q 200 || fail "respawned server unhealthy"
 }
 
