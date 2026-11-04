@@ -1866,3 +1866,12 @@ d65b977493ea03b675fbbdcb2884a13ce54b96fa
 bc1bf681c310a14c7f872aab394c791da8b9c928
 0de888eeaf172c8c010f43089d6211b1709b9a3a
 142d95e9604e0f9c9aca0ec1a0fc20a2e0b7c7cd
+# 2026-11-04 later (same task): +3 more footer-less sweeps — mid-battery churn
+# while battery attempt 1 ran: go.sum regen churn (7205d635), examples/embed
+# tidy shrink (d0a6a283), and bf130763 = the daemon committing battery-attempt-
+# 1's own dep-bump drift-heal regeneration (17 go.sum files) out from under
+# the gate — the gate's "let it commit and re-run" remedy; tree verified
+# tidy-synced after (vendor-sync green, battery attempt 2 = the re-run).
+7205d635520622e301e30a378ef5ac9b45325381
+d0a6a28376af6f047d50bbb899b803e4fc56d521
+bf1307637fe2715072ba20e75fd33a5edc4b379b
