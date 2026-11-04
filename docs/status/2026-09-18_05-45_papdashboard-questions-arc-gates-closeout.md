@@ -1,6 +1,7 @@
 # PapDashboard Questions Arc — Gates Close-out + Brutal Self-Review (2026-09-18 05-45)
 
 > **ANNOTATED 31 Oct 2026** (digest-ritual ANNOTATE pass, batch 000001a18fe3eac5; per-item triage at HEAD; owner of residue = the ratified monthly digest ritual). Dispositions — SHIPPED: master CI legs healed (v0.3.4 pushed, row 69); formatterWithGo note; lint-baseline --clean-cache; vendor-sync guard (check-gomod-vendor-sync.sh); daemon-footer heal + index sweeps (heal-daemon-sweep.sh, rows 200/634). ROUTED/OPEN-OWNER: questions follow-ups — 72h expiry, TQ_TASK_ID env, expiry-sweep fact, TQ_QUESTION_FILE pin, SECURITY note (rows 264-268), questions-loop surface bundle (row 297).
+> **ANNOTATED 4 Nov 2026** (docs-health ANNOTATE pass — the 2026-0* corpus sweep at `d65b9774`; re-triage confirms the 31-Oct block at HEAD). Verified at HEAD — the routed question residues still live as rows 299 (72h expiry ruling) and 302 (TQ_QUESTION_FILE closeout-free pin), both open; the §a gate close-out (lint classes, index, ci-local green) stands as written, with the report's own §d9 caveat about the 9c39220 baseline touch-up still the honest record. No new dispositions.
 
 Session: interactive continuation (no Task-Queue-ID; the owner-driven
 "READ, UNDERSTAND, REFLECT, execute, verify" close-out of the questions

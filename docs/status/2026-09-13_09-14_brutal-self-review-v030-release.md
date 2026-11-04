@@ -1,5 +1,7 @@
 # Brutal self-review + v0.3.0 release retro — execution session
 
+> **ANNOTATED 4 Nov 2026** (docs-health ANNOTATE pass — the 2026-0* corpus sweep at `d65b9774`; per-item triage against HEAD, TODO_LIST, CHANGELOG; residue owned by the TODO_LIST rows minted this pass + the ratified monthly digest ritual). Dispositions — SHIPPED: clean-room install gate in release mode (release.sh:237-241, ci-local.sh:392) — the v0.3.0 class; release retro (docs/release/FIRST-MULTI-MODULE-RELEASE-RETRO.md); ADR-0017 cmd/tq replace-free; pkg.go.dev re-check (row 104); examples/embed CI job (ci.yml:353); facadeparity self-test (scripts/facadeparity/main_test.go); cqrs-lint advisory (ci.yml:460); journal-drift audit (ci.yml:228); VERSION-SURFACES (refreshed 2026-09-28); dependabot; g3 v0.3.1 timing cured by ADR-0017 + README go install. ROUTED: f8/g1 release-window smoke + f10 unpushed-tag re-cut (row 849 BLOCKED owner); f9 CHANGELOG consolidation (O14); f11/f12 reply drafts archived, asks struck (sweep 6). OWNER: g2 helpcentre channel; f11 actual send. OPEN: f3 README conformance cross-link (untracked); f14/T15 park lot x5 (untracked); T14.3 dprint (manual-by-decision); clean-room gate red verification row 1096 (go 1.27.2 floor). VERDICT: KEEP — park lot + README link untracked; row 1096 verification open.
+
 Point-in-time snapshot of the session that executed the facade-adoption
 Pareto plan T0–T14 and cut v0.3.0 (window ~08:00–09:10 CEST, 2026-09-13;
 prior session report: `2026-09-13_09-06_facade-adoption-pareto-execution.md`).

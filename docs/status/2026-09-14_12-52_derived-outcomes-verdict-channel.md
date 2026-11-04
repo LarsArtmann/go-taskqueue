@@ -1,5 +1,7 @@
 # Derived outcomes + verdict channel — interactive session close-out
 
+> **ANNOTATED 4 Nov 2026** (docs-health ANNOTATE pass — the 2026-0* corpus sweep at `d65b9774`; per-item triage against HEAD, TODO_LIST, CHANGELOG; residue owned by the TODO_LIST rows minted this pass + the ratified monthly digest ritual). Dispositions — SHIPPED: derived outcomes + verdict file channel end-to-end (agent.go:577 verdictFileEnv, result.go:375); legacy stdout TQ_RESULT retired (agent.go:408/:574, row 343, dcd2d542 per row 1272); e2e derivation pin (row 843, execute_derive_test.go); tq show --commits (main.go:2548/:2610/:3002); web UI commit list (fragments.templ:829); DLQ-autopsy forensics (row 843 slice 2); devmod || true loud (row 996); doctor verdict-PATH checks (doctor.go:1589, row 843 slice 3); stub executor file-channel variants; baseline policy (AGENTS.md:336). OWNER: pool redeploy (row 244 BLOCKED); daemon attribution note; harvest-template pointer (unverified). OPEN: b1/f3 stale 'agent reported' wording (review.go:42, row 656 open at HEAD). VERDICT: KEEP — one open item (row 656 sweep) + owner-gated redeploy/attribution tails.
+
 **Date:** 2026-09-14 12:52 CEST
 **Session type:** INTERACTIVE (owner-driven, no pool task, no TQ_RESULT)
 **Scope:** owner ruling 2026-09-14 — kill the `TQ_RESULT` self-report

@@ -1,6 +1,7 @@
 # Status Report — WebUI/UX Design Pass (interactive session, no task id)
 
 > **ANNOTATED 31 Oct 2026** (digest-ritual ANNOTATE pass, batch 000001a18fe3eac5; per-item triage at HEAD; owner of residue = the ratified monthly digest ritual). Dispositions — SHIPPED: AGENTS GOTOOLCHAIN truthing (row 917, d34b3770); screenshot harness productized (row 798 RULED); CHANGELOG instrument-pass entry. ROUTED: `tq serve --daily-budget` + role=meter a11y (row 617). OPEN: app.js Esc-handler overlay-close verification (no row).
+> **ANNOTATED 4 Nov 2026** (docs-health ANNOTATE pass — the 2026-0* corpus sweep at `d65b9774`; re-triage RESOLVES the 31-Oct OPEN item and renumbers the rest). Resolved — the 'Esc closes' overlay claim is now VERIFIED at HEAD: the keydown handler exists (app.js:504 `e.key === "Escape"`, listener at :479). Renumber/route — budget-meter reachability + meter a11y = row 652 (open; 31-Oct's 'row 617' renumbered); visual-regression harness = row 835 [x] RULED (shots productized, chromedp assertions row 220); CHANGELOG instrument entry SHIPPED (CHANGELOG:2107); FEATURES dashboard row SHIPPED (FEATURES.md:148); full ci-local = the standing pre-push gate; local webui lint slice = standing gates. §b sticky-bottom live observation folds into row 344's browser-leg scope.
 
 **Date:** 2026-09-21 13:31 CEST
 **Scope:** one interactive session on `internal/webui` (dashboard + task detail + board), plus two root-cause dev-tooling fixes it surfaced. No queue tasks were consumed or minted (owner-driven interactive work).

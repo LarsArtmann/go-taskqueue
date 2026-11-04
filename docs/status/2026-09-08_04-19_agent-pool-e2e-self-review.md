@@ -1,5 +1,7 @@
 # Status Report — Agent-Pool Session (Sep 6) & Self-Review
 
+> **ANNOTATED 4 Nov 2026** (docs-health ANNOTATE pass — the 2026-0* corpus sweep at `d65b9774`; per-item triage against HEAD, TODO_LIST, CHANGELOG; residue owned by the TODO_LIST rows minted this pass + the ratified monthly digest ritual). Dispositions — SHIPPED: postgres SKIP LOCKED store (queue/postgres facade + conform suite); HTTP API (internal/httpapi, tq api); harvest pacing/budget (--daily-budget/--budget-cmd/--repo-interval, FEATURES.md:83); pool as supervised service (deploy/nixos + systemd units); session-continuation E2E (--task-closeout); standing multi-repo dep-sweep pipeline (internal/depsweep); f30 repo-name routing (tq enqueue --repo, cmd/tq/main.go:356). ROUTED: e2/f2 --payload-file, e4/f9 env-file convention, f23 tail-to-Discord (all ROADMAP.md:68-73 raw ideas). OWNER: BerryBig patch upstream (09-14 harvest minted it; no live row survives); second-box worker (infra). OPEN: BerryBig landing — untracked. VERDICT: KEEP — BerryBig owner call + three raw-ideas parked.
+
 > **ANNOTATED 14 Sep 2026 (docs-health strikethrough pass)** — resolved items struck inline (`done`/`routed`/`duplicate` markers, evidence verified against HEAD); unstruck items remain open. Kept in docs/status/ (not fully done); the surviving open items are tracked in TODO_LIST.md.
 
 **Date:** 2026-09-08 04:19 CEST

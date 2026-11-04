@@ -1,6 +1,7 @@
 # Session Close-Out: CSP/Noindex Hardening, Baseline Regen, Instrument Pass FINALLY SEEN (3 Screenshots)
 
 > **ANNOTATED 31 Oct 2026** (digest-ritual ANNOTATE pass, batch 000001a18fe3eac5; per-item triage at HEAD; owner of residue = the ratified monthly digest ritual). Dispositions — SHIPPED: X-Robots-Tag header matrix pin (internal/webui/headermatrix_test.go); shots harness productized (row 798 RULED scripts/webui-screenshots.sh); 08-28/12-11/12-30 archive sweeps. ROUTED: dark-mode CDP shots (row 305); X-Robots-Tag/CSP curl smoke asserts (row 301); ci-local compound (row 225); tq.home.lan deploy (row 53 BLOCKED owner). OPEN: upstream go-health-dashboard issues (f17-20).
+> **ANNOTATED 4 Nov 2026** (docs-health ANNOTATE pass — the 2026-0* corpus sweep at `d65b9774`; re-triage confirms the 31-Oct block at HEAD). Verified at HEAD — CSP composition + noindex (health.go:348-355, health_test.go:71-82, headermatrix_test.go:349), SECURITY.md rows (:138-145), shots harness RULED productized (row 835 [x]), tq doctor --hygiene shipped, dep-sweep smoke DONE (row 1326). Row renumber — the open health legs (dark-mode /health, chromedp, curl-level asserts, knobs ADR) now live as rows 340 and 218 (31-Oct-era numbers 305/218). Still open, unchanged: the four upstream go-health-dashboard issues (no filing evidence), evidence archive (docs/screenshots absent, host browser-less), tq.home.lan deploy (row 88 BLOCKED owner).
 
 **2026-09-16 18:12 CEST · continuation lap of the 08-28/12-11/12-30 session · master @ 953cf91 (tree clean at write time)**
 

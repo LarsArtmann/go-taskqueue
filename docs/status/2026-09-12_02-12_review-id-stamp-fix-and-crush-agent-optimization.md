@@ -1,5 +1,7 @@
 # Review-ID-Stamp Fix + Crush Agent Optimization — Session Report
 
+> **ANNOTATED 4 Nov 2026** (docs-health ANNOTATE pass — the 2026-0* corpus sweep at `d65b9774`; per-item triage against HEAD, TODO_LIST, CHANGELOG; residue owned by the TODO_LIST rows minted this pass + the ratified monthly digest ritual). Dispositions — SHIPPED: unresolved-placeholder pin tests (review_test.go:328, dlqfix_test.go:234, question_test.go:260); telemetry/bootstrap contract — model+effort ONLY in .crushrc managed block (bootstrap.go:318, CHANGELOG:1424). ROUTED: c2/f21 TODO minting (crush-ops row 844 TRIAGED 2026-11-01: xhigh ruled + doctor-enforced, doctor.go:2202); b4/f12 crush re-audit (superseded by the crush-server adoption wave, planning 2026-10-30/2026-11-01). OWNER: f7 crush bump; f8/f9 statix (external; gate row 662); disk capacity; f15/f27 SystemNix; g2 web-access trust; f22 stray permissions line (user .crushrc). OPEN: e3/f20 per-repo tool-grant override (agentTools still one global const, bootstrap.go:31); e4/f17 tq doctor LSP-health check; b1/f10 empirical tool proof; f13/f18/f25 ideas — untracked. VERDICT: KEEP — external/owner cluster + five untracked code/doctor asks.
+
 > **ANNOTATED 14 Sep 2026 (docs-health strikethrough pass)** — resolved items struck inline (`done`/`routed`/`duplicate` markers, evidence verified against HEAD); unstruck items remain open. Kept in docs/status/ (not fully done); the surviving open items are tracked in TODO_LIST.md.
 
 **Session:** 2026-09-12 ~01:15–02:12 (interactive Crush session, go-taskqueue)

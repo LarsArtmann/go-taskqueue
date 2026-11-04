@@ -1,5 +1,7 @@
 # 2026-09-14 18-14 — UI stunning overhaul: brutal self-review + full status
 
+> **ANNOTATED 4 Nov 2026** (docs-health ANNOTATE pass — the 2026-0* corpus sweep at `d65b9774`; per-item triage against HEAD, TODO_LIST, CHANGELOG; residue owned by the TODO_LIST rows minted this pass + the ratified monthly digest ritual). Dispositions — SHIPPED: sort chip (2026-10-04 window, rows 616/618 residue); navigation.Pagination + display.ListNote adopted (fragments.templ:205/201); errorpage/icons REJECTED by ruling (AGENTS.md:298); coverage CHANGELOG row (CHANGELOG:574, row 672); swap-guard contract row 905 [x]; CSP form-action ruled relaxed (O11, row 217, security_test.go:63); dupBranchBody gone (grep zero); screenshot harness RULED (row 835); module tidy gate. ROUTED: f33-f50 P2 tail (row 344); f28 spot-audit (superseded by dead-sha campaign rows 416/45); f44-f48 micro-items inside row 344. OWNER: MaxTicks upstream filing (verify-before-filing still pending, research HTML:1294); a11y-pack bump (library release, owner). OPEN: f1 overhaul capture strip never archived under docs/research/assets/ (directory absent, /tmp evidence gone); f4/f5 forced-colors + viewport matrix (harness light+dark only); f18-f26/f30 micro-verifies untracked. VERDICT: KEEP — capture strip lost, micro-tail untracked, owner gates open.
+
 **Window:** 2026-09-14 ~15:50 → 18:14 CEST. Scope: execution of
 `docs/planning/archived/2026-09-14_13-24_ui-stunning-overhaul.md` (23 workstreams A1-I3)
 plus this self-review. Evidence base for the work itself:

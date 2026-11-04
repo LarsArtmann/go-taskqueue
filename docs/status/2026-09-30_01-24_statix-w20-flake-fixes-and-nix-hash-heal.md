@@ -1,5 +1,7 @@
 # 2026-09-30 01-24 — statix W20 fixes in flake.nix + two pre-existing nix-hash heals
 
+> **ANNOTATED 4 Nov 2026** (docs-health ANNOTATE pass — the 2026-0* corpus sweep at `d65b9774`; per-item triage against HEAD, TODO_LIST, CHANGELOG; residue owned by the TODO_LIST rows minted this pass + the ratified monthly digest ritual). Dispositions — SHIPPED: tarball-hash single-sourcing (flake.nix:58 goTarballHash = goToolchainHash, row 539 DONE); provenance contradiction (row 539 via vendorhash watch doc); getExe (flake.nix:474+); drop-day tracker (2026-11-01 watch doc + AGENTS.md:371); TODO rows filed (662/838/539); AGENTS vendorHash bullet (:358/:371); config.go ruling moot (single-sourced); post-push nix CI green (row 1442 DONE). ROUTED: statix gate row 662 (open: scripts/check-statix.sh still absent); check-ci hardened (rows 266/946), red-master cure row 586 + current reds row 1595; footer-less heal ratified (row 530). OPEN: §f8/§f9 nix run .#test + flake check --all-systems never executed (no receipt, no row — MINTED this pass); §f7 sibling-flake sweep; §f17 format-coverage/deadnix decision; §f20 lessons candidate; §f21 ritual adoption; §f22 discipline — unverified/untracked. VERDICT: KEEP — never-executed nix receipts minted; statix gate row-tracked but unbuilt.
+
 **Session type**: INTERACTIVE owner session (no task ID, no pool dispatch). Owner pasted
 `statix check` output (exit 1, two W20 "repeated keys" warnings in flake.nix) and asked for
 READ → UNDERSTAND → fix → verify until done, then a full status report.

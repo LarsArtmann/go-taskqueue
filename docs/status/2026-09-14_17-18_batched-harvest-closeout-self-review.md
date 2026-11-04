@@ -1,5 +1,7 @@
 # Batched Harvest Close-Out — Full Status + Brutal Self-Review
 
+> **ANNOTATED 4 Nov 2026** (docs-health ANNOTATE pass — the 2026-0* corpus sweep at `d65b9774`; per-item triage against HEAD, TODO_LIST, CHANGELOG; residue owned by the TODO_LIST rows minted this pass + the ratified monthly digest ritual). Dispositions — SHIPPED: f18 lint-baseline foreign rows (superseded: advisory + growth-gated); f19 gosec via check-gosec gate; f20 push/master CI (rows 104/105, v0.4.1 shipped); f26 timeout clamp documented (AGENTS batched-harvest bullet; unset --task-timeout scales). ROUTED: c1/f1 batch-default (row 506 [x] DONE 2026-11-03 via section-scoped --batch-items 5); c2-f7 smoke/--json/show/review/dlq residue (row 842 open); f21 ADR-if-default (row 506); f10 per-repo ladder (superseded by section-scoped redesign). OWNER: g1 default N/timeout calibration (row 506); f2 cost A-B (live-pool spend); g2/g3 rulings unrowed. OPEN: f8 TestBatchPriorityTakesMax still asserts <=0 not band 90 (batch_test.go:553, untracked); f9/f12-f17/f22-f25/f27/f28 micro-tail untracked. VERDICT: KEEP — row 842 residue + untracked micro-tail.
+
 _2026-09-14 17:18, interactive session. Owner prompt: "batch tasks more,
 give the AI more power when it's supposed to get shit done", then the
 a)–g) close-out. Scope: THIS session only (feature session report:
