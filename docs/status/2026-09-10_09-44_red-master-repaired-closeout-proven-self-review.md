@@ -1,7 +1,5 @@
 # Session status — red master repaired, closeout loop proven, brutal self-review
 
-> **ANNOTATED 4 Nov 2026** (docs-health ANNOTATE pass — the 2026-0* corpus sweep at `d65b9774`; per-item triage against HEAD, TODO_LIST, CHANGELOG; residue owned by the TODO_LIST rows minted this pass + the ratified monthly digest ritual). Dispositions — SHIPPED: e1/f11 vendorHash note fix (stale fakeHash note absent at HEAD) + e2/f12 atomic vendorHash dance (scripts/check-vendor-hash.sh, TODO rows 539/1442 DONE 2026-11-01). OPEN: e6 'go run pkg@version' note never landed in AGENTS.md Commands (untracked); f17 ci-local phase timestamps (step() prints bare names, ci-local.sh:52, untracked). VERDICT: KEEP — two untracked micro-items; the rest struck/resolved and spot-checks hold.
-
 > **ANNOTATED 14 Sep 2026 (docs-health strikethrough pass)** — resolved items struck inline (`done`/`routed`/`duplicate` markers, evidence verified against HEAD); unstruck items remain open. Kept in docs/status/ (not fully done); the surviving open items are tracked in TODO_LIST.md.
 
 - **Written**: 2026-09-10 09:44 CEST (session wall clock 07:33–09:44, of which ~1h50m
@@ -14,6 +12,8 @@
   (run 34439012027); every fix verified by the tool that gates it (smoke run,
   `govulncheck ./...` in the module, `nix build`, `nix flake check`, full root
   `build/vet/test -race`); workforce state from `tq top` / `tq tasks` snapshots.
+
+> **ANNOTATED 4 Nov 2026** (docs-health ANNOTATE pass — the 2026-0* corpus sweep at `d65b9774`; per-item triage against HEAD, TODO_LIST, CHANGELOG; residue owned by the TODO_LIST rows minted this pass + the ratified monthly digest ritual). Dispositions — SHIPPED: e1/f11 vendorHash note fix (stale fakeHash note absent at HEAD) + e2/f12 atomic vendorHash dance (scripts/check-vendor-hash.sh, TODO rows 539/1442 DONE 2026-11-01). OPEN: e6 'go run pkg@version' note never landed in AGENTS.md Commands (untracked); f17 ci-local phase timestamps (step() prints bare names, ci-local.sh:52, untracked). VERDICT: KEEP — two untracked micro-items; the rest struck/resolved and spot-checks hold.
 
 ## TL;DR
 

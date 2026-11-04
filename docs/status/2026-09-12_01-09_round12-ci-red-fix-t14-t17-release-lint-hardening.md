@@ -1,7 +1,5 @@
 # Round-12 execution window: CI-red triage, T14 fixture release proof, T15–T17 hardening
 
-> **ANNOTATED 4 Nov 2026** (docs-health ANNOTATE pass — the 2026-0* corpus sweep at `d65b9774`; per-item triage against HEAD, TODO_LIST, CHANGELOG; residue owned by the TODO_LIST rows minted this pass + the ratified monthly digest ritual). Dispositions — SHIPPED: T17 lint-baseline wiring (ci-local.sh:577-582, standalone checker deleted per CHANGELOG:2041); FilterState round-trip + ?q= e2e + LIKE-ESCAPE cap (internal/webui/filter_test.go, companion/reads.go:78-80); --hot-items (harvest.go:443); drain-deadline pin (e2e/shutdown_test.go:27); history-rewrite policy (AGENTS.md:367); examples hardening (examples/*/main.go timeouts); gosec excludes (tool-pins.sh:16); lint-baseline runtime regen (CHANGELOG:552); doctor tag-ancestry (cmd/tq/doctor.go:2147); required-checks proposal (docs/planning/2026-09-13). ROUTED: b3 full-suite rerun (superseded by per-push CI -race, ci.yml:48). OWNER: g3 junk-probe history call. OPEN: f30 fixture-release harness, f23 SHA256SUMS in release --push, f34 lint-baseline absent from ci.yml (advisory-by-design at HEAD, ci-local-only), f35 tag-ancestry unit test, f37 /tmp pressure re-check — all untracked. VERDICT: KEEP — release-tail micro-items untracked; owner history question stands.
-
 > **ANNOTATED 14 Sep 2026 (docs-health strikethrough pass)** — resolved items struck inline (`done`/`routed`/`duplicate` markers, evidence verified against HEAD); unstruck items remain open. Kept in docs/status/ (not fully done); the surviving open items are tracked in TODO_LIST.md.
 
 **Date:** 2026-09-12 01:09 CEST · **Session start:** 23:15 the previous evening
@@ -9,6 +7,8 @@
 (`docs/planning/archived/2026-09-11_14-01_SUPERB-PLAN-ROUND11-POOL-REVIVAL-AND-QUEUE-TRUST.md`);
 window opened by triaging the NEW CI red that arrived after the toolchain
 pins, then executed T14–T17 top-down until the status-report interrupt.
+
+> **ANNOTATED 4 Nov 2026** (docs-health ANNOTATE pass — the 2026-0* corpus sweep at `d65b9774`; per-item triage against HEAD, TODO_LIST, CHANGELOG; residue owned by the TODO_LIST rows minted this pass + the ratified monthly digest ritual). Dispositions — SHIPPED: T17 lint-baseline wiring (ci-local.sh:577-582, standalone checker deleted per CHANGELOG:2041); FilterState round-trip + ?q= e2e + LIKE-ESCAPE cap (internal/webui/filter_test.go, companion/reads.go:78-80); --hot-items (harvest.go:443); drain-deadline pin (e2e/shutdown_test.go:27); history-rewrite policy (AGENTS.md:367); examples hardening (examples/*/main.go timeouts); gosec excludes (tool-pins.sh:16); lint-baseline runtime regen (CHANGELOG:552); doctor tag-ancestry (cmd/tq/doctor.go:2147); required-checks proposal (docs/planning/2026-09-13). ROUTED: b3 full-suite rerun (superseded by per-push CI -race, ci.yml:48). OWNER: g3 junk-probe history call. OPEN: f30 fixture-release harness, f23 SHA256SUMS in release --push, f34 lint-baseline absent from ci.yml (advisory-by-design at HEAD, ci-local-only), f35 tag-ancestry unit test, f37 /tmp pressure re-check — all untracked. VERDICT: KEEP — release-tail micro-items untracked; owner history question stands.
 
 **Verdict:** CI's two hard-gate failures root-caused and fixed locally
 (unproven on CI — nothing was pushed, per repo rule); T14 and T15 fully

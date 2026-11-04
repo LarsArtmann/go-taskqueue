@@ -1,7 +1,5 @@
 # Agent-autonomy rows mint + crush Claude-Channels deep review (interactive owner session)
 
-> **ANNOTATED 4 Nov 2026** (docs-health ANNOTATE pass — the 2026-0* corpus sweep at `d65b9774`; per-item triage against HEAD, TODO_LIST, CHANGELOG; residue owned by the TODO_LIST rows minted this pass + the ratified monthly digest ritual). Dispositions — SHIPPED: three rows minted (TODO_LIST:503-508); prompt de-micromanage row 505 [x] DONE 2026-11-01; batch-default row 506 [x] (default 3 → 5 + section-scoped 2026-11-03, CHANGELOG:11-25); channels spec rows (row 544 [x] DONE 2026-10-16, design input docs/planning/2026-10-16); crush upgrade prereq met (host v0.98.1 >= 0.97); serve-per-repo GO ruling R4 + L1/L2 shipped (rows 1429/1430); channel-meta schema in design-input doc; batching-vs-channels decided (--batch-items; channels parked row 508); interplay notes in design doc; watch #3401 superseded; harvest sanity (dup purge 92216ac3). ROUTED: tq mcp row 507 (open by design); doctor probe = row 508 prereq; check-ci probe row 318; session rows 838; mcp sequencing by row structure. OWNER: bootstrap channel_enabled emission (behind row 508 owner-blocked prereqs); PapDashboard-as-channel (explicitly conditional, unfiled). OPEN: f10 question-flow channel pivot (untracked — design doc has no AnswerPoller content); f17 AGENTS.md channels one-liner (trigger met, still absent — MINTED this pass). VERDICT: KEEP — two build rows open by design; two untracked items (one minted).
-
 **Session shape**: interactive owner session (no pool task ID) — two directives
 executed: (1) mint the owner's three-line "our prompts still suck" directive
 into TODO_LIST.md as pool-food rows; (2) DEEP REVIEW of
@@ -13,6 +11,8 @@ helpful for us". Everything below is session-scoped: no unrelated research.
 actively shipping — the 22-37 security-batch and 23-28 archive-evidence
 reports landed mid-session; their TODO edits were read, preserved, built
 upon; nothing reverted).
+
+> **ANNOTATED 4 Nov 2026** (docs-health ANNOTATE pass — the 2026-0* corpus sweep at `d65b9774`; per-item triage against HEAD, TODO_LIST, CHANGELOG; residue owned by the TODO_LIST rows minted this pass + the ratified monthly digest ritual). Dispositions — SHIPPED: three rows minted (TODO_LIST:503-508); prompt de-micromanage row 505 [x] DONE 2026-11-01; batch-default row 506 [x] (default 3 → 5 + section-scoped 2026-11-03, CHANGELOG:11-25); channels spec rows (row 544 [x] DONE 2026-10-16, design input docs/planning/2026-10-16); crush upgrade prereq met (host v0.98.1 >= 0.97); serve-per-repo GO ruling R4 + L1/L2 shipped (rows 1429/1430); channel-meta schema in design-input doc; batching-vs-channels decided (--batch-items; channels parked row 508); interplay notes in design doc; watch #3401 superseded; harvest sanity (dup purge 92216ac3). ROUTED: tq mcp row 507 (open by design); doctor probe = row 508 prereq; check-ci probe row 318; session rows 838; mcp sequencing by row structure. OWNER: bootstrap channel_enabled emission (behind row 508 owner-blocked prereqs); PapDashboard-as-channel (explicitly conditional, unfiled). OPEN: f10 question-flow channel pivot (untracked — design doc has no AnswerPoller content); f17 AGENTS.md channels one-liner (trigger met, still absent — MINTED this pass). VERDICT: KEEP — two build rows open by design; two untracked items (one minted).
 
 ## a) FULLY DONE
 
