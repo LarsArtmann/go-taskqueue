@@ -66,6 +66,7 @@ LOG
 	# pins: advisory-mirror-branch — a TQ_HOOK_ADVISORY_LOG in the same
 	# shape renders its own count summary + rule breakdown; a malformed
 	# advisory row is a failure too (row 23, 02-56 §e2).
+	# pins: advisory-mirror-branch — 3-row advisory log renders count + breakdown
 	cat >"$tmp/adv.log" <<'LOG'
 2026-10-30T15:04:05Z|tq-db-inherit|tq tasks
 2026-10-31T09:00:00Z|tq-db-inherit|tq show

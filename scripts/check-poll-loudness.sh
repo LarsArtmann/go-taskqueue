@@ -142,6 +142,7 @@ for f in a b c; do
 	echo "$f"
 done
 EOF
+	# pins: spawn-loop-branch — seq-header + bare `&` launches must fail the battery
 	cat >"$tmp/spawn.sh" <<'EOF'
 for i in $(seq 1 4); do
 	run_task &

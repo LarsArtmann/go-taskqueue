@@ -55,6 +55,7 @@ mkdir -p "$XDG" "$DATA" "$REPO" "$XDG/crush"
 
 crush_smoke_write_config "$XDG" "$PORT"
 
+# pins: mock-openai-branch — local OpenAI-compatible provider stub drives the memory wave
 cat >"$TMP/mock_provider.py" <<'PYEOF'
 #!/usr/bin/env python3
 import json

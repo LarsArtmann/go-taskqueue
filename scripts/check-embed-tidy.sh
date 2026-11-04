@@ -41,6 +41,7 @@ self_test() {
 [ "${1:-}" = "--self-test" ] && self_test
 
 if [ "${TQ_EMBED_TIDY_TEST:-}" = "drift" ]; then
+	# pins: env-hook-drift-branch — TQ_EMBED_TIDY_TEST=drift negative path
 	cat >&2 <<'EOF'
 EMBED-TIDY DRIFT: `go mod tidy` would change examples/embed go.mod/go.sum (files shown by git diff there).
 fix recipe: cd examples/embed && GOWORK=off go mod tidy, then commit the refreshed go.mod/go.sum
@@ -85,6 +86,7 @@ fi
 
 echo "EMBED-TIDY DRIFT: go mod tidy changes $EMBED/go.mod and/or go.sum (left in place; inspect with git diff $EMBED):"
 git diff --stat -- "$EMBED/go.mod" "$EMBED/go.sum"
+# pins: real-tidy-drift-branch — genuine go mod tidy divergence on the adopter graph
 cat >&2 <<'EOF'
 fix recipe: cd examples/embed && GOWORK=off go mod tidy, then commit the refreshed go.mod/go.sum
 provenance: the CI consumer job builds examples/embed as a facade adopter; an untidied

@@ -604,6 +604,7 @@ EOF
 	# fork-record MEMBER at its first occurrence (healthy) and cited BARE at
 	# its second (dangling) — the per-line dedup must not swallow the bare
 	# cite just because the first occurrence escaped via the arrow.
+	# pins: dangling-bare-cite-branch — second bare occurrence must stay flagged
 	cat >"$tmp/docs/status/twice.md" <<EOF
 first as a pair member: ${old}→${new} — then cited bare again: ${old}
 EOF
@@ -614,6 +615,7 @@ EOF
 		exit 1
 	fi
 	# healthy-side inverse: both occurrences clean → green
+	# pins: both-members-healthy-branch — pair member plus reachable bare cite stays green
 	cat >"$tmp/docs/status/twice-ok.md" <<EOF
 pair first: ${old}→${new} — bare but reachable: ${new}
 EOF
@@ -630,6 +632,7 @@ EOF
 	# escape outranks baseline membership); the BARE baselined cite still
 	# rides the baseline branch and counts a hit.
 	printf '%s\n' "$old" >"$tmp/base.txt"
+	# pins: arrow-escape-over-baseline-branch — baselined token as fork-record member is arrow-escaped
 	cat >"$tmp/AGENTS.md" <<EOF
 fork playbook: history rewrote ${old}→${new}
 EOF
@@ -639,6 +642,7 @@ EOF
 		echo "dead-sha self-test FAIL: baselined token on an arrow line must be arrow-escaped, not a baselined hit: rc=$rc out: $out"
 		exit 1
 	fi
+	# pins: baseline-count-branch — bare baselined cite counts 1 baselined hit
 	cat >"$tmp/AGENTS.md" <<EOF
 legacy bare cite survives: ${old}
 EOF
