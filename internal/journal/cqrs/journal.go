@@ -121,7 +121,6 @@ func (e *factEventError) Unwrap() error { return e.err }
 
 func factEvent(fact journal.Fact) (event.Event, *factEventError) {
 	if fact.Seq <= 0 {
-		//cqrs-lint:ignore(C025) validation error built from fact data; no wrapped cause exists
 		return nil, &factEventError{
 			msg: fmt.Sprintf("cqrs: fact for task %s has non-positive seq %d", fact.TaskID, fact.Seq),
 		}

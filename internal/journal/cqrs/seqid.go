@@ -34,7 +34,6 @@ func (e *seqEventIDError) Error() string { return e.msg }
 
 func seqEventID(seq int64) (id.EventID, *seqEventIDError) {
 	if seq <= 0 {
-		//cqrs-lint:ignore(C025) validation error built from seq data; no wrapped cause exists
 		return id.EventID{}, &seqEventIDError{fmt.Sprintf("cqrs: sequence %d is not positive", seq)}
 	}
 

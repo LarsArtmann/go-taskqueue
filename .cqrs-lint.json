@@ -34,7 +34,15 @@
       // adapter is read-only by design (ADR-0014); a generic Save would
       // bypass the task-state invariants (facts appended in the same tx as
       // state, single serialized writer).
-      "A018"
+      "A018",
+
+      // F032: catalog-driven documentation (AsyncAPI/OpenAPI/D2/EventCatalog)
+      // is app-shape coaching — it asks a CQRS SERVICE to declare commands,
+      // events and queries. ADR-0014 pins this adapter as a READ-ONLY
+      // library surface (public facades, ADR-0016; no write path): there is
+      // no domain catalog to derive, and importing go-cqrs-lite/event/v4 is
+      // type adoption, not app adoption. Same ruling family as A009.
+      "F032"
     ]
   },
 
