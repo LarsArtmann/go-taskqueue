@@ -14,6 +14,15 @@ Items carry their evidence: a code path and/or the status report that filed
 them (`docs/status/<date>_<slug>.md`). Completed items live in CHANGELOG.md,
 not here.
 
+## Docs-health corpus-sweep harvest (2026-11-04; sources: the 2026-0* ANNOTATE sweep over all 28 live 2026-09 root reports — banners carry per-item verdicts at HEAD d65b9774; deduped against rows 344/340/371/376/546/550/617/652/656/662/838/839/844/850/884/906/992/1059/1096/1166/1168/1210/1293/1496/1563/1595/1709)
+
+- [ ] Widen check-mirror-clones.sh beyond the strict `-t 3` gate: pin the known-acceptable adapter pairs as an explicit baseline (scripts/mirror-baseline.txt is zero rows today) and add a `--show-suppressed` pass so the ~24 hidden same-file groups get line-by-line triage instead of silently passing (2026-09-27_15-29 §f2/§f17/§f6; scripts/check-mirror-clones.sh)
+- [ ] Fold `mustMarshalDetail` into `companion` (exported JSON helper) so the companion-tag marshal surface has one home, and fix the companion/doc.go split-brain: doc.go:12 claims "zero cross-backend adapter groups" while scripts/mirror-baseline.txt documents the enforcement-era zero-NEW-group contract — align the qualifier wording (2026-09-27_15-29 §f8; 2026-09-28_18-18 §f5; cmd/tq/ask.go:265)
+- [ ] Unit-test the runGo deadline clamp: `internal/executor/depbump.go:674` (`!ok || time.Until(deadline) > timeout`) has no test naming the Deadline branch — add a table test pinning expired-deadline and no-deadline paths (2026-09-30_09-15 §c5/§f9)
+- [ ] Add the channels one-liner to AGENTS.md: `channel_enabled` bootstrap emission + the tq-MCP channel plan pointer, whose 0.97+ crush precondition is now met on the host (v0.98.1) — the 2026-09-29 review deferred it past a trigger that has since fired (2026-09-29_23-37 §f17; docs/planning/2026-10-16_01-11_TQ-MCP-CHANNELS-DESIGN-INPUT.md)
+- [ ] Execute and record the two standing nix receipts: `nix run .#test` and `nix flake check --all-systems` — both cited as needed by the 2026-09-30 flake-heal window and never run to a recorded receipt (2026-09-30_01-24 §f8/§f9)
+- [ ] Extract the dedup-ledger trigger sites into named AGENTS.md pins: doctor pending-listing, payload-validation, companion/reads.go scan — the ledger's extraction triggers exist only in status reports, so future sweeps re-derive them by archaeology (2026-09-30_09-15 §f10-§f13; AGENTS.md §executor shared seams)
+
 ## 24th-dispatch closeout appends (2026-11-03; source: docs/status/tasks/2026-11-03_05-12_task-000001a19f836b538429f6b0fe4b00000000.md §e/§f; deduped)
 
 - [ ] Audit the 4 UNREACHABLE fork-record partners shipped in eb401d1a (afe706ca→25631367, ad95e368→a7f60f6c, 847554e0→057b0164, 6366ed6e→3e5e2d76, 098324f6→d3df022a — tree-identical to their dangling sides but themselves unreachable from HEAD): confirm each is still the best-documented successor or re-point to a reachable descendant / convert to a dated baseline row (report §f1)

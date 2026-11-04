@@ -50,7 +50,10 @@ TODO_LIST.md; shipped work is recorded in CHANGELOG.md and FEATURES.md.
 
 ## v0.4.0 — Intelligence
 
-- ai-task-prioritizer: ranking model writes the `priority` field
+- ai-task-prioritizer: deeper ranking beyond the shipped scorer — per
+  ADR-0015 the AI score stays a SCHEDULING signal (claim-order aging),
+  never a written-back `priority` field; the open half is richer ranking
+  inputs (outcome/cost signals from the calibration dataset), not trust
 - Retry-policy table keyed on error class (D99 sketch: per-class attempt
   overrides and backoff curves on top of the shipped permanent/transient
   classes)

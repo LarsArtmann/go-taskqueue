@@ -202,6 +202,13 @@ checkbox, commit, never push). The executor enforces the safety rails:
   your own accounting veto every tick (exit non-zero = skip the tick).
   Poisoned repos (recent work all dead) pause harvesting for a cooldown
   (`--dlq-backoff`, together with `--repo-interval` for per-repo pacing).
+- **Batched, effort-sized work** — a backlog section becomes ONE batch task
+  worked by a small agent session instead of a task per line item
+  (`--batch-items N`, default 5); with `--jev`, a TypeSafe Jev effort
+  estimate per item sizes each batch against an `--effort-budget` in
+  minutes, so a pile of two-line fixes and one deep refactor cost what
+  they actually take — estimates can only raise a run's timeout, never
+  shrink it, and any estimator outage falls back to flat sizing.
 - **Paced & pruned** — at most one in-flight backlog item per repo, and
   `--prune-stale` (on by default for pools) cancels pending tasks whose item
   is now `[x]`, reworded, or gone from the file — work that no longer has a
