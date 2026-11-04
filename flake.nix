@@ -50,7 +50,7 @@
         # from THIS attr (single source; check-version-agreement.sh verifies
         # the set against CHANGELOG).
         version = "0.4.1";
-        vendorHash = "sha256-wtkejgEGOcWXL01VDzjbGwTJgAmMT2pnUQHDGYMJWQI=";
+        vendorHash = "sha256-uyU5Fgv52AwP7vhW9TYrm8RxQteVAP3tHA3p//SenT0=";
         # go.mod floor 1.27.1 > nixpkgs go_1_26 (1.26.7); build the
         # toolchain from the go.dev source tarball until nixpkgs ships
         # >= 1.27.1 (drop-day doctrine — delete this block then).
