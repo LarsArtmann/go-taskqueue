@@ -231,10 +231,10 @@ github.com/larsartmann/go-taskqueue/internal/queue v0.4.1 h1:cRMJbMA+rAEa3/Ys/GG
 github.com/larsartmann/go-taskqueue/internal/queue v0.4.1/go.mod h1:LE1lwnJMAozoZgQDZjbuuPx1PQJuu5h+9O9TFwnXmnM=
 github.com/larsartmann/go-taskqueue/internal/queue/companion v0.4.1 h1:qK0+4Gl+Fv9mh76vGSopwHASx7CV23bJ6PQPjPaDTp8=
 github.com/larsartmann/go-taskqueue/internal/queue/companion v0.4.1/go.mod h1:LQMVt6/1jeXRUqb2MFTqwLI1NXodyut+kgOROnGo0Vk=
-github.com/larsartmann/go-taskqueue/internal/queue/postgres v0.3.4 h1:9j1A0gjtXCS1JL7gCJe0OOjkPyw00ie3YT2YnF/My5w=
-github.com/larsartmann/go-taskqueue/internal/queue/postgres v0.3.4/go.mod h1:De23oqWbes52u2VV0+0mS+iIn1rpBbioseSSW4OPjDk=
-github.com/larsartmann/go-taskqueue/internal/queue/postgresv4 v0.4.0 h1:vXbfk9msvLv6/Jo+n6rYuhaTjPstOxCHrKofnIErh7g=
-github.com/larsartmann/go-taskqueue/internal/queue/postgresv4 v0.4.0/go.mod h1:HJbxXo8WJ0rM5lqJxBwen6pNjv/jmvlkpj77yupdz88=
+github.com/larsartmann/go-taskqueue/internal/queue/postgres v0.4.1 h1:K0jnT9f2DBIsMMUbcajoitLHT2/Pz1sY2DTzLsY5szg=
+github.com/larsartmann/go-taskqueue/internal/queue/postgres v0.4.1/go.mod h1:ETai0LStSgba8ovrqVzgpqQUnJPi95b2DQHLJIOiADc=
+github.com/larsartmann/go-taskqueue/internal/queue/postgresv4 v0.4.1 h1:EwHaIEuDXGEkIJM1ddDxNDfDEcfD+VCUz57pOvzrx7s=
+github.com/larsartmann/go-taskqueue/internal/queue/postgresv4 v0.4.1/go.mod h1:HJbxXo8WJ0rM5lqJxBwen6pNjv/jmvlkpj77yupdz88=
 github.com/larsartmann/go-taskqueue/internal/queue/sqlite v0.4.1 h1:Epg9XHf/1DOR7yYvS+KAfjzPakHLks/rHRK1SstUAL0=
 github.com/larsartmann/go-taskqueue/internal/queue/sqlite v0.4.1/go.mod h1:nAisdd1+KVQ39mjYEQCfKyiOOJHmEOJVe6mKGpye2so=
 github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4 v0.4.1 h1:ffEPACKoc5Oyot9f9wOpLrN2BxPfbdSTJtYGfzzKQHY=
