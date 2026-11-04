@@ -38,6 +38,7 @@ func TestLastFailureEvidenceReadsLastFailedFact(t *testing.T) {
 	}
 
 	rest := got
+
 	rest.Stage, rest.ExitCode = "", 0
 	if !rest.IsZero() {
 		t.Fatalf("got %+v, want every field beyond stage/exit zero", got)

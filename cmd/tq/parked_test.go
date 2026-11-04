@@ -367,11 +367,13 @@ func TestParkedTaskRowJSONWireShape(t *testing.T) {
 		t.Fatalf("round-trip unmarshal: %v", err)
 	}
 
-	if back.ID != tk.ID || back.Provider != "zai" || back.RequeueClass != queue.RequeueClassRateLimit || back.Status != task.Pending {
+	if back.ID != tk.ID || back.Provider != "zai" || back.RequeueClass != queue.RequeueClassRateLimit ||
+		back.Status != task.Pending {
 		t.Fatalf("round-trip mismatch: got %+v (provider=%q class=%q)", back.Task, back.Provider, back.RequeueClass)
 	}
 
 	empty := parkedTaskRow{Task: tk}
+
 	b, err = json.Marshal(empty)
 	if err != nil {
 		t.Fatalf("marshal empty: %v", err)

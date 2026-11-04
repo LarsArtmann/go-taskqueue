@@ -21,6 +21,7 @@ func TestStallTrackerQuietKeys(t *testing.T) {
 	tracker.touch("ws-live")
 
 	now = now.Add(stuckTurnThreshold - time.Second)
+
 	if quiet := tracker.quietKeys(); len(quiet) != 0 {
 		t.Fatalf("one second before the bar, quiet = %v, want none", quiet)
 	}
@@ -28,7 +29,9 @@ func TestStallTrackerQuietKeys(t *testing.T) {
 	// ws-live stays fresh (touched now); ws-attached has been silent since
 	// attach and crosses the bar.
 	tracker.touch("ws-live")
+
 	now = now.Add(2 * time.Second)
+
 	quiet := tracker.quietKeys()
 	if len(quiet) != 1 || quiet[0] != "ws-attached" {
 		t.Fatalf("attached-silent workspace must be the quiet candidate, got %v", quiet)
@@ -36,6 +39,7 @@ func TestStallTrackerQuietKeys(t *testing.T) {
 
 	// A frame from the stuck workspace clears it for another window.
 	tracker.touch("ws-attached")
+
 	if quiet := tracker.quietKeys(); len(quiet) != 0 {
 		t.Fatalf("fresh frame must clear the quiet candidate, got %v", quiet)
 	}
@@ -43,6 +47,7 @@ func TestStallTrackerQuietKeys(t *testing.T) {
 	// The epoch seed: attach AFTER other entries exist still counts from
 	// its own attach time, and an unattached key never appears.
 	now = now.Add(stuckTurnThreshold + time.Minute)
+
 	quiet = tracker.quietKeys()
 	if len(quiet) != 2 { // ws-attached + ws-live, both past the bar now
 		t.Fatalf("both silent workspaces must be candidates, got %v", quiet)

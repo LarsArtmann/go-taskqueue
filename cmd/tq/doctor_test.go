@@ -1498,7 +1498,9 @@ func TestCappedProviderList(t *testing.T) {
 		t.Fatalf("single = %q, want zai", got)
 	}
 
-	if got := cappedProviderList(map[string]bool{"zai": true, "openai": true, "anthropic": true, "gemini": true}); got != "anthropic, gemini, openai +1 more" {
+	if got := cappedProviderList(
+		map[string]bool{"zai": true, "openai": true, "anthropic": true, "gemini": true},
+	); got != "anthropic, gemini, openai +1 more" {
 		t.Fatalf("four = %q, want three named + 1 more", got)
 	}
 

@@ -4,19 +4,18 @@ import (
 	"fmt"
 	"go/ast"
 	"maps"
-	"regexp"
-
-	"github.com/larsartmann/go-taskqueue/internal/testastguard"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/larsartmann/go-taskqueue/internal/httpapi"
+	"github.com/larsartmann/go-taskqueue/internal/testastguard"
 )
 
 // withContentTypeRe extracts the media-type literal of every withContentType
@@ -184,8 +183,11 @@ func TestWithIsOnlyMergeMechanism(t *testing.T) {
 			calls++
 
 			if !testastguard.InSpan(withBody.Pos(), withBody.End(), call.Pos()) {
-				t.Errorf("%s: maps.Copy outside the with body (line %d) â with is the file's ONLY merge mechanism; route the site through with/mergeRow",
-					f.Path, f.FSet.Position(call.Pos()).Line)
+				t.Errorf(
+					"%s: maps.Copy outside the with body (line %d) â with is the file's ONLY merge mechanism; route the site through with/mergeRow",
+					f.Path,
+					f.FSet.Position(call.Pos()).Line,
+				)
 			}
 		},
 	)
@@ -221,6 +223,7 @@ func TestWithIsOnlyMergeMechanismNegativeFixture(t *testing.T) {
 		"\tmaps.Copy(merged, base)\n" +
 		"\treturn merged\n" +
 		"}\n"
+
 	path := filepath.Join(dir, "fixture_test.go")
 	if err := os.WriteFile(path, []byte(src), 0o600); err != nil {
 		t.Fatalf("write fixture: %v", err)
@@ -245,7 +248,9 @@ func TestWithIsOnlyMergeMechanismNegativeFixture(t *testing.T) {
 	)
 
 	if outside == 0 {
-		t.Fatal("fixture's bare maps.Copy in rogue was NOT flagged outside the with body — the guard's negative path is dead")
+		t.Fatal(
+			"fixture's bare maps.Copy in rogue was NOT flagged outside the with body — the guard's negative path is dead",
+		)
 	}
 }
 
@@ -853,10 +858,12 @@ func TestMatrixCheckNegativePath(t *testing.T) {
 			resp.Body.Close()
 
 			tb := &failingTB{TB: t}
+
 			surf := row
 			if fixture.contentType != "" {
 				surf = row.withContentType(fixture.contentType)
 			}
+
 			surf.check(tb, resp.Header, "fixture")
 
 			if fixture.name == "clean fixture passes" {
@@ -873,7 +880,11 @@ func TestMatrixCheckNegativePath(t *testing.T) {
 				return
 			}
 
-			if fixture.contentType != "" && !slices.Contains(tb.failures, fmt.Sprintf("header = %q, want %q", "text/html; charset=utf-8", fixture.contentType)) {
+			if fixture.contentType != "" &&
+				!slices.Contains(
+					tb.failures,
+					fmt.Sprintf("header = %q, want %q", "text/html; charset=utf-8", fixture.contentType),
+				) {
 				t.Errorf("Content-Type mismatch not reported: %v", tb.failures)
 			}
 		})
@@ -919,6 +930,7 @@ func TestSecurityDocMatrixMatchesGoMatrix(t *testing.T) {
 			// Row format: | `Header-Name` | serve cell | api cell |
 			_, rest, _ := strings.Cut(line, "`")
 			name, _, _ := strings.Cut(rest, "`")
+
 			docNames[strings.ToLower(name)] = true
 			if strings.EqualFold(name, "Content-Type") {
 				contentTypeRow = line
@@ -961,10 +973,13 @@ func TestSecurityDocMatrixMatchesGoMatrix(t *testing.T) {
 	}
 
 	if contentTypeRow == "" {
-		t.Fatal("SECURITY.md matrix has no Content-Type row — the per-surface media types must be mirrored (same-change rule with the withContentType pins)")
+		t.Fatal(
+			"SECURITY.md matrix has no Content-Type row — the per-surface media types must be mirrored (same-change rule with the withContentType pins)",
+		)
 	}
 
 	docMedia := map[string]bool{}
+
 	for _, span := range backtickSpans(contentTypeRow) {
 		if strings.Contains(span, "/") {
 			docMedia[span] = true
@@ -987,13 +1002,19 @@ func TestSecurityDocMatrixMatchesGoMatrix(t *testing.T) {
 
 	for media := range pinMedia {
 		if !docMedia[media] {
-			t.Errorf("withContentType pin %q missing from SECURITY.md's Content-Type row — mirror it in the same change", media)
+			t.Errorf(
+				"withContentType pin %q missing from SECURITY.md's Content-Type row — mirror it in the same change",
+				media,
+			)
 		}
 	}
 
 	for media := range docMedia {
 		if !pinMedia[media] {
-			t.Errorf("SECURITY.md Content-Type row lists %q but no withContentType pin carries it — the doc column must mirror the pins", media)
+			t.Errorf(
+				"SECURITY.md Content-Type row lists %q but no withContentType pin carries it — the doc column must mirror the pins",
+				media,
+			)
 		}
 	}
 }
@@ -1001,6 +1022,7 @@ func TestSecurityDocMatrixMatchesGoMatrix(t *testing.T) {
 // backtickSpans returns the backticked spans of a markdown table row.
 func backtickSpans(line string) []string {
 	spans := []string{}
+
 	for rest := line; ; {
 		_, after, found := strings.Cut(rest, "`")
 		if !found {

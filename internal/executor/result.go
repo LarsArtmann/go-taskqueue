@@ -322,6 +322,7 @@ func EnrichFailureEvidenceFiles(ctx context.Context, runDir string, id task.ID) 
 			merged = append(merged, file)
 		}
 	}
+
 	slices.Sort(merged)
 	evidence.FilesChanged = merged
 

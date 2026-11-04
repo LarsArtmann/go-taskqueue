@@ -436,15 +436,18 @@ func TestAgentCrushServerSeam(t *testing.T) {
 			// rc-0-lie discriminator and quiet suppresses it); local runs stay
 			// --quiet. The stub argv carries exactly one of the two verbs.
 			routedVerb := ""
+
 			for _, a := range argv {
 				if a == "--verbose" || a == "--quiet" {
 					routedVerb = a
 				}
 			}
+
 			wantVerb := "--quiet"
 			if tc.wantArg {
 				wantVerb = "--verbose"
 			}
+
 			if routedVerb != wantVerb {
 				t.Fatalf("argv %v: run verb = %q, want %q", argv, routedVerb, wantVerb)
 			}
@@ -484,6 +487,7 @@ func TestVerdictRailBakedIntoPrompts(t *testing.T) {
 		"env >> \"" + envLog + "\"\n" +
 		"echo '---' >> \"" + envLog + "\"\n" +
 		"echo 'Created session for non-interactive run session_id=stub-sess-1'\n"
+
 	bin := filepath.Join(dir, "rail-agent")
 	if err := os.WriteFile(bin, []byte(stub), 0o755); err != nil {
 		t.Fatalf("write stub: %v", err)
@@ -516,32 +520,40 @@ func TestVerdictRailBakedIntoPrompts(t *testing.T) {
 	}
 
 	paths := make([]string, 0, 2)
+
 	for i, inv := range invocations[:2] {
 		lines := strings.Split(strings.TrimRight(inv, "\n"), "\n")
 		prompt := ""
+
 		for j, l := range lines {
 			if l == "--" && j+1 < len(lines) {
 				prompt = strings.Join(lines[j+1:], "\n")
 			}
 		}
+
 		if prompt == "" {
 			t.Fatalf("invocation %d: no prompt after -- in %q", i, inv)
 		}
+
 		if !strings.Contains(prompt, "tq verdict --file ") {
 			t.Fatalf("invocation %d prompt lacks the verdict rail: %q", i, prompt)
 		}
+
 		idx := strings.Index(prompt, "tq verdict --file ") + len("tq verdict --file ")
 		rest := prompt[idx:]
+
 		end := strings.Index(rest, " ")
 		if end < 0 {
 			end = len(rest)
 		}
+
 		paths = append(paths, rest[:end])
 	}
 
 	if paths[0] != paths[1] {
 		t.Fatalf("work and closeout rails name different paths: %q vs %q", paths[0], paths[1])
 	}
+
 	if !strings.Contains(paths[0], "tq-verdict-") {
 		t.Fatalf("rail path %q is not the per-run verdict temp file", paths[0])
 	}
@@ -550,6 +562,7 @@ func TestVerdictRailBakedIntoPrompts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if got := strings.Count(string(envRaw), "TQ_RESULT_FILE="+paths[0]); got < 2 {
 		t.Fatalf("env channel must stay exported on BOTH turns, got %d hits for %s", got, paths[0])
 	}
@@ -573,6 +586,7 @@ func TestQuestionRailSkipsSecondOpinionClones(t *testing.T) {
 	stub := "#!/bin/sh\n" +
 		"printf '%s\\n' \"$*\" >> \"" + argsLog + "\"\n" +
 		"echo '---8<---' >> \"" + argsLog + "\"\n"
+
 	bin := filepath.Join(dir, "ask-agent")
 	if err := os.WriteFile(bin, []byte(stub), 0o755); err != nil {
 		t.Fatalf("write stub: %v", err)
@@ -1189,6 +1203,7 @@ printf 'TQ_RESULT: {"files_changed":["x.go"]}\n'
 	// The verdict rail makes each invocation multi-line (its text carries
 	// newlines), so invocations are separated by a marker line.
 	blocks := strings.Split(strings.TrimRight(string(raw), "\n"), "---8<---")
+
 	blocks = blocks[:len(blocks)-1] // trailing empty after the last marker
 	if len(blocks) != 2 {
 		t.Fatalf("want 2 agent invocations (work + closeout), got %d: %q", len(blocks), blocks)

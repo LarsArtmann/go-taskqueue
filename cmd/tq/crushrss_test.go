@@ -33,6 +33,7 @@ func TestReadCrushServerRSS(t *testing.T) {
 	}
 
 	path := filepath.Join(t.TempDir(), "rss.log")
+
 	body := "1700000000000 100000\n" +
 		"garbage line\n" +
 		"1700000045000 300000\n" +

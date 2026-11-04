@@ -23,6 +23,7 @@ func readCalibrationRows(t *testing.T, dir string) []CalibrationRow {
 	}
 
 	var rows []CalibrationRow
+
 	for line := range strings.SplitSeq(strings.TrimSpace(string(raw)), "\n") {
 		var row CalibrationRow
 		if err := json.Unmarshal(jsontext.Value(line), &row); err != nil {
@@ -50,9 +51,10 @@ func TestRecordCalibration(t *testing.T) {
 			Verify:      &VerifyReceipt{Command: "./ci", RC: 0, Head: "abc123", OK: 5, Fail: 0},
 			Attestation: &VerifyVerdict{OK: true, Checked: []string{AttestationCheckReceipt}},
 			Report:      "docs/status/x.md",
+
+			SessionID:      "sess-1",
+			SessionCostUSD: 0.42,
 		}
-		result.SessionID = "sess-1"
-		result.SessionCostUSD = 0.42
 
 		recordRunOutcome(ctx, &result, "status", jsontext.Value(`{"report":"docs/status/x.md"}`),
 			"out", "", task.ID("000001a0calibrationjoinkeys0000001"))
@@ -144,6 +146,7 @@ func TestFinishParsedRunCalibrates(t *testing.T) {
 		repo := t.TempDir()
 
 		raw := jsontext.Value(`{"verdict":"fixed","summary":"root cause"}`)
+
 		var result DLQFixResult
 		if err := json.Unmarshal(raw, &result); err != nil {
 			t.Fatalf("seed result: %v", err)
@@ -167,6 +170,7 @@ func TestFinishParsedRunCalibrates(t *testing.T) {
 		ctx, _ := NewSink(context.Background())
 
 		var result DLQFixResult
+
 		err := finishParsedRun(ctx, &result, errors.New("parse miss"), "dlqfix", nil, "output", t.TempDir(),
 			task.ID("000001a0calibrationparsemiss00000006"))
 		if err == nil {

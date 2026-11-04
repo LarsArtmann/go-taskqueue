@@ -398,6 +398,7 @@ func TestShowJSONCarriesFailureEvidence(t *testing.T) {
 	if err := showTaskJSON(ctx, reader, &buf, resolved, false); err != nil {
 		t.Fatalf("showTaskJSON: %v", err)
 	}
+
 	out := buf.String()
 
 	var doc struct {

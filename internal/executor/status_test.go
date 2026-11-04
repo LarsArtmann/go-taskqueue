@@ -143,7 +143,10 @@ func TestStatusExecutorHappyPath(t *testing.T) {
 func TestStatusExecutorMissingReportFileFailsRetryable(t *testing.T) {
 	t.Parallel()
 
-	bin := makeStubAgent(t, `printf '%s' '{"report":"docs/status/never-written.md","next_items":1}' > "$TQ_RESULT_FILE"`)
+	bin := makeStubAgent(
+		t,
+		`printf '%s' '{"report":"docs/status/never-written.md","next_items":1}' > "$TQ_RESULT_FILE"`,
+	)
 	e := &StatusExecutor{Agent: &AgentExecutor{Bin: bin}}
 
 	err := e.Execute(context.Background(), statusTaskT(t, StatusPayload{
@@ -181,7 +184,7 @@ func TestStatusExecutorPathConfinement(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	bin := makeStubAgent(t, stubVerdict("{\"report\":\"" + rel + "\",\"next_items\":0}"))
+	bin := makeStubAgent(t, stubVerdict("{\"report\":\""+rel+"\",\"next_items\":0}"))
 	e := &StatusExecutor{Agent: &AgentExecutor{Bin: bin}}
 
 	err = e.Execute(context.Background(), statusTaskT(t, StatusPayload{

@@ -2573,6 +2573,7 @@ func cmdShow(args []string) error {
 	if err != nil {
 		return err
 	}
+
 	return showTaskJSON(ctx, store, os.Stdout, t, *commits)
 }
 

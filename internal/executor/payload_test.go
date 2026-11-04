@@ -93,6 +93,7 @@ func TestDecodePayloadToleranceIsNotVacuous(t *testing.T) {
 	}
 
 	var strict AgentPayload
+
 	err := jsonv2.Unmarshal(payload, &strict, jsonv2.RejectUnknownMembers(true))
 	if err == nil {
 		t.Fatal("strict unmarshal error = nil, want a rejection — the counterfactual is not exercising anything")

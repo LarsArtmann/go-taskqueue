@@ -287,7 +287,6 @@ tq verdict '{"verdict":"request_changes","summary":"...","findings":[{"title":".
 // (case-insensitive) and the JSON must parse; findings with empty titles
 // are dropped and severity ratings are normalized to low/medium/high.
 func ParseResult(raw jsontext.Value) (ReviewResult, error) {
-
 	var parsed struct {
 		Verdict  string          `json:"verdict"`
 		Summary  string          `json:"summary"`

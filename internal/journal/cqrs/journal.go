@@ -122,7 +122,9 @@ func (e *factEventError) Unwrap() error { return e.err }
 func factEvent(fact journal.Fact) (event.Event, *factEventError) {
 	if fact.Seq <= 0 {
 		//cqrs-lint:ignore(C025) validation error built from fact data; no wrapped cause exists
-		return nil, &factEventError{msg: fmt.Sprintf("cqrs: fact for task %s has non-positive seq %d", fact.TaskID, fact.Seq)}
+		return nil, &factEventError{
+			msg: fmt.Sprintf("cqrs: fact for task %s has non-positive seq %d", fact.TaskID, fact.Seq),
+		}
 	}
 
 	eventID, err := seqEventID(fact.Seq)
@@ -132,7 +134,10 @@ func factEvent(fact journal.Fact) (event.Event, *factEventError) {
 
 	streamID, parseErr := id.ParseStreamID(fact.TaskID)
 	if parseErr != nil {
-		return nil, &factEventError{msg: fmt.Sprintf("cqrs: fact seq %d stream id: %s", fact.Seq, parseErr), err: parseErr}
+		return nil, &factEventError{
+			msg: fmt.Sprintf("cqrs: fact seq %d stream id: %s", fact.Seq, parseErr),
+			err: parseErr,
+		}
 	}
 
 	streamType := id.StreamType(StreamTypeTask)
@@ -163,7 +168,10 @@ func factEvent(fact journal.Fact) (event.Event, *factEventError) {
 		event.WithSchemaVersion(event.SchemaVersion(1)),
 	)
 	if newErr != nil {
-		return nil, &factEventError{msg: fmt.Sprintf("cqrs: build event for fact seq %d: %s", fact.Seq, newErr), err: newErr}
+		return nil, &factEventError{
+			msg: fmt.Sprintf("cqrs: build event for fact seq %d: %s", fact.Seq, newErr),
+			err: newErr,
+		}
 	}
 
 	return evt, nil

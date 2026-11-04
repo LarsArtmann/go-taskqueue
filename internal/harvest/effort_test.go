@@ -10,7 +10,6 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
-
 )
 
 func TestMinutesFromScore(t *testing.T) {
@@ -184,6 +183,7 @@ func TestJevEstimatorRequestShape(t *testing.T) {
 		}
 
 		todos, _ := state["todos"].(map[string]any)
+
 		first, _ := todos["t0"].(map[string]any)
 		if first == nil || first["text"] != "fix the null deref" || first["section"] != "## Bugs" {
 			t.Errorf("todos.t0 = %v, want text+section fields", todos["t0"])

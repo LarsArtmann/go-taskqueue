@@ -111,7 +111,15 @@ func TestRecordRunOutcome(t *testing.T) {
 		ctx, sink := NewSink(context.Background())
 
 		result := ReviewResult{Summary: "clean"}
-		recordRunOutcome(ctx, &result, "review", jsontext.Value("{\"verdict\":\"approve\"}"), "full output", "verify tail", task.ID("000001a0recordrunoutcome0000001"))
+		recordRunOutcome(
+			ctx,
+			&result,
+			"review",
+			jsontext.Value("{\"verdict\":\"approve\"}"),
+			"full output",
+			"verify tail",
+			task.ID("000001a0recordrunoutcome0000001"),
+		)
 
 		if result.LogPath == "" {
 			t.Fatal("LogPath empty, want the sidecar path")

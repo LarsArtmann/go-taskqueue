@@ -195,7 +195,6 @@ func (e *StatusExecutor) Execute(ctx context.Context, t task.Task) error {
 // parseStatusResult enforces the mechanical contract: a verdict JSON object
 // with a non-empty report path and a next_items count.
 func parseStatusResult(raw jsontext.Value) (StatusResult, error) {
-
 	var parsed struct {
 		Report    string `json:"report"`
 		NextItems int    `json:"next_items"`

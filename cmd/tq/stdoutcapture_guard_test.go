@@ -71,8 +71,11 @@ func TestNoParallelGlobalStdoutCapture(t *testing.T) {
 			})
 
 			if parallel && capture {
-				t.Errorf("%s: %s calls t.Parallel and captureStdout — render via a writer-parameterized function into a bytes.Buffer instead (the showTaskJSON pattern)",
-					file, fn.Name.Name)
+				t.Errorf(
+					"%s: %s calls t.Parallel and captureStdout — render via a writer-parameterized function into a bytes.Buffer instead (the showTaskJSON pattern)",
+					file,
+					fn.Name.Name,
+				)
 			}
 		}
 	}

@@ -263,7 +263,9 @@ func TestParseAgentPoolOptionsBatchTimeoutDefault(t *testing.T) {
 		t.Fatalf("batch-10 timeout = %v, want 300m", big.timeout)
 	}
 
-	pinned, err := parseAgentPoolOptions([]string{"--projects-dir", t.TempDir(), "--batch-items", "10", "--task-timeout", "45m"})
+	pinned, err := parseAgentPoolOptions(
+		[]string{"--projects-dir", t.TempDir(), "--batch-items", "10", "--task-timeout", "45m"},
+	)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -284,6 +286,7 @@ func TestParseAgentPoolOptionsBatchTimeoutDefault(t *testing.T) {
 	// A config-file task-timeout line counts as explicit too (fs.Set marks
 	// the flag visited): the file's value must not be scaled.
 	dir := t.TempDir()
+
 	conf := dir + "/pool.conf"
 	if err := os.WriteFile(conf, []byte("batch-items=5\ntask-timeout=60m\n"), 0o600); err != nil {
 		t.Fatal(err)

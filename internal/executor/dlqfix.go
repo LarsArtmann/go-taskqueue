@@ -159,6 +159,7 @@ func (e *DLQFixExecutor) Execute(ctx context.Context, t task.Task) error {
 	}
 
 	raw, verr := RequireVerdict(verdict)
+
 	result, err := ParseDLQFixResult(raw)
 	if verr != nil {
 		err = verr
@@ -292,7 +293,6 @@ A wontfix without a summary is invalid output.
 // carry a non-empty summary (an unexplained dismissal is the behavior
 // being automated away).
 func ParseDLQFixResult(raw jsontext.Value) (DLQFixResult, error) {
-
 	var parsed struct {
 		Verdict   string `json:"verdict"`
 		Summary   string `json:"summary"`

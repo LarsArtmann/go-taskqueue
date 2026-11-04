@@ -74,6 +74,7 @@ func TestInSpanClassifiesCallPositions(t *testing.T) {
 	f.CensusCalls(
 		func(call *ast.CallExpr) bool {
 			sel, ok := call.Fun.(*ast.SelectorExpr)
+
 			return ok && sel.Sel.Name == "Copy"
 		},
 		func(call *ast.CallExpr) {
@@ -129,6 +130,7 @@ func TestInSpanBoundaries(t *testing.T) {
 // method by method.
 type mockT struct {
 	*testing.T
+
 	failed bool
 }
 

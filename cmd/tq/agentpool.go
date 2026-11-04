@@ -157,8 +157,16 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 		false,
 		"effort-aware batching via TypeSafe Jev (default OFF): every harvested item is scored once against a 5-level effort rubric and cached (<db>.effort.json, model-stamped); estimates size runs and may only RAISE payload timeouts; any API failure falls back to flat per-item sizing; WARNING: item texts, section headings, repo name and repo purpose are sent to the TypeSafe API (default https://api.typesafe.ai)",
 	)
-	jevModel := fs.String("jev-model", os.Getenv("TQ_JEV_MODEL"), "jev: TypeSafe model alias (default jev-latest; $TQ_JEV_MODEL)")
-	jevAPIKey := fs.String("jev-api-key", os.Getenv("TYPESAFE_API_KEY"), "jev: TypeSafe API key (Bearer; $TYPESAFE_API_KEY)")
+	jevModel := fs.String(
+		"jev-model",
+		os.Getenv("TQ_JEV_MODEL"),
+		"jev: TypeSafe model alias (default jev-latest; $TQ_JEV_MODEL)",
+	)
+	jevAPIKey := fs.String(
+		"jev-api-key",
+		os.Getenv("TYPESAFE_API_KEY"),
+		"jev: TypeSafe API key (Bearer; $TYPESAFE_API_KEY)",
+	)
 	batchItems := fs.Int(
 		"batch-items",
 		5,

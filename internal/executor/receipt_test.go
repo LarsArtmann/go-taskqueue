@@ -462,6 +462,7 @@ func TestVerifyFailureStoresReceiptAndVerdict(t *testing.T) {
 	ctx, sink := NewSink(context.Background())
 
 	e := &AgentExecutor{Bin: makeStubAgent(t, "true")}
+
 	err := e.Execute(ctx, agentTaskT(t, AgentPayload{
 		Repo:   t.TempDir(),
 		Prompt: "hi",

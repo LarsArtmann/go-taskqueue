@@ -178,6 +178,7 @@ func (s *stallTracker) quietKeys() []string {
 	defer s.mu.Unlock()
 
 	var quiet []string
+
 	for key, last := range s.last {
 		if s.now().Sub(last) >= stuckTurnThreshold {
 			quiet = append(quiet, key)
@@ -481,6 +482,7 @@ func RunAgentFeed(ctx context.Context, socket string, feed *AgentFeed, log *slog
 			now := time.Now()
 
 			mu.Lock()
+
 			due := lastWarn[key].IsZero() || now.Sub(lastWarn[key]) >= stuckTurnRewarn
 			if due {
 				lastWarn[key] = now

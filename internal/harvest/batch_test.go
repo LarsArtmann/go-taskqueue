@@ -259,7 +259,11 @@ func TestBatchSpansSectionGaps(t *testing.T) {
 
 	payload := decodeBatchPayload(t, pending[0])
 
-	want := []string{"fix the null deref in claim", "fix the leak in heartbeat goroutine", "fix the race in sweeper watermark"}
+	want := []string{
+		"fix the null deref in claim",
+		"fix the leak in heartbeat goroutine",
+		"fix the race in sweeper watermark",
+	}
 	if len(payload.Items) != len(want) {
 		t.Fatalf("batch members = %v, want the three fresh items around the ticked gap", payload.Items)
 	}
@@ -369,7 +373,12 @@ func TestSectionRunsFoldsByEffortBudget(t *testing.T) {
 	// Flat equivalence: flat DefaultBatchTimeoutMinutes estimates under
 	// the derived budget (3 x 30) chunk exactly at the count cap.
 	flat := func(Item) int { return DefaultBatchTimeoutMinutes }
-	four := []Item{{Heading: "A", Key: "f1"}, {Heading: "A", Key: "f2"}, {Heading: "A", Key: "f3"}, {Heading: "A", Key: "f4"}}
+	four := []Item{
+		{Heading: "A", Key: "f1"},
+		{Heading: "A", Key: "f2"},
+		{Heading: "A", Key: "f3"},
+		{Heading: "A", Key: "f4"},
+	}
 
 	runs = sectionRuns(four, all, 3, 3*DefaultBatchTimeoutMinutes, flat)
 	if got := runKeys(runs); !sameRuns(got, [][]string{{"f1", "f2", "f3"}, {"f4"}}) {
@@ -417,6 +426,7 @@ type fakeEffortEstimator struct {
 
 func (f fakeEffortEstimator) EstimateEffort(_ context.Context, items []Item) map[string]int {
 	out := make(map[string]int)
+
 	for _, item := range items {
 		if minutes, ok := f.minutes[item.Text]; ok {
 			out[item.Key] = minutes

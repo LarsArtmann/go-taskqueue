@@ -112,7 +112,12 @@ func latestFailureEvidenceSummary(facts []journal.Fact) map[string]string {
 // and the not_before window still open (a due park is claimable work, not
 // parked). The class join runs CLI-side because it is fact evidence, not
 // a stored column the queue filter could push down.
-func parkedByClass(tasks []task.Task, latest map[string]queue.RequeueEvidence, class string, now time.Time) []task.Task {
+func parkedByClass(
+	tasks []task.Task,
+	latest map[string]queue.RequeueEvidence,
+	class string,
+	now time.Time,
+) []task.Task {
 	out := make([]task.Task, 0, len(tasks))
 
 	for _, t := range tasks {

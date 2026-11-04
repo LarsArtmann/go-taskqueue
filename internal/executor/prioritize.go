@@ -145,6 +145,7 @@ func (e *PrioritizeExecutor) Execute(ctx context.Context, t task.Task) error {
 	}
 
 	raw, verr := RequireVerdict(verdict)
+
 	result, err := ParsePrioritizeResult(raw, payload.Items)
 	if verr != nil {
 		err = verr
@@ -205,7 +206,6 @@ tq verdict '{"verdicts":[{"item_key":"...","score":80,"effort_minutes":30,"confi
 // channel: it must parse, cover every input item exactly once, and carry
 // in-range scores. Lenient on optional fields.
 func ParsePrioritizeResult(raw jsontext.Value, items []PrioritizeItem) (PrioritizeResult, error) {
-
 	var parsed struct {
 		Verdicts []PrioritizeVerdict `json:"verdicts"`
 	}

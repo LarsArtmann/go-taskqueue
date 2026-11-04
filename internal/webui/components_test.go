@@ -420,6 +420,7 @@ func TestParkedRequeueEvidenceProvider(t *testing.T) {
 			if ev.Provider != tc.wantProvider {
 				t.Errorf("parkedRequeueEvidence(%s) provider = %q, want %q", tc.tk.Status, ev.Provider, tc.wantProvider)
 			}
+
 			if got := ev.Class == queue.RequeueClassBudget; got != tc.wantBudgetTag {
 				t.Errorf("parkedOnBudget(%s) = %v, want %v", tc.tk.Status, got, tc.wantBudgetTag)
 			}

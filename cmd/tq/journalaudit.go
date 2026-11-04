@@ -587,7 +587,8 @@ func renderJournalAudit(ctx context.Context, store queue.Store, asJSON bool, tas
 	}
 
 	if report.TaskID != "" {
-		fmt.Fprintf(w,
+		fmt.Fprintf(
+			w,
 			"journal drift audit (task %s): 1 task compared against %d fact(s) (status, attempts, priority, dedup key)\n",
 			report.TaskID,
 			report.FactsReplayed,
@@ -650,20 +651,23 @@ func renderJournalAudit(ctx context.Context, store queue.Store, asJSON bool, tas
 
 		if n := report.Requeues.ByClass[queue.RequeueClassRateLimit] +
 			report.Requeues.ByClass[queue.RequeueClassRateLimitGate]; n > 0 {
-			fmt.Fprintln(w,
+			fmt.Fprintln(
+				w,
 				"  (rate-limit requeues never burn an attempt; 3 consecutive ENVIRONMENTAL ones escalate — see the env-streak breaker)",
 			)
 		}
 
 		if n := report.Requeues.ByClass[queue.RequeueClassBudget]; n > 0 {
-			fmt.Fprintln(w,
+			fmt.Fprintln(
+				w,
 				"  (budget requeues park paid turns until the daily cap or budget-cmd window resets — no attempt burn, outside the env-streak breaker; the pool LOOKS idle on purpose)",
 			)
 		}
 	}
 
 	if f := report.Failures; f.Total > 0 && f.EnvStreakBurns > 0 {
-		fmt.Fprintf(w,
+		fmt.Fprintf(
+			w,
 			"failures: %d total, %d env-streak breaker burn(s) — sustained environmental requeues escalated to an attempt burn, NOT judged execution failures\n",
 			f.Total,
 			f.EnvStreakBurns,
@@ -687,7 +691,8 @@ func renderJournalAudit(ctx context.Context, store queue.Store, asJSON bool, tas
 	case 0:
 		fmt.Fprintln(w, "autopsy yield: no dlqfix autopsies in the journal")
 	default:
-		fmt.Fprintf(w,
+		fmt.Fprintf(
+			w,
 			"autopsy yield: %d minted — %d fix(es) landed, %d wontfix, %d rescue(s) in flight, %d dead again, %d unrun\n",
 			y.Autopsies,
 			y.Fixes,
@@ -696,7 +701,10 @@ func renderJournalAudit(ctx context.Context, store queue.Store, asJSON bool, tas
 			y.FailedAgain,
 			y.Unrun,
 		)
-		fmt.Fprintln(w, "  (environmental deaths no longer mint autopsies — the ceremony cut refuses them at sweep time)")
+		fmt.Fprintln(
+			w,
+			"  (environmental deaths no longer mint autopsies — the ceremony cut refuses them at sweep time)",
+		)
 	}
 
 	if len(report.SecretEvidence) == 0 {
@@ -708,7 +716,15 @@ func renderJournalAudit(ctx context.Context, store queue.Store, asJSON bool, tas
 		)
 
 		for _, hit := range report.SecretEvidence {
-			fmt.Fprintf(w, "  seq=%d %s %s field=%s locations=%d\n", hit.Seq, hit.Type, hit.TaskID, hit.Field, hit.Count)
+			fmt.Fprintf(
+				w,
+				"  seq=%d %s %s field=%s locations=%d\n",
+				hit.Seq,
+				hit.Type,
+				hit.TaskID,
+				hit.Field,
+				hit.Count,
+			)
 		}
 
 		fmt.Fprintln(w,

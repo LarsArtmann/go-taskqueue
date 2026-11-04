@@ -227,7 +227,9 @@ func TestReviewExecutorBackfillsFindingCommitSHA(t *testing.T) {
 
 	bin := makeStubAgent(
 		t,
-		"cat <<'EOF'\nEOF\n" + stubVerdict(`{"verdict":"request_changes","findings":[{"title":"fix leak","severity":"high","anchor":"conn.Close()"}]}`),
+		"cat <<'EOF'\nEOF\n"+stubVerdict(
+			`{"verdict":"request_changes","findings":[{"title":"fix leak","severity":"high","anchor":"conn.Close()"}]}`,
+		),
 	)
 	e := &ReviewExecutor{Agent: &AgentExecutor{Bin: bin}}
 

@@ -32,15 +32,16 @@ package harvest
 import (
 	"bytes"
 	"context"
+	"encoding/json/v2"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
+	"maps"
 	"math"
 	"net/http"
 	"os"
 	"time"
-
-	"encoding/json/v2"
 )
 
 const (
@@ -198,7 +199,11 @@ func (c *jevClient) httpClient() *http.Client {
 
 // ask posts one System One request and returns the answers keyed by
 // question name.
-func (c *jevClient) ask(ctx context.Context, state map[string]any, questions map[string]scoreQuestion) (map[string]scoreAnswer, error) {
+func (c *jevClient) ask(
+	ctx context.Context,
+	state map[string]any,
+	questions map[string]scoreQuestion,
+) (map[string]scoreAnswer, error) {
 	body, err := json.Marshal(systemOneRequest{
 		Model:     c.model(),
 		State:     state,
@@ -274,14 +279,20 @@ type JevEstimator struct {
 // fail fast on a misconfigured key, not silently run estimator-less.
 func NewJevEstimator(cfg JevConfig) (*JevEstimator, error) {
 	if cfg.APIKey == "" {
-		return nil, fmt.Errorf("effort: --jev needs a TypeSafe API key (--jev-api-key or $TYPESAFE_API_KEY)")
+		return nil, errors.New("effort: --jev needs a TypeSafe API key (--jev-api-key or $TYPESAFE_API_KEY)")
 	}
 
 	cache := NewEffortCache()
 	if cfg.CachePath != "" {
 		if err := cache.Load(cfg.CachePath); err != nil {
 			if cfg.Log != nil {
-				cfg.Log.Warn("effort: estimate cache unreadable, starting empty", "path", cfg.CachePath, "err", err.Error())
+				cfg.Log.Warn(
+					"effort: estimate cache unreadable, starting empty",
+					"path",
+					cfg.CachePath,
+					"err",
+					err.Error(),
+				)
 			}
 		}
 	}
@@ -316,9 +327,7 @@ func (e *JevEstimator) EstimateEffort(ctx context.Context, items []Item) map[str
 
 	fresh := e.estimateMisses(ctx, misses, model)
 
-	for key, minutes := range fresh {
-		out[key] = minutes
-	}
+	maps.Copy(out, fresh)
 
 	if len(fresh) > 0 && e.client.CachePath != "" {
 		if err := e.cache.Save(e.client.CachePath); err != nil && e.client.Log != nil {
@@ -371,7 +380,13 @@ func (e *JevEstimator) estimateMisses(ctx context.Context, misses []Item, model 
 		answers, err := client.ask(ctx, state, questions)
 		if err != nil {
 			if e.client.Log != nil {
-				e.client.Log.Warn("effort: jev pass failed, flat default applies", "items", len(chunk), "err", err.Error())
+				e.client.Log.Warn(
+					"effort: jev pass failed, flat default applies",
+					"items",
+					len(chunk),
+					"err",
+					err.Error(),
+				)
 			}
 
 			continue

@@ -676,7 +676,12 @@ func retrySession(t task.Task) string {
 }
 
 // runAgent spawns the headless agent in the repo and waits for it.
-func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPayload, id task.ID) (string, jsontext.Value, error) {
+func (e *AgentExecutor) runAgent(
+	ctx context.Context,
+	repoDir string,
+	p *AgentPayload,
+	id task.ID,
+) (string, jsontext.Value, error) {
 	// The verdict channel: one temp file per run, exported to the agent
 	// process. Best-effort — when the temp dir is unusable the channel is
 	// absent and the run records no verdict (strict-parser executors fail
@@ -840,7 +845,10 @@ func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPa
 		// wrapping ctx.Err(): the worker finalizes cooperative cancels by
 		// matching context.Canceled.
 		if ctx.Err() != nil {
-			return finish(buf.String(), fmt.Errorf("agent run cancelled (%w): %s", ctx.Err(), tailBytes(buf.Bytes(), 8192)))
+			return finish(
+				buf.String(),
+				fmt.Errorf("agent run cancelled (%w): %s", ctx.Err(), tailBytes(buf.Bytes(), 8192)),
+			)
 		}
 
 		// Provider exhaustion (Z.ai 429 usage-limit windows, OpenAI-style

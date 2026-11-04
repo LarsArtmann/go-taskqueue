@@ -129,6 +129,7 @@ func readCrushServerRSS(path string) *CrushServerRSSSummary {
 	}
 
 	sum := &CrushServerRSSSummary{}
+
 	for line := range strings.SplitSeq(string(data), "\n") {
 		fields := strings.Fields(line)
 		if len(fields) != 2 {
@@ -141,6 +142,7 @@ func readCrushServerRSS(path string) *CrushServerRSSSummary {
 		}
 
 		sum.Samples++
+
 		sum.LastKB = kb
 		if kb > sum.MaxKB {
 			sum.MaxKB = kb
