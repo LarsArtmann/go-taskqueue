@@ -37,7 +37,7 @@ require (
 	github.com/larsartmann/go-cqrs-lite/dedup/v4 v4.3.0 // indirect
 	github.com/larsartmann/go-cqrs-lite/dispatcher/v4 v4.5.2 // indirect
 	github.com/larsartmann/go-cqrs-lite/event/v4 v4.15.2 // indirect
-	github.com/larsartmann/go-cqrs-lite/id/v4 v4.7.3 // indirect
+	github.com/larsartmann/go-cqrs-lite/id/v4 v4.7.4 // indirect
 	github.com/larsartmann/go-cqrs-lite/metadata/v4 v4.7.3 // indirect
 	github.com/larsartmann/go-cqrs-lite/metaengine/projectionadapter/v4 v4.6.2 // indirect
 	github.com/larsartmann/go-cqrs-lite/metaengine/v4 v4.20.0 // indirect
@@ -58,7 +58,7 @@ require (
 	github.com/larsartmann/go-taskqueue/internal/journal v0.4.1 // indirect
 	github.com/larsartmann/go-taskqueue/internal/journal/cqrs v0.4.1 // indirect
 	github.com/larsartmann/go-taskqueue/internal/queue/companion v0.4.1 // indirect
-	github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4 v0.4.0 // indirect
+	github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4 v0.4.1 // indirect
 	github.com/larsartmann/go-taskqueue/internal/retryx v0.4.1 // indirect
 	github.com/larsartmann/go-taskqueue/internal/task v0.4.1 // indirect
 	github.com/lithammer/shortuuid/v3 v3.0.7 // indirect
