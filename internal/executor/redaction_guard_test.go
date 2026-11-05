@@ -48,7 +48,7 @@ func TestTailHelpersDelegateRedaction(t *testing.T) {
 
 				if !delegates {
 					t.Errorf(
-						"%s: tail helper %s does not call redactOutput/redactBytes (nor a tail helper that does) â output tails must pass the secrets-in-logs pass before reaching journal facts",
+						"%s: tail helper %s does not call redactOutput/redactBytes (nor a tail helper that does) — output tails must pass the secrets-in-logs pass before reaching journal facts",
 						file,
 						name,
 					)
@@ -68,7 +68,7 @@ func TestTailHelpersDelegateRedaction(t *testing.T) {
 
 	if !slices.Equal(got, want) {
 		t.Errorf(
-			"tail-helper census = %v, want %v â a new tail helper must delegate to redactOutput/redactBytes and join this pin (or justify its absence here)",
+			"tail-helper census = %v, want %v — a new tail helper must delegate to redactOutput/redactBytes and join this pin (or justify its absence here)",
 			got,
 			want,
 		)

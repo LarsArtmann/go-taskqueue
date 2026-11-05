@@ -21,20 +21,20 @@ type File struct {
 	Path string
 }
 
-// Parse reads and parses path, failing t on either error.
-func Parse(t testing.TB, path string) *File {
-	t.Helper()
+// Parse reads and parses path, failing tb on either error.
+func Parse(tb testing.TB, path string) *File {
+	tb.Helper()
 
 	src, err := os.ReadFile(path)
 	if err != nil {
-		t.Fatalf("read %s: %v", path, err)
+		tb.Fatalf("read %s: %v", path, err)
 	}
 
 	fset := token.NewFileSet()
 
 	node, err := parser.ParseFile(fset, path, src, 0)
 	if err != nil {
-		t.Fatalf("parse %s: %v", path, err)
+		tb.Fatalf("parse %s: %v", path, err)
 	}
 
 	return &File{FSet: fset, AST: node, Path: path}
@@ -43,8 +43,8 @@ func Parse(t testing.TB, path string) *File {
 // FuncBody returns the body of the named top-level FuncDecl, failing t
 // when the function (or its body) is absent — a census over a missing
 // mechanism is silently vacuous, so that failure is loud.
-func (f *File) FuncBody(t testing.TB, name string) ast.Node {
-	t.Helper()
+func (f *File) FuncBody(tb testing.TB, name string) ast.Node {
+	tb.Helper()
 
 	var body ast.Node
 
@@ -57,7 +57,7 @@ func (f *File) FuncBody(t testing.TB, name string) ast.Node {
 	})
 
 	if body == nil {
-		t.Fatalf("%s: func %s (with a body) not found — the census's anchor is gone", f.Path, name)
+		tb.Fatalf("%s: func %s (with a body) not found — the census's anchor is gone", f.Path, name)
 	}
 
 	return body

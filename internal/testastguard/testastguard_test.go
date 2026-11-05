@@ -40,6 +40,8 @@ func writeFixture(t *testing.T) *File {
 }
 
 func TestParseFatalsOnMissingFile(t *testing.T) {
+	t.Parallel()
+
 	mt := newMockT(t)
 
 	defer mt.recover()
@@ -52,6 +54,8 @@ func TestParseFatalsOnMissingFile(t *testing.T) {
 }
 
 func TestFuncBodyFatalsOnMissingFunc(t *testing.T) {
+	t.Parallel()
+
 	f := writeFixture(t)
 
 	mt := newMockT(t)
@@ -66,6 +70,8 @@ func TestFuncBodyFatalsOnMissingFunc(t *testing.T) {
 }
 
 func TestInSpanClassifiesCallPositions(t *testing.T) {
+	t.Parallel()
+
 	f := writeFixture(t)
 	withBody := f.FuncBody(t, "with")
 
@@ -92,6 +98,8 @@ func TestInSpanClassifiesCallPositions(t *testing.T) {
 }
 
 func TestCallNamesAndFuncDecls(t *testing.T) {
+	t.Parallel()
+
 	f := writeFixture(t)
 
 	got := map[string][]string{}
@@ -115,6 +123,8 @@ func TestCallNamesAndFuncDecls(t *testing.T) {
 }
 
 func TestInSpanBoundaries(t *testing.T) {
+	t.Parallel()
+
 	if !InSpan(10, 20, 10) || !InSpan(10, 20, 19) {
 		t.Error("InSpan must include start, exclude end")
 	}
@@ -134,7 +144,11 @@ type mockT struct {
 	failed bool
 }
 
-func newMockT(t *testing.T) *mockT { return &mockT{T: t} }
+func newMockT(t *testing.T) *mockT {
+	t.Helper()
+
+	return &mockT{T: t}
+}
 
 func (m *mockT) Fatalf(_ string, _ ...any) {
 	m.failed = true

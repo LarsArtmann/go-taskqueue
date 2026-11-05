@@ -184,7 +184,7 @@ func TestWithIsOnlyMergeMechanism(t *testing.T) {
 
 			if !testastguard.InSpan(withBody.Pos(), withBody.End(), call.Pos()) {
 				t.Errorf(
-					"%s: maps.Copy outside the with body (line %d) â with is the file's ONLY merge mechanism; route the site through with/mergeRow",
+					"%s: maps.Copy outside the with body (line %d) — with is the file's ONLY merge mechanism; route the site through with/mergeRow",
 					f.Path,
 					f.FSet.Position(call.Pos()).Line,
 				)
@@ -193,7 +193,7 @@ func TestWithIsOnlyMergeMechanism(t *testing.T) {
 	)
 
 	if calls == 0 {
-		t.Error("no maps.Copy calls found â the census should see with's merge site")
+		t.Error("no maps.Copy calls found — the census should see with's merge site")
 	}
 }
 
