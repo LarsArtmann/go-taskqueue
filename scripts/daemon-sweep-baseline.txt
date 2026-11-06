@@ -1875,3 +1875,16 @@ bc1bf681c310a14c7f872aab394c791da8b9c928
 7205d635520622e301e30a378ef5ac9b45325381
 d0a6a28376af6f047d50bbb899b803e4fc56d521
 bf1307637fe2715072ba20e75fd33a5edc4b379b
+# 2026-11-06 (task 000001a1a1fe2e5f49910a65f98400000000, Wave-4 close): +5
+# footer-less heuristic sweeps, each content-verified via git show --stat
+# against its lane's artifacts, nothing foreign: 9d3ed6bf = docs-gates gate
+# wiring (check-docs-gates.sh + ci-local leg + .docs-gates.json, the
+# a8d9a235 footered adoption wave's daemon tail); 4d3aa7bf = redaction-guard/
+# testastguard/headermatrix test-churn lane; 35bff13f = docs-gates report +
+# CHANGELOG/TODO sweep; ac4e4b22 = templ regen churn (fragments/layout_templ);
+# 7cf6b6c2 = one-line app.css tweak.
+9d3ed6bf970f2297165fb812280f4deec198741a
+4d3aa7bf0cfbdc2fe08e6c00c025f5ef179eae6c
+35bff13fcf4070528d0edc72f5de8da84e7d2c2a
+ac4e4b221b952b04971402cf7d01f648ef6e1120
+7cf6b6c2176e22afb0c4b86c1dc355476bd864aa
