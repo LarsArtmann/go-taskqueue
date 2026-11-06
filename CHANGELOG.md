@@ -168,6 +168,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Internal
 
+- docs-gates doctrine gate adopted (2026-11-06): this repo now runs the
+  org docs-gates battery as a ci-local gate (`scripts/check-docs-gates.sh`,
+  countable contract with `--self-test`); `.docs-gates.json` tunes the
+  doctrine (audit-all + annotate sweep-only, cadence pileup tripwire
+  280/75d), AGENTS.md §Relation records the BuildFlow deliberate
+  non-coverage alongside the docs-gates adoption, and the AGENTS.md byte
+  budget was consciously reset 25,400 → 26,400 (both twins, same change).
+  Operator-invisible: repo-internal docs-health tooling.
 - O14 ruling on the push-timing pre-push guard (2026-11-02, row 1243):
   a push refusal is CONTRIBUTOR-visible, not tq-product-visible — the
   guard lives in `scripts/check-push-timing.sh` and installs into

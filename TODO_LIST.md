@@ -27,6 +27,15 @@ not here.
 
 - [ ] Add a vendor-sync negative fixture/self-test for the lint-leak class — the go.sum lint-leak caught by CI run 41877954180 has no regression pin (fleet convention: countable gates carry `--self-test`) (2026-11-04_19-24 §f5; scripts/check-gomod-vendor-sync.sh)
 
+## docs-gates / BuildFlow integration follow-ups (2026-11-06; source: docs/status/2026-11-06_04-20_docs-gates-adoption-buildflow-doctrine.md §f; deduped)
+
+- [ ] Build the docs-gates bridge sweeper: run `docs-gates run <repo> --json` per pool repo on a timer, mint ONE fix task per FAIL gate with dedup key `docs-gates:<repo>:<gate>` and a journal watermark cursor (the internal/watermark pattern), so fleet doc-drift findings flow into the queue the way incident reports do (report §f1; internal/incident/recorder.go)
+- [ ] Run the first mechanized corpus sweep: `docs-gates freshness --audit-all` over the live root reports, harvest genuine survivors into TODO_LIST deduped against live rows, skip-mark resolved status notes (replaces the manual 2026-11-04 sweep class) (report §f2)
+- [ ] File the docs-gates upstream issue for an annotate archived-scope knob: the gate has no exclusion for `docs/status/archived/**`, so history-locked corpora can never green it — verify at source (internal/docsannotate scan set) before filing, search open+closed dups (report §f3)
+- [ ] Evaluate a tq toolsdk provider for BuildFlow: surface per-repo queue debt (dead/DLQ tasks citing the repo) as BuildFlow findings via a `pkg/provider` toolsdk module — needs a machine face for per-repo debt first; decide deliberate non-fix vs build (report §f4)
+- [ ] depbump buildflow delegation seam: for BuildFlow-covered consumer repos route the gomod/vendorHash rituals through `buildflow -s gomod-check --fix` / `buildflow -s nix-hash-fix --fix` instead of hand-rolled edits — prompt-const change (never daemon-fold; check-prompt-const-folds), nix-hash-fix gated on BuildFlow #88 landing (report §f5; internal/executor/depbump.go)
+- [ ] Archive-ritual batch: move fully-resolved root reports to `docs/status/archived/` (check-archive-eligibility bar) to shrink the 259-unarchived pile, then ratchet `.docs-gates.json` cadence back toward the pbx defaults (15/21) (report §f6)
+
 ## 24th-dispatch closeout appends (2026-11-03; source: docs/status/tasks/2026-11-03_05-12_task-000001a19f836b538429f6b0fe4b00000000.md §e/§f; deduped)
 
 - [ ] Audit the 4 UNREACHABLE fork-record partners shipped in eb401d1a (afe706ca→25631367, ad95e368→a7f60f6c, 847554e0→057b0164, 6366ed6e→3e5e2d76, 098324f6→d3df022a — tree-identical to their dangling sides but themselves unreachable from HEAD): confirm each is still the best-documented successor or re-point to a reachable descendant / convert to a dated baseline row (report §f1)
