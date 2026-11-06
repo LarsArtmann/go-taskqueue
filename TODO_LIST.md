@@ -40,7 +40,7 @@ not here.
 
 - [ ] Pin the docs-gates binary-version contract in scripts/check-docs-gates.sh: header + summary note the minimum version carrying the `run --json` face (in-tree > released v0.1.1 tag) and that a stale binary fails LOUD as non-JSON, never silently green (report §f1)
 - [ ] Record the verification receipts the adoption session skipped: one full `scripts/ci-local.sh` run including the new docs-gates gate, plus `scripts/test-cmd-tq.sh` for the agentsDocMaxBytes twin-reset change (report §f2; cmd/tq/facts_json_test.go)
-- [ ] Resolve or baseline the pre-existing cite-drift MISSING FILE at TODO_LIST.md:1679 — the `pma-daemon/committer/committer.go:112` cross-repo cite from commit aa19b7e6 has no tracked-file match (report §f3)
+- [ ] Resolve or baseline the pre-existing cite-drift MISSING FILE (TODO_LIST row ~1685): the cross-repo cite of pma-daemon's committer (committer.go line 112, from commit aa19b7e6) has no tracked-file match in this repo (report §f3)
 
 ## 24th-dispatch closeout appends (2026-11-03; source: docs/status/tasks/2026-11-03_05-12_task-000001a19f836b538429f6b0fe4b00000000.md §e/§f; deduped)
 
