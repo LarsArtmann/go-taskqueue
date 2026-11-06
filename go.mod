@@ -6,7 +6,7 @@ require (
 	github.com/LarsArtmann/go-crush-data v0.6.0 // indirect
 	github.com/Oudwins/tailwind-merge-go v0.2.3 // indirect
 	github.com/ThreeDotsLabs/watermill v1.5.3 // indirect
-	github.com/a-h/parse v0.0.0-20261027111828-db2689052003 // indirect
+	github.com/a-h/parse v0.0.0-20250122154542-74294addb73e // indirect
 	github.com/andybalholm/brotli v1.2.8 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
