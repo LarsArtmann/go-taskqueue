@@ -288,7 +288,7 @@ pinned; audit log not located). Draft kept in `BuildFlow/docs/drafts/`
     logs land in-repo (`.crush/shell-output/output-*.log`); confirm ignored.
 41. Session shells: multi-`tail` and PIPESTATUS hazards were avoided this session;
     nothing to fix — keep the discipline.
-42. `internal/harvest` batch prompts: none touched; n/a.
+42. `internal/harvest` batch prompts: none touched; n/a. <!-- fresh:skip: status note (none touched), not an actionable task -->
 43. Check if `scripts/check-webui-css.sh` can auto-FAIL with the healed diff
     printed to a file for review instead of raw stdout (the minified blob made the
     failure log unreadable in CI — triage cost).

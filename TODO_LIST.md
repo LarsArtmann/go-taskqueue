@@ -23,6 +23,10 @@ not here.
 - [ ] Execute and record the two standing nix receipts: `nix run .#test` and `nix flake check --all-systems` — both cited as needed by the 2026-09-30 flake-heal window and never run to a recorded receipt (2026-09-30_01-24 §f8/§f9)
 - [ ] Extract the dedup-ledger trigger sites into named AGENTS.md pins: doctor pending-listing, payload-validation, companion/reads.go scan — the ledger's extraction triggers exist only in status reports, so future sweeps re-derive them by archaeology (2026-09-30_09-15 §f10-§f13; AGENTS.md §executor shared seams)
 
+## 2026-11-04 report §f residue (2026-11-06 docs-gates freshness heal)
+
+- [ ] Add a vendor-sync negative fixture/self-test for the lint-leak class — the go.sum lint-leak caught by CI run 41877954180 has no regression pin (fleet convention: countable gates carry `--self-test`) (2026-11-04_19-24 §f5; scripts/check-gomod-vendor-sync.sh)
+
 ## 24th-dispatch closeout appends (2026-11-03; source: docs/status/tasks/2026-11-03_05-12_task-000001a19f836b538429f6b0fe4b00000000.md §e/§f; deduped)
 
 - [ ] Audit the 4 UNREACHABLE fork-record partners shipped in eb401d1a (afe706ca→25631367, ad95e368→a7f60f6c, 847554e0→057b0164, 6366ed6e→3e5e2d76, 098324f6→d3df022a — tree-identical to their dangling sides but themselves unreachable from HEAD): confirm each is still the best-documented successor or re-point to a reachable descendant / convert to a dated baseline row (report §f1)

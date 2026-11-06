@@ -393,3 +393,15 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 - **go-health-dashboard** (MIT): ADOPTED — `/health` inside the token
   gate, tq CSS, same-origin Datastar. **httputil** NOT adopted
   (proprietary); **go-nix-helpers** flake-input only, never local.
+- **docs-gates (ADOPTED 2026-11-06)**: `.docs-gates.json` + ci-local gate
+  `scripts/check-docs-gates.sh` (battery `run --json`; absent binary →
+  SKIP rc=0). Tuned doctrine: audit-all + annotate SKIPPED — corpus
+  archaeology + history-locked findings stay SWEEP-only
+  (`docs-gates freshness --audit-all` / `annotate`); cadence = pileup
+  tripwire (280/75d vs pbx 15/21). A new report's §f must harvest into
+  TODO_LIST or carry `<!-- fresh:skip: … -->`, else the gate trips.
+- **BuildFlow**: deliberately NOT covered (no `.buildflow.yml`) —
+  ci-local + flake own quality here. Ad-hoc steps only (`-s gomod-check
+  --fix`; `-s nix-hash-fix --fix` barred by the #88 Known Issue).
+  depsweep/depbump are orthogonal to `buildflow update` (first-party
+  release DAG, not third-party bumps).

@@ -94,7 +94,7 @@ claims_, not their marketing tone.
 - **S1 — Event-wake ingress.** Their headline "wakes, not waits" is, on
   our kernel, one endpoint: a token-gated webhook route on `tq api` that
   maps inbound events (a GitHub comment/PR/issue, or anything else) to
-  dedup-keyed `enqueue`s. The queue already has every semantic the
+  dedup-keyed `enqueue` calls. The queue already has every semantic the
   pattern needs (dedup, delay, priority bands); what is missing is the
   listener. This also natively yields their "agents review your pull
   requests" flow as a webhook-minted `review`-type task.

@@ -44,7 +44,7 @@ short, serialized bridge (roadmap below).
   worker (14 fields, internal/worker/worker.go:24), harvest (22,
   internal/harvest/harvest.go:123), webui (9), bridges (papdashboard 10+6, cqa
   8), sweepers (4–7 each), consumer/watermark/lockout (4–5 each), readmodel
-  `ProjectionHostOptions` (5) + functional `Option`s.
+  `ProjectionHostOptions` (5) + functional `Option` values.
 - **~20 env vars** read directly (`TQ_DB`, `TQ_SQLITE_SYNC`, `TQ_POOL_CONFIG`,
   `TQ_REDACT`, `TQ_PAP_*`, `CRUSH_SESSION_ID`, …).
 - **Engine/DSN policy in code, not config**: sqlitev4 hardcodes the DSN

@@ -218,6 +218,16 @@ step "dlq-sidecar-citations gate self-test (summary + negative-path pins)"
 step "dlq-sidecar-citations gate (pre-fix shape sweep)"
 ./scripts/check-dlq-sidecar-citations.sh
 
+# docs-gates doctrine gate (2026-11-06): org docs-health battery over this
+# repo (.docs-gates.json tunes the doctrine — rationale in AGENTS.md §Relation
+# to other projects). Host-tool optional: an absent binary self-SKIPs rc=0
+# (hermetic CI); self-test first (fleet countable-gate contract).
+step "docs-gates gate self-test (summary + negative-path pins)"
+./scripts/check-docs-gates.sh --self-test
+
+step "docs-gates gate (doctrine battery, tuned config)"
+./scripts/check-docs-gates.sh
+
 # Hook fleet hard gates (T7/H6-H8, ruling R5 2026-10-30): both PreToolUse
 # hooks' pinned self-tests AND benign corpora, with the countable summary
 # grepped (fleet contract). Batteries are fully sandboxed (clean tmp repos,

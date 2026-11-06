@@ -100,7 +100,11 @@ import (
 // without a budget bump (gate was red at HEAD 586c640a before this
 // reset). Re-tighten pass rowed in TODO_LIST.md; twin
 // scripts/check-agents-size.sh re-synced.
-const agentsDocMaxBytes = 25_400
+// 25_400 → 26_400 (2026-11-06, docs-gates adoption session): net-new
+// load-bearing Relation rows (docs-gates gate + tuned doctrine; BuildFlow
+// deliberate non-coverage) — a future agent adding .buildflow.yml
+// "helpfully" is exactly the split-brain the row prevents; twin re-synced.
+const agentsDocMaxBytes = 26_400
 
 // TestAgentsDocSizeGuard keeps AGENTS.md from silently growing past its
 // byte budget (plan M89 residue); the failure names the top sections so a
