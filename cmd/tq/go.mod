@@ -31,7 +31,7 @@ require (
 	github.com/LarsArtmann/go-crush-data v0.5.0 // indirect
 	github.com/Oudwins/tailwind-merge-go v0.2.3 // indirect
 	github.com/ThreeDotsLabs/watermill v1.5.3 // indirect
-	github.com/a-h/templ v0.3.1070 // indirect
+	github.com/a-h/templ v0.3.1100 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/fsnotify/fsnotify v1.10.1 // indirect
@@ -49,7 +49,7 @@ require (
 	github.com/knadh/koanf/providers/env v1.1.0 // indirect
 	github.com/knadh/koanf/providers/file v1.2.1 // indirect
 	github.com/knadh/koanf/v2 v2.4.1 // indirect
-	github.com/larsartmann/go-branded-id v0.7.0 // indirect
+	github.com/larsartmann/go-branded-id v0.7.1 // indirect
 	github.com/larsartmann/go-cqrs-lite/claiming/v4 v4.0.2 // indirect
 	github.com/larsartmann/go-cqrs-lite/command/v4 v4.14.1 // indirect
 	github.com/larsartmann/go-cqrs-lite/commandlifecycle/projections/v4 v4.2.3 // indirect
@@ -75,19 +75,19 @@ require (
 	github.com/larsartmann/go-datastar/static v0.6.1 // indirect
 	github.com/larsartmann/go-error-family v0.12.0 // indirect
 	github.com/larsartmann/go-flightrecorder v0.2.1 // indirect
-	github.com/larsartmann/go-health v0.8.1 // indirect
-	github.com/larsartmann/go-health-dashboard v0.12.2 // indirect
+	github.com/larsartmann/go-health v0.10.0 // indirect
+	github.com/larsartmann/go-health-dashboard v0.13.2 // indirect
 	github.com/larsartmann/go-retry v0.9.0 // indirect
 	github.com/larsartmann/go-sse v0.6.2 // indirect
 	github.com/larsartmann/go-taskqueue/internal/queue/companion v0.4.1 // indirect
 	github.com/larsartmann/go-taskqueue/internal/queue/postgresv4 v0.4.1 // indirect
 	github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4 v0.4.1 // indirect
 	github.com/larsartmann/go-taskqueue/internal/retryx v0.4.1 // indirect
-	github.com/larsartmann/templ-components v1.26.0 // indirect
-	github.com/larsartmann/templ-components/datastar v1.26.0 // indirect
-	github.com/larsartmann/templ-components/htmx v1.26.0 // indirect
-	github.com/larsartmann/templ-components/icons v1.26.0 // indirect
-	github.com/larsartmann/templ-components/utils v1.26.0 // indirect
+	github.com/larsartmann/templ-components v1.27.0 // indirect
+	github.com/larsartmann/templ-components/datastar v1.27.0 // indirect
+	github.com/larsartmann/templ-components/htmx v1.27.0 // indirect
+	github.com/larsartmann/templ-components/icons v1.27.0 // indirect
+	github.com/larsartmann/templ-components/utils v1.27.0 // indirect
 	github.com/lithammer/shortuuid/v3 v3.0.7 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/maypok86/otter/v2 v2.4.0 // indirect
