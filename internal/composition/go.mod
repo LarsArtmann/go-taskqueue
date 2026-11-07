@@ -5,10 +5,10 @@ go 1.27.3
 require (
 	github.com/larsartmann/go-cqrs-lite/metaengine/sqliteengine/v4 v4.6.0
 	github.com/larsartmann/go-cqrs-lite/system/v4 v4.16.0
-	github.com/larsartmann/go-taskqueue/internal/config v0.4.1
-	github.com/larsartmann/go-taskqueue/internal/queue v0.4.1
-	github.com/larsartmann/go-taskqueue/internal/queue/sqlite v0.3.3
-	github.com/larsartmann/go-taskqueue/internal/readmodel v0.4.1
+	github.com/larsartmann/go-taskqueue/internal/config v0.4.2
+	github.com/larsartmann/go-taskqueue/internal/queue v0.4.2
+	github.com/larsartmann/go-taskqueue/internal/queue/sqlite v0.4.2
+	github.com/larsartmann/go-taskqueue/internal/readmodel v0.4.2
 )
 
 require (
@@ -55,12 +55,12 @@ require (
 	github.com/larsartmann/go-flightrecorder v0.2.1 // indirect
 	github.com/larsartmann/go-retry v0.9.0 // indirect
 	github.com/larsartmann/go-sse v0.6.2 // indirect
-	github.com/larsartmann/go-taskqueue/internal/journal v0.4.1 // indirect
-	github.com/larsartmann/go-taskqueue/internal/journal/cqrs v0.4.1 // indirect
-	github.com/larsartmann/go-taskqueue/internal/queue/companion v0.4.1 // indirect
-	github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4 v0.4.1 // indirect
-	github.com/larsartmann/go-taskqueue/internal/retryx v0.4.1 // indirect
-	github.com/larsartmann/go-taskqueue/internal/task v0.4.1 // indirect
+	github.com/larsartmann/go-taskqueue/internal/journal v0.4.2 // indirect
+	github.com/larsartmann/go-taskqueue/internal/journal/cqrs v0.4.2 // indirect
+	github.com/larsartmann/go-taskqueue/internal/queue/companion v0.4.2 // indirect
+	github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4 v0.4.2 // indirect
+	github.com/larsartmann/go-taskqueue/internal/retryx v0.4.2 // indirect
+	github.com/larsartmann/go-taskqueue/internal/task v0.4.2 // indirect
 	github.com/lithammer/shortuuid/v3 v3.0.7 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/maypok86/otter/v2 v2.4.0 // indirect

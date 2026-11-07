@@ -4,7 +4,7 @@ go 1.27.3
 
 require (
 	github.com/jackc/pgx/v5 v5.12.0
-	github.com/larsartmann/go-taskqueue/internal/queue/postgres v0.4.1
+	github.com/larsartmann/go-taskqueue/internal/queue/postgres v0.4.2
 )
 
 require (
@@ -23,11 +23,11 @@ require (
 	github.com/larsartmann/go-cqrs-lite/record/v4 v4.6.2 // indirect
 	github.com/larsartmann/go-error-family v0.12.0 // indirect
 	github.com/larsartmann/go-sse v0.6.2 // indirect
-	github.com/larsartmann/go-taskqueue/internal/journal v0.4.1 // indirect
-	github.com/larsartmann/go-taskqueue/internal/queue v0.4.1 // indirect
-	github.com/larsartmann/go-taskqueue/internal/queue/companion v0.4.1 // indirect
-	github.com/larsartmann/go-taskqueue/internal/queue/postgresv4 v0.4.1 // indirect
-	github.com/larsartmann/go-taskqueue/internal/task v0.4.1 // indirect
+	github.com/larsartmann/go-taskqueue/internal/journal v0.4.2 // indirect
+	github.com/larsartmann/go-taskqueue/internal/queue v0.4.2 // indirect
+	github.com/larsartmann/go-taskqueue/internal/queue/companion v0.4.2 // indirect
+	github.com/larsartmann/go-taskqueue/internal/queue/postgresv4 v0.4.2 // indirect
+	github.com/larsartmann/go-taskqueue/internal/task v0.4.2 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	golang.org/x/sync v0.24.0 // indirect
 	golang.org/x/text v0.43.0 // indirect

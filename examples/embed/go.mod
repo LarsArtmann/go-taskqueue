@@ -4,12 +4,12 @@ go 1.27.3
 
 require (
 	github.com/jackc/pgx/v5 v5.12.0
-	github.com/larsartmann/go-taskqueue/executor v0.4.1
-	github.com/larsartmann/go-taskqueue/queue v0.4.1
-	github.com/larsartmann/go-taskqueue/queue/postgres v0.4.1
-	github.com/larsartmann/go-taskqueue/queue/sqlite v0.4.1
-	github.com/larsartmann/go-taskqueue/task v0.4.1
-	github.com/larsartmann/go-taskqueue/worker v0.4.1
+	github.com/larsartmann/go-taskqueue/executor v0.4.2
+	github.com/larsartmann/go-taskqueue/queue v0.4.2
+	github.com/larsartmann/go-taskqueue/queue/postgres v0.4.2
+	github.com/larsartmann/go-taskqueue/queue/sqlite v0.4.2
+	github.com/larsartmann/go-taskqueue/task v0.4.2
+	github.com/larsartmann/go-taskqueue/worker v0.4.2
 )
 
 require (
@@ -32,18 +32,18 @@ require (
 	github.com/larsartmann/go-error-family v0.12.0 // indirect
 	github.com/larsartmann/go-retry v0.9.0 // indirect
 	github.com/larsartmann/go-sse v0.6.2 // indirect
-	github.com/larsartmann/go-taskqueue/internal/config v0.4.1 // indirect
-	github.com/larsartmann/go-taskqueue/internal/executor v0.4.1 // indirect
-	github.com/larsartmann/go-taskqueue/internal/journal v0.4.1 // indirect
-	github.com/larsartmann/go-taskqueue/internal/queue v0.4.1 // indirect
-	github.com/larsartmann/go-taskqueue/internal/queue/companion v0.4.1 // indirect
-	github.com/larsartmann/go-taskqueue/internal/queue/postgres v0.4.1 // indirect
-	github.com/larsartmann/go-taskqueue/internal/queue/postgresv4 v0.4.1 // indirect
-	github.com/larsartmann/go-taskqueue/internal/queue/sqlite v0.4.1 // indirect
-	github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4 v0.4.1 // indirect
-	github.com/larsartmann/go-taskqueue/internal/retryx v0.4.1 // indirect
-	github.com/larsartmann/go-taskqueue/internal/task v0.4.1 // indirect
-	github.com/larsartmann/go-taskqueue/internal/worker v0.4.1 // indirect
+	github.com/larsartmann/go-taskqueue/internal/config v0.4.2 // indirect
+	github.com/larsartmann/go-taskqueue/internal/executor v0.4.2 // indirect
+	github.com/larsartmann/go-taskqueue/internal/journal v0.4.2 // indirect
+	github.com/larsartmann/go-taskqueue/internal/queue v0.4.2 // indirect
+	github.com/larsartmann/go-taskqueue/internal/queue/companion v0.4.2 // indirect
+	github.com/larsartmann/go-taskqueue/internal/queue/postgres v0.4.2 // indirect
+	github.com/larsartmann/go-taskqueue/internal/queue/postgresv4 v0.4.2 // indirect
+	github.com/larsartmann/go-taskqueue/internal/queue/sqlite v0.4.2 // indirect
+	github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4 v0.4.2 // indirect
+	github.com/larsartmann/go-taskqueue/internal/retryx v0.4.2 // indirect
+	github.com/larsartmann/go-taskqueue/internal/task v0.4.2 // indirect
+	github.com/larsartmann/go-taskqueue/internal/worker v0.4.2 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/ncruces/go-strftime v1.1.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
@@ -68,6 +68,7 @@ require (
 // internal modules they require) needs one here.
 replace (
 	github.com/larsartmann/go-taskqueue/executor => ../../executor
+	github.com/larsartmann/go-taskqueue/internal/config => ../../internal/config
 	github.com/larsartmann/go-taskqueue/internal/executor => ../../internal/executor
 	github.com/larsartmann/go-taskqueue/internal/journal => ../../internal/journal
 	github.com/larsartmann/go-taskqueue/internal/queue => ../../internal/queue
