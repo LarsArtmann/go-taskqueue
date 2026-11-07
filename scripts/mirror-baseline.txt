@@ -2,11 +2,33 @@
 #
 # Format: one group per line — <category> <backend-file-1> <backend-file-2> …
 # (paths relative to the repo root, sorted; line numbers deliberately
-# excluded — the mirrored FILE PAIR is the stable identity).
+# excluded — the mirrored FILE PAIR is the stable identity). The identity
+# string must match the gate's parse exactly: category + space-separated
+# sorted paths (scripts/check-mirror-clones.sh).
 #
-# ZERO rows since the 2026-09-26 conformance-suite consolidation: the three
-# mirrored spike suites (store_test.go ×3 + the sessionfact pair) now share
-# ONE suite in internal/queue/companion/conform (StoreSuite harness +
-# capability knobs), and the adapters delegate to internal/queue/companion.
-# Any NEW cross-backend group fails ci-local; rows reappear only by
-# deliberate regen with a recorded reason.
+# History: zero rows from the 2026-09-26 conformance-suite consolidation
+# (the three mirrored spike suites — store_test.go ×3 + the sessionfact
+# pair — share ONE suite in internal/queue/companion/conform, and the
+# adapters delegate to internal/queue/companion) until the 2026-11-07
+# widening.
+#
+# 2026-11-07 widening: the gate now parses TWO art-dupl passes — the
+# canonical (actionability-filtered) view AND the raw --show-suppressed
+# view — so groups the filter hides fail strict unless pinned here.
+# Rows reappear only by deliberate regen with a recorded reason; groups
+# resolved since this baseline are reported for a regen that shrinks it.
+#
+# Pinned pairs (both visible ONLY in the raw view — the canonical view
+# never shows them; verified live at the 2026-11-07 widening):
+
+assignment internal/queue/postgresv4/adapter.go internal/queue/sqlitev4/adapter.go
+# Engine-backed thin delegators (`tokenFor + mapErr(s.engine.X(...))`)
+# that stay in the adapters per-engine types — owner-ratified design
+# (docs/planning/archived/2026-09-26_companion-extraction-design.md:
+# "they are not clone mass"); the small pieces carry art-dupl:accept
+# directives with recorded reasons; S4 deletes the modules anyway.
+
+conditional internal/queue/sqlitev4/wake_test.go queue/sqlite/sqlite_test.go
+# 6-token test-setup prolog (t.Fatalf + defer Close + ctx) —
+# test-scaffolding idiom below the actionability floor, not mirror
+# mass (2026-09-27_15-29 §f6 triage class).

@@ -382,6 +382,9 @@ step "check-dead-exports self-test (dead-exports summary + negative counter batt
 step "dead-export audit (advisory report)"
 ./scripts/check-dead-exports.sh
 
+step "mirror-clone gate self-test (summary format pin + baseline-identity + hidden-view battery)"
+./scripts/check-mirror-clones.sh --self-test
+
 step "mirror-clone gate (advisory until the companion extraction lands; MIRROR_CLONES_STRICT=1 gates)"
 ./scripts/check-mirror-clones.sh
 
