@@ -27,6 +27,14 @@ not here.
 
 - [x] Add a vendor-sync negative fixture/self-test for the lint-leak class — the go.sum lint-leak caught by CI run 41877954180 has no regression pin (fleet convention: countable gates carry `--self-test`) (2026-11-04_19-24 §f5; scripts/check-gomod-vendor-sync.sh) — landed: `lint_leak_scan` (4d63.com/codeberg/golangci domains) wired into the gate + self-test Case 8; `--self-test` flag accepted alongside VENDOR_SYNC_SELF_TEST
 
+## 2026-11-07 lint-leak closeout follow-ups (task 000001a1b5354e65; source: docs/status/tasks/2026-11-07_10-05_task-000001a1b5354e654f987c4438af00000000.md §f)
+
+- [ ] Identify the go.sum lint-leak WRITER — which invocation wrote golangci-lint's dep graph into module go.sums (bare golangci-lint run with `-mod=mod`? buildflow's golangci fan-out cache isolation?) — and fix it at the source so `lint_leak_scan` never fires for real (2026-11-04_19-24 §f4; scripts/check-gomod-vendor-sync.sh)
+- [ ] Make the vendor-sync lint-leak self-test end-to-end: add an env-hook fixture (TQ_VENDOR_SYNC_EXTRA_SUMS style, the check-go-mods.sh TQ_GOMODS_EXTRA_MODS pattern) so the leak case exercises the full gate path instead of the unit-level `lint_leak_scan` call (scripts/check-gomod-vendor-sync.sh Case 8)
+- [ ] Switch ci-local.sh's vendor-sync self-test step to invoke `./scripts/check-gomod-vendor-sync.sh --self-test` (the flag now exists; env var stays supported) so all countable gates share one invocation shape (scripts/ci-local.sh:358)
+- [ ] Add an allowlist mechanism to `lint_leak_scan` — an explicit per-module table row for modules that legitimately require a leak-domain dep — so the first legit adoption is a table edit, not a false-fail or gate suppression (scripts/check-gomod-vendor-sync.sh)
+- [ ] Decide and implement go.work.sum coverage for `lint_leak_scan`: scan `cmd/tq/go.work.sum` and `vendor/*/go.work.sum` (same foreign-entry shapes observed there), or exempt them with a comment citing why replace-graph artifacts are legitimate — owner input recorded in the 2026-11-07_10-05 report §g1
+
 ## docs-gates / BuildFlow integration follow-ups (2026-11-06; source: docs/status/2026-11-06_04-20_docs-gates-adoption-buildflow-doctrine.md §f; deduped)
 
 - [ ] Build the docs-gates bridge sweeper: run `docs-gates run <repo> --json` per pool repo on a timer, mint ONE fix task per FAIL gate with dedup key `docs-gates:<repo>:<gate>` and a journal watermark cursor (the internal/watermark pattern), so fleet doc-drift findings flow into the queue the way incident reports do (report §f1; internal/incident/recorder.go)
