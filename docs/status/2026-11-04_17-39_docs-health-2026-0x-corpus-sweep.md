@@ -228,7 +228,7 @@ Priority-ordered; the first block is this session's direct residue.
 34. The 01-09 banner OPEN set: fixture-release harness, SHA256SUMS in release
     `--push`, tag-ancestry unit test.
 35. Record the deliberate lint-baseline-absent-from-ci.yml decision (advisory by
-    design — today it reads as an untracked gap; one sentence in AGENTS closes it).
+    design — today it reads as an untracked gap; one sentence in AGENTS closes it). <!-- fresh:skip: resolved 2026-11-07 — the decision IS recorded in AGENTS.md §Known Issues: golangci-lint advisory, growth gated by scripts/lint-baseline.sh --check (opt-in, regen-always-cleans-cache) -->
 36. ROADMAP raw-ideas triage (payload-file / env-file / tail-to-Discord): graduate,
     park, or kill explicitly — they have ridden the raw list since 09-08.
 37. Verify `tq harvest --help` renders the new flags' defaults as documented
