@@ -115,6 +115,35 @@ cmdtq_cqrs_parity() {
 	return "$rc"
 }
 
+# Lint-leak scanner (CI run 41877954180 class): foreign lint-toolchain
+# entries leaked into module go.sums (bare golangci-lint runs with
+# -mod=mod add its dep graph to the surrounding module). The tidy probe
+# already heals these, but the FAIL message would blame generic drift —
+# this scan names the lint-leak class explicitly so the next occurrence
+# is attributed at gate time, not archaeology. Domains are the shapes
+# observed in the 41877954180 leak (4d63.com, codeberg.org, golangci);
+# a module that legitimately requires one of these must extend this
+# table, not suppress it away.
+lint_leak_domains='^(4d63\.com/|codeberg\.org/|github\.com/golangci/)'
+lint_leak_scan() {
+	local rc=0 f hit
+	for f in "$@"; do
+		[ -f "$f" ] || continue
+		while IFS= read -r hit; do
+			echo "FAIL: lint-leak in $f — $hit" >&2
+			echo "  Foreign lint-toolchain entry in a module go.sum (CI 41877954180 class:" >&2
+			echo "  a bare golangci-lint run with -mod=mod wrote its dep graph here). Heal:" >&2
+			echo "    (cd \"$(dirname "$f")\" && GOWORK=off go mod tidy)  then stage the pruned go.sum" >&2
+			echo "  and find the WRITER before it re-leaks." >&2
+			rc=1
+		done < <(grep -E "$lint_leak_domains" "$f" || true)
+	done
+	if [ "$rc" -eq 0 ]; then
+		echo "ok: no lint-toolchain entries in scanned go.sums"
+	fi
+	return "$rc"
+}
+
 self_test() {
 	local tmp rc h1 h2 blind drift_out parity_out
 	tmp="$(mktemp -d)"
@@ -230,7 +259,26 @@ self_test() {
 		return 1
 	fi
 
-	echo "self-test ok: sync/drift detection pinned (tracked scopes + ignored-vendor hash anchor + absent-start + cqrs parity)"
+	# Case 8: lint-leak class (CI 41877954180) — a go.sum carrying foreign
+	# lint-toolchain entries must FAIL with the lint-leak canary; a clean
+	# go.sum and an absent file must pass (absent go.sum is legal pre-tidy).
+	printf '4d63.com/gochecknoglobals v0.2.2 h1:xxx=\ncodeberg.org/x/y v1.0.0 h1:yyy=\ngithub.com/golangci/golangci-lint v1.64.8 h1:zzz=\n' >"$tmp/repo/sub/go.sum"
+	leak_out="$(lint_leak_scan "$tmp/repo/sub/go.sum" 2>&1)" && leak_rc=0 || leak_rc=$?
+	if [ "$leak_rc" -eq 0 ] || [[ "$leak_out" != *"lint-leak in"*"sub/go.sum"* ]] || [[ "$leak_out" != *"41877954180"* ]]; then
+		echo "SELF-TEST FAIL: lint-leak go.sum NOT detected (rc=$leak_rc, out: $leak_out)" >&2
+		return 1
+	fi
+	printf 'x/y v1.2.3 h1:ok=\n' >"$tmp/repo/sub/go.sum"
+	if ! lint_leak_scan "$tmp/repo/sub/go.sum" >/dev/null 2>&1; then
+		echo "SELF-TEST FAIL: clean go.sum falsely flagged as lint-leak" >&2
+		return 1
+	fi
+	if ! lint_leak_scan "$tmp/repo/sub/does-not-exist.go.sum" >/dev/null 2>&1; then
+		echo "SELF-TEST FAIL: absent go.sum falsely flagged as lint-leak" >&2
+		return 1
+	fi
+
+	echo "self-test ok: sync/drift detection pinned (tracked scopes + ignored-vendor hash anchor + absent-start + cqrs parity + lint-leak class)"
 	return 0
 }
 
@@ -262,7 +310,7 @@ root_vendor_in_sync() {
 	echo "ok: root vendor/ in sync (content hash $after)"
 }
 
-if [ "${VENDOR_SYNC_SELF_TEST:-0}" = 1 ]; then
+if [ "${VENDOR_SYNC_SELF_TEST:-0}" = 1 ] || [ "${1:-}" = "--self-test" ]; then
 	self_test
 	exit $?
 fi
@@ -294,6 +342,7 @@ for m in $mods; do
 	detect_drift "$m tidy" "$m/go.mod" "$m/go.sum" || fail=1
 done
 
+lint_leak_scan go.sum cmd/tq/go.sum "$(for m in $mods; do echo "$m/go.sum"; done)" || fail=1
 cmdtq_cqrs_parity || fail=1
 
 if [ "$fail" -eq 0 ]; then

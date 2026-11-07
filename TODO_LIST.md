@@ -25,7 +25,7 @@ not here.
 
 ## 2026-11-04 report §f residue (2026-11-06 docs-gates freshness heal)
 
-- [ ] Add a vendor-sync negative fixture/self-test for the lint-leak class — the go.sum lint-leak caught by CI run 41877954180 has no regression pin (fleet convention: countable gates carry `--self-test`) (2026-11-04_19-24 §f5; scripts/check-gomod-vendor-sync.sh)
+- [x] Add a vendor-sync negative fixture/self-test for the lint-leak class — the go.sum lint-leak caught by CI run 41877954180 has no regression pin (fleet convention: countable gates carry `--self-test`) (2026-11-04_19-24 §f5; scripts/check-gomod-vendor-sync.sh) — landed: `lint_leak_scan` (4d63.com/codeberg/golangci domains) wired into the gate + self-test Case 8; `--self-test` flag accepted alongside VENDOR_SYNC_SELF_TEST
 
 ## docs-gates / BuildFlow integration follow-ups (2026-11-06; source: docs/status/2026-11-06_04-20_docs-gates-adoption-buildflow-doctrine.md §f; deduped)
 
