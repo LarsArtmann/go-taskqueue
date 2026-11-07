@@ -117,6 +117,9 @@ type DepBumpExecutor struct {
 	GoBin    string
 	GitBin   string
 	TemplBin string
+	// BuildflowBin defaults to "buildflow" from PATH; the delegation seam
+	// for BuildFlow-covered repos (see syncGomod). Tests pin a stub.
+	BuildflowBin string
 }
 
 // NewDepBumpExecutor returns a DepBumpExecutor resolving repos under
@@ -322,22 +325,10 @@ func (e *DepBumpExecutor) applyBumps(
 		}
 	}
 
-	if out, err := e.runGo(ctx, repoDir, timeout, "mod", "tidy"); err != nil {
+	if out, err := e.syncGomod(ctx, repoDir, timeout); err != nil {
 		_ = e.rollback(ctx, repoDir)
 
-		return fmt.Errorf("depbump: go mod tidy failed (rolled back): %w: %s", err, tailOutput(out))
-	}
-
-	if _, err := os.Stat(filepath.Join(repoDir, "vendor")); err == nil {
-		if out, err := e.runGo(ctx, repoDir, timeout, "mod", "vendor"); err != nil {
-			_ = e.rollback(ctx, repoDir)
-
-			return fmt.Errorf(
-				"depbump: go mod vendor failed (rolled back): %w: %s",
-				err,
-				tailOutput(out),
-			)
-		}
+		return fmt.Errorf("depbump: gomod sync failed (rolled back): %w: %s", err, tailOutput(out))
 	}
 
 	if err := e.regenerateTempl(ctx, repoDir); err != nil {
@@ -693,6 +684,62 @@ func (e *DepBumpExecutor) runGo(
 	}
 
 	return e.run(ctx, e.goBin(), repoDir, args...)
+}
+
+// syncGomod brings go.mod/go.sum/vendor back in sync after the pins.
+// BuildFlow-covered repos (a .buildflow.yml at the repo root with the
+// buildflow binary on PATH) delegate to `buildflow -s gomod-check --fix`
+// — the one step owning the tidy/vendor parity ritual instead of
+// hand-rolled edits; a missing binary falls back to the hand-rolled
+// pair (environment class, not a contract violation). The vendorHash
+// ritual is NOT delegated: `buildflow -s nix-hash-fix --fix` stays
+// barred until BuildFlow #88 lands, so flake.nix hash fixing remains
+// upstream consumer work (AGENTS Known Issues).
+func (e *DepBumpExecutor) syncGomod(
+	ctx context.Context,
+	repoDir string,
+	timeout time.Duration,
+) (string, error) {
+	if buildflowCovered(repoDir) {
+		if _, lookErr := exec.LookPath(e.buildflowBin()); lookErr == nil {
+			out, err := e.run(ctx, e.buildflowBin(), repoDir, "-s", "gomod-check", "--fix")
+			if err == nil {
+				return out, nil
+			}
+
+			return out, err
+		}
+		// .buildflow.yml present but the binary is not on PATH: the
+		// hand-rolled pair below keeps the bump moving.
+	}
+
+	if out, err := e.runGo(ctx, repoDir, timeout, "mod", "tidy"); err != nil {
+		return out, err
+	}
+
+	if _, err := os.Stat(filepath.Join(repoDir, "vendor")); err == nil {
+		if out, err := e.runGo(ctx, repoDir, timeout, "mod", "vendor"); err != nil {
+			return out, err
+		}
+	}
+
+	return "", nil
+}
+
+// buildflowBin resolves the buildflow binary (PATH default, test pin).
+func (e *DepBumpExecutor) buildflowBin() string {
+	if e.BuildflowBin != "" {
+		return e.BuildflowBin
+	}
+
+	return "buildflow"
+}
+
+// buildflowCovered reports whether repoDir carries BuildFlow coverage.
+func buildflowCovered(repoDir string) bool {
+	_, err := os.Stat(filepath.Join(repoDir, ".buildflow.yml"))
+
+	return err == nil
 }
 
 // runGit runs the git binary with the executor's extra env.
