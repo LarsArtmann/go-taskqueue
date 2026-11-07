@@ -239,7 +239,10 @@ func TestDepBumpTimeoutContextDecision(t *testing.T) {
 			}
 
 			want := origin.Add(tc.timeout)
-			if deadline.Before(want.Add(-50*time.Millisecond)) || deadline.After(want.Add(50*time.Millisecond)) {
+			// 1s wall-clock tolerance: origin is captured before t.Parallel()
+			// parks the goroutine, so scheduler delay under a loaded suite can
+			// legally exceed the clamped-now by more than 50ms.
+			if deadline.Before(want.Add(-time.Second)) || deadline.After(want.Add(time.Second)) {
 				t.Fatalf("clamped deadline %v, want ~%v", deadline, want)
 			}
 		})
