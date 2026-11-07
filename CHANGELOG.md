@@ -168,6 +168,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Internal
 
+- depbump `runGo` deadline clamp is pinned by tests (2026-11-07): the
+  clamp decision moved into a named `depbumpTimeoutContext` helper
+  (identical semantics) with a table test covering no-deadline,
+  expired-never-resurrected, tighter-kept, looser-tightened and
+  deadline-equal paths, plus behavioral timing tests through `runGo`
+  against a hermetic fake `go` (the test binary as a sleeper child) —
+  a wrongly loosened timeout would now fail the suite instead of
+  silently extending a bump run.
 - companion-tag marshal surface has one home (2026-11-07): `tq ask` now
   marshals question details through the existing `companion.MustJSON`
   (the v0.4.1 floor already carries it) instead of a private
