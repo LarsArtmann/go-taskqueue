@@ -168,6 +168,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Internal
 
+- mirror-clone gate widened past the canonical view (2026-11-07):
+  `scripts/check-mirror-clones.sh` now parses a second raw
+  `--show-suppressed` art-dupl pass so clone groups the actionability
+  filter hides fail strict instead of silently passing; the two
+  known-acceptable adapter pairs (engine-backed delegators, test-prolog
+  idiom) are pinned in `scripts/mirror-baseline.txt` with recorded
+  reasons, `--show-suppressed` lists the baselined rows line-by-line for
+  triage, and the fleet-convention `--self-test` battery (summary-format
+  pin, baseline-identity drift, hidden-new strict fail) is wired into
+  ci-local.
 - docs-gates doctrine gate adopted (2026-11-06): this repo now runs the
   org docs-gates battery as a ci-local gate (`scripts/check-docs-gates.sh`,
   countable contract with `--self-test`); `.docs-gates.json` tunes the
