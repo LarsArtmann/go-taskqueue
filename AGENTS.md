@@ -153,6 +153,9 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   paid turns; findings commit-anchored (verbatim `anchor` or REJECTED); dead
   agent tasks mint ONE autopsy (`dlqfix:<id>`); gate-artifact death WITH
   shipped-proof auto-dismisses (`executor.IsGateArtifactDeath`).
+  depbump gomod sync delegates on BuildFlow-covered repos (`.buildflow.yml` +
+  binary present) to `buildflow -s gomod-check --fix`, else hand-rolled
+  tidy/vendor; `nix-hash-fix --fix` NEVER delegated (barred until BuildFlow #88).
 - **Session-close bridge**: `tq session begin/close` + `tq crush`; close
   scans `Crush-Session:` trailers → ONE review + ONE status task.
 - **PapDashboard questions**: `tq ask --task <id>` parks without attempt

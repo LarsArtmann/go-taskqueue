@@ -19,7 +19,7 @@ func TestSyncGomodDelegatesToBuildflow(t *testing.T) {
 	binDir := t.TempDir()
 	callsLog := filepath.Join(t.TempDir(), "calls.log")
 	stub := filepath.Join(binDir, "buildflow")
-	script := "#!/bin/sh\nprintf '%s\\n' \"buildflow gomod-check --fix ran: $*\" >> " + callsLog + "\n"
+	script := "#!/bin/sh\nprintf '%s\\n' \"buildflow gomod-check --fix ran: $*\" >> " + callsLog + "\necho buildflow-delegated\n"
 	if err := os.WriteFile(stub, []byte(script), 0o700); err != nil {
 		t.Fatalf("write stub: %v", err)
 	}
@@ -37,7 +37,7 @@ func TestSyncGomodDelegatesToBuildflow(t *testing.T) {
 		t.Fatalf("covered repo sync: %v", err)
 	}
 
-	if !strings.Contains(out, "buildflow gomod-check --fix ran") {
+	if !strings.Contains(out, "buildflow-delegated") {
 		t.Fatalf("delegation expected, got out=%q", out)
 	}
 
