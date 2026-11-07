@@ -9,9 +9,11 @@
 // "accepts ≈ 0"): the sqlitev4 and postgresv4 adapters
 // delegate their companion surfaces here — the design in
 // docs/planning/2026-09-26_companion-extraction-design.md is LANDED for
-// production code (art-dupl: zero cross-backend adapter groups).
-// The three mirrored conformance suites are the last mirrors; their
-// consolidation into companion/conform is tracked in TODO_LIST and
-// ratcheted by scripts/check-mirror-clones.sh (strict: baseline
-// scripts/mirror-baseline.txt fails on any new cross-backend group).
+// production code (art-dupl: zero NEW cross-backend adapter groups in the
+// canonical view; the known-acceptable raw-view pairs are pinned in
+// scripts/mirror-baseline.txt).
+// The mirrored conformance suites were consolidated into
+// companion/conform (2026-09-26); the gate ratchets the contract
+// (scripts/check-mirror-clones.sh strict: any group outside the baseline
+// fails, in BOTH the canonical and the --show-suppressed view).
 package companion

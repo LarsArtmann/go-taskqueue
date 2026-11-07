@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"errors"
 	"flag"
@@ -17,6 +16,7 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
+	"github.com/larsartmann/go-taskqueue/internal/queue/companion"
 	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
@@ -176,7 +176,7 @@ func cmdAsk(args []string) error {
 		if err := store.AppendFact(context.Background(), journal.Fact{
 			TaskID: *taskID,
 			Type:   journal.QuestionAsked,
-			Detail: mustMarshalDetail(detail),
+			Detail: companion.MustJSON(detail),
 		}); err != nil {
 			return fmt.Errorf("tq ask: record question: %w", err)
 		}
@@ -260,13 +260,4 @@ func questionRefsAsked(store *sqlite.Store, taskID string, ftype journal.FactTyp
 	}
 
 	return out, nil
-}
-
-func mustMarshalDetail(v any) jsontext.Value {
-	raw, err := json.Marshal(v)
-	if err != nil {
-		return jsontext.Value("{}")
-	}
-
-	return raw
 }

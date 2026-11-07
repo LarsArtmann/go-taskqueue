@@ -168,6 +168,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Internal
 
+- companion-tag marshal surface has one home (2026-11-07): `tq ask` now
+  marshals question details through the existing `companion.MustJSON`
+  (the v0.4.1 floor already carries it) instead of a private
+  `mustMarshalDetail` clone in cmd/tq; the companion package doc no
+  longer claims a bare "zero cross-backend adapter groups" — it now
+  states the enforcement-era contract (zero NEW groups in the canonical
+  view; known-acceptable raw-view pairs pinned in
+  scripts/mirror-baseline.txt, gate widened 2026-11-07).
 - mirror-clone gate widened past the canonical view (2026-11-07):
   `scripts/check-mirror-clones.sh` now parses a second raw
   `--show-suppressed` art-dupl pass so clone groups the actionability
