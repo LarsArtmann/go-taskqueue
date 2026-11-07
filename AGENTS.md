@@ -132,10 +132,10 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   `$TQ_RESULT_FILE` (file > stdout, last-wins); prompts bake the `--file` rails
   (verdict + ask — routed bash tools see only SERVER env, crush#4210; never
   drop). `-H` sans CRUSH_CLIENT_SERVER=1 is silently LOCAL.
-- **Channels plan** (designed, unbuilt): `tq mcp` pushes work via
+- **Channels plan** (unbuilt; 0.97+ crush met): `tq mcp` pushes work via
   `notifications/claude/channel`; `channel_reply` replaces the file scrape;
   plan `docs/planning/2026-10-16_01-11_TQ-MCP-CHANNELS-DESIGN-INPUT.md`;
-  bootstrap then needs `channel_enabled`.
+  bootstrap: `channel_enabled`.
 - **Calibration dataset**: every paid run appends ONE `CalibrationRow`
   (raw verdict-channel body + `Verify`/`Attestation` join keys + derived
   outcome counts + session usage) to `$TQ_LOG_DIR/calibration.jsonl`
@@ -331,8 +331,7 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   floors + flake tarball PINNED IN LOCKSTEP (1.27.3); NEVER lower a `go`
   directive (`check-go-mods.sh`).
 - **CI-log triage one-liner**: `gh run view <id> --log-failed | grep -i '##\[error\]'`
-  extracts the failing-job error lines directly — skip broad greps over the
-  full log (two burned before landing on it; 2026-11-03 task 000001a19fb137e9 §e5/§f10).
+  extracts the failing-job error lines directly (two burned before landing on it; 2026-11-03 task 000001a19fb137e9 §e5/§f10).
 - **`fetch` empty ≠ URL dead**: an empty body is a tool mismatch — retry `download`.
 - **Host GOCACHE/GOROOT hazards**: gates run `GOCACHE=/tmp/go-build-cache`
   (host symlink → /nix/store ENOSPCs); "package X is not in std" +
