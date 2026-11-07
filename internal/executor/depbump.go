@@ -664,6 +664,22 @@ func (e *DepBumpExecutor) gitRootAndSubdir(repoDir string) (string, string, erro
 	return root, filepath.ToSlash(rel), nil
 }
 
+// depbumpTimeoutContext clamps ctx to timeout unless ctx already carries a
+// deadline at or below it (never loosen a tighter caller deadline, and
+// never resurrect an expired one into a fresh window — an already-past
+// deadline must fail the run immediately, not restart the clock).
+// Reports whether a new timeout was applied; the caller must defer the
+// returned cancel exactly when applied is true (cancel is nil otherwise).
+func depbumpTimeoutContext(ctx context.Context, timeout time.Duration) (context.Context, context.CancelFunc, bool) {
+	if deadline, ok := ctx.Deadline(); !ok || time.Until(deadline) > timeout {
+		clamped, cancel := context.WithTimeout(ctx, timeout)
+
+		return clamped, cancel, true
+	}
+
+	return ctx, nil, false
+}
+
 // runGo runs the go binary in repoDir with the executor's extra env.
 func (e *DepBumpExecutor) runGo(
 	ctx context.Context,
@@ -671,10 +687,8 @@ func (e *DepBumpExecutor) runGo(
 	timeout time.Duration,
 	args ...string,
 ) (string, error) {
-	if deadline, ok := ctx.Deadline(); !ok || time.Until(deadline) > timeout {
-		var cancel context.CancelFunc
-
-		ctx, cancel = context.WithTimeout(ctx, timeout)
+	ctx, cancel, _ := depbumpTimeoutContext(ctx, timeout)
+	if cancel != nil {
 		defer cancel()
 	}
 
