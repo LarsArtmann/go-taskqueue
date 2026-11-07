@@ -292,7 +292,11 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   directive suppresses but SHIPS IN PAGE OUTPUT (upstream
   LarsArtmann/art-dupl#9, open); the sole templ twin (layout.templ
   mobile/desktop pair) is intentional. `art-dupl:accept` suppresses only a
-  few lines ABOVE the clone's first line.
+  few lines ABOVE the clone's first line. Extraction triggers (accepted
+  clones, extract when hit): a third doctor pending-listing check →
+  shared helper; a third executor payload-validation site (review/status)
+  → shared validator; a fifth QueryContext rows-scan site in
+  `companion/reads.go` → `scanInto` helper (2026-09-30_09-15 §f11-13).
 - POSIX-only suites carry `//go:build unix`; tests hermetic (nix checkPhase
   lacks host tools).
 - Generated `*_templ.go` + minified `app.css` COMMITTED; after template
