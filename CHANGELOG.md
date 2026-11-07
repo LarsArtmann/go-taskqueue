@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+## [v0.4.2] - 2026-11-07
+
+### Added
+
 - **docs-gates bridge sweeper** (`tq agent-pool --docs-gates`,
   `--docs-gates-repos`, `--docs-gates-bin`, `--docs-gates-interval`,
   default 30m): on a timer the pool runs
