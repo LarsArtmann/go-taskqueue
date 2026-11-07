@@ -237,4 +237,3 @@ func TestBinaryRunnerParsesMatrix(t *testing.T) {
 		t.Fatalf("parsed matrix: %+v", res)
 	}
 }
-

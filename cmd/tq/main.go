@@ -34,6 +34,7 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/depsweep"
 	"github.com/larsartmann/go-taskqueue/internal/dlqbackoff"
 	"github.com/larsartmann/go-taskqueue/internal/dlqfix"
+	"github.com/larsartmann/go-taskqueue/internal/docsgates"
 	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/harvest"
 	"github.com/larsartmann/go-taskqueue/internal/httpapi"
@@ -1464,10 +1465,10 @@ func cmdAgentPool(args []string) error {
 		}
 
 		docsGatesBridge = docsgates.NewBridge(docsgates.BridgeConfig{
-			Store:  store,
-			Bin:    poolOpts.docsGatesBin,
-			Repos:  repos,
-			Log:    log,
+			Store: store,
+			Bin:   poolOpts.docsGatesBin,
+			Repos: repos,
+			Log:   log,
 		})
 
 		names := make([]string, 0, len(repos))
@@ -1556,6 +1557,7 @@ func cmdAgentPool(args []string) error {
 	}
 
 	lastDepSweep := time.Time{} // zero: the first tick sweeps immediately
+	lastDocsGates := time.Time{}
 
 	// mintPass gates one budget-consuming pass: EVERY enqueue (harvested,
 	// review, status, CQA) must clear the guard immediately before it — a
@@ -1737,6 +1739,24 @@ func cmdAgentPool(args []string) error {
 						"skipped",
 						len(stats.Skips),
 					)
+				}
+			})
+		}
+
+		if docsGatesBridge != nil && time.Since(lastDocsGates) >= poolOpts.docsGatesEvery {
+			lastDocsGates = time.Now()
+
+			mintPass("docs-gates sweep", func() {
+				stats, err := docsGatesBridge.Sweep(ctx)
+				if err != nil {
+					log.Error("docs-gates sweep failed", "err", err)
+				} else if stats.Minted > 0 || stats.Known > 0 {
+					log.Info("docs-gates sweep done",
+						"repos", stats.Repos,
+						"failed", stats.Failed,
+						"minted", stats.Minted,
+						"known", stats.Known,
+						"skipped", stats.Skipped)
 				}
 			})
 		}

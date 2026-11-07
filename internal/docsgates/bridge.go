@@ -22,7 +22,8 @@ import (
 
 	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
-	"github.com/larsartmann/go-taskqueue/internal/task")
+	"github.com/larsartmann/go-taskqueue/internal/task"
+)
 
 // WatermarkKey is the bridge's identity in the watermarks table, shared by
 // every bridge over the same database.
@@ -263,11 +264,11 @@ func (b *Bridge) Sweep(ctx context.Context) (Stats, error) {
 // system saying the drift is fixed, never a failure).
 func (b *Bridge) mint(ctx context.Context, knownKeys map[string]bool, repo Repo, gate Gate) (bool, error) {
 	payload, err := json.Marshal(executor.AgentPayload{
-		Repo:    repo.Name,
-		Prompt:  fixPrompt(repo, gate),
-		Verify:  verifyCommand(),
-		Dedup:   DedupKey(repo, gate),
-		Item:    "docs-gates: " + repo.Name + " gate " + gate.Name + " FAILed",
+		Repo:   repo.Name,
+		Prompt: fixPrompt(repo, gate),
+		Verify: verifyCommand(),
+		Dedup:  DedupKey(repo, gate),
+		Item:   "docs-gates: " + repo.Name + " gate " + gate.Name + " FAILed",
 	})
 	if err != nil {
 		return false, fmt.Errorf("docsgates: encode payload for %s/%s: %w", repo.Name, gate.Name, err)
