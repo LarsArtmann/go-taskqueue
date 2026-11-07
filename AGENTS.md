@@ -296,7 +296,7 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   clones, extract when hit): a third doctor pending-listing check →
   shared helper; a third executor payload-validation site (review/status)
   → shared validator; a fifth QueryContext rows-scan site in
-  `companion/reads.go` → `scanInto` helper (2026-09-30_09-15 §f11-13).
+  `internal/queue/companion/reads.go` → `scanInto` helper (2026-09-30_09-15 §f11-13).
 - POSIX-only suites carry `//go:build unix`; tests hermetic (nix checkPhase
   lacks host tools).
 - Generated `*_templ.go` + minified `app.css` COMMITTED; after template
