@@ -68,6 +68,7 @@ self_test() {
 	# Fake binary: emits the canned battery document for `run <root> --json`
 	# and exits with the canned rc file's value (0 when absent).
 	mkdir -p "$tmp/bin"
+	# pins: docs-gates-fake-bin-branch — stub runner feeds canned battery.json + rc
 	cat >"$tmp/bin/docs-gates" <<'FAKE'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -108,6 +109,7 @@ FAKE
 
 	# green battery: 2 PASS rows, rc 0 → gate green, pinned summary
 	mkdir -p "$tmp/case"
+	# pins: docs-gates-green-branch — all-PASS battery is green with the pinned summary
 	cat >"$tmp/case/battery.json" <<'JSON'
 {"root":".","pass":true,"gates":[
  {"name":"freshness","verdict":"PASS","exit_code":0,"skipped":false,"timed_out":false,"duration_ms":9,"stdout":"","stderr":""},
@@ -116,6 +118,7 @@ JSON
 	expect "green battery passes with pinned summary" 0 "docs-gates gate: 2 gate(s), 2 PASS / 0 SKIP / 0 FAIL"
 
 	# red battery: FAIL row (timed_out) + rc 1 → gate red naming the gate
+	# pins: docs-gates-red-branch — timed_out FAIL row names the gate and rc=1
 	cat >"$tmp/case/battery.json" <<'JSON'
 {"root":".","pass":false,"gates":[
  {"name":"freshness","verdict":"PASS","exit_code":0,"skipped":false,"timed_out":false,"duration_ms":9,"stdout":"","stderr":""},
@@ -125,6 +128,7 @@ JSON
 	expect "red battery counts the FAIL row" 1 "docs-gates gate: 2 gate(s), 1 PASS / 0 SKIP / 1 FAIL"
 
 	# usage/environment class: valid JSON, 0 FAIL rows, rc 2 → loud FAIL
+	# pins: docs-gates-usage-branch — rc=2 with zero FAIL rows is the loud usage class
 	cat >"$tmp/case/battery.json" <<'JSON'
 {"root":".","pass":false,"gates":[]}
 JSON
