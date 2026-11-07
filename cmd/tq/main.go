@@ -1441,6 +1441,45 @@ func cmdAgentPool(args []string) error {
 			poolOpts.depSweepEvery, poolOpts.depSweepBin, depSweepDir, poolOpts.depSweepPush)
 	}
 
+	var docsGatesBridge *docsgates.Bridge
+
+	if poolOpts.docsGates && poolOpts.docsGatesEvery > 0 {
+		repoNames := strings.Split(poolOpts.docsGatesRepos, ",")
+		repos := make([]docsgates.Repo, 0, len(repoNames))
+
+		for _, name := range repoNames {
+			name = strings.TrimSpace(name)
+			if name == "" {
+				continue
+			}
+
+			repos = append(repos, docsgates.Repo{
+				Name: name,
+				Dir:  filepath.Join(poolOpts.projectsDir, name),
+			})
+		}
+
+		if len(repos) == 0 {
+			return fmt.Errorf("tq: agent-pool: --docs-gates needs --docs-gates-repos (comma-separated repo names)")
+		}
+
+		docsGatesBridge = docsgates.NewBridge(docsgates.BridgeConfig{
+			Store:  store,
+			Bin:    poolOpts.docsGatesBin,
+			Repos:  repos,
+			Log:    log,
+		})
+
+		names := make([]string, 0, len(repos))
+		for _, r := range repos {
+			names = append(names, r.Name)
+		}
+
+		fmt.Fprintf(os.Stderr,
+			"tq: agent-pool: docs-gates every %s (repos %s)\n",
+			poolOpts.docsGatesEvery, strings.Join(names, ","))
+	}
+
 	// Pool-liveness pack (B10): the pool is the one process that ticks
 	// forever, so it surfaces what only a long-running observer can see —
 	// the durable projection worker-death marker (B9.3; postgres pools

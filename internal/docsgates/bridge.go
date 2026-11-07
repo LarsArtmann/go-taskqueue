@@ -13,6 +13,7 @@ import (
 	"context"
 	"encoding/json/jsontext"
 	"encoding/json/v2"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os/exec"
@@ -187,6 +188,24 @@ func (b *Bridge) Sweep(ctx context.Context) (Stats, error) {
 	stats := Stats{Repos: len(b.cfg.Repos)}
 	var mintErr error
 
+	// Index existing fix tasks by dedup key: Enqueue's dedup hit returns
+	// the stored task with no "already existed" signal (the depsweep
+	// pattern), so mints from EARLIER passes count as known here (one
+	// list query per sweep).
+	agentType := executor.TaskTypeAgent
+
+	existing, err := b.store.List(ctx, queue.Filter{Type: &agentType})
+	if err != nil {
+		return stats, fmt.Errorf("docsgates: list existing tasks: %w", err)
+	}
+
+	knownKeys := make(map[string]bool, len(existing))
+	for i := range existing {
+		if strings.HasPrefix(existing[i].DedupKey, "docs-gates:") {
+			knownKeys[existing[i].DedupKey] = true
+		}
+	}
+
 	for _, repo := range b.cfg.Repos {
 		res, err := b.run(ctx, repo)
 		if err != nil {
@@ -206,7 +225,7 @@ func (b *Bridge) Sweep(ctx context.Context) (Stats, error) {
 
 			stats.Failed++
 
-			minted, err := b.mint(ctx, repo, gate)
+			minted, err := b.mint(ctx, knownKeys, repo, gate)
 			if err != nil {
 				if b.cfg.Log != nil {
 					b.cfg.Log.Warn("docsgates mint failed", "repo", repo.Name, "gate", gate.Name, "err", err)
@@ -242,7 +261,7 @@ func (b *Bridge) Sweep(ctx context.Context) (Stats, error) {
 // mint enqueues one fix task for the failed gate; returns false on a dedup
 // hit (the task already exists — ErrTaskDone from a completed fix is the
 // system saying the drift is fixed, never a failure).
-func (b *Bridge) mint(ctx context.Context, repo Repo, gate Gate) (bool, error) {
+func (b *Bridge) mint(ctx context.Context, knownKeys map[string]bool, repo Repo, gate Gate) (bool, error) {
 	payload, err := json.Marshal(executor.AgentPayload{
 		Repo:    repo.Name,
 		Prompt:  fixPrompt(repo, gate),
@@ -254,7 +273,7 @@ func (b *Bridge) mint(ctx context.Context, repo Repo, gate Gate) (bool, error) {
 		return false, fmt.Errorf("docsgates: encode payload for %s/%s: %w", repo.Name, gate.Name, err)
 	}
 
-	_, err = b.store.Enqueue(ctx, task.New{
+	_, err = queue.New(b.store).Enqueue(ctx, task.New{
 		Project:     repo.Name,
 		Type:        executor.TaskTypeAgent,
 		Payload:     jsontext.Value(payload),
@@ -263,11 +282,15 @@ func (b *Bridge) mint(ctx context.Context, repo Repo, gate Gate) (bool, error) {
 		DedupKey:    DedupKey(repo, gate),
 	})
 	if err != nil {
-		if strings.Contains(err.Error(), queue.ErrTaskDone.Error()) {
+		if errors.Is(err, queue.ErrTaskDone) {
 			return false, nil
 		}
 
 		return false, fmt.Errorf("docsgates: enqueue fix task for %s/%s: %w", repo.Name, gate.Name, err)
+	}
+
+	if knownKeys[DedupKey(repo, gate)] {
+		return false, nil
 	}
 
 	if b.cfg.Log != nil {

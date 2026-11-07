@@ -73,6 +73,10 @@ type agentPoolOptions struct {
 	depSweepEvery   time.Duration
 	depSweepPush    bool
 	depSweepUnrel   bool
+	docsGates       bool
+	docsGatesBin    string
+	docsGatesRepos  string
+	docsGatesEvery  time.Duration
 	alertURL        string
 	alertKey        string
 	alertPoll       time.Duration
@@ -302,6 +306,26 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 		false,
 		"dep-sweep: also release modules whose only work is unreleased feature commits (version decisions from commit analysis; default off)",
 	)
+	docsGates := fs.Bool(
+		"docs-gates",
+		false,
+		"docs-gates bridge sweeper: run `docs-gates run <repo> --json` per listed repo on a timer and mint ONE agent fix task per FAIL gate (dedup docs-gates:<repo>:<gate> makes repeats free; journal watermark cursor docsgates-bridge checkpoints each fully-successful pass)",
+	)
+	docsGatesBin := fs.String(
+		"docs-gates-bin",
+		"docs-gates",
+		"docs-gates: gate binary (PATH name or absolute)",
+	)
+	docsGatesRepos := fs.String(
+		"docs-gates-repos",
+		"",
+		"docs-gates: comma-separated repo names assessed every interval; each resolves against --projects-dir (required with --docs-gates)",
+	)
+	docsGatesEvery := fs.Duration(
+		"docs-gates-interval",
+		30*time.Minute,
+		"docs-gates: sweep interval (dedup makes shorter intervals free)",
+	)
 	alertURL := fs.String(
 		"alert-url",
 		os.Getenv("TQ_PAP_URL"),
@@ -525,6 +549,10 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 		depSweepEvery:   *depSweepEvery,
 		depSweepPush:    *depSweepPush,
 		depSweepUnrel:   *depSweepUnrel,
+		docsGates:       *docsGates,
+		docsGatesBin:    *docsGatesBin,
+		docsGatesRepos:  *docsGatesRepos,
+		docsGatesEvery:  *docsGatesEvery,
 		alertURL:        *alertURL,
 		alertKey:        *alertKey,
 		alertPoll:       *alertPoll,
