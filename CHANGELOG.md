@@ -133,6 +133,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Changed
 
+- **(BEHAVIOR CHANGE for depbump on BuildFlow-covered repos)** gomod
+  sync delegates (2026-11-07): a consumer repo carrying
+  `.buildflow.yml` with the buildflow binary on PATH now runs
+  `buildflow -s gomod-check --fix` for the tidy/vendor parity ritual
+  instead of hand-rolled `go mod tidy`/`go mod vendor`; a missing
+  binary falls back to the hand-rolled pair (no behavior change
+  there), and a buildflow step failure rolls the bump back as before.
+  The vendorHash (flake.nix got:) ritual stays hand-rolled —
+  `buildflow -s nix-hash-fix --fix` remains barred until BuildFlow
+  #88 lands.
+
 - **(BEHAVIOR CHANGE for agent pools using default batching)** Batches are
   section-scoped and bigger (2026-11-03): harvest groups EVERY admissible
   open item of a TODO_LIST section into chunks of `--batch-items` members
