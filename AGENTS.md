@@ -81,6 +81,7 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 | `internal/dlqbackoff` | Own module: poisoned-repo backoff fold shared by `pool-health`, `tq dlq`, webui |
 | `internal/prioritize` | AI batch scorer (`--prioritize`), priority_scores cache |
 | `internal/depsweep` | Dependency-upgrade sweeper `--dep-sweep` |
+| `internal/docsgates` | docs-gates bridge sweeper `--docs-gates`: FAIL gate → agent fix task (dedup `docs-gates:<repo>:<gate>`, watermark `docsgates-bridge`) |
 | `internal/watermark` | Durable journal cursor shared by the sweepers |
 | `internal/consumer` | Journal dispatcher, per-subscriber cursors (ADR-0009) |
 | `internal/runactor` | run.Group actors, LIFO shutdown, InterruptOn |

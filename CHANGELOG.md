@@ -8,6 +8,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- **docs-gates bridge sweeper** (`tq agent-pool --docs-gates`,
+  `--docs-gates-repos`, `--docs-gates-bin`, `--docs-gates-interval`,
+  default 30m): on a timer the pool runs
+  `docs-gates run <repo> --json` per listed repo (names resolve against
+  `--projects-dir`) and mints ONE agent fix task per FAIL gate — dedup
+  key `docs-gates:<repo>:<gate>` makes repeat sweeps free; the minted
+  task's verify gate is `docs-gates run .`, so the fix must green the
+  battery to complete. A journal watermark cursor (`docsgates-bridge`,
+  `tq watermarks show`) checkpoints each fully-successful pass; a repo
+  whose gate run fails aborts the pass WITHOUT checkpointing, so the
+  next tick re-assesses. Opt-in flag, default OFF.
+
 - **Effort-aware batch sizing + optional Jev estimates** (2026-11-03):
   batched runs now also stop at an effort budget — `--effort-budget`
   (minutes; 0 = batch-items x 30m, which under the flat default
