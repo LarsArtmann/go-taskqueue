@@ -104,7 +104,11 @@ import (
 // load-bearing Relation rows (docs-gates gate + tuned doctrine; BuildFlow
 // deliberate non-coverage) — a future agent adding .buildflow.yml
 // "helpfully" is exactly the split-brain the row prevents; twin re-synced.
-const agentsDocMaxBytes = 26_400
+// 26_400 → 26_800 (2026-11-07, dedup-ledger trigger pins): three named
+// art-dupl extraction triggers (doctor pending-listing, payload-validation,
+// companion/reads.go scan) moved out of status-report archaeology into the
+// Executor shared seams bullet; twin re-synced.
+const agentsDocMaxBytes = 26_800
 
 // TestAgentsDocSizeGuard keeps AGENTS.md from silently growing past its
 // byte budget (plan M89 residue); the failure names the top sections so a
