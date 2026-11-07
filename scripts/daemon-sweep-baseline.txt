@@ -1888,3 +1888,8 @@ bf1307637fe2715072ba20e75fd33a5edc4b379b
 35bff13fcf4070528d0edc72f5de8da84e7d2c2a
 ac4e4b221b952b04971402cf7d01f648ef6e1120
 7cf6b6c2176e22afb0c4b86c1dc355476bd864aa
+# 2026-11-06 (task 000001a1a1fe2e5f49910a65f98400000000, Wave-4 close tail):
+# 93e0ec7a = the daemon sweeping this file's own +5 grandfather block
+# (dated comment + shas) out from under the gate — the bf130763 class;
+# diff is exactly that note, nothing foreign.
+93e0ec7a13cb63eeb0e2d6f551d4ce2e96a951ee
