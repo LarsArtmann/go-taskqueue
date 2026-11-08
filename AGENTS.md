@@ -2,7 +2,7 @@
 
 Projects-aware task queue / worker pool for Go — see README.md.
 
-**STATUS: v0.4.1 shipped; concurrent agents** — re-read files,
+**STATUS: v0.4.2 tagged, push owner-gated; concurrent agents** — re-read files,
 re-run tests; uncommitted changes: read, judge, build on, never revert (size: TestAgentsDocSizeGuard)
 
 **MAJOR OPEN PROBLEMS**: [dispatch prompting + batch granularity](docs/problems/major-prompting-and-batching.md) — shipped
@@ -379,7 +379,7 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 - **Kernel ETXTBSY**: fresh-binary execve intermittently fails — exec sites
   through `execWithTransientRetry`.
 - **formatterWithGo drop-day** (flake.nix): `goTarball*` + `formatterWithGo` drop
-  at nixpkgs go ≥ 1.27.3; hashes paired — 2026-11-01 note.
+  at nixpkgs go ≥ 1.27.3 (hashes paired).
 - **templ-components sibling pins**: a pseudo-version in a dep's root go.mod
   passes local builds but kills consumer graph loads (Nix FOD) — `grep -r 00010101`
   the dep before blaming the flake/vendorHash.
