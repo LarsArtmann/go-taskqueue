@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Report Title</title>
+    <title>go-taskqueue — Library Utilization Review (2026-11-08)</title>
     <style>
       /* =========================================================================
          BAUHAUS DARK — Dashboard template
@@ -828,9 +828,9 @@
   <body>
     <!-- Full-bleed top bar (optional — remove for quieter reports) -->
     <div class="top-bar">
-      <span>REPORT TYPE</span>
-      <span>YYYY-MM-DD</span>
-      <span>AUTHOR / TEAM</span>
+      <span>LIBRARY UTILIZATION REVIEW</span>
+      <span>2026-11-08</span>
+      <span>GO-TASKQUEUE</span>
     </div>
 
     <div class="layout">
@@ -839,26 +839,28 @@
         <nav>
           <div class="label">Contents</div>
           <a href="#summary">Summary</a>
-          <a href="#findings">Findings</a>
-          <a href="#issues">Issue Cards</a>
-          <a href="#proposal">Proposal</a>
-          <a href="#plan">Plan</a>
+          <a href="#adopted">Adopted (9)</a>
+          <a href="#not-adopted">Not adopted (13)</a>
+          <a href="#cross">Cross-cutting</a>
+          <a href="#verify">How to verify</a>
         </nav>
       </aside>
 
       <main class="main">
         <!-- Hero -->
         <div class="hero">
-          <!-- Optional Bauhaus signature: geometric shape cluster. Remove for quieter hero. -->
           <div class="hero-shapes">
             <div class="circle"></div>
             <div class="square"></div>
             <div class="tri"></div>
           </div>
-          <div class="hero-badge">Report Type</div>
-          <h1>Report Title</h1>
+          <div class="hero-badge">Library Utilization Review</div>
+          <h1>The LarsArtmann fleet &times; go-taskqueue</h1>
           <p class="hero-subtitle">
-            One-sentence description of what this report covers.
+            22 first-party libraries audited on 2026-11-08: 9 adopted and scored
+            for leverage, 13 evaluated for adoption. One Markdown report per
+            library in this directory; every claim carries a citation and every
+            report ends with commands that re-derive it.
           </p>
         </div>
 
@@ -867,10 +869,10 @@
           <h3>Contents</h3>
           <ul>
             <li><a href="#summary">Summary</a></li>
-            <li><a href="#findings">Findings</a></li>
-            <li><a href="#issues">Issue Cards</a></li>
-            <li><a href="#proposal">Proposal</a></li>
-            <li><a href="#plan">Plan</a></li>
+            <li><a href="#adopted">Adopted (9)</a></li>
+            <li><a href="#not-adopted">Not adopted (13)</a></li>
+            <li><a href="#cross">Cross-cutting</a></li>
+            <li><a href="#verify">How to verify</a></li>
           </ul>
         </nav>
 
@@ -878,155 +880,256 @@
         <h2 id="summary"><span class="num">00</span>Summary</h2>
         <div class="stat-grid">
           <div class="stat-card">
-            <div class="stat-value">42</div>
-            <div class="stat-label">Total Items</div>
-          </div>
-          <div class="stat-card stat-bad">
-            <div class="stat-value">7</div>
-            <div class="stat-label">Critical</div>
-          </div>
-          <div class="stat-card stat-warn">
-            <div class="stat-value">12</div>
-            <div class="stat-label">Warnings</div>
+            <div class="stat-value">22</div>
+            <div class="stat-label">Libraries reviewed</div>
           </div>
           <div class="stat-card stat-good">
-            <div class="stat-value">35</div>
-            <div class="stat-label">Resolved</div>
+            <div class="stat-value">9</div>
+            <div class="stat-label">Adopted (avg score 55)</div>
+          </div>
+          <div class="stat-card stat-warn">
+            <div class="stat-value">1</div>
+            <div class="stat-label">Worth a trial</div>
+          </div>
+          <div class="stat-card stat-bad">
+            <div class="stat-value">12</div>
+            <div class="stat-label">Keep out</div>
           </div>
         </div>
 
-        <!-- Findings as Cards -->
-        <h2 id="findings"><span class="num">01</span>Findings</h2>
-
-        <div class="card card-problem">
-          <h4>Critical Issue</h4>
-          <p>Description of the problem and its impact.</p>
-        </div>
-
-        <div class="card card-solution">
-          <h4>Recommended Fix</h4>
-          <p>Description of the solution with rationale.</p>
-        </div>
-
-        <!-- Issue Cards -->
-        <h2 id="issues"><span class="num">02</span>Issue Cards</h2>
-
-        <div class="issue issue-critical">
-          <span class="severity severity-critical">Blocking</span>
-          <h3>Critical finding title</h3>
-          <div class="where">path/to/file.go:42-58</div>
-          <p>
-            Describe the problem and cite the code or behavior that proves it.
-          </p>
-          <div class="callout callout-solution">
-            <strong>Fix</strong>
-            State the concrete recommended action.
-          </div>
-        </div>
-
-        <div class="issue issue-important">
-          <span class="severity severity-important">Important</span>
-          <h3>Important finding title</h3>
-          <div class="where">path/to/another.go:12-19</div>
-          <p>
-            Explain the risk and why a careful reviewer would hesitate before
-            shipping.
-          </p>
-        </div>
-
-        <div class="issue issue-nice">
-          <span class="severity severity-nice">Nice to have</span>
-          <h3>Polish suggestion</h3>
-          <div class="where">docs/ or config</div>
-          <p>
-            Minor documentation gaps or future-proofing suggestions go here.
-          </p>
-        </div>
-
-        <!-- Strengths -->
-        <h2>Strengths</h2>
-        <div class="strengths">
-          <div class="strength">
-            <div class="check">+</div>
-            <div class="text">
-              <strong>Specific strength</strong>
-              <span>Explain why it matters and what it enables.</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Table with Badges -->
-        <h2>Issue Table</h2>
+        <!-- Adopted table -->
+        <h2 id="adopted"><span class="num">01</span>Adopted — leverage scores</h2>
+        <p>
+          Score = round(100 &times; &Sigma;/A) over each report's capability
+          inventory (FULL = 1, PARTIAL = 0.5, MISSED = 0, MISUSED = 0; N/A rows
+          excluded and each carries a reason). Bands: very high &ge; 85, high
+          70&ndash;84, moderate 50&ndash;69, low &lt; 50. Zero MISUSED findings
+          across all nine.
+        </p>
         <table>
           <thead>
             <tr>
-              <th>#</th>
-              <th>Severity</th>
-              <th>Issue</th>
-              <th>Status</th>
+              <th>Library</th>
+              <th>Band</th>
+              <th>Leverage</th>
+              <th>Version (pinned &rarr; latest)</th>
+              <th>Top opportunity</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td>1</td>
-              <td><span class="badge badge-critical">Critical</span></td>
-              <td>Missing error handling</td>
-              <td><span class="badge badge-fixed">Fixed</span></td>
+              <td><a href="go-sse.md">go-sse</a></td>
+              <td><span class="badge badge-fixed">very high &middot; 95</span></td>
+              <td>9.5/10</td>
+              <td>v0.7.0 = latest</td>
+              <td>Surface <code>Broadcaster.Health()</code> (subscriber/buffer state) on <code>/health</code></td>
             </tr>
             <tr>
-              <td>2</td>
-              <td><span class="badge badge-high">High</span></td>
-              <td>Race condition</td>
-              <td><span class="badge badge-low">Open</span></td>
+              <td><a href="go-cqrs-lite.md">go-cqrs-lite</a></td>
+              <td><span class="badge badge-fixed">high &middot; 82</span></td>
+              <td>27/33</td>
+              <td>4 modules behind latest wave</td>
+              <td>Ride <code>--dep-sweep</code> onto the 2026-11 waves (metaengine v4.23.0, sqliteengine v4.8.0, system v4.18.0 &mdash; AggregateFn SQL-injection hardening)</td>
+            </tr>
+            <tr>
+              <td><a href="templ-components.md">templ-components</a></td>
+              <td><span class="badge badge-fixed">high &middot; 78</span></td>
+              <td>7/9</td>
+              <td>v1.27.0 = latest</td>
+              <td>Document adopted <code>navigation.Pagination</code> in ADOPTION.md; swap in <code>layout.MetaRefresh</code> + <code>Table.StickyHeader</code></td>
+            </tr>
+            <tr>
+              <td><a href="go-health-dashboard.md">go-health-dashboard</a></td>
+              <td><span class="badge badge-medium">moderate &middot; 68</span></td>
+              <td>13/19</td>
+              <td>v0.13.2 = latest</td>
+              <td><code>WithWebhook</code> bridging health transitions into the existing PapDashboard alert channel</td>
+            </tr>
+            <tr>
+              <td><a href="go-codec.md">go-codec</a></td>
+              <td><span class="badge badge-medium">moderate &middot; 63</span></td>
+              <td>2.5/4</td>
+              <td>v0.3.3 = latest</td>
+              <td>Route <code>decodePayload[T]</code> through <code>codec.JSONCodec</code> &mdash; one JSON door, zero behavior change</td>
+            </tr>
+            <tr>
+              <td><a href="go-retry.md">go-retry</a></td>
+              <td><span class="badge badge-high">low &middot; 44</span></td>
+              <td>4/9</td>
+              <td>v0.9.0 = latest</td>
+              <td><code>DoWithValue</code> for <code>execWithTransientRetry</code>; <code>OnExhausted</code> labeling for 3&times;-exhausted store-busy writes</td>
+            </tr>
+            <tr>
+              <td><a href="go-health.md">go-health</a></td>
+              <td><span class="badge badge-high">low &middot; 32</span></td>
+              <td>5.5/17</td>
+              <td>v0.10.0 = latest</td>
+              <td>Populate <code>StatusSince</code>/<code>TotalLatencyMs</code> (dashboard rows render empty today); <code>recover</code> around <code>evaluate</code></td>
+            </tr>
+            <tr>
+              <td><a href="go-datastar.md">go-datastar</a></td>
+              <td><span class="badge badge-critical">low &middot; 17</span></td>
+              <td>0.5/3</td>
+              <td>v0.6.x &rarr; v0.7.0 (behind)</td>
+              <td>Replace hand-rolled <code>serveDatastarSDK</code> with <code>ScriptHandler</code>; lockstep v0.7.0 bump (client v1.0.4)</td>
+            </tr>
+            <tr>
+              <td><a href="go-error-family.md">go-error-family</a></td>
+              <td><span class="badge badge-critical">low &middot; 13</span></td>
+              <td>1.5/12</td>
+              <td>v0.12.0 = latest</td>
+              <td>Give <code>PermanentError</code> a family; collapse <code>Permanent</code> onto <code>WrapOnce</code> (kills a parallel hand-rolled taxonomy)</td>
             </tr>
           </tbody>
         </table>
 
-        <!-- Before/After Comparison -->
-        <h2 id="proposal">Before / After</h2>
-        <div class="compare-header">
-          <div class="compare-before">Before</div>
-          <div class="compare-after">After</div>
-        </div>
-        <div class="compare-row">
-          <div>
-            <pre><code><span class="tok-comment">// Old code</span>
-<span class="tok-keyword">func</span> <span class="tok-func">process</span>(data <span class="tok-type">interface</span>{}) { }</code></pre>
-          </div>
-          <div>
-            <pre><code><span class="tok-comment">// New code</span>
-<span class="tok-keyword">func</span> <span class="tok-func">process</span>[T <span class="tok-type">any</span>](data T) { }</code></pre>
-          </div>
+        <!-- Not adopted table -->
+        <h2 id="not-adopted"><span class="num">02</span>Evaluated, not adopted</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Library</th>
+              <th>Verdict</th>
+              <th>Why</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><a href="httputil-server-timing.md">httputil/server_timing</a></td>
+              <td><span class="badge badge-high">WORTH A TRIAL</span></td>
+              <td>The one family module adding something tq lacks: per-handler Server-Timing with zero deps, SSE-safe passthrough; trial it behind the existing <code>RequestLog</code> flag</td>
+            </tr>
+            <tr>
+              <td><a href="httputil.md">httputil</a></td>
+              <td><span class="badge badge-low">KEEP OUT</span></td>
+              <td>Token gate, CSRF, lockout, CSP nonce all solved and test-pinned in-repo; httputil would duplicate, not replace (MIT since v1.5.0 &mdash; the "proprietary" note in AGENTS.md is stale)</td>
+            </tr>
+            <tr>
+              <td><a href="httputil-endpoints.md">httputil/endpoints</a></td>
+              <td><span class="badge badge-low">KEEP OUT</span></td>
+              <td>Four httpapi routes and a webui that already keeps its route table as data; a one-tag module (v0.1.0, 2026-11-06) is too young</td>
+            </tr>
+            <tr>
+              <td><a href="go-etag.md">go-etag</a></td>
+              <td><span class="badge badge-low">KEEP OUT</span></td>
+              <td>The machine API deliberately serves <code>Cache-Control: no-store</code> and the dashboard is SSE-driven &mdash; conditional GET solves a problem this architecture chose not to have</td>
+            </tr>
+            <tr>
+              <td><a href="go-idempotency.md">go-idempotency</a></td>
+              <td><span class="badge badge-low">KEEP OUT</span></td>
+              <td>Journal-level <code>DedupKey</code>/<code>ErrTaskDone</code> (permanent domain keys) is strictly stronger than a TTL key store; cqrs dedup already in the tree</td>
+            </tr>
+            <tr>
+              <td><a href="go-output.md">go-output</a></td>
+              <td><span class="badge badge-low">KEEP OUT</span></td>
+              <td>The CLI needs exactly its two modes (fixed-width tables + per-command <code>--json</code>), pinned by parser contracts and guard tests</td>
+            </tr>
+            <tr>
+              <td><a href="go-atomic-write.md">go-atomic-write</a></td>
+              <td><span class="badge badge-low">KEEP OUT</span></td>
+              <td>The one tmp+rename site already rides the deliberate <code>internal/retryx</code> seam; the lib's flock machinery targets multi-writer files the single-serialized-writer doctrine forbids</td>
+            </tr>
+            <tr>
+              <td><a href="go-filewatcher.md">go-filewatcher</a></td>
+              <td><span class="badge badge-low">KEEP OUT</span></td>
+              <td>Zero filesystem-watch sites exist: webui tails the journal by polling, harvest triggers arrive as daemon SSE, sweepers are watermark-paced</td>
+            </tr>
+            <tr>
+              <td><a href="go-daemon.md">go-daemon</a></td>
+              <td><span class="badge badge-low">KEEP OUT</span></td>
+              <td><code>runactor</code> + a Type=simple systemd unit already own lifecycle; five deps for a socket-server shape tq does not have</td>
+            </tr>
+            <tr>
+              <td><a href="go-credentials-store.md">go-credentials-store</a></td>
+              <td><span class="badge badge-low">KEEP OUT</span></td>
+              <td>The entire secret surface is one operator <code>--auth-token</code>, compared constant-time and never persisted; a vault adds a target for a non-existent need</td>
+            </tr>
+            <tr>
+              <td><a href="cmdguard.md">cmdguard</a></td>
+              <td><span class="badge badge-low">KEEP OUT</span></td>
+              <td>27 working stdlib-flag subcommands with ADR-0017 installability and ADR-0004's framework-free stance; typed flags do not justify a dispatch rewrite</td>
+            </tr>
+            <tr>
+              <td><a href="go-appkit.md">go-appkit</a></td>
+              <td><span class="badge badge-low">KEEP OUT</span></td>
+              <td>Greenfield service framework whose core composes httputil (ruled NOT adopted); every module overlaps an existing ADR-pinned surface &mdash; revisit only for a future standalone binary</td>
+            </tr>
+            <tr>
+              <td><a href="cqrs-htmx.md">cqrs-htmx</a></td>
+              <td><span class="badge badge-low">KEEP OUT</span></td>
+              <td>Dispatch-boundary CQRS HTTP + event-sourced usermgmt/admin solves a problem tq deliberately does not have (read-only dashboard, 4-route token API, HTMX rejected per ADR-0018)</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Cross-cutting -->
+        <h2 id="cross"><span class="num">03</span>Cross-cutting findings</h2>
+
+        <div class="card card-warning">
+          <h4>Version currency: one wave pending, one lib behind</h4>
+          <p>
+            8 of 9 adopted libraries sit on the latest tag (checked against the
+            local checkouts on 2026-11-08). The exceptions: go-cqrs-lite has a
+            four-module wave pending (metaengine v4.20.0&rarr;v4.23.0,
+            sqliteengine v4.6.0&rarr;v4.8.0, system v4.16.0&rarr;v4.18.0 with
+            AggregateFn SQL-injection hardening, id v4.7.4&rarr;v4.7.5) and
+            go-datastar is one minor behind (v0.6.x&rarr;v0.7.0, static
+            v0.6.1&rarr;v0.7.0). The depsweep sweeper is the designed vehicle
+            for both.
+          </p>
         </div>
 
-        <!-- ASCII Diagram -->
-        <h2>Dependency Tree</h2>
-        <div class="dep-tree">
-          <span class="root">root</span> ├──
-          <span class="ok">wanted-dep</span> └──
-          <span class="unwanted">unwanted-dep</span>
+        <div class="card card-solution">
+          <h4>Low scores are mostly deliberate seams, not neglect</h4>
+          <p>
+            go-error-family (13), go-datastar (17) and go-health (32) each hold
+            a small, deliberate seam: one dead-letter gate, one static-JS
+            submodule, one wire schema next to a hand-rolled prober (upstream's
+            classifier cannot express tq's per-check warns &mdash; a
+            severity-override design doc names go-taskqueue). Their
+            recommendations are surgical swaps, not migrations.
+          </p>
         </div>
 
-        <!-- Numbered Steps -->
-        <h2 id="plan"><span class="num">03</span>Migration Plan</h2>
-        <div class="migration-step">
-          <div class="migration-num">1</div>
-          <div class="migration-content">
-            <h4>Add generic type parameter</h4>
-            <p>Update the function signature to accept a type parameter.</p>
-          </div>
+        <div class="card card-solution">
+          <h4>The not-invented-here boundaries held</h4>
+          <p>
+            Every KEEP OUT cites an ADR or a test-pinned existing seam:
+            internal/retryx, runactor, the stdlib-flag CLI, journal DedupKey,
+            the no-store API posture. No rejected library was found to already
+            have a hand-rolled duplicate in the repo that should have been the
+            library all along.
+          </p>
         </div>
-        <div class="migration-step">
-          <div class="migration-num">2</div>
-          <div class="migration-content">
-            <h4>Update all call sites</h4>
-            <p>Pass explicit types at each call site for type safety.</p>
-          </div>
+
+        <div class="card card-problem">
+          <h4>Two prior deep-dives superseded</h4>
+          <p>
+            docs/research/2026-10-05_go-cqrs-lite-metaengine-system-deep-dive.html
+            and docs/research/2026-09-14_templ-components-deep-dive.html are
+            superseded by go-cqrs-lite.md and templ-components.md (narrower +
+            newer wins). templ-components moved 64&rarr;78 since September;
+            every high-impact cqrs-lite gap from October has since landed.
+          </p>
         </div>
+
+        <!-- Verify -->
+        <h2 id="verify"><span class="num">04</span>How to verify</h2>
+        <pre><code>cd /home/lars/projects/go-taskqueue
+ls docs/review/libs/*.md | wc -l                                  # &rarr; 22
+grep -m1 '^\*\*Verdict' docs/review/libs/&lt;lib&gt;.md                   # any report's verdict
+git -C /home/lars/projects/&lt;lib-checkout&gt; tag -l | sort -V | tail -1  # latest-tag claims
+grep -rn 'larsartmann/&lt;lib&gt;' --include=go.mod . | grep -v vendor    # pinned versions</code></pre>
+        <p>
+          Each report's own "How to verify" section was executed literally on
+          2026-11-08 before shipping. Render proof:
+          <a href="index.png">index.png</a> (headless-browser screenshot of
+          this file).
+        </p>
 
         <footer class="footer">
-          Generated YYYY-MM-DD &middot; All claims verified against source code
-          where noted
+          Generated 2026-11-08 &middot; All claims verified against source
+          code where noted &middot; Series: docs/review/libs/
         </footer>
       </main>
     </div>

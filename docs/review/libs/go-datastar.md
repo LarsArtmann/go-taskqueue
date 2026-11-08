@@ -12,6 +12,17 @@ Exactly one tq file imports go-datastar: `internal/webui/health.go` (verified 20
 
 The root module itself enters the graph only transitively: `go mod why` → `internal/webui → go-health-dashboard → go-datastar` (verified 2026-11-08). tq emits no Datastar patches and accepts no inbound Datastar requests; the only Datastar-speaking page is go-health-dashboard's `/health` (its `/health/sse` is mounted at webui.go:276).
 
+Integration map (all rows verified 2026-11-08 against internal/webui):
+
+| Route | tq wiring | Library surface |
+| --- | --- | --- |
+| `GET /health` | webui.go:275 → `s.dash.Handler()` | go-health-dashboard rendering (Datastar markup), path config health.go:327 |
+| `GET /health/sse` | webui.go:276 → `s.dash.SSEHandler()` | go-health-dashboard's patch emission over go-sse |
+| `GET /health/datastar.js` | webui.go:277 → `serveDatastarSDK` | `go-datastar/static.Bytes()` (health.go:363-369) |
+| `GET /healthz /readyz /startupz` | webui.go:279-281 → queueProber | none (go-health, outside this review's scope) |
+
+Not in the tq graph: `datastartest` (test-only module) and — until v0.7.0 — `broadcast/`; the pinned v0.6.3 predates the submodule, so the go.mod split (§5) is a gap, not a broken require (verified by `GOFLAGS=-mod=mod go list -m all | grep go-datastar` → only root + static).
+
 ## 2. Capability inventory
 
 | Capability | Status | Evidence |
@@ -40,6 +51,7 @@ The root module itself enters the graph only transitively: `go mod why` → `int
 3. **Version split root v0.6.3 vs cmd/tq v0.6.2 — tidy drift, not divergence.** `cmd/tq/go.mod:75` says `v0.6.2 // indirect` while `GOWORK=off go mod tidy -diff` (run 2026-11-08) raises it to v0.6.3; the workspace already resolves v0.6.3 (`go list -m all` in cmd/tq). Even a replace-free ADR-0017 build reaches v0.6.3 by MVS through the root module's require (verified by `cd cmd/tq && GOWORK=off go mod graph | grep 'go-datastar@'` → `go-taskqueue@v0.4.2 → go-datastar@v0.6.3`). Context: v0.6.3 was a root-only cut whose submodule lockstep tags were skipped (CHANGELOG §[0.6.3], backfilled 2026-11-07) — so tq's `0.6.3 + static v0.6.1` pair matches that release shape exactly, not a mis-pin.
 4. **Double-shipping check: none.** `templ-components/datastar v1.27.0` (also in the graph, via go-health-dashboard) requires the same `go-datastar/static v0.6.1`, so the vendor tree carries exactly one embedded bundle (verified 2026-11-08 by `ls vendor/github.com/larsartmann/go-datastar/static/` — one datastar.js, 33 538 bytes); tq never renders `SDKScript` (whose default is the CDN), so no second runtime ships and no cross-origin script enters the CSP.
 5. **Architecture note (unscored).** The library's core idea — patches are values (`Patch.Event() sse.Event`) that can be broadcast, stored, filtered — maps one-to-one onto tq's hub model. If the main dashboard ever moves from payload-less ticks + full snapshots to fragment-level updates, `NewElementsPatch` + templ-components' Datastar wave is the natural path; today that stays deliberately out of scope per ADR-0003.
+
 ## 4. Score + top opportunities
 
 N=11 rows; N/A=8; A=3; PARTIAL=1, MISSED=2 → Σ=0.5 → score = round(100×0.5/3) = **17 — low**. That is the honest reading: tq uses go-datastar as a same-origin JS-bundle vendor for the health dashboard and nothing else — which is exactly what the go-health-dashboard integration needs, but it leaves the protocol library itself (patches, response builder, broadcast, test helpers) untouched. Top: (1) swap `serveDatastarSDK` for `ScriptHandler`; (2) bump `static` → v0.7.0 (client v1.0.4) and close the stale-client window; (3) tidy the cmd/tq pin.
@@ -63,6 +75,7 @@ grep -n 'Version =' /home/lars/projects/go-datastar/static/static.go            
 grep -rn 'SDKScript\|jsdelivr' internal/webui --include='*.go' --include='*.templ' | grep -v _templ.go   # empty
 cd /home/lars/projects/go-datastar && git describe --tags           # broadcast/v0.7.0-4-g39e415f
 cd cmd/tq && GOWORK=off go mod tidy -diff 2>/dev/null | grep 'go-datastar'   # 0.6.2 → 0.6.3 drift
+GOFLAGS=-mod=mod go list -m all | grep 'go-datastar'                # root 0.6.3 + static 0.6.1, no broadcast (pre-v0.7.0 graph)
 go test ./internal/webui -run 'TestServeHeaderMatrixSDKBundle' -count=1   # SDK route/header contract
 ```
 All commands above were run literally on 2026-11-08 and produced the cited outputs (test run: ok 0.007s).

@@ -14,6 +14,16 @@ Library symbols in repo code (verified 2026-11-08 by `grep -rhoE 'sse\.[A-Z][a-z
 
 Two broadcasters: `Hub` fans payload-less `tick` events whose ID is the journal watermark (hub.go:15-38); `AgentFeed` fans typed `AgentEvent` payloads (agentfeed.go:25-38). Endpoints: `/api/events` + per-task stream share `runEventStream` (subscribe → snapshot → tick-pump, handlers.go:348-416); the agent live feed runs its own loop (handlers.go:270-310). Heartbeats ride `stream.Heartbeat` behind `startHeartbeat` (handlers.go:474-493). Buffer 128 with a documented drop-then-self-heal policy (hub.go:10-13).
 
+| Surface | File:lines | Lib symbols |
+| --- | --- | --- |
+| Hub (payload-less ticks, watermark IDs) | internal/webui/hub.go:20-56 | `Broadcaster[sse.Event]`, `WithBufferSize`, `NewEventID`, `Shutdown` |
+| AgentFeed (typed payload fan-out) | internal/webui/agentfeed.go:35-65 | `Broadcaster[AgentEvent]`, `WithBufferSize`, `Shutdown` |
+| Dashboard SSE protocol | internal/webui/handlers.go:348-416 | `NewStream`, `Stream.Send`, `Stream.SendJSON`, `LastEventIDFromRequest` |
+| Agent live feed | internal/webui/handlers.go:270-310 | `NewStream`, `Stream.SendJSON("agent")` |
+| Heartbeat wrapper | internal/webui/handlers.go:474-493 | `Stream.Heartbeat` |
+| Snapshot burst | internal/webui/handlers.go:509-530 | `Stream.SendJSON("frag")`, `Event.ID`, `Stream.Send` |
+| Handler tests | internal/webui/webui_test.go:208-233,440-470 | `ssetest.CollectN`, `CollectWithTimeout`, `WithPath`, `WithLastEventID` |
+
 ## 2. Capability inventory
 
 | Capability | Status | Evidence |
