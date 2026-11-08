@@ -13,6 +13,7 @@ note names its source, pins what was verified, and separates "adopt" from
 | 2026-09-14 | [`2026-09-14_templ-components-deep-dive.html`](2026-09-14_templ-components-deep-dive.html)                             | templ-components (dependency)           | Web UI component-library adoption review.                                                                         |
 | 2026-10-09 | [`2026-10-09_turnstone-lessons.md`](2026-10-09_turnstone-lessons.md)                                                   | turnstone (harness, the layer below tq) | 15 harness invariants checked against tq; produced the crash-reclaim effect-disposition fix + the narrowing rule. |
 | 2026-11-01 | [`2026-11-01_okf-lessons.md`](2026-11-01_okf-lessons.md)                                                               | Google OKF (open spec)                  | tq answers OKF's five trust questions in prose; OKF shows the typed form + the missing receipt/attester.          |
+| 2026-11-08 | [`../review/libs/index.html`](../review/libs/index.html) + 22 `.md` siblings                                            | LarsArtmann library fleet (utilization) | Fleet-wide audit: 9 adopted libs scored for leverage, 13 evaluated for adoption; supersedes the two deep-dives above. |
 
 ## Conventions
 
