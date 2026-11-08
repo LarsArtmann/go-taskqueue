@@ -27,7 +27,7 @@ Decode side (cqrs-lite's, on our live path): internal/readmodel/host.go:201 `eve
 | `Codec` interface via `JSONCodec` at the event boundary | 🟢 FULL | journal.go:164; round-tripped through the platform on every fold |
 | Encoding stamp + `ForEncoding` resolution | 🟢 FULL | stamped at journal.go:164, resolved at vendor codec.go:45, pinned by both test files (§1) |
 | Repo-side JSON routed through the codec | 🟡 PARTIAL | `decodePayload[T]` uses bare `encoding/json.Unmarshal` (internal/executor/payload.go:21); readmodel detail unmarshals too (events.go:251,277,291); `JSONCodec.Decode` is the identical call (checkout json.go:21-23) |
-| `CBORCodec` (canonical, smaller/faster) | ⚪ N/A | journal wire contract is JSON for operator inspectability — `fact.Detail` is `jsontext.Value` (journal.go:170-177) rendered by `tq audit`/`tq show`; a CBOR flip is a journal format break with no consumer demand |
+| `CBORCodec` (canonical, smaller/faster) | ⚪ N/A | journal wire contract is JSON for operator inspectability — `fact.Detail` is `jsontext.Value` (journal.go:181-188) rendered by `tq audit`/`tq show`; a CBOR flip is a journal format break with no consumer demand |
 | `CBORCompactCodec` (unknown-field rejection) | ⚪ N/A | would REFUSE unknown detail keys — the opposite of the OKF v0.2 §11 additive-growth contract (AGENTS.md: unknown detail keys are ignored, legacy fallback reads) |
 | `RawCodec` passthrough | ⚪ N/A | every payload is typed at construction (`factPayload`); no pre-encoded byte path exists |
 | `BufferEncoder`/`GetBuffer`/`EncodePooled` | ⚪ N/A | no in-repo hot encode loop calls the codec directly; per-fact encode buffering is owned by cqrs-lite's `event.New` |
@@ -84,7 +84,7 @@ grep -rl --include='*.go' 'larsartmann/go-codec' . | grep -v '^./vendor/'
 grep -n 'codec\.' internal/journal/cqrs/journal.go internal/journal/cqrs/journal_test.go cmd/tq/facts_cqrs_test.go
 # → journal.go:164 WithCodec(JSONCodec{}); journal_test.go:150-151 + facts_cqrs_test.go:137-138 EncodingJSON
 grep -rn 'go-codec' --include=go.mod . | grep -v vendor   # → v0.3.3; direct only in cqrs + cmd/tq
-sed -n '149,177p' internal/journal/cqrs/journal.go        # stamp rationale + factPayload (jsontext detail)
+sed -n '149,164p;181,188p' internal/journal/cqrs/journal.go      # stamp rationale + factPayload (jsontext detail)
 sed -n '199,205p' internal/readmodel/host.go              # DecodePayloadAuto consumer
 sed -n '37,56p' vendor/github.com/larsartmann/go-cqrs-lite/event/v4/codec.go  # ForEncoding on the fold path
 sed -n '14,26p' internal/executor/payload.go              # hand-rolled json.Unmarshal seam (F2)

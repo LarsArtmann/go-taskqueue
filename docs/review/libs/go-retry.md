@@ -2,7 +2,7 @@
 
 **Verdict:** ADOPTED — low (4/9 capability rows leveraged) — the core `Do` loop is used at every non-exempt retry site in the repo, but the ergonomic surface (`DoWithValue`, options tail) and the exhaustion/error-model features are untouched.
 
-**Pinned:** v0.9.0 — direct requires: `internal/executor/go.mod:7`, `internal/worker/go.mod:48`, `internal/retryx/go.mod:5`; `// indirect` in 8 more modules. Verified 2026-11-08 by `grep -rn 'go-retry' --include=go.mod . | grep -v vendor`.
+**Pinned:** v0.9.0 — direct requires: `internal/executor/go.mod:7`, `internal/worker/go.mod:48`, `internal/retryx/go.mod:5`; `// indirect` in 7 more modules. Verified 2026-11-08 by `grep -rn 'go-retry' --include=go.mod . | grep -v vendor`.
 
 **Latest:** v0.9.0 (local checkout /home/lars/projects/go-retry, checked 2026-11-08 by `git -C … describe --tags` → `v0.9.0-4-g047d55a`; Unreleased empty).
 

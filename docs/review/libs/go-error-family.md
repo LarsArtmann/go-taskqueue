@@ -2,7 +2,7 @@
 
 **Verdict:** ADOPTED — low (1.5/12 capability rows leveraged) — one load-bearing seam (readmodel fold → cqrs-lite dead-letter gate), zero adoption anywhere else; the rest of the repo runs parallel hand-rolled error taxonomies.
 
-**Pinned:** v0.12.0 — direct requires: `go.mod:109` (root/app layer), `internal/readmodel/go.mod:13`; `// indirect` in 11 more modules (via go-retry + go-cqrs-lite). Verified 2026-11-08 by `grep -rn 'go-error-family' --include=go.mod . | grep -v vendor`.
+**Pinned:** v0.12.0 — direct requires: `go.mod:109` (root/app layer), `internal/readmodel/go.mod:13`; `// indirect` in 16 more modules (via go-retry + go-cqrs-lite). Verified 2026-11-08 by `grep -rn 'go-error-family' --include=go.mod . | grep -v vendor`.
 
 **Latest:** v0.12.0 (local checkout /home/lars/projects/go-error-family, checked 2026-11-08 by `git -C … describe --tags` → `v0.12.0-6-g7ccca5c`; Unreleased section empty).
 
