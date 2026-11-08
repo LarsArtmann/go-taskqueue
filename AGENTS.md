@@ -5,8 +5,7 @@ Projects-aware task queue / worker pool for Go — see README.md.
 **STATUS: v0.4.2 tagged, push owner-gated; concurrent agents** — re-read files,
 re-run tests; uncommitted changes: read, judge, build on, never revert (size: TestAgentsDocSizeGuard)
 
-**MAJOR OPEN PROBLEMS**: [dispatch prompting + batch granularity](docs/problems/major-prompting-and-batching.md) — shipped
-v0.3.4; follow-ups in the doc.
+**MAJOR OPEN PROBLEMS**: [dispatch prompting + batch granularity](docs/problems/major-prompting-and-batching.md) — shipped v0.3.4.
 
 **READER ROUTE — your lanes only**: executors → §Payload contracts +
 §Conventions; review/dlqfix/status → §Conventions + §Operational contracts; gate
@@ -225,8 +224,7 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   ROOT build+vet+test -race rc. Re-dispatch: `scripts/redispatch-brief.sh`
   (stamp partial-landed rows: `--stamp-residue`, dry-run first); rc TO A FILE (no PIPESTATUS); dated DONE re-verified note; `-v` + PASS
   COUNT for conform `-run`. **Premise-check first**: RUN a batch item's
-  premise gate BEFORE planning — a stale
-  premise ("zero headroom" was actually 380 B red) burned a window.
+  premise gate BEFORE planning (a stale premise burned a window).
   **Observe-first for pinning**: CAPTURE live output and pin what was
   observed — assertion-first pinning burned three windows.
 - **Gate receipts**: a report's "N ok / M fail" count is `grep -c '^ok:'`
@@ -339,7 +337,7 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   floors + flake tarball PINNED IN LOCKSTEP (1.27.3); NEVER lower a `go`
   directive (`check-go-mods.sh`).
 - **CI-log triage one-liner**: `gh run view <id> --log-failed | grep -i '##\[error\]'`
-  extracts the failing-job error lines directly (two burned before landing on it; 2026-11-03 task 000001a19fb137e9 §e5/§f10).
+  (2026-11-03 task 000001a19fb137e9 §e5/§f10).
 - **`fetch` empty ≠ URL dead**: an empty body is a tool mismatch — retry `download`.
 - **Host GOCACHE/GOROOT hazards**: gates run `GOCACHE=/tmp/go-build-cache`
   (host symlink → /nix/store ENOSPCs); "package X is not in std" +
@@ -352,9 +350,8 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   CSRF+lockout-guarded; non-loopback needs `--auth-token`; no new write
   endpoint without it (SECURITY.md).
 - **templ + cmd/tq LSP diagnostics are false positives — never "fix" them;
-  cmd/tq `GOWORK=off` build/test fails at HEAD** (undefined internals vs
-  the facade floor) — trust the CLI gates: go.work workspace or
-  `scripts/test-cmd-tq.sh` (07-28 §d5).
+  cmd/tq `GOWORK=off` build/test fails at HEAD** — trust the CLI gates:
+  go.work workspace or `scripts/test-cmd-tq.sh` (07-28 §d5).
 - **erraudit**: HARD gate `scripts/check-erraudit.sh` — ruled flags live
   there (`--max` dev-build-only; CI pin v0.7.0 rejects it), run from EACH
   module root (`lint` REJECTS `--modules`/`--violations-only`). `legacy_as`
@@ -378,8 +375,6 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 - **History policy**: NEVER reword/amend/rebase PUSHED commits; no force-push.
 - **Kernel ETXTBSY**: fresh-binary execve intermittently fails — exec sites
   through `execWithTransientRetry`.
-- **formatterWithGo drop-day** (flake.nix): `goTarball*` + `formatterWithGo` drop
-  at nixpkgs go ≥ 1.27.3 (hashes paired).
 - **templ-components sibling pins**: a pseudo-version in a dep's root go.mod
   passes local builds but kills consumer graph loads (Nix FOD) — `grep -r 00010101`
   the dep before blaming the flake/vendorHash.
