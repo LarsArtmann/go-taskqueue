@@ -143,7 +143,6 @@ clean=0
 mods="$(./scripts/for-each-module.sh)
 .
 cmd/tq"
-repo_root="$(pwd)"
 # The root leg's ./... walk and the cmd/tq leg cross the replace-free
 # cmd/tq module graph: between a floor sweep and the wave's owner-gated
 # push its go-taskqueue requires resolve NOWHERE ("unknown revision vX" on
