@@ -1,6 +1,6 @@
 # go-sse — Library Utilization Review
 
-**Verdict:** ADOPTED — high (6.5/8 capability rows leveraged)
+**Verdict:** ADOPTED — very high (9.5/10 capability rows leveraged)
 **Pinned:** `go-sse v0.7.0` (direct, root `go.mod:112`); `go-sse/ssetest v0.5.0` (direct, root `go.mod:113`); `go-sse/sseparse v0.2.1` (indirect, root `go.mod:60`). 11 nested-module go.mods carry `v0.6.2 // indirect` via the go-cqrs-lite chain (cmd/tq, examples/embed, internal/{composition,readmodel,worker}, internal/queue/{sqlite,sqlitev4,postgres,postgresv4}, queue/{sqlite,postgres}).
 **Latest:** v0.7.0 (local checkout /home/lars/projects/go-sse, checked 2026-11-08; HEAD is `v0.7.0-1-g443abdd`)
 **Prior coverage:** none (the 2026-09-14 templ-components deep-dive audits the UI library; its SSE notes cover app.js swap mechanics, not the go-sse library)
@@ -22,19 +22,23 @@ Two broadcasters: `Hub` fans payload-less `tick` events whose ID is the journal 
 | Stream lifecycle (`NewStream`, headers, `Close`, context) | 🟢 FULL | `NewStream` + deferred `Close` at both endpoints, `Flusher` probe + `X-Accel-Buffering: no` first (handlers.go:278-289, 363-374); `r.Context()` used where lib offers equivalent `stream.Context()` (stream.go:192) |
 | Heartbeat keepalive | 🟢 FULL | `stream.Heartbeat(hbCtx, s.cfg.Heartbeat)` wrapped in cancel+wait (handlers.go:474-493); the lib stops on ctx/closed/write-error (stream.go:246-272) but offers no wait contract, so tq's `<-done` guard is deliberate defensive code, not a misuse |
 | `Last-Event-ID` extraction | 🟢 FULL | `sse.LastEventIDFromRequest(r)` + branded `EventID`, used for reconnect-lag logging (handlers.go:324-338) |
+| Branded `EventID` type safety (`NewEventID`/`ParseEventID`/`MustParseEventID`) | 🟢 FULL | watermark IDs constructed at the boundary via `sse.NewEventID(formatSeq(seq))` (hub.go:33-38, handlers.go:522-525); untrusted header values validated inside the lib (rejects `\n`/`\r` per FEATURES.md) |
 | Reconnection replay (`EventStore`/`Replay`/`ReplayFiltered`) | ⚪ N/A | snapshot-resume by design: ticks are payload-less, so "any Last-Event-ID is satisfied by a fresh snapshot" (handlers.go:349-356, 457-461); replaying ticks would re-send what the snapshot already covers |
 | Fan-out `Broadcaster[T]` (Subscribe/Unsubscribe/Broadcast/Shutdown, `WithBufferSize`, drop policy) | 🟢 FULL | two broadcasters with explicit buffer + graceful drain (hub.go:20-56, agentfeed.go:35-65); agent feed is the generic-type showcase (`Broadcaster[AgentEvent]`) |
 | Predicate subscription (`SubscribeFilter`) | ⚪ N/A | single-topic fan-out — every dashboard client receives every tick by design; no per-client topics exist |
-| Broadcaster observability (`Health()`, `OnSubscribe`/`OnUnsubscribe` hooks, `BroadcastMany`) | 🔴 MISSED | `BroadcasterHealth{SubscriberCount,BufferSize,Closed,Draining}` (fanout.go:438) never surfaced; `/health` reports store-derived checks only (health.go:46-190) | |
+| Broadcaster observability (`Health()`, `OnSubscribe`/`OnUnsubscribe` hooks, `BroadcastMany`) | 🔴 MISSED | `BroadcasterHealth{SubscriberCount,BufferSize,Closed,Draining}` (fanout.go:438) never surfaced; `/health` reports store-derived checks only (health.go:60-190) |
 | DataStar-pattern helpers (`SendKeyed`/`SendLines`/`KeyedLines`) | ⚪ N/A | tq payloads are JSON fragments via `SendJSON` ("frag" handlers.go:517 / "agent" handlers.go:308); Datastar-keyed emission belongs to go-health-dashboard's `/health/sse` |
 | Retry directive (`Event.Retry`/`WriteRetry`) | ⚪ N/A | browser default reconnect cadence is fine; no custom retry hint needed on a loopback dashboard |
-| ssetest collect + request options | 🟢 FULL | `CollectN`/`CollectWithTimeout`/`WithPath`/`WithLastEventID` across 4 test files (webui_test.go:208,268,321,454-457; auth_test.go:134-135; board_test.go:225; evidence_stream_test.go:73); v0.5.0's branded-`EventID` breaking change already adopted (webui_test.go:454) |
+| `SendJSON` convenience | 🟢 FULL | fragment and agent payloads marshal-and-send in one call (handlers.go:517 "frag", handlers.go:308 "agent") — marshal-error and nil-value paths owned by the lib (FEATURES.md Stream table) |
+| `OnDisconnect` callbacks | ⚪ N/A | subscriber cleanup rides channel close + request context (handlers.go:293-294, 376); no per-disconnect work exists to hook |
+| ssetest collect helpers | 🟢 FULL | `CollectN`/`CollectWithTimeout` across 4 test files (webui_test.go:208,268,321,457; auth_test.go:134-135; board_test.go:225; evidence_stream_test.go:73) |
+| ssetest request options | 🟢 FULL | `WithPath` ×14 + `WithLastEventID` with the v0.5.0 branded-`EventID` breaking change already adopted (webui_test.go:454-457) |
 | ssetest assertions (`Require*`, `RequireDataJSON[T]`, `FilterByType`) | 🟡 PARTIAL | tests hand-roll decode loops (webui_test.go:213-233: `switch evt.Type` + `json.Unmarshal`) where `RequireDataJSON`/`FilterByType` would compress; `Collect`/`CollectPost`/`CollectWithRequest`/`MustRead*` unused |
 | sseparse module (standalone parser/corpus) | ⚪ N/A | tq never parses SSE off-HTTP (verified 0 non-test `sseparse.` sites); the browser parses the wire; tests parse via ssetest's re-export |
 
 ## 3. Findings
 
-1. **Broadcaster health is invisible.** Offer: `Broadcaster.Health()` returns `BroadcasterHealth{Closed, Draining, SubscriberCount, BufferSize}` (checkout fanout.go:438, struct at fanout.go `type BroadcasterHealth`); `OnSubscribe`/`OnUnsubscribe` hooks exist for logging. We do instead: `/health` checks derive only from the store projection (internal/webui/health.go:46-190); subscriber count and buffer state of the two broadcasters are unobservable (hub.go:20-56, agentfeed.go:35-65). Impact: an operator cannot see how many dashboards stream, or that slow clients are dropping (the documented self-heal, hub.go:10-13, is silent). Example:
+1. **Broadcaster health is invisible.** Offer: `Broadcaster.Health()` returns `BroadcasterHealth{Closed, Draining, SubscriberCount, BufferSize}` (checkout fanout.go:438, struct at fanout.go `type BroadcasterHealth`); `OnSubscribe`/`OnUnsubscribe` hooks exist for logging. We do instead: `/health` checks derive only from the store projection (internal/webui/health.go:60-190); subscriber count and buffer state of the two broadcasters are unobservable (hub.go:20-56, agentfeed.go:35-65). Impact: an operator cannot see how many dashboards stream, or that slow clients are dropping (the documented self-heal, hub.go:10-13, is silent). Example:
    ```go
    func (h *Hub) Health() sse.BroadcasterHealth { return h.bc.Health() }
    // wire into queueProber's check map: {"sse-hub", h.Health().SubscriberCount, ...}
@@ -47,7 +51,7 @@ Two broadcasters: `Hub` fans payload-less `tick` events whose ID is the journal 
 
 ## 4. Score + top opportunities
 
-N=13 rows; N/A=5; A=8; FULL=6, PARTIAL=1, MISSED=1 → Σ=6.5 → score = round(100×6.5/8) = **81 — high**. Top: (1) surface `Broadcaster.Health()` on `/health`; (2) adopt the ssetest `Require*` assertions; (3) tidy the v0.6.2 residue.
+N=16 rows; N/A=6; A=10; FULL=9, PARTIAL=1, MISSED=1 → Σ=9.5 → score = round(100×9.5/10) = **95 — very high**. The score rose with the row granularity: the initial 13-row pass folded `SendJSON`, `EventID` branding, and the two ssetest halves into single rows, undercounting real FULL adoptions. Top: (1) surface `Broadcaster.Health()` on `/health`; (2) adopt the ssetest `Require*` assertions; (3) tidy the v0.6.2 residue.
 
 ## 5. Version currency + risk
 

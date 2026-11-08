@@ -1,6 +1,6 @@
 # templ-components — Library Utilization Review
 
-**Verdict:** ADOPTED — high (7/9 capability rows leveraged)
+**Verdict:** ADOPTED — high (7/9 capability rows leveraged; 18-row inventory)
 **Pinned:** root `go.mod:126-128` `templ-components v1.27.0` + `/icons v1.27.0` + `/utils v1.27.0` (direct), `go.mod:66-67` `/datastar v1.27.0` + `/htmx v1.27.0` (indirect); `cmd/tq/go.mod:86-90` all five submodules at v1.27.0. No split — every module agrees.
 **Latest:** v1.27.0 (2026-11-04) (local checkout /home/lars/projects/templ-components, checked 2026-11-08; HEAD is `charts/echarts/v1.27.0-87-g5c0d170a`, 87 in-flight commits)
 **Prior coverage:** the 2026-09-14 templ-components deep-dive (docs/research/2026-09-14_templ-components-deep-dive.html, audited v1.16.0 at score 64/100) — superseded by this report (narrower + newer wins)
@@ -33,6 +33,9 @@ Catalog: display 53 + feedback 15 + forms 26 + navigation 12 + layout 11 = **117
 | `Table.StickyHeader` | 🔴 MISSED | the v1.22.0 consumer flag is unused on the already-adopted Table (vendored display/table.templ:188-193,269) — long ledgers scroll their header out of view |
 | Other surfaces (`StatusDot`/`LivePill`/`DataState`/`SegmentBar`/`Lightbox`/`CodeBlock`/CommandPalette/skeletons) | ⚪ N/A | no matching surface; nowband/board/lamp/error page are pinned custom-or-rejected rows |
 | utils plumbing (`BaseProps` Nonce/Class/ID/Attrs; `Coalesce`) | 🟢 FULL | `BaseProps` carries the CSP nonce through every component call site (10 sites); `utils.Coalesce` (v1.27.0) has no tq use case |
+| Feedback beyond Alert (Toast/LoadingOverlay/LoadingProgress/Skeleton) | ⚪ N/A | a snapshot-on-tick dashboard has no toasts or long operations; errors render inline via the adopted `feedback.Alert` |
+| Layout beyond Base (`Minimal`, AppShell/SidebarNav) | ⚪ N/A | single two-page operator surface (dashboard + task detail); `Base` with custom BodyClass is the shell |
+| Navigation beyond Pagination (Tabs/LoadMore/CommandPalette) | ⚪ N/A | one ledger view + detail; view state rides the URL (`view=board`), not tabs — MetaRefresh is scored separately above |
 
 ## 3. Findings
 
@@ -40,11 +43,23 @@ Catalog: display 53 + feedback 15 + forms 26 + navigation 12 + layout 11 = **117
 2. **Hand-rolled `refreshMeta` next to shipped `layout.MetaRefresh`.** Offer: `layout.MetaRefresh(delaySeconds, url)` with clamping and self-reload semantics (vendored layout/meta_refresh.templ:5-23). We do instead: a literal `<meta http-equiv="refresh" content="3600"/>` (internal/webui/layout.templ:213-216). Impact: trivial today, but the hand-roll can silently diverge from upstream fixes (the SSE-stall fallback is exactly the pattern the component documents). Example: `@layout.MetaRefresh(3600, "")`.
 3. **`Table.StickyHeader` unused on the ledger table.** Offer: one boolean pinning the header row (vendored display/table.templ:188-193, emitted at :269). We do instead: default scrolling header inside the table card (fragments.templ:150-183). Impact: on long filtered ledgers the sort links and column identity scroll away. Example: `StickyHeader: true` on the existing `display.TableProps`.
 4. **CopyButton's per-swap script bytes (unreleased fix on deck).** v1.27.0 appends `@copyButtonScriptComponent(props.Nonce)` to every CopyButton render (vendored copy_button.templ:115), and detail fragments are re-shipped by SSE via innerHTML, where inserted scripts never run — so each tick re-sends a dead script tag. tq is NOT functionally exposed: the delegation script registers at document level (`document.addEventListener('click', …closest('[data-tc-copy]'))`, vendored display/shared.go:167-185) and the detail page's initial server HTML contains the first CopyButton, so the singleton executes at page load and keeps serving swapped-in buttons. The upstream fix — `CopyButtonProps.NoScript` + a single `display.CopyButtonScript(nonce)` in the page shell (checkout display/copy_button.templ:33-58, Unreleased #63) — is the adopt-at-next-bump item; until then the cost is inert bytes per tick, not broken buttons.
-5. **Supersession ledger vs the 2026-09-14 deep-dive** (all verified on today's tree): swap-guard + state re-apply shipped (execution log B; server half is the `filtersHTML` byte-compare, handlers.go:404-434); TypedHeaders sort UI shipped (components.go:874-916 — the deep-dive's retraction stands); `RelativeTime` adopted (components.go:459-466); `Pagination` adopted (fragments.templ:205) — but undocumented (Finding 1); filter auto-submit shipped as custom fetch+pushState with htmx ruled OUT (plan §G), which is why `forms.FilterBar`/`wire` stay N/A rows rather than misses; `CopyButton`/`ListNote` adopted; errorpage stays REJECTED (ADOPTION.md); the v1.17-era "a11y pack" roadmap item is moot at v1.27.0. Two new misses the deep-dive could not see: MetaRefresh and StickyHeader (both post-date it).
+5. **Supersession ledger vs the 2026-09-14 deep-dive** (all verified on today's tree):
+
+   | Deep-dive roadmap item | Status 2026-11-08 | Evidence |
+   | --- | --- | --- |
+   | 1. Swap-guard + state re-apply | shipped 2026-09-14 (plan §B) | server half: `filtersHTML` byte-compare, handlers.go:418-434; client half in app.js |
+   | 2. TypedHeaders sort UI | shipped 6feaa7d (audit retraction stands) | components.go:874-916 |
+   | 3. RelativeTime adoption | shipped | components.go:459-466; ADOPTION.md Go-invoked note |
+   | 4. navigation.Pagination | shipped — but undocumented | fragments.templ:205-208; ADOPTION.md gap (Finding 1) |
+   | 5. Filter without full reload | shipped as custom fetch+pushState (§G ruling: htmx OUT) | forms.FilterBar stays N/A |
+   | 6. CopyButton/ListNote/errorpage/icons | CopyButton+ListNote shipped; errorpage stays REJECTED; icons decorative-skip ruling stands | fragments.templ:748,869,971,201; ADOPTION.md |
+   | 7. v1.17-era a11y pack | moot — v1.27.0 includes it all | pinned version |
+
+   Two new misses the deep-dive could not see: MetaRefresh and StickyHeader (both shipped upstream after it).
 
 ## 4. Score + top opportunities
 
-N=15 rows; N/A=6; A=9; FULL=6, PARTIAL=2, MISSED=2 → Σ=7.0 → score = round(100×7.0/9) = **78 — high** (prior deep-dive at v1.16.0: 64/100; the gap closed mostly via the 2026-09-14 same-day overhaul). Top: (1) document Pagination + widen the guard regex; (2) swap `refreshMeta` → `layout.MetaRefresh`; (3) flip `StickyHeader: true` — together worth ~+11 points (≈89, very high).
+N=18 rows; N/A=9; A=9; FULL=6, PARTIAL=2, MISSED=2 → Σ=7.0 → score = round(100×7.0/9) = **78 — high** (prior deep-dive at v1.16.0: 64/100; the gap closed mostly via the 2026-09-14 same-day overhaul). Top: (1) document Pagination + widen the guard regex; (2) swap `refreshMeta` → `layout.MetaRefresh`; (3) flip `StickyHeader: true` — together worth ~+11 points (≈89, very high).
 
 ## 5. Version currency + risk
 
