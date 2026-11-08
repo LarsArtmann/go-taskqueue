@@ -184,9 +184,16 @@ func daemonHTTPClient(addr string) (*http.Client, string) {
 }
 
 // unixSocketClient dials every request over the unix socket at path.
+//
+// No client-level Timeout: this client also serves the long-lived
+// /v1/watch SSE stream, which stays open until the server or the caller's
+// context ends it. ResponseHeaderTimeout bounds the hung-daemon case
+// (dial/connect/headers) without capping the stream body.
 func unixSocketClient(path string) *http.Client {
+	//io-surface:ignore client-no-timeout Client.Timeout would kill the /v1/watch SSE stream this client multiplexes; ResponseHeaderTimeout bounds the hung-daemon case instead
 	return &http.Client{
 		Transport: &http.Transport{
+			ResponseHeaderTimeout: 10 * time.Second,
 			DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
 				var dialer net.Dialer
 

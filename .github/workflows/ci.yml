@@ -44,6 +44,12 @@ jobs:
         run: go vet ./...
       - name: Build
         run: go build ./...
+      # I/O surface gate: every production I/O call site must be declared in
+      # docs/architecture/io-surface/ (manifest declares enforcement: "gate",
+      # so error findings fail this workflow). Pinned tool version; upgrade
+      # deliberately.
+      - name: I/O surface gate (io-surface)
+        run: go run github.com/larsartmann/io-surface/cmd/io-surface@v0.5.1 check --root .
       - name: Test
         run: go test ./... -count=1 -race -timeout 120s
       - name: Module isolation gates (GOWORK=off per sub-module)
