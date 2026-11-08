@@ -130,14 +130,26 @@ for m in $mods; do
 	fi
 done
 
+# cmd/tq's replace-free requires cannot be cache-verified between a floor
+# sweep and the wave's owner-gated push — the required versions exist
+# NOWHERE ("unknown revision v0.4.2", the v0.4.2 wave class). Under the
+# devwork replace shim the go-taskqueue modules are dir-sourced (nothing
+# cache-stored to verify) while the external dependencies still get the
+# full cache verification — a strictly stronger check than GOWORK=off in
+# that window, and byte-equivalent after the push.
+source scripts/lib/cmd-tq-devmod.sh
+cmdtq_devwork
+devwork="$CMD_TQ_WORK"
 for m in . $mods; do
 	# go mod verify flakes when the shared module cache is written
 	# concurrently (16-00 report f41): retry once before failing, and the
 	# FAIL line carries the underlying stderr (04-21 §f14) — a bare
 	# "FAIL: <module>" named the victim but not the symptom.
-	if ! err="$(cd "$m" && GOWORK=off go mod verify 2>&1 >/dev/null)"; then
+	verify_env=("GOWORK=off")
+	[ "$m" = "cmd/tq" ] && verify_env=("GOWORK=$devwork")
+	if ! err="$(cd "$m" && env "${verify_env[@]}" go mod verify 2>&1 >/dev/null)"; then
 		echo "WARN: go mod verify flaked in $m — retrying once"
-		if ! err="$(cd "$m" && GOWORK=off go mod verify 2>&1 >/dev/null)"; then
+		if ! err="$(cd "$m" && env "${verify_env[@]}" go mod verify 2>&1 >/dev/null)"; then
 			echo "FAIL: go mod verify in $m (retry also failed):"
 			printf '%s\n' "$err" | sed 's/^/  /'
 			checks_failed=$((checks_failed + 1))
@@ -149,6 +161,7 @@ for m in . $mods; do
 		checks_ok=$((checks_ok + 1))
 	fi
 done
+rm -rf "$(dirname "$devwork")"
 
 echo "go-mods summary: $checks_ok checks ok, $checks_failed failed"
 exit $fail
