@@ -144,17 +144,22 @@ mods="$(./scripts/for-each-module.sh)
 .
 cmd/tq"
 repo_root="$(pwd)"
+# The root leg's ./... walk and the cmd/tq leg cross the replace-free
+# cmd/tq module graph: between a floor sweep and the wave's owner-gated
+# push its go-taskqueue requires resolve NOWHERE ("unknown revision vX" on
+# the proxy — workspace `use` alone does not exempt the graph's version
+# metadata). Run both through the devwork shim — the same derived
+# use+replace workspace the golangci-lint leg consumes (scripts/ci-local.sh);
+# its versioned replaces redirect graph metadata to the local tree so the
+# gate analyzes HEAD source in every window. The leaf internals keep
+# ambient resolution via their own go.mod replaces.
+source scripts/lib/cmd-tq-devmod.sh
+cmdtq_devwork
+devwork="$CMD_TQ_WORK"
 for m in $mods; do
 	[ -f "$m/go.mod" ] || continue
-	# The root leg's ./... walk and the cmd/tq leg cross the replace-free
-	# cmd/tq module graph: between a floor sweep and the wave's owner-gated
-	# push its go-taskqueue requires resolve NOWHERE (unknown revision on
-	# the proxy). The ADR-0017 workspace is the documented local-resolution
-	# path for exactly this window (AGENTS §Known Issues, templ/cmd-tq row);
-	# the leaf internals keep ambient resolution via their own go.mod
-	# replaces.
 	if [ "$m" = "." ] || [ "$m" = "cmd/tq" ]; then
-		if GOWORK="$repo_root/cmd/tq/go.work" check_one_module "$m"; then
+		if GOWORK="$devwork" check_one_module "$m"; then
 			clean=$((clean + 1))
 		else
 			fail=1
@@ -167,6 +172,7 @@ for m in $mods; do
 		fi
 	fi
 done
+rm -rf "$(dirname "$devwork")"
 
 if [ "$fail" -ne 0 ]; then
 	echo "erraudit summary: FAILING — see module FAILs above" >&2

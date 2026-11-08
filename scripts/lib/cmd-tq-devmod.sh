@@ -108,8 +108,10 @@ cmdtq_devmod_cleanup() {
 # load still fetches each require's go.mod AT ITS VERSION — between a floor
 # sweep and the wave's owner-gated push that version exists NOWHERE
 # (cmd/tq is replace-free, so `go list -m all` dies with "unknown revision
-# vX" on every go-taskqueue require). The replace lines redirect the graph
-# metadata to the local tree the same way dev.mod does.
+# vX" on every go-taskqueue require). go.work forbids the all-versions
+# replace form for used modules ("replaced at all versions"), so each
+# replace pins the exact require version from cmd/tq/go.mod — derived per
+# run, so the next sweep regenerates it automatically.
 cmdtq_devwork() {
 	local root gover
 	root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -127,11 +129,18 @@ cmdtq_devwork() {
 		}' "$root/go.mod" | sort -u
 		echo ")"
 		echo
-		echo "replace github.com/larsartmann/go-taskqueue => $root"
-		awk -v root="$root" '/^replace github\.com\/larsartmann\/go-taskqueue.* => \.\// {
-			path = $NF
-			sub(/^\.\//, "", path)
-			print "replace " $2 " => " root "/" path
-		}' "$root/go.mod" | sort -u
+		awk -v root="$root" '
+			$1 == "require" && $2 ~ /^github\.com\/larsartmann\/go-taskqueue/ && NF >= 3 { emit($2, $3) }
+			/^require \(/ { inb = 1; next }
+			/^\)/ { inb = 0; next }
+			inb && $1 ~ /^github\.com\/larsartmann\/go-taskqueue/ && NF >= 2 { emit($1, $2) }
+			function emit(full, ver,   mod, dir) {
+				mod = full
+				dir = root
+				sub(/^github\.com\/larsartmann\/go-taskqueue/, "", mod)
+				if (mod != "") dir = dir mod
+				print "replace " full " " ver " => " dir
+			}
+		' "$root/cmd/tq/go.mod" | sort -u
 	} >"$CMD_TQ_WORK"
 }
