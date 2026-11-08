@@ -38,7 +38,7 @@ What tq builds on top: `queueProber` (health.go:60-104) lazily re-evaluates a st
 | Configured-off sentinel (`health.Off`/`StatusOff`) | 🔴 MISSED | projection check silently omitted when unmounted (health.go:202-218, asserted health_test.go:285-291) instead of a visible `off` row with the enable recipe (types.go:78-108) |
 | Cadence: background loop / live mode / `WithLiveThrottle` | 🟡 PARTIAL | lazy 5 s TTL cache instead (health.go:94-104); no throttle, but the single-evaluator mutex makes floods moot |
 | Batch deadline (`WithTimeout`, default 5 s) | 🟡 PARTIAL | own `healthEvalTimeout` = 5 s (health.go:47, 160-161) — same value, re-declared |
-| Panic recovery + context abandonment per check | 🔴 MISSED | `evaluate` has no recover; a panicking store read inside the dashboard pusher goroutine crashes `tq serve` (pusher tick → `CachedResponse` → evaluate; go-health-dashboard/pusher.go:99-111,120 has no recover either). checks.go:94-126 recovers per check and abandons deadline-ignoring checks |
+| Panic recovery + context abandonment per check | 🔴 MISSED | `evaluate` has no recover; a panicking store read inside the dashboard pusher goroutine crashes `tq serve` (pusher tick → `CachedResponse` → evaluate; go-health-dashboard/pusher.go:96-111,120 has no recover either). checks.go:94-126 recovers per check and abandons deadline-ignoring checks |
 | Shutdown awareness (`ShuttingDown`, `MarkShuttingDown`, grace period) | 🔴 MISSED | webui.go:493-519 drains the HTTP server but `/readyz` stays 200 until the listener closes; lifecycle.go:170-212 flips readiness 503 immediately |
 | Method-set guard (`WithAllowedMethods` → 405 + sorted `Allow`) | 🟢 FULL | equivalent via host mux method-qualified patterns (webui.go:275-281 + 337,341: `"GET "+pattern`); Go's ServeMux answers 405 with `Allow` |
 | Version identity (`WithVersion` + `/version` endpoint) | 🟡 PARTIAL | version stamped by hand into every response (health.go:88, 252; test health_test.go:161-186); v0.10.0's default-mounted `GET /version` (handlers.go:37-50) not mounted anywhere in tq |
@@ -73,7 +73,7 @@ What tq builds on top: `queueProber` (health.go:60-104) lazily re-evaluates a st
 
 ## 4. Score + top opportunities
 
-Inputs (from §2): N=21 rows; ⚪ N/A=4 (aggregate, federation, samber/do, programmatic API); A=17. FULL=2 (schema, method guard), PARTIAL=7 × 0.5 (accessors, handlers, classification, cadence, timeout, version, — that is 6; plus response hardening counted MISSED) — explicit sum: 2×1 + 6×0.5 + 9×0 = **5.5**. Score = round(100 × 5.5 / 17) = **32 → low** (<50).
+Inputs (from §2): N=21 rows; ⚪ N/A=4 (aggregate, federation, samber/do, programmatic API); A=17. FULL=2 (wire schema, method guard), PARTIAL=6 × 0.5 (read accessors, probe handlers, classification, cadence, batch timeout, version identity), MISSED=9 × 0 (2+6+9=17 ✓). Σ = 2 + 3 = **5.5**. Score = round(100 × 5.5 / 17) = **32 → low** (<50).
 
 Top opportunities, cheapest first: (1) populate `StatusSince`/`TotalLatencyMs` in `finishEval` (finding 2 — pure win, no semantic change); (2) `CoerceValidUTF8` + no-cache in `writeHealthJSON` (finding 6); (3) recover around `evaluate` (finding 3); (4) evaluation hook → PapDashboard (finding 5); (5) revisit full `*health.Probe` adoption when the proposed severity override ships (finding 1).
 
@@ -96,7 +96,7 @@ grep -rn 'larsartmann/go-health"' --include='*.go' . | grep -v '^./vendor/'
 grep -rn 'go-health' --include=go.mod . | grep -v vendor
 # → go.mod:110 v0.10.0 (direct), cmd/tq/go.mod:79 (indirect); dashboard on go.mod:111 / cmd/tq/go.mod:80
 grep -oh 'health\.[A-Za-z]*' internal/webui/*.go | sort | uniq -c
-# → only Response/Check/Status/Status{Pass,Warn,Fail} — no New*/With*/Off/CoerceValidUTF8
+# → Response/Check/Status/Status{Pass,Warn,Fail} only (the lone `health.go` count is comment text) — no New*/With*/Off/CoerceValidUTF8
 cd /home/lars/projects/go-health && git describe --tags        # → v0.10.0-1-g7e5d8d1 (docs-only past tag)
 GOCACHE=/tmp/go-build-cache GOEXPERIMENT=jsonv2 GOWORK=off \
   go test ./internal/webui/ -run TestHealth -count=1 -v | grep -c '^--- PASS'   # → 9, 0 FAIL
