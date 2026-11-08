@@ -21,6 +21,8 @@ allow=(
 	'^claiming/v4'                            # go-cqrs-lite module path@version, not a repo path (AGENTS.md ADR-0019 bullet; tags verified pushed on origin 2026-09-22)
 	'^internal/queue/cqrsqlite$'              # CHANGELOG O12 deletion entry cites the deleted module historically (added 2026-10-06)
 	'^internal/executor/result_fuzz_test.go$' # CHANGELOG cites the deleted fuzz target historically (target removed 2026-11-02, daemon 7765f27b)
+	'^cmd/tq/v0\.4\.3$'                       # CHANGELOG names the post-push CLI module TAG for the v0.4.2 wave (supersedes the proxy-poisoned cmd/tq@v0.4.2) — a tag, not a path
+	'^notifications/claude/channel$'          # AGENTS Channels-plan bullet cites the claude MCP channel-push notification NAME (docs/planning/2026-10-16_01-11_TQ-MCP-CHANNELS-DESIGN-INPUT.md) — an MCP method, not a repo path
 )
 
 fail=0
