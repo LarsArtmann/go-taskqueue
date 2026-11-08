@@ -1,7 +1,8 @@
-# Library Fleet Review — Session Self-Audit (2026-11-08/09 window)
+# Library Fleet Review — Session Self-Audit (2026-11-09)
 
 Owner-demanded post-run audit of the 22-library utilization review session
-(no task footer; direct interactive session). Report scope: THIS session only.
+(ran across 2026-11-08→11-09; no task footer; direct interactive session).
+Report scope: THIS session only.
 
 **Scope line.** VERIFIED 2026-11-09 by: `ls docs/review/libs/*.md | wc -l` → 22;
 `grep -l '^\*\*Verdict\|^## How to verify' *.md` → 22/22; `./scripts/check-doc-refs.sh` → ok (3 runs, last after final AGENTS.md edit);
@@ -60,7 +61,10 @@ the lead; (3) root `go build/vet` and full ci-local NOT run — change set is do
 
 - Action items the reviews recommend (all of §f 1-23): review-only session by
   instruction; nothing was implemented, upgraded, or refactored.
-- `check-dead-sha-refs.sh` and `check-script-syntax.sh` runs for this window.
+- `check-dead-sha-refs.sh` NOT run during the window; run in the post-report
+  amendment — clean for this session's files (2 pre-existing dead SHAs in a
+  foreign task report routed to §f33). `check-script-syntax.sh` still unrun
+  (docs-only change; §f28).
 - Full `scripts/ci-local.sh` battery (docs-only change; scoped gates run).
 - Linking the new series from README.md / FEATURES.md (not requested;
   discovery currently via research README + AGENTS pointer).
@@ -109,17 +113,17 @@ the lead; (3) root `go build/vet` and full ci-local NOT run — change set is do
 6. webui: replace hand-rolled serveDatastarSDK with ScriptHandler (ETag + versioned client v1.0.4)
 7. executor: route decodePayload[T] through codec.JSONCodec{}.Decode (one JSON door)
 8. error-family: give PermanentError a family; collapse Permanent onto WrapOnce (kills parallel taxonomy at internal/executor/executor.go:45-63)
-9. retry: execWithTransientRetry → DoWithValue (agent.go:1121-1137)
-10. retry: OnExhausted/ErrExhausted signal in persistOutcome for 3x-exhausted store-busy writes
+9. retry: execWithTransientRetry → DoWithValue (agent.go:1121-1137) <!-- fresh:skip: pending §g q1 ruling; canonical home go-retry.md §4 -->
+10. retry: OnExhausted/ErrExhausted signal in persistOutcome for 3x-exhausted store-busy writes <!-- fresh:skip: pending §g q1 ruling; canonical home go-retry.md §4 -->
 11. webui health: populate StatusSince/TotalLatencyMs in finishEval (dashboard rows render empty)
 12. webui health: recover() around evaluate (pusher-goroutine panic crashes tq serve)
 13. health-dashboard: WithWebhook → existing PapDashboard alert channel (store down, wedged fold)
 14. health-dashboard: WithTrend + WithMetrics after webhook
 15. templ: document adopted navigation.Pagination in internal/webui/ADOPTION.md (invisible to guard regex)
-16. templ: swap hand-rolled refreshMeta → layout.MetaRefresh
-17. templ: Table.StickyHeader: true on the ledger table
-18. sse: surface Broadcaster.Health() on /health (subscriber/buffer state)
-19. sse: adopt ssetest.Require* assertions in webui tests
+16. templ: swap hand-rolled refreshMeta → layout.MetaRefresh <!-- fresh:skip: pending §g q1 ruling; canonical home templ-components.md §4 -->
+17. templ: Table.StickyHeader: true on the ledger table <!-- fresh:skip: pending §g q1 ruling; canonical home templ-components.md §4 -->
+18. sse: surface Broadcaster.Health() on /health (subscriber/buffer state) <!-- fresh:skip: pending §g q1 ruling; canonical home go-sse.md §4 -->
+19. sse: adopt ssetest.Require* assertions in webui tests <!-- fresh:skip: pending §g q1 ruling; canonical home go-sse.md §4 -->
 20. sse: tidy v0.6.2 residue across 11 nested go.mods
 21. trial: httputil/server_timing behind RequestLog flag on tq serve (the one WORTH A TRIAL)
 22. cqrs-lite: WithPrefetch on TasksPage reads
@@ -128,11 +132,13 @@ the lead; (3) root `go build/vet` and full ci-local NOT run — change set is do
 25. vision pass on docs/review/libs/index.png (or pixel-diff harness) to close the render gate properly
 26. run ci-local once after the daemon settles (this window never ran the full battery)
 27. re-run 3 random report verify blocks (lead-side sampling debt)
-28. check-dead-sha-refs + check-script-syntax for this window (missed cheap gates)
+28. run check-script-syntax for this window (amendment: check-dead-sha-refs run post-report — clean for this session's files; 2 pre-existing dead SHAs found elsewhere, §f33) <!-- fresh:skip: half-executed in this amendment; residue routed to §f33 -->
 29. consider agentsDocMaxBytes conscious reset so AGENTS can carry full fleet verdicts (guard message offers it)
 30. post-wave refresh trigger: re-audit go-cqrs-lite.md + go-datastar.md once the bumps land (score deltas)
-31. cqrs-lite.md §3 scan-caching opportunity (52-row inventory) — fold into the wave task
+31. cqrs-lite.md §3 scan-caching opportunity (52-row inventory) — fold into the wave task <!-- fresh:skip: folds into §f1-4 wave; canonical home go-cqrs-lite.md §4 -->
 32. research README: mark the 2026-10-05 cqrs row SUPERSEDED inline (it is only noted in the new row today)
+33. heal dead SHAs 64b22f25 / 573acfee in docs/status/tasks/2026-11-08_18-16 task closeout — pre-existing, surfaced by this window's post-report dead-sha gate run, not this session's citations <!-- fresh:skip: not this session's report; routed for the next docs-health pass -->
+34. INDEX BLOAT: 421 live rows in docs/status/README.md > 400 threshold — run the ratified monthly digest ritual (ANNOTATE+ARCHIVE sweep + digest row) <!-- fresh:skip: fleet ritual, owner-scheduled (08-25 f20); this window added 1 row to a 420-row index -->
 
 ## g) Questions I cannot figure out myself
 
