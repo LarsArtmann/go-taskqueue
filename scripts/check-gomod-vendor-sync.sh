@@ -332,14 +332,27 @@ mods="$(
 	scripts/for-each-module.sh
 	echo cmd/tq
 )"
+# cmd/tq (ADR-0017, replace-free): a plain GOWORK=off tidy downloads the
+# required go-taskqueue versions — which exist NOWHERE between a floor
+# sweep and the wave's owner-gated push (the v0.4.2 window). Tide the
+# DERIVED dev.mod against the replaced graph instead (the devmod shim's
+# own probe doubles as the tidy-health check) and skip committed-file
+# drift detection: cmd/tq's committed go.sum is incomplete by design
+# until the post-push tidy (the 00c8ef28 class) completes it.
+source scripts/lib/cmd-tq-devmod.sh
 for m in $mods; do
 	[ -f "$m/go.mod" ] || {
 		echo "FAIL: $m/go.mod vanished mid-gate" >&2
 		fail=1
 		continue
 	}
-	(cd "$m" && GOWORK=off go mod tidy)
-	detect_drift "$m tidy" "$m/go.mod" "$m/go.sum" || fail=1
+	if [ "$m" = "cmd/tq" ]; then
+		cmdtq_devmod || fail=1
+		cmdtq_devmod_cleanup
+	else
+		(cd "$m" && GOWORK=off go mod tidy)
+		detect_drift "$m tidy" "$m/go.mod" "$m/go.sum" || fail=1
+	fi
 done
 
 lint_leak_scan go.sum cmd/tq/go.sum "$(for m in $mods; do echo "$m/go.sum"; done)" || fail=1
