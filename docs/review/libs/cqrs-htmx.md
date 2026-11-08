@@ -1,6 +1,6 @@
 # cqrs-htmx — Library Utilization Review
 
-**Verdict:** NOT ADOPTED — KEEP OUT — it is a CQRS command/query HTTP framework with event-sourced user management; tq's HTTP surfaces are a read-only templ/Datastar dashboard and a 4-route machine API over store calls — the library's premise (dispatch-boundary handlers, users/tenants) is a problem tq deliberately does not have.
+**Verdict:** NOT ADOPTED — KEEP OUT — it is a CQRS command/query HTTP framework with event-sourced user management; tq's HTTP surfaces are a read-only templ dashboard and a 4-route machine API over store calls — the library's premise (dispatch-boundary handlers, users/tenants) is a problem tq deliberately does not have.
 
 **Pinned:** none (not a dependency; verified 2026-11-08 by `grep -rn 'larsartmann/cqrs-htmx' --include='*.go' --include=go.mod . | grep -v vendor` → no output, including docs).
 
@@ -59,10 +59,10 @@ Keep out. tq is a queue, not a web app: no users, no dispatch-over-HTTP, and a d
 
 ```bash
 cd /home/lars/projects/go-taskqueue
-grep -rn 'larsartmann/cqrs-htmx' --include='*.go' --include=go.mod . | grep -v vendor   # → no output
+grep -rn 'larsartmann/cqrs-htmx' --include='*.go' --include=go.mod --include='*.md' . | grep -v vendor   # → no output
 sed -n '249,257p' internal/webui/webui.go        # the 8 read-only dashboard routes
 sed -n '195,198p' internal/httpapi/httpapi.go    # the 4 machine-API routes
-sed -n '633,646p' internal/webui/components.go   # HTMX deliberately blanked (Datastar stack)
+sed -n '633,646p' internal/webui/components.go   # HTMX deliberately blanked (vanilla EventSource board)
 cd /home/lars/projects/cqrs-htmx
 git tag -l | sort -V | tail -1                   # → v4.18.1
 git tag -l 'huma/*' | sort -V | tail -1          # → huma/v4.0.0

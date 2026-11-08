@@ -12,7 +12,7 @@
 
 ## 1. Usage inventory
 
-25 repo files import go-cqrs-lite (verified 2026-11-08 by the grep above), across 5 production surfaces + 5 test files. Per-module map:
+25 repo files import go-cqrs-lite (verified 2026-11-08 by the grep above): 18 production files across 8 packages (cmd/tq, composition, readmodel, sqlitev4, postgresv4, companion, journal, journal/cqrs) + 7 test files (httpapi's only import is a test). Per-module map:
 
 | Repo module | cqrs-lite modules | Key symbols (file:line) |
 | --- | --- | --- |
@@ -140,8 +140,8 @@ Status legend: 🟢 FULL, 🟡 PARTIAL, 🔴 MISSED, ⚠️ MISUSED, ⚪ N/A (re
 
 ## 4. Score + top opportunities
 
-Inputs (from §2): N=52 rows; ⚪ N/A=18 (rows 5,6,14,16,17,19,25,39,40,42,44,45,46,47,48,49,50,51,52 — 19 rows; recount below). FULL=26 (rows 1,2,8,9,10,11,12,13,20,21,22,23,26,27,28,29,30,31,32,33,34,35,36,37,38,41), PARTIAL=2 × 0.5 (rows 3,24), MISSED=5 (rows 4,7,15,18,43), MISUSED=0.
-N/A recount: rows 5,6 (2) + 14,16,17,19 (4) + 25 (1) + 39,40 (2) + 42 (1) + 44,45 (2) + 46,47,48,49,50,51,52 (7) = **19**. So N=52, A=52−19=**33** (26+2+5=33 ✓). Σ = 26 + 2×0.5 = **27**. Score = round(100 × 27/33) = **82 → high** (70-84; very high ≥85).
+Inputs (from §2): N=52 rows; ⚪ N/A=19 (rows 5,6,14,16,17,19,25,39,40,42,44,45,46,47,48,49,50,51,52); FULL=26 (rows 1,2,8,9,10,11,12,13,20,21,22,23,26,27,28,29,30,31,32,33,34,35,36,37,38,41); PARTIAL=2 × 0.5 (rows 3,24); MISSED=5 (rows 4,7,15,18,43); MISUSED=0.
+A = 52 − 19 = **33** (26 + 2 + 5 = 33 ✓). Σ = 26 + 2×0.5 = **27 of 33**. Score = round(100 × 27/33) = **82 → high** (70-84; very high ≥85).
 
 Top opportunities, cheapest first: (1) the version wave via depsweep (finding 2 — security-class engine hardening rides along); (2) WithPrefetch on TasksPage after the bump (finding 3); (3) token-gated /metrics if the fleet wants tq series (finding 4); (4) HealthCheckDetailed fold-in (finding 5, opportunistic); (5) upstream adapter-seam conversation (finding 6, no code).
 
@@ -159,7 +159,7 @@ Top opportunities, cheapest first: (1) the version wave via depsweep (finding 2 
 | record/v4 | v4.6.2 | v4.6.2 | current |
 | all indirects (command, commandlifecycle×2, claiming, decider, dedup, dispatcher, metadata, otel, query, schema, snapshot, watermill, projectionadapter) | — | same tags | current |
 
-Risk notes: (a) the pinned wave (2026-10-24) is the last FULLY tagged state of the disk-truth tail; the three newer waves are additive per changelog, with no rename breaking tq's import surface — but the upstream FEATURES.md still marks `system` experimental and the v5 push renames some constructors, so a bump belongs on the depsweep rail (gates: conform suites + facade parity + vendorHash), not a hand-edit. (b) ADR-0014 boundary holds: internal/journal/cqrs is never extended or imported below root (verified: importers are root, readmodel [via internal/journal/cqrs alias], composition, cmd/tq only). (c) The 2026-11-08 wave landed in the upstream checkout TODAY — expect one more re-audit of this table at the next depsweep tick.
+Risk notes: (a) the pinned wave (2026-10-24) is the last FULLY tagged state of the disk-truth tail; the three newer waves are additive per changelog, with no rename breaking tq's import surface — but the upstream FEATURES.md still marks `system` experimental and the v5 push renames some constructors, so a bump belongs on the depsweep rail (gates: conform suites + facade parity + vendorHash), not a hand-edit. (b) ADR-0014 boundary holds: internal/journal/cqrs is never extended (read-only adapter, writes stay in the engine transactions) and its in-repo importers are exactly root surfaces — cmd/tq/main.go + readmodel/host.go (+ their tests); verified 2026-11-08 by `grep -rln 'go-taskqueue/internal/journal/cqrs' --include='*.go' . | grep -v vendor` → 5 files. (c) The 2026-11-08 wave landed in the upstream checkout TODAY — expect one more re-audit of this table at the next depsweep tick.
 
 ## 6. Conclusion
 
