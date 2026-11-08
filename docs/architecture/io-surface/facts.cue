@@ -5,7 +5,7 @@
 package io_surface
 
 audit: {
-	commit: "359462d1-dirty"
+	commit: "eed50683-dirty"
 	date:   "2026-11-08"
 	claims: 357
 	method: "io-surface extract (AST, stdlib-only)"
@@ -1350,7 +1350,7 @@ sites: {
 	}
 	"internal/harvest.unixSocketClient": {
 		location: [
-			"internal/harvest/discovery.go:193",
+			"internal/harvest/discovery.go:200",
 		]
 		family: "outbound"
 		facts: {
