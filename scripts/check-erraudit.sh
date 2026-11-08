@@ -143,12 +143,28 @@ clean=0
 mods="$(./scripts/for-each-module.sh)
 .
 cmd/tq"
+repo_root="$(pwd)"
 for m in $mods; do
 	[ -f "$m/go.mod" ] || continue
-	if check_one_module "$m"; then
-		clean=$((clean + 1))
+	# The root leg's ./... walk and the cmd/tq leg cross the replace-free
+	# cmd/tq module graph: between a floor sweep and the wave's owner-gated
+	# push its go-taskqueue requires resolve NOWHERE (unknown revision on
+	# the proxy). The ADR-0017 workspace is the documented local-resolution
+	# path for exactly this window (AGENTS §Known Issues, templ/cmd-tq row);
+	# the leaf internals keep ambient resolution via their own go.mod
+	# replaces.
+	if [ "$m" = "." ] || [ "$m" = "cmd/tq" ]; then
+		if GOWORK="$repo_root/cmd/tq/go.work" check_one_module "$m"; then
+			clean=$((clean + 1))
+		else
+			fail=1
+		fi
 	else
-		fail=1
+		if check_one_module "$m"; then
+			clean=$((clean + 1))
+		else
+			fail=1
+		fi
 	fi
 done
 
