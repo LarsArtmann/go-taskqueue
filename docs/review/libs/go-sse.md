@@ -4,7 +4,7 @@
 **Pinned:** `go-sse v0.7.0` (direct, root `go.mod:112`); `go-sse/ssetest v0.5.0` (direct, root `go.mod:113`); `go-sse/sseparse v0.2.1` (indirect, root `go.mod:60`). 11 nested-module go.mods carry `v0.6.2 // indirect` via the go-cqrs-lite chain (cmd/tq, examples/embed, internal/{composition,readmodel,worker}, internal/queue/{sqlite,sqlitev4,postgres,postgresv4}, queue/{sqlite,postgres}).
 **Latest:** v0.7.0 (local checkout /home/lars/projects/go-sse, checked 2026-11-08; HEAD is `v0.7.0-1-g443abdd`)
 **Prior coverage:** none (the 2026-09-14 templ-components deep-dive audits the UI library; its SSE notes cover app.js swap mechanics, not the go-sse library)
-**Reviewed:** 2026-11-08 by `grep -rn 'go-sse' --include=go.mod . | grep -v vendor`, `grep -rhoE 'sse\.[A-Z][a-zA-Z]*' --include='*.go' internal`, `grep -rhoE 'ssetest\.[A-Z][a-zA-Z]*' internal/webui/*_test.go | sort | uniq -c`, `GOFLAGS=-mod=mod go list -m all | grep go-sse`, `cd cmd/tq && GOWORK=off go mod tidy -diff | grep larsartmann/go-sse`, full reads of /home/lars/projects/go-sse FEATURES.md + fanout.go + stream.go + CHANGELOG.md, `go test ./internal/webui -run 'TestSSEFullSnapshotOnConnect|TestResumeAfterFactsBacklog' -count=1` (ok 0.138s)
+**Reviewed:** 2026-11-08 by `grep -rn 'go-sse' --include=go.mod . | grep -v vendor`, `grep -rhoE 'sse\.[A-Z][a-zA-Z]*' --include='*.go' internal`, `grep -rhoE 'ssetest\.[A-Z][a-zA-Z]*' internal/webui/*_test.go | sort | uniq -c`, `GOFLAGS=-mod=mod go list -m all | grep go-sse`, `cd cmd/tq && GOWORK=off go mod tidy -diff | grep larsartmann/go-sse`, full reads of /home/lars/projects/go-sse FEATURES.md + fanout.go + stream.go + CHANGELOG.md, `go test ./internal/webui -run 'TestSSEFullSnapshotOnConnect|TestResumeAfterFactsBacklog' -count=1` (ok 0.149s)
 
 ## 1. Usage inventory
 
@@ -12,21 +12,21 @@ Files: `internal/webui/hub.go`, `internal/webui/handlers.go`, `internal/webui/ag
 
 Library symbols in repo code (verified 2026-11-08 by `grep -rhoE 'sse\.[A-Z][a-zA-Z]*' --include='*.go' internal | sort | uniq -c | sort -rn`): `sse.Stream` ×7, `sse.Event` ×7, `sse.NewEventID` ×3, `sse.WithBufferSize` ×2, `sse.NewStream` ×2, `sse.Broadcaster` ×2, `sse.NewBroadcaster` ×2, `sse.LastEventIDFromRequest` ×1. ssetest in tests: `WithPath` ×14, `CollectN` ×8, `CollectWithTimeout` ×6, `Event` ×2, `WithLastEventID` ×1, `RequestOption` ×1.
 
-Two broadcasters: `Hub` fans payload-less `tick` events whose ID is the journal watermark (hub.go:15-39); `AgentFeed` fans typed `AgentEvent` payloads (agentfeed.go:26-38). Endpoints: `/api/events` + per-task stream share `runEventStream` (subscribe → snapshot → tick-pump, handlers.go:341-402); the agent live feed runs its own loop (handlers.go:270-302). Heartbeats ride `stream.Heartbeat` behind `startHeartbeat` (handlers.go:478-495). Buffer 128 with a documented drop-then-self-heal policy (hub.go:5-12).
+Two broadcasters: `Hub` fans payload-less `tick` events whose ID is the journal watermark (hub.go:15-38); `AgentFeed` fans typed `AgentEvent` payloads (agentfeed.go:25-38). Endpoints: `/api/events` + per-task stream share `runEventStream` (subscribe → snapshot → tick-pump, handlers.go:348-416); the agent live feed runs its own loop (handlers.go:270-310). Heartbeats ride `stream.Heartbeat` behind `startHeartbeat` (handlers.go:474-493). Buffer 128 with a documented drop-then-self-heal policy (hub.go:10-13).
 
 ## 2. Capability inventory
 
 | Capability | Status | Evidence |
 | --- | --- | --- |
-| Wire-format serialization (`Event`/`WriteEvent`/heartbeats) | 🟢 FULL | all emission via `stream.Send`/`stream.SendJSON` — zero hand-rolled `data:` lines (handlers.go:519-533; lib writer alloc-minimized per FEATURES.md) |
-| Stream lifecycle (`NewStream`, headers, `Close`, context) | 🟢 FULL | `NewStream` + deferred `Close` at both endpoints, `Flusher` probe + `X-Accel-Buffering: no` first (handlers.go:279-288, 366-374); `r.Context()` used where lib offers equivalent `stream.Context()` (stream.go:192) |
-| Heartbeat keepalive | 🟢 FULL | `stream.Heartbeat(hbCtx, s.cfg.Heartbeat)` wrapped in cancel+wait (handlers.go:478-495); the lib stops on ctx/closed/write-error (stream.go:246-272) but offers no wait contract, so tq's `<-done` guard is deliberate defensive code, not a misuse |
-| `Last-Event-ID` extraction | 🟢 FULL | `sse.LastEventIDFromRequest(r)` + branded `EventID`, used for reconnect-lag logging (handlers.go:324-339) |
-| Reconnection replay (`EventStore`/`Replay`/`ReplayFiltered`) | ⚪ N/A | snapshot-resume by design: ticks are payload-less, so "any Last-Event-ID is satisfied by a fresh snapshot" (handlers.go:342-353, 443-447); replaying ticks would re-send what the snapshot already covers |
-| Fan-out `Broadcaster[T]` (Subscribe/Unsubscribe/Broadcast/Shutdown, `WithBufferSize`, drop policy) | 🟢 FULL | two broadcasters with explicit buffer + graceful drain (hub.go:22-53, agentfeed.go:32-60); agent feed is the generic-type showcase (`Broadcaster[AgentEvent]`) |
+| Wire-format serialization (`Event`/`WriteEvent`/heartbeats) | 🟢 FULL | all emission via `stream.Send`/`stream.SendJSON` — zero hand-rolled `data:` lines (handlers.go:517-527; lib writer alloc-minimized per FEATURES.md) |
+| Stream lifecycle (`NewStream`, headers, `Close`, context) | 🟢 FULL | `NewStream` + deferred `Close` at both endpoints, `Flusher` probe + `X-Accel-Buffering: no` first (handlers.go:278-289, 363-374); `r.Context()` used where lib offers equivalent `stream.Context()` (stream.go:192) |
+| Heartbeat keepalive | 🟢 FULL | `stream.Heartbeat(hbCtx, s.cfg.Heartbeat)` wrapped in cancel+wait (handlers.go:474-493); the lib stops on ctx/closed/write-error (stream.go:246-272) but offers no wait contract, so tq's `<-done` guard is deliberate defensive code, not a misuse |
+| `Last-Event-ID` extraction | 🟢 FULL | `sse.LastEventIDFromRequest(r)` + branded `EventID`, used for reconnect-lag logging (handlers.go:324-338) |
+| Reconnection replay (`EventStore`/`Replay`/`ReplayFiltered`) | ⚪ N/A | snapshot-resume by design: ticks are payload-less, so "any Last-Event-ID is satisfied by a fresh snapshot" (handlers.go:349-356, 457-461); replaying ticks would re-send what the snapshot already covers |
+| Fan-out `Broadcaster[T]` (Subscribe/Unsubscribe/Broadcast/Shutdown, `WithBufferSize`, drop policy) | 🟢 FULL | two broadcasters with explicit buffer + graceful drain (hub.go:20-56, agentfeed.go:35-65); agent feed is the generic-type showcase (`Broadcaster[AgentEvent]`) |
 | Predicate subscription (`SubscribeFilter`) | ⚪ N/A | single-topic fan-out — every dashboard client receives every tick by design; no per-client topics exist |
-| Broadcaster observability (`Health()`, `OnSubscribe`/`OnUnsubscribe` hooks, `BroadcastMany`) | 🔴 MISSED | `BroadcasterHealth{SubscriberCount,BufferSize,Closed,Draining}` (fanout.go:438) never surfaced; `/health` reports store-derived checks only (health.go:46-190) |
-| DataStar-pattern helpers (`SendKeyed`/`SendLines`/`KeyedLines`) | ⚪ N/A | tq payloads are JSON fragments via `SendJSON` ("frag"/"agent"); Datastar-keyed emission belongs to go-health-dashboard's `/health/sse` |
+| Broadcaster observability (`Health()`, `OnSubscribe`/`OnUnsubscribe` hooks, `BroadcastMany`) | 🔴 MISSED | `BroadcasterHealth{SubscriberCount,BufferSize,Closed,Draining}` (fanout.go:438) never surfaced; `/health` reports store-derived checks only (health.go:46-190) | |
+| DataStar-pattern helpers (`SendKeyed`/`SendLines`/`KeyedLines`) | ⚪ N/A | tq payloads are JSON fragments via `SendJSON` ("frag" handlers.go:517 / "agent" handlers.go:308); Datastar-keyed emission belongs to go-health-dashboard's `/health/sse` |
 | Retry directive (`Event.Retry`/`WriteRetry`) | ⚪ N/A | browser default reconnect cadence is fine; no custom retry hint needed on a loopback dashboard |
 | ssetest collect + request options | 🟢 FULL | `CollectN`/`CollectWithTimeout`/`WithPath`/`WithLastEventID` across 4 test files (webui_test.go:208,268,321,454-457; auth_test.go:134-135; board_test.go:225; evidence_stream_test.go:73); v0.5.0's branded-`EventID` breaking change already adopted (webui_test.go:454) |
 | ssetest assertions (`Require*`, `RequireDataJSON[T]`, `FilterByType`) | 🟡 PARTIAL | tests hand-roll decode loops (webui_test.go:213-233: `switch evt.Type` + `json.Unmarshal`) where `RequireDataJSON`/`FilterByType` would compress; `Collect`/`CollectPost`/`CollectWithRequest`/`MustRead*` unused |
@@ -34,7 +34,7 @@ Two broadcasters: `Hub` fans payload-less `tick` events whose ID is the journal 
 
 ## 3. Findings
 
-1. **Broadcaster health is invisible.** Offer: `Broadcaster.Health()` returns `BroadcasterHealth{Closed, Draining, SubscriberCount, BufferSize}` (checkout fanout.go:438, struct at fanout.go `type BroadcasterHealth`); `OnSubscribe`/`OnUnsubscribe` hooks exist for logging. We do instead: `/health` checks derive only from the store projection (internal/webui/health.go:46-190); subscriber count and buffer state of the two broadcasters are unobservable (hub.go:15-53, agentfeed.go:26-60). Impact: an operator cannot see how many dashboards stream, or that slow clients are dropping (the documented self-heal, hub.go:5-12, is silent). Example:
+1. **Broadcaster health is invisible.** Offer: `Broadcaster.Health()` returns `BroadcasterHealth{Closed, Draining, SubscriberCount, BufferSize}` (checkout fanout.go:438, struct at fanout.go `type BroadcasterHealth`); `OnSubscribe`/`OnUnsubscribe` hooks exist for logging. We do instead: `/health` checks derive only from the store projection (internal/webui/health.go:46-190); subscriber count and buffer state of the two broadcasters are unobservable (hub.go:20-56, agentfeed.go:35-65). Impact: an operator cannot see how many dashboards stream, or that slow clients are dropping (the documented self-heal, hub.go:10-13, is silent). Example:
    ```go
    func (h *Hub) Health() sse.BroadcasterHealth { return h.bc.Health() }
    // wire into queueProber's check map: {"sse-hub", h.Health().SubscriberCount, ...}
@@ -69,4 +69,4 @@ cd /home/lars/projects/go-sse && git describe --tags     # v0.7.0-1-g443abdd
 grep -n 'type BroadcasterHealth' -A18 /home/lars/projects/go-sse/fanout.go
 go test ./internal/webui -run 'TestSSEFullSnapshotOnConnect|TestResumeAfterFactsBacklog' -count=1
 ```
-All commands above were run literally on 2026-11-08 and produced the cited outputs (test run: ok 0.138s).
+All commands above were run literally on 2026-11-08 and produced the cited outputs (test run: ok 0.149s).
