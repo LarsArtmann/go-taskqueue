@@ -59,7 +59,7 @@ httputil is a good library aimed at greenfield services that need a default secu
 
 ## 5. Maturity + version currency
 
-Latest tag v1.8.0 (tag commit c4094bb 2026-11-03; 36 root tags v0.1.0→v1.8.0 since ~2026-05; last commit 616b62f 2026-11-06). MIT since v1.5.0 (owner decision 2026-10-09; checkout AGENTS.md:327). Go floor 1.27.1 — tq modules declare go 1.27.3 (go.mod:3), so no toolchain conflict. Maintained same-author alongside go-etag and server_timing submodules.
+Latest tag v1.8.0 (tag commit c4094bb 2026-11-03; 29 root tags v0.1.0→v1.8.0 since ~2026-05; last commit 616b62f 2026-11-06). MIT since v1.5.0 (owner decision 2026-10-09; checkout AGENTS.md:327). Go floor 1.27.1 — tq modules declare go 1.27.3 (go.mod:3), so no toolchain conflict. Maintained same-author alongside go-etag and server_timing submodules.
 
 ## 6. Conclusion
 
@@ -71,10 +71,10 @@ Keep out. The stale "proprietary" note in AGENTS.md should eventually be correct
 cd /home/lars/projects/go-taskqueue
 grep -rn 'larsartmann/httputil' --include=go.mod . | grep -v vendor          # → no output
 grep -rn 'larsartmann/httputil' --include='*.go' . | grep -v vendor          # → no output
-grep -n 'httputil NOT adopted' AGENTS.md                                     # line ~400
+grep -n 'NOT adopted' AGENTS.md                                         # line 400: "**httputil** NOT adopted"
 sed -n '327,330p' /home/lars/projects/httputil/AGENTS.md                     # MIT relicense record
 head -3 /home/lars/projects/httputil/LICENSE                                 # MIT
-git -C /home/lars/projects/httputil tag -l | grep -c '^v'                    # 36 root tags
+git -C /home/lars/projects/httputil tag -l | grep -c '^v'                    # 29 root tags
 sed -n '327,372p' internal/webui/webui.go                                    # tq's hand-rolled chain
 sed -n '209,251p' internal/httpapi/httpapi.go                                # guard(): tq owns token+lockout+nosniff
 ```
