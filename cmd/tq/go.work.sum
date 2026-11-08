@@ -356,6 +356,7 @@ github.com/larsartmann/go-cqrs-lite/event/v4 v4.14.0/go.mod h1:EiRkaPJ1jYwj7mbVI
 github.com/larsartmann/go-cqrs-lite/snapshot/v4 v4.6.2/go.mod h1:of3SGHkLFeRGvOoIYcDT2+aoZGjkXVHC91rHibTAiT8=
 github.com/larsartmann/go-health v0.7.0/go.mod h1:r0Lh5t786Za1uh/7XqdDIZH+b3GiJU4c9e5SVfxUYAo=
 github.com/larsartmann/go-sse/sseparse v0.1.0/go.mod h1:1Nql3y1hf9v/IVd4/26AfRilz0/OiDyF7YA2mvwwtHw=
+github.com/larsartmann/go-taskqueue v0.4.2/go.mod h1:/PbnNI5zHR05+VO2LRJq/12ztqzkYKRH7NVgTvKhgIY=
 github.com/larsartmann/templ-components v1.23.0/go.mod h1:hiciCVhFi8tMLAVNpJ/WAxWZiTiw66yHxCaD5tG78LQ=
 github.com/larsartmann/templ-components/charts/echarts v1.24.0/go.mod h1:Lb8XHczLrrmSCMXWDLO4c9d8xu8F6TcuXiIlWYwEl/Y=
 github.com/larsartmann/templ-components/charts/echarts v1.26.0/go.mod h1:BxuoyBPt67IgPXY73EmdjvW3Jhba5Oy5wbEpLoLre1c=
