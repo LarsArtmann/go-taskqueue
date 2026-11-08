@@ -102,6 +102,14 @@ cmdtq_devmod_cleanup() {
 # build flags: "build flag -modfile only valid when using modules"), but it
 # consumes GOWORK natively — so module-aware TOOLING lint runs through this
 # second shim. Sets CMD_TQ_WORK to the work file path.
+#
+# The work file ALSO carries the replace set (2026-11-08, v0.4.2 wave): a
+# use-only workspace satisfies PACKAGE builds locally, but the module-GRAPH
+# load still fetches each require's go.mod AT ITS VERSION — between a floor
+# sweep and the wave's owner-gated push that version exists NOWHERE
+# (cmd/tq is replace-free, so `go list -m all` dies with "unknown revision
+# vX" on every go-taskqueue require). The replace lines redirect the graph
+# metadata to the local tree the same way dev.mod does.
 cmdtq_devwork() {
 	local root gover
 	root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -118,5 +126,12 @@ cmdtq_devwork() {
 			print "\t" root "/" path
 		}' "$root/go.mod" | sort -u
 		echo ")"
+		echo
+		echo "replace github.com/larsartmann/go-taskqueue => $root"
+		awk -v root="$root" '/^replace github\.com\/larsartmann\/go-taskqueue.* => \.\// {
+			path = $NF
+			sub(/^\.\//, "", path)
+			print "replace " $2 " => " root "/" path
+		}' "$root/go.mod" | sort -u
 	} >"$CMD_TQ_WORK"
 }
