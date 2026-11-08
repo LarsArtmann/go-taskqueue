@@ -137,6 +137,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Changed
 
+- **Release wave v0.4.2 — install `cmd/tq@v0.4.3`, not `cmd/tq@v0.4.2`**
+  (2026-11-07): the proxy's existing `cmd/tq@v0.4.2` is the v0.4.1-era
+  saga patch (ffcef51f), tagged before this wave existed; this wave's
+  cmd/tq module tag is `cmd/tq/v0.4.3` (requires root v0.4.2, which
+  carries `internal/docsgates`). Until the owner-gated push lands, the
+  cmd/tq go.sum at HEAD is incomplete by design — the post-push tidy
+  (the 00c8ef28 class) completes it.
+
 - **(BEHAVIOR CHANGE for depbump on BuildFlow-covered repos)** gomod
   sync delegates (2026-11-07): a consumer repo carrying
   `.buildflow.yml` with the buildflow binary on PATH now runs
