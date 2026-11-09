@@ -326,7 +326,10 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   (unpushed only; backup on failure; `--self-test` pins rails): REFUSES
   non-contiguous spans; a PARENT-naming refusal (foreign footer BELOW an
   exactly-mine span) = terminator shape — run its printed
-  `--from <oldest-blocker>`; fallback = amend the unpushed HEAD
+  `--from <oldest-blocker>`; tail-runs `scripts/check-footer-attribution.sh
+  <id>` (post-heal/rebuild attribution gate: span commits must all carry a
+  trailer-parseable footer; `--self-test` pins it; run standalone after ANY
+  later rebuild); fallback = amend the unpushed HEAD
   once `git show --stat` proves it mine.
 - **`TestExactlyOnceUnderConcurrency` is load-flaky and `TestSelfManagingLoop` is load-flaky**: build storms drop at clean parents — re-run before attributing; both ride KNOWN_FLAKY (scripts/lib/verify-retry.sh).
 - **Agent shells inherit `TQ_DB`** (PRODUCTION journal) — scratch smokes MUST export TQ_DB=<scratch>.

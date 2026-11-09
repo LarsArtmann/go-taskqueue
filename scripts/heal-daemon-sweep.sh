@@ -464,6 +464,15 @@ main() {
 		print_fork_records "$base" "$shas_old"
 		check_citations "$base" "$shas_old"
 		git update-ref -d "$BACKUP_REF"
+		# Post-heal attribution tail (task 000001a1c0d8): re-run the queue's
+		# footer-view cross-check so a botched rewrite or a later rebuild's
+		# drift is caught here, not by manual inspection. Best-effort gate:
+		# a missing checker must not fail an otherwise-verified heal.
+		local heal_script_dir
+		heal_script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+		if [ -x "$heal_script_dir/check-footer-attribution.sh" ]; then
+			"$heal_script_dir/check-footer-attribution.sh" --from "$base" "$id" || die "post-heal attribution check FAILED — backup ref already dropped; inspect git log --grep 'Task-Queue-ID: $id' manually"
+		fi
 		echo "HEAL OK — backup ref dropped"
 		return 0
 	fi

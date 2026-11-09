@@ -253,6 +253,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Internal
 
+- post-heal attribution gate (2026-11-09): `scripts/check-footer-attribution.sh
+  <Task-Queue-ID>` re-runs the queue's footer view (`git log --grep`) against
+  the unpushed span and FAILS when any span commit lacks a trailer-parseable
+  footer (rebuild changed SHAs after a heal; caught by manual inspection
+  before), printing the span's per-commit file-set fingerprints on drift;
+  `heal-daemon-sweep.sh` tail-runs it after a verified heal; both self-tests
+  pinned.
+
 - depbump `runGo` deadline clamp is pinned by tests (2026-11-07): the
   clamp decision moved into a named `depbumpTimeoutContext` helper
   (identical semantics) with a table test covering no-deadline,

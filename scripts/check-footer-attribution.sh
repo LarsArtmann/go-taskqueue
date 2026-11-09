@@ -13,7 +13,7 @@
 #        scripts/check-footer-attribution.sh --self-test
 #
 # Exit 0 = attribution intact; non-zero = drift (with per-commit FAIL lines).
-set -euo pipefail
+set -uo pipefail
 
 die() {
 	echo "check-footer-attribution: $*" >&2
@@ -23,7 +23,7 @@ die() {
 # top-level so subshells inheriting the EXIT trap can see it
 tmp=""
 __top_pid=$BASHPID
-trap '[ -n "$tmp" ] && [ "$BASHPID" = "$__top_pid" ] && rm -rf "$tmp"' EXIT
+trap '[ -n "$tmp" ] && [ "$BASHPID" = "$__top_pid" ] && rm -rf "$tmp" || true' EXIT
 
 usage() {
 	echo "usage: $0 [--from <ref>] <Task-Queue-ID>" >&2
