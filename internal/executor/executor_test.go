@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/larsartmann/go-taskqueue/internal/task"
+	errorfamily "github.com/larsartmann/go-error-family"
 )
 
 func TestRegistryLookup(t *testing.T) {
@@ -162,6 +163,37 @@ func TestPermanentContract(t *testing.T) {
 
 	if !strings.HasPrefix(got.Error(), "permanent: ") {
 		t.Fatalf("Error() = %q, want class prefix", got.Error())
+	}
+}
+
+// TestErrorFamilyClassification pins the shared-taxonomy contract (fleet
+// review f8): PermanentError classifies as Rejection (never retryable) and
+// PreflightError as Transient (retry after the environment heals), so
+// errorfamily consumers — cqrs-lite's dead-letter gate, go-retry's default
+// predicate — classify executor refusals without bespoke checks.
+func TestErrorFamilyClassification(t *testing.T) {
+	t.Parallel()
+
+	perm := Permanent(errors.New("bad payload"))
+	if fam := errorfamily.Classify(perm); fam != errorfamily.Rejection {
+		t.Errorf("Classify(PermanentError) = %v, want Rejection", fam)
+	}
+
+	if errorfamily.IsRetryable(perm) {
+		t.Error("IsRetryable(PermanentError) = true, want false")
+	}
+
+	if code := perm.(*PermanentError).ErrorCode(); code != "executor.permanent" {
+		t.Errorf("ErrorCode = %q, want executor.permanent", code)
+	}
+
+	pre := &PreflightError{Cause: ErrDirtyTree}
+	if fam := errorfamily.Classify(pre); fam != errorfamily.Transient {
+		t.Errorf("Classify(PreflightError) = %v, want Transient", fam)
+	}
+
+	if !errorfamily.IsRetryable(pre) {
+		t.Error("IsRetryable(PreflightError) = false, want true (requeue, no burn)")
 	}
 }
 

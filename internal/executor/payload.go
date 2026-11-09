@@ -1,11 +1,18 @@
 package executor
 
 import (
-	"encoding/json/v2"
 	"fmt"
 
+	"github.com/larsartmann/go-codec"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
+
+// payloadCodec is the ONE JSON door executor payload decoding goes through:
+// routing the shared seam over codec.JSONCodec keeps every payload parse on
+// the same dual-build implementation the journal already stamps with, so a
+// future switch to stamped/enveloped payloads (codec.DecodeEnvelopeOrLegacy)
+// is a seam change, not a hunt across executors (fleet review f7).
+var payloadCodec = codec.JSONCodec{}
 
 // decodePayload parses a task payload under the executor input convention:
 // an empty payload and undecodable JSON are both permanent input-contract
@@ -18,7 +25,7 @@ func decodePayload[T any](t task.Task, kind, want string) (T, error) {
 		return payload, Permanent(fmt.Errorf("%s: empty payload, want %s", kind, want))
 	}
 
-	if err := json.Unmarshal(t.Payload, &payload); err != nil {
+	if err := payloadCodec.Decode(t.Payload, &payload); err != nil {
 		return payload, Permanent(fmt.Errorf("%s: decode payload: %w", kind, err))
 	}
 
