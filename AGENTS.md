@@ -2,7 +2,7 @@
 
 Projects-aware task queue / worker pool for Go — see README.md.
 
-**STATUS: v0.4.2 tagged, push owner-gated; concurrent agents** — re-read files,
+**STATUS: v0.4.2 pushed; supersession local; concurrent agents** — re-read files,
 re-run tests; uncommitted changes: read, judge, build on, never revert (size: TestAgentsDocSizeGuard)
 
 **MAJOR OPEN PROBLEMS**: [dispatch prompting + batch granularity](docs/problems/major-prompting-and-batching.md) — shipped v0.3.4.
