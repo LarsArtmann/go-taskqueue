@@ -182,8 +182,9 @@ func DedupKey(repo Repo, gate Gate) string {
 }
 
 // Cursor returns the persisted journal-head cursor of the last
-// fully-successful sweep pass (bootstrap-at-head when the bridge never
-// ran), the watermark.Note contract of internal/watermark.
+// fully-successful sweep pass. The row is written only AFTER a pass
+// completes, so the cursor is ABSENT (exists=false) until the first
+// fully-successful sweep — there is no bootstrap-at-head.
 func (b *Bridge) Cursor(ctx context.Context) (int64, bool, error) {
 	return b.store.Watermark(ctx, WatermarkKey)
 }
