@@ -657,7 +657,7 @@ func dashboardProps(title, nonce string) layout.PageProps {
 	// white. Dark keeps the abyss. Same shape as the library default minus
 	// bg-white (layout.Base literal, v1.17.0).
 	props.BodyClass = "bg-gray-50 text-gray-900 antialiased min-h-dvh flex flex-col scroll-smooth motion-reduce:scroll-auto selection:bg-blue-100 dark:selection:bg-blue-900 selection:text-blue-900 dark:selection:text-blue-100 dark:bg-gray-950 dark:text-gray-100"
-	props.HeadContent = refreshMeta()
+	props.HeadContent = layout.MetaRefresh(3600, "")
 	props.Footer = pageFooter()
 	props.Nonce = nonce
 

@@ -18,7 +18,7 @@ import (
 const adoptionHeading = "### templ-components adoption"
 
 var (
-	componentCallRe = regexp.MustCompile(`(display|layout|feedback)\.([A-Z][A-Za-z0-9]*)\s*\(`)
+	componentCallRe = regexp.MustCompile(`(display|layout|feedback|navigation)\.([A-Z][A-Za-z0-9]*)\s*\(`)
 	iconRefRe       = regexp.MustCompile(`icons\.([A-Z][A-Za-z0-9]*)`)
 )
 

@@ -18,6 +18,7 @@ AGENTS.md is size-budgeted at ≤15,000 B by cmd/tq's
 | `feedback.Alert`                                                                                                                                           | adopted | `fragments.templ` (task detail, last error)                                     |
 | `icons.ArchiveBox/CircleStack/Filter/Inbox`                                                                                                                | adopted | `fragments.templ` (empty states + filter)                                       |
 | status nowband (tq-seg), board columns/cards, filter inputs, page header/lamp, section hairlines, instrument panels (tq-topbar/tq-panel/tq-label/tq-fault) | custom  | `fragments.templ`/`layout.templ`/`theme.css` (StatCard retired for the nowband) |
+| `navigation.Pagination`                                                                                                                                    | adopted | `fragments.templ` (task pager under the ledger table)                           |
 
 Go-invoked, OUTSIDE the template-scoped table by decision:
 `display.RelativeTime` renders the detail definition list's

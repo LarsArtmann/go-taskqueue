@@ -150,6 +150,7 @@ templ taskActiveCard(data DashboardData) {
 				TypedHeaders: taskHeaders(data),
 				Flush:        true,
 				Hover:        true,
+				StickyHeader: true,
 				CellPadding:  display.TableCellPaddingCompact,
 				Body:         taskRows(data, activeTasks(data.Tasks)),
 			})
@@ -183,6 +184,7 @@ templ taskSettledDetails(data DashboardData) {
 						TypedHeaders: taskHeaders(data),
 						Flush:        true,
 						Hover:        true,
+						StickyHeader: true,
 						CellPadding:  display.TableCellPaddingCompact,
 						Body:         taskRows(data, settledTasks(data.Tasks)),
 					})
