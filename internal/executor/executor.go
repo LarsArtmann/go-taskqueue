@@ -48,10 +48,10 @@ func (e *LeaseLostError) Unwrap() error { return e.Cause }
 // classify executor refusals without bespoke checks (fleet review f8).
 type PermanentError struct{ Cause error }
 
-func (e *PermanentError) Error() string          { return "permanent: " + e.Cause.Error() }
-func (e *PermanentError) Unwrap() error          { return e.Cause }
+func (e *PermanentError) Error() string                   { return "permanent: " + e.Cause.Error() }
+func (e *PermanentError) Unwrap() error                   { return e.Cause }
 func (e *PermanentError) ErrorFamily() errorfamily.Family { return errorfamily.Rejection }
-func (e *PermanentError) ErrorCode() string      { return "executor.permanent" }
+func (e *PermanentError) ErrorCode() string               { return "executor.permanent" }
 
 // Permanent wraps cause in a *PermanentError; nil passes through unchanged.
 // A cause that is already permanent is returned as-is, so defensive double
@@ -89,10 +89,10 @@ var ErrDirtyTree = errors.New("dirty tree")
 // cannot heal and which stay inside the env-streak breaker's reach).
 func (e *PreflightError) DirtyTree() bool { return errors.Is(e.Cause, ErrDirtyTree) }
 
-func (e *PreflightError) Error() string          { return "preflight: " + e.Cause.Error() }
-func (e *PreflightError) Unwrap() error          { return e.Cause }
+func (e *PreflightError) Error() string                   { return "preflight: " + e.Cause.Error() }
+func (e *PreflightError) Unwrap() error                   { return e.Cause }
 func (e *PreflightError) ErrorFamily() errorfamily.Family { return errorfamily.Transient }
-func (e *PreflightError) ErrorCode() string      { return "executor.preflight" }
+func (e *PreflightError) ErrorCode() string               { return "executor.preflight" }
 
 // Executor runs one claimed task. It must be safe for concurrent use.
 // Returning nil marks the task completed; any error marks a failed attempt.

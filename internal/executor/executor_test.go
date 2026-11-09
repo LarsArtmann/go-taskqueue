@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/larsartmann/go-taskqueue/internal/task"
 	errorfamily "github.com/larsartmann/go-error-family"
+	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
 func TestRegistryLookup(t *testing.T) {

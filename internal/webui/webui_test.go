@@ -389,6 +389,26 @@ func TestReconnectLagLogged(t *testing.T) {
 		t.Error("reconnect did not receive a full snapshot")
 	}
 
+	// The reconnect body must parse as a real SSE stream and carry the
+	// table fragment inside a properly-framed event — ssetest's own
+	// reader asserting the wire shape, not just a body substring (fleet
+	// review f19).
+	events := ssetest.MustReadEvents(t, rec.Body)
+
+	found := false
+
+	for _, frag := range ssetest.FilterByType(events, testFragEvent) {
+		if strings.Contains(frag.Data(), "frag-table") {
+			found = true
+
+			break
+		}
+	}
+
+	if !found {
+		t.Fatalf("reconnect snapshot missing the table fragment: %s", ssetest.EventsString(events))
+	}
+
 	if log := buf.String(); !strings.Contains(log, "reconnect lag") ||
 		!strings.Contains(log, "head=2") {
 		t.Errorf("reconnect log missing lag signal: %q", log)

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	health "github.com/larsartmann/go-health"
+	"github.com/larsartmann/go-sse"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
@@ -418,5 +419,35 @@ func TestHealthStatusSinceAndLatency(t *testing.T) {
 	if !second.Checks["database"].StatusSince.Equal(dbFirst.StatusSince) {
 		t.Errorf("StatusSince drifted while the status held: %v -> %v",
 			dbFirst.StatusSince, second.Checks["database"].StatusSince)
+	}
+}
+
+// TestHealthLiveSSECheck pins the hub-visibility check (fleet review f18):
+// pass with the live subscriber census, fail when the hub is closed — a
+// dead live dashboard under a healthy process is exactly the silent
+// failure the /health JSON exists to catch.
+func TestHealthLiveSSECheck(t *testing.T) {
+	t.Parallel()
+
+	store := newTestStore(t)
+
+	p := newQueueProber(store, "test")
+	p.liveSSE = func() *sse.BroadcasterHealth {
+		return &sse.BroadcasterHealth{SubscriberCount: 2, BufferSize: 64}
+	}
+
+	resp := p.CachedResponse()
+	if got := resp.Checks["live-sse"]; got.Status != health.StatusPass {
+		t.Errorf("live-sse = %+v, want pass", got)
+	}
+
+	p = newQueueProber(store, "test")
+	p.liveSSE = func() *sse.BroadcasterHealth {
+		return &sse.BroadcasterHealth{Closed: true}
+	}
+
+	resp = p.CachedResponse()
+	if got := resp.Checks["live-sse"]; got.Status != health.StatusFail {
+		t.Errorf("closed-hub live-sse = %+v, want fail", got)
 	}
 }
