@@ -50,7 +50,11 @@ postgres `OpenWithPool` pools CALLER-OWNED. No root go.work — replace-only
 bumps its `go` line (`go work edit -go=<ver>`) in the same change — stale
 lines fail every cmd/tq go command. Release flow: docs/release/.
 
-Smokes (CI-safe): `scripts/smoke/`. Guards: check-*.sh (cite-drift, research-note-shape) + release-gates + lint-baseline;
+Smokes (CI-safe): `scripts/smoke/` (shared scratch-repo factory
+`scripts/smoke/_lib.sh`; bootstrap-install/release-gates stay unmigrated —
+their flag-only git identity is load-bearing). Utility-script regression
+pins use the scratch-repo e2e bar — stub external tools on PATH (`rg`, `tq`),
+never pin against production state (08-57 §b ruling). Guards: check-*.sh (cite-drift, research-note-shape) + release-gates + lint-baseline;
 `new-module.sh <dir> [deps…]` scaffolds go.mods.
 
 ## Architecture
