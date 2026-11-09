@@ -7,6 +7,12 @@
 # cadence runs as a pileup tripwire. Machine face: `docs-gates run <root>
 # --json` emits exactly one JSON document on stdout; exit contract 0/1/2.
 #
+# Binary-version contract: the `run --json` face requires a binary NEWER
+# than the released v0.1.1 tag (in-tree docs-gates; v0.1.1 lacks the JSON
+# face). A stale binary fails LOUD here — its output is not a JSON verdict
+# document, so it trips the non-JSON FAIL branch below — never a silent
+# green.
+#
 # Host-tool optional: the binary lives outside the flake (go install /
 # nix profile), so a missing binary is a loud SKIP, rc=0 — hermetic CI and
 # fresh checkouts must not fail a docs-doctrine gate for a missing tool.
@@ -34,7 +40,7 @@ scan() {
 	out="$("$bin" run "$root" --json 2>/dev/null)" || rc=$?
 
 	if ! jq -e '.gates' >/dev/null 2>&1 <<<"$out"; then
-		echo "docs-gates gate: FAIL — battery output is not a JSON verdict document (rc=$rc)"
+		echo "docs-gates gate: FAIL — battery output is not a JSON verdict document (rc=$rc; a stale binary — older than the in-tree, post-v0.1.1 'run --json' face — fails loud here, never silently green)"
 		echo "docs-gates gate: 0 gate(s), 0 PASS / 0 SKIP / 1 FAIL"
 		return 1
 	fi
