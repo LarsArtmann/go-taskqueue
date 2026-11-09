@@ -61,6 +61,8 @@ not here.
 
 - [ ] Cure the docs-gates freshness matcher false-negative class: honestly-harvested TODO rows are rejected UNHARVESTED when any §f token set is all-DF>=8 generic (live 2026-11-09: report 2026-11-09_07-36 §f1/§f6 vs rows 1802/1807, needed fresh:skip annotations) — file upstream on Artmann-Technologies/docs-gates (per-token DF ceiling vs all-or-nothing generic rejection) or add a local token whitelist, with a --self-test pin for the false-negative shape
 
+- [ ] Pin the scripted-doc-mutation safety rail: any batch python/heredoc mutation of TODO_LIST/AGENTS/README must assert pre/post line count + row-count delta BEFORE git add (live 2026-11-09: a dropped remainder in a splice splice committed a 1745-row TODO_LIST truncation, healed by amend; convention line in AGENTS §Conventions + guard sketch)
+
 ## docs-gates adoption self-review residue (2026-11-06; source: docs/status/2026-11-06_05-25_docs-gates-adoption-self-review.md §f; deduped)
 
 - [x] Pin the docs-gates binary-version contract in scripts/check-docs-gates.sh: header + summary note the minimum version carrying the `run --json` face (in-tree > released v0.1.1 tag) and that a stale binary fails LOUD as non-JSON, never silently green (report §f1) — DONE 2026-11-09: committed 3515f38a (header note + non-JSON FAIL summary wording); --self-test 6 ok / 0 fail
