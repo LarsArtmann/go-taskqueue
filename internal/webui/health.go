@@ -17,6 +17,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/larsartmann/go-datastar"
 	"github.com/larsartmann/go-datastar/static"
 	health "github.com/larsartmann/go-health"
 	dashboard "github.com/larsartmann/go-health-dashboard"
@@ -324,7 +325,7 @@ func newHealthDashboard(pro dashboard.Prober) *dashboard.Dashboard {
 			Trend:      "",
 			Export:     "",
 			Introspect: "",
-			DatastarJS: HealthSDKPath,
+			DatastarJS: healthSDKSrc,
 		}),
 		dashboard.WithEmbeddedDatastarSDK(),
 		dashboard.WithCSSPath("/static/app.css"),
@@ -360,10 +361,14 @@ func withHealthHeaders(next http.Handler) http.Handler {
 	})
 }
 
-// serveDatastarSDK serves the embedded Datastar client bundle same-origin —
-// script-src 'self' covers the load; the policy's 'unsafe-eval' covers the run.
-func serveDatastarSDK(w http.ResponseWriter, _ *http.Request) {
-	w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
-	w.Header().Set("Cache-Control", "public, max-age=86400")
-	_, _ = w.Write(static.Bytes())
-}
+// healthSDKSrc is the versioned SDK URL the health dashboard loads. The
+// handler pins Cache-Control max-age=86400, so a browser skips ETag
+// revalidation for up to 24h; the v query turns each static.Version bump
+// into a fresh cache key and collapses that stale window to zero.
+var healthSDKSrc = HealthSDKPath + "?v=" + static.Version
+
+// healthSDKScript serves the embedded Datastar client bundle same-origin —
+// script-src 'self' covers the load; the policy's 'unsafe-eval' covers the
+// run. datastar.ScriptHandler adds the ETag, conditional-GET, and HEAD
+// semantics the hand-rolled version lacked.
+var healthSDKScript = datastar.ScriptHandler()

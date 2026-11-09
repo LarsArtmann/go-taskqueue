@@ -54,7 +54,6 @@ require (
 	github.com/larsartmann/go-cqrs-lite/snapshot/v4 v4.7.0 // indirect
 	github.com/larsartmann/go-cqrs-lite/system/v4 v4.18.0 // indirect
 	github.com/larsartmann/go-cqrs-lite/watermill/v4 v4.7.0 // indirect
-	github.com/larsartmann/go-datastar v0.6.3 // indirect
 	github.com/larsartmann/go-flightrecorder v0.2.1 // indirect
 	github.com/larsartmann/go-retry v0.9.0 // indirect
 	github.com/larsartmann/go-sse/sseparse v0.2.1 // indirect
@@ -105,7 +104,8 @@ require (
 	github.com/a-h/templ v0.3.1100
 	github.com/dustin/go-humanize v1.1.0
 	github.com/larsartmann/go-cqrs-lite/event/v4 v4.15.2
-	github.com/larsartmann/go-datastar/static v0.6.1
+	github.com/larsartmann/go-datastar v0.7.0
+	github.com/larsartmann/go-datastar/static v0.7.0
 	github.com/larsartmann/go-error-family v0.12.0
 	github.com/larsartmann/go-health v0.10.0
 	github.com/larsartmann/go-health-dashboard v0.13.2

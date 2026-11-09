@@ -72,8 +72,8 @@ require (
 	github.com/larsartmann/go-cqrs-lite/schema/v4 v4.7.1 // indirect
 	github.com/larsartmann/go-cqrs-lite/snapshot/v4 v4.7.0 // indirect
 	github.com/larsartmann/go-cqrs-lite/watermill/v4 v4.7.0 // indirect
-	github.com/larsartmann/go-datastar v0.6.3 // indirect
-	github.com/larsartmann/go-datastar/static v0.6.1 // indirect
+	github.com/larsartmann/go-datastar v0.7.0 // indirect
+	github.com/larsartmann/go-datastar/static v0.7.0 // indirect
 	github.com/larsartmann/go-error-family v0.12.0 // indirect
 	github.com/larsartmann/go-flightrecorder v0.2.1 // indirect
 	github.com/larsartmann/go-health v0.10.0 // indirect

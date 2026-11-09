@@ -22,7 +22,7 @@ require (
 	github.com/larsartmann/go-cqrs-lite/queue/v4 v4.0.3 // indirect
 	github.com/larsartmann/go-cqrs-lite/record/v4 v4.6.2 // indirect
 	github.com/larsartmann/go-error-family v0.12.0 // indirect
-	github.com/larsartmann/go-sse v0.6.2 // indirect
+	github.com/larsartmann/go-sse v0.7.0 // indirect
 	github.com/larsartmann/go-taskqueue/internal/journal v0.4.2 // indirect
 	github.com/larsartmann/go-taskqueue/internal/queue v0.4.2 // indirect
 	github.com/larsartmann/go-taskqueue/internal/queue/companion v0.4.2 // indirect
