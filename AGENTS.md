@@ -10,8 +10,8 @@ re-run tests; uncommitted changes: read, judge, build on, never revert (size: Te
 **READER ROUTE — your lanes only**: executors → §Payload contracts +
 §Conventions; review/dlqfix/status → §Conventions + §Operational contracts; gate
 runners → §Commands + §Known Issues; store/queue → §Store invariants;
-platform/docs → §Relation to other projects. Scan §Known Issues before attributing
-failures; per-package maps: doc comments.
+platform/docs → §Relation to other projects. Scan §Known Issues before attributing;
+per-package maps: doc comments.
 
 ## Commands
 
@@ -20,9 +20,9 @@ failures; per-package maps: doc comments.
   # TRANSIENT_MAX_POLLS=0: NO retry (pinned); nix/check-ci/daemon-attribution
   # unwrapped. Battery preflight: agents-size + dead-exports --self-test +
   # module test + facade-parity + ROOT vet + quiet tree. Comparability
-  # removal (slice/map): zero-literal AND named-var == greps + ROOT-test
+  # removal: zero-literal AND named-var == greps + ROOT-test
   # compile.
-./scripts/root-gate.sh # root verify gate; ONE retry on known-flaky signatures
+./scripts/root-gate.sh # root verify gate; ONE retry on known-flaky
 ./scripts/lint-baseline.sh --check --clean-cache # opt-in; regen ALWAYS cleans
 nix build # nix run .#test; .#webui-css
 ./scripts/fuzz/nightly.sh
@@ -51,10 +51,10 @@ bumps its `go` line (`go work edit -go=<ver>`) in the same change — stale
 lines fail every cmd/tq go command. Release flow: docs/release/.
 
 Smokes (CI-safe): `scripts/smoke/` (shared scratch-repo factory
-`scripts/smoke/_lib.sh`; bootstrap-install/release-gates stay unmigrated —
-their flag-only git identity is load-bearing). Utility-script regression
-pins use the scratch-repo e2e bar — stub external tools on PATH (`rg`, `tq`),
-never pin against production state (08-57 §b ruling). Guards: check-*.sh (cite-drift, research-note-shape) + release-gates + lint-baseline;
+`scripts/smoke/_lib.sh`; bootstrap-install/release-gates unmigrated —
+flag-only git identity is load-bearing). Utility-script regression pins:
+scratch-repo e2e bar — stub external tools on PATH (`rg`, `tq`), never
+pin production state (08-57 §b). Guards: check-*.sh (cite-drift, research-note-shape) + release-gates + lint-baseline;
 `new-module.sh <dir> [deps…]` scaffolds go.mods.
 
 ## Architecture
@@ -114,9 +114,9 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 - **Additive-growth contract for detail structs** (OKF v0.2 §11): a new
   journal-detail field is OPTIONAL, documents its ABSENCE meaning, and gets a
   legacy fallback read — never required nor a second writer.
-- **Unix-milli timestamps**: stored timestamps are MILLISECOND-granular, so
-  ordering-sensitive code must not assume sub-millisecond completion order;
-  sorts need deterministic non-time tiebreaks or set-wise assertions.
+- **Unix-milli timestamps**: stored times are ms-granular — never assume
+  sub-ms completion order; sorts need deterministic non-time tiebreaks or
+  set-wise assertions.
 
 ### Payload contracts (code owns detail)
 
@@ -176,8 +176,8 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 - **Secrets redaction** (default ON): every output tail passes
   `internal/executor/redact.go`; `tq audit --journal` reports SECRET EVIDENCE rows. Growth: ONE `secretPatterns` entry + fake-shape sample in
   `redact_test.go` (gosec); ONE shared table test, windows-gated. Counts =
-  distinct secret LOCATIONS; zero-separator back-to-back tokens
-  merge into ONE location — distinct counts need a non-token separator.- **Enqueued-fact snapshots are THIN** (`{project,type}`;
+  distinct secret LOCATIONS; back-to-back zero-separator tokens
+  merge into ONE — distinct counts need a non-token separator.- **Enqueued-fact snapshots are THIN** (`{project,type}`;
   `Caps.EnqueuedSnapshot=false` pinned in conform suites).
 - **Unknown keys ≠ a newer contract**: unknown detail/payload KEYS are ignored,
   but a greater payload `V` is REFUSED — a misparsed execution payload runs the
@@ -233,10 +233,9 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   observed — assertion-first pinning burned three windows.
 - **Gate receipts**: a report's "N ok / M fail" count is `grep -c '^ok:'`
   over a CAPTURED gate-output file — never counted in context or from a
-  summary line (tee the log, grep the file).
+  summary line.
 - **Fleet convention — countable gate summaries are PINNED, not
-  advisory**: every countable sibling gate (check-script-syntax,
-  check-go-mods, check-dead-exports, check-guard-wiring; gosec too)
+  advisory**: every countable sibling gate (check-script-syntax, check-go-mods, check-dead-exports, check-guard-wiring, gosec)
   carries `--self-test` pinning its summary format + a negative-path
   counter battery via an env hook; wired into ci-local; new gates too.
 - **Crush PreToolUse hooks** (`scripts/hooks/`, `--self-test`):
@@ -253,8 +252,8 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   (report without verdict = half-closeout).
 - **Dry-run-first for doc/index mutation scripts**: one-off
   AGENTS/TODO_LIST/status-index sweeps print computed rows first; the FIRST
-  filter runs against a copy of the real file shape — a wrong filter is
-  free to print, fatal to run.
+  filter runs against a copy of the real file shape (wrong filter = free
+  to print, fatal to run).
 - **Closeout TICK-AUDIT**: before the FINAL commit of any batch, grep
   TODO_LIST.md for each verbatim batch anchor; finished rows must read
   `- [x]` — landed + unchecked = paid round-trip.
@@ -264,8 +263,8 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 - **O14 CHANGELOG policy**: `[Unreleased]` carries OPERATOR-VISIBLE changes
   only — repo-internal tooling and non-operator rows go in the `### Internal`
   subsection at the release section's bottom, never Added/Changed/Fixed;
-  behavior changes get an explicit `(BEHAVIOR CHANGE for …)` flag (checked
-  in `scripts/check-release-docs.sh`).
+  behavior changes get an explicit `(BEHAVIOR CHANGE for …)` flag
+  (`scripts/check-release-docs.sh`).
 - **Clock-first filenames**: run `date +%Y-%m-%d_%H-%M` BEFORE
   composing a `<ts>_<slug>` filename — a guessed `<ts>` lies.
 - **Edit→commit→battery ordering**: stage+commit BEFORE running anything
@@ -274,10 +273,10 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   EMPTY output = an in-flight daemon sweep landed between your edits (heal
   while the unpushed window is open). Fold only while
   local-only + contiguous + exactly-mine (`scripts/commit-task.sh <id>
-  <subject> <file>…`). In MULTI-STEP git surgery, modified-unstaged AND
-  untracked files are daemon-food: a mid-sequence sweep breaks span
-  contiguity, so between steps the tree must be CLEAN, not merely
-  "nothing left to stage".
+  <subject> <file>…`). In MULTI-STEP git surgery the tree must be CLEAN
+  between steps, not "nothing left to stage" — modified-unstaged AND
+  untracked files are daemon-food (mid-sequence sweeps break span
+  contiguity).
 - **Prompt-content changes are dedup-invisible when daemon-folded**:
   re-dispatch dedup scans footer-bearing commits only — prompt-const work
   in a footer-less chore sweep is invisible to it.
@@ -298,8 +297,8 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   directive suppresses but SHIPS IN PAGE OUTPUT (upstream
   LarsArtmann/art-dupl#9, open); the sole templ twin (layout.templ
   mobile/desktop pair) is intentional. `art-dupl:accept` suppresses only a
-  few lines ABOVE the clone's first line. Extraction triggers (accepted
-  clones, extract when hit): a third doctor pending-listing check →
+  few lines ABOVE the clone's first line. Extraction triggers (extract
+  when an accepted clone hits): a third doctor pending-listing check →
   shared helper; a third executor payload-validation site (review/status)
   → shared validator; a fifth QueryContext rows-scan site in
   `internal/queue/companion/reads.go` → `scanInto` helper (2026-09-30_09-15 §f11-13).
@@ -327,11 +326,10 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   non-contiguous spans; a PARENT-naming refusal (foreign footer BELOW an
   exactly-mine span) = terminator shape — run its printed
   `--from <oldest-blocker>`; tail-runs `scripts/check-footer-attribution.sh
-  <id>` (post-heal/rebuild attribution gate: span commits must all carry a
-  trailer-parseable footer; `--self-test` pins it; run standalone after ANY
-  later rebuild); fallback = amend the unpushed HEAD
-  once `git show --stat` proves it mine.
-- **`TestExactlyOnceUnderConcurrency` is load-flaky and `TestSelfManagingLoop` is load-flaky**: build storms drop at clean parents — re-run before attributing; both ride KNOWN_FLAKY (scripts/lib/verify-retry.sh).
+  <id>` (span commits must carry trailer-parseable footers; `--self-test`;
+  run standalone after ANY later rebuild); fallback = amend the unpushed
+  HEAD once `git show --stat` proves it mine.
+- **`TestExactlyOnceUnderConcurrency` + `TestSelfManagingLoop` are load-flaky**: build storms drop at clean parents — re-run before attributing; both ride KNOWN_FLAKY (scripts/lib/verify-retry.sh).
 - **Agent shells inherit `TQ_DB`** (PRODUCTION journal) — scratch smokes MUST export TQ_DB=<scratch>.
 - **Session shell hazards**: no `PIPESTATUS`; bare `unset VAR` leaks to
   children (`env -u VAR`); multi-file `tail` fails; zero-repeat `printf`
@@ -339,7 +337,7 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   signal LIVE pids (rc=2) — python3 `os.kill`. POSIX ERE: `\t` in a grep
   bracket class is a literal `t` — use `[[:space:]]`/`[[:alnum:]]`, never `\t`/`\d`.
 - **Root builds auto-use `vendor/`** — internal/ changes need `go mod vendor`
-  first; dep bumps also per-module tidy (`check-gomod-vendor-sync.sh` gates).
+  first; dep bumps also per-module tidy (`check-gomod-vendor-sync.sh`).
 - **GOEXPERIMENT/GOTOOLCHAIN**: ci-local exports jsonv2; CI setup-go + go.mod
   floors + flake tarball PINNED IN LOCKSTEP (1.27.3); NEVER lower a `go`
   directive (`check-go-mods.sh`).
@@ -372,10 +370,10 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 - **VendorHash drift**: after a go.mod change run
   `nix build .#checks.x86_64-linux.vendor-hash` and copy `got:` into flake.nix.
 - **New module + unpushed tag = replace in EVERY graph loader**: a fresh
-  internal module's require (real tag, unpushed) 404s the proxy wherever
-  a module graph loads its consumer's go.mod without a local replace —
-  add the replace to root, every facade/internal loader, cmd/tq/go.work,
-  AND examples/embed (embed-tidy gate caught it, 2026-11-03).
+  module's real-tag unpushed require 404s the proxy wherever a consumer's
+  go.mod graph loads without a local replace — add it to root, every
+  facade/internal loader, cmd/tq/go.work, AND examples/embed (embed-tidy
+  gate caught it, 2026-11-03).
 - **readmodel schema drift crash-loops the fold** (planned tables get no
   column migration; `ConvergeProjectionHome` snapshots divergent homes
   aside): remedy = quarantine `<db>.readmodel.db*` + restart.
@@ -404,12 +402,11 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   `alert.triggered`, completions resolve; `NotifyDeadPool` = direct dead-pool
   path; pool detectors add worker-death, frozen-sweepers, budget-all-day.
 - **go-health-dashboard** (MIT): ADOPTED — `/health` inside the token
-  gate, tq CSS, same-origin Datastar, trend/export ring, webhook →
-  PapDashboard relay (`tq serve --alert-url`). **httputil** NOT adopted
-  (MIT v1.5.0+; verdicts: `docs/review/libs/` — 22-lib fleet review,
-  executed 2026-11-09: datastar+sse v0.7.0 current, cqrs wave landed,
-  server_timing TRIAL MOUNTED behind `--verbose`); **go-nix-helpers**
-  flake-input only, never local.
+  gate, tq CSS, same-origin Datastar, trend/export + alert relay
+  (`--alert-url`). **httputil** NOT adopted (MIT v1.5.0+; fleet verdicts:
+  `docs/review/libs/`, 2026-11-09 — datastar+sse v0.7.0 current, cqrs
+  wave landed, server_timing trial KEEP); **go-nix-helpers** flake-input
+  only, never local.
 - **docs-gates (ADOPTED 2026-11-06)**: `.docs-gates.json` + ci-local gate
   `scripts/check-docs-gates.sh` (battery `run --json`; absent binary →
   SKIP rc=0). Doctrine: audit-all + annotate SKIPPED — history-locked
