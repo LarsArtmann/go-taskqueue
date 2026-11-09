@@ -61,9 +61,9 @@ not here.
 
 ## docs-gates adoption self-review residue (2026-11-06; source: docs/status/2026-11-06_05-25_docs-gates-adoption-self-review.md §f; deduped)
 
-- [ ] Pin the docs-gates binary-version contract in scripts/check-docs-gates.sh: header + summary note the minimum version carrying the `run --json` face (in-tree > released v0.1.1 tag) and that a stale binary fails LOUD as non-JSON, never silently green (report §f1)
+- [x] Pin the docs-gates binary-version contract in scripts/check-docs-gates.sh: header + summary note the minimum version carrying the `run --json` face (in-tree > released v0.1.1 tag) and that a stale binary fails LOUD as non-JSON, never silently green (report §f1) — DONE 2026-11-09: committed 3515f38a (header note + non-JSON FAIL summary wording); --self-test 6 ok / 0 fail
 - [ ] Record the verification receipts the adoption session skipped: one full `scripts/ci-local.sh` run including the new docs-gates gate, plus `scripts/test-cmd-tq.sh` for the agentsDocMaxBytes twin-reset change (report §f2; cmd/tq/facts_json_test.go)
-- [ ] Resolve or baseline the pre-existing cite-drift MISSING FILE (TODO_LIST row ~1685): the cross-repo cite of pma-daemon's committer (committer.go line 112, from commit aa19b7e6) has no tracked-file match in this repo (report §f3)
+- [x] Resolve or baseline the pre-existing cite-drift MISSING FILE (TODO_LIST row ~1685): the cross-repo cite of pma-daemon's committer (committer.go line 112, from commit aa19b7e6) has no tracked-file match in this repo (report §f3) — DONE 2026-11-09: committer.go:112 baselined in scripts/cite-drift-baseline.txt per the documented cross-project-shorthand precedent (row is about pma, not this repo); bonus: the stale cmd/tq/ask.go past-EOF cite (helper folded into companion) re-anchored to the companion MustJSON home (internal/queue/companion/claims.go:412) — cite-drift gate now 0 new / 7 baselined, rc=0
 
 ## 24th-dispatch closeout appends (2026-11-03; source: docs/status/tasks/2026-11-03_05-12_task-000001a19f836b538429f6b0fe4b00000000.md §e/§f; deduped)
 
