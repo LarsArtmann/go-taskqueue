@@ -8,6 +8,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- **Receipt verdict as an evidence-stage filter term** (`tq dlq
+  --evidence-stage verify-ok` / `verify-mismatch`, webui evidence filter
+  inherits): dead tasks can now be swept by the write-time attestation on
+  their verify receipt — `verify-mismatch` keeps gates whose stored verdict
+  refused (head-mismatch / command-mismatch / count-mismatch), `verify-ok`
+  keeps attested-clean gates, and a receipt without an attestation (legacy
+  or interrupted write) matches neither: unverified is not verified.
+  (BEHAVIOR CHANGE for `--evidence-stage` users: the two terms joined the
+  known-vocabulary warn set — a previously-unknown term now filters
+  silently-green no more.)
+
 - **Health alerts via PapDashboard** (`tq serve --alert-url` /
   `--alert-api-key`, same env vars as the pool's bridge): the health
   dashboard's status transitions now reach the operator's alert surface —
