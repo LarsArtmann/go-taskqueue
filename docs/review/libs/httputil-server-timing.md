@@ -65,10 +65,28 @@ Trial-worthy and only in the webui, gated. It is the cheapest observability upgr
 
 ```bash
 cd /home/lars/projects/go-taskqueue
-grep -rn 'httputil/server_timing' --include=go.mod . | grep -v vendor      # → no output
-grep -rni 'server-timing\|servertiming' --include='*.go' internal cmd      # → no output (nothing today)
-sed -n '13,29p' internal/webui/requestlog.go                               # the only latency surface today
+grep -rn 'httputil/server_timing' --include=go.mod . | grep -v vendor      # → root go.mod (trial dep since 2026-11-09)
+grep -rni 'server-timing\|servertiming' --include='*.go' internal cmd      # → webui.go mount + handlers.go facts/stats segments
+sed -n '13,29p' internal/webui/requestlog.go                               # the pre-trial latency surface (slog only)
 cat /home/lars/projects/httputil/server_timing/go.mod                      # zero requires
 git -C /home/lars/projects/httputil tag -l 'server_timing/*' | sort -V     # 6 tags, latest v1.0.3
 head -3 /home/lars/projects/httputil/server_timing/LICENSE                 # MIT
 ```
+
+## Trial verdict (2026-11-09)
+
+**TRIAL MOUNTED — KEEP (for now).** The trial from §4 ran: the middleware
+rides `ServerTimingMiddlewareWhen(RequestLog)` in `internal/webui/webui.go`
+so the header ships ONLY where the operator already opted into request
+logging (default loopback posture never carries it — the header leaks
+internal performance detail per the library's own README). Instrumented
+segments: `stats` (the status-counts read) and `facts` (the journal page
+read), both recorded before the first write per the stamps-at-first-write
+contract; the auto `total` (TTFB) metric rides along. Pinned by
+`TestServerTimingHeaderBehindRequestLog` (header present with `stats` +
+`total` under RequestLog, absent without).
+
+Keep-or-remove: revisit when (a) the read-model fold-vs-read split ever
+needs explaining in anger, or (b) RequestLog usage shows nobody opens
+DevTools on this surface — remove is a 3-line revert plus the dep.
+

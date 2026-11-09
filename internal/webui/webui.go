@@ -322,6 +322,8 @@ func (s *Server) healthBindings() []struct {
 		{"GET", HealthSSEPath, withHealthHeaders(s.dash.SSEHandler()).ServeHTTP},
 		{"GET", HealthSDKPath, withHealthHeaders(healthSDKScript).ServeHTTP},
 		{"GET", HealthFaviconPath, withHealthHeaders(s.dash.FaviconHandler()).ServeHTTP},
+		{"GET", HealthTrendPath, withHealthHeaders(s.dash.TrendHandler()).ServeHTTP},
+		{"GET", HealthExportPath, withHealthHeaders(s.dash.ExportHandler()).ServeHTTP},
 		{"GET", HealthLivenessPath, withHealthHeaders(s.prober.LivenessHandler()).ServeHTTP},
 		{"GET", HealthReadinessPath, withHealthHeaders(s.prober.ReadinessHandler()).ServeHTTP},
 		{"GET", HealthStartupPath, withHealthHeaders(s.prober.StartupHandler()).ServeHTTP},

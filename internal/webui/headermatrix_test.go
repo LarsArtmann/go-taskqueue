@@ -660,7 +660,21 @@ func serveRouteExpectations() map[string]serveRouteExpectation {
 			serveSDKRow.surface().withContentType("text/javascript; charset=utf-8"),
 			http.StatusOK,
 		},
-		HealthFaviconPath:   {serveFaviconRow.surface().withContentType("image/svg+xml"), http.StatusOK},
+		HealthFaviconPath: {serveFaviconRow.surface().withContentType("image/svg+xml"), http.StatusOK},
+		HealthTrendPath: {
+			with(
+				serveHealthRow,
+				matrixHeaders{"cache-control": eq("no-cache")},
+			).surface().withContentType("application/json"),
+			http.StatusOK,
+		},
+		HealthExportPath: {
+			with(
+				serveHealthRow,
+				matrixHeaders{"cache-control": eq("no-cache")},
+			).surface().withContentType("application/json"),
+			http.StatusOK,
+		},
 		HealthLivenessPath:  {probes, http.StatusOK},
 		HealthReadinessPath: {probes, http.StatusOK},
 		HealthStartupPath:   {probes, http.StatusOK},

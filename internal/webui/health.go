@@ -38,6 +38,8 @@ const (
 	HealthLivenessPath  = "/healthz"
 	HealthReadinessPath = "/readyz"
 	HealthStartupPath   = "/startupz"
+	HealthTrendPath     = "/health/trend"
+	HealthExportPath    = "/health/export"
 )
 
 const (
@@ -53,6 +55,11 @@ const (
 	// check tolerates before warning: the tail polls at DefaultPoll and
 	// the fold applies within a batch, so only a wedged fold lags wide.
 	healthProjectionLagTolerance = 100
+	// healthTrendSamples is the trend ring's depth: at the 5s refresh
+	// cadence 72 samples ≈ 6 minutes of sparkline — enough to see a flap
+	// cycle without unbounded history (fleet review f14: restart amnesia
+	// was the gap).
+	healthTrendSamples = 72
 )
 
 // queueProber adapts the task queue's store-derived health onto
@@ -385,13 +392,14 @@ func newHealthDashboard(pro dashboard.Prober, webhookURL string) *dashboard.Dash
 			Readiness:  HealthReadinessPath,
 			Startup:    HealthStartupPath,
 			Metrics:    "",
-			Trend:      "",
-			Export:     "",
+			Trend:      HealthTrendPath,
+			Export:     HealthExportPath,
 			Introspect: "",
 			DatastarJS: healthSDKSrc,
 		}),
 		dashboard.WithEmbeddedDatastarSDK(),
 		dashboard.WithCSSPath("/static/app.css"),
+		dashboard.WithTrend(healthTrendSamples),
 		dashboard.WithNonceExtractor(func(r *http.Request) string { return ctxNonce(r.Context()) }),
 	}
 
