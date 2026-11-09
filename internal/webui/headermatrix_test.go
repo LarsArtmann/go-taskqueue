@@ -316,6 +316,25 @@ var serveFaviconRow = mergeRow(serveHealthRow, matrixHeaders{
 	"cache-control": eq("public, max-age=86400"),
 })
 
+// serveSDKRow is the `/health/datastar.js` row: the favicon's cacheable
+// static-asset set plus the bundle's content ETag (datastar.ScriptHandler
+// serves conditional GETs off it).
+var serveSDKRow = mergeRow(serveFaviconRow, matrixHeaders{
+	"etag": quotedETag,
+})
+
+// etagRe pins the shape datastar.ETagFor computes: a quoted, truncated
+// SHA-256 digest (first 16 bytes, hex).
+var etagRe = regexp.MustCompile(`^"[0-9a-f]{32}"$`)
+
+func quotedETag(t testing.TB, got string) {
+	t.Helper()
+
+	if !etagRe.MatchString(got) {
+		t.Errorf("ETag = %q, want a quoted 32-hex digest", got)
+	}
+}
+
 // apiAuthedRow / apiUnauthedRow / apiLockedRow are the `tq api` column:
 // nosniff everywhere, no-store when authenticated, the API realm on 401,
 // Retry-After on the bearer lockout.
@@ -344,6 +363,7 @@ var matrixRows = []matrixHeaders{
 	serve401Row,
 	serve429Row,
 	serveHealthRow,
+	serveSDKRow,
 	apiAuthedRow,
 	apiUnauthedRow,
 	apiLockedRow,
@@ -535,9 +555,7 @@ func TestServeHeaderMatrixSDKBundle(t *testing.T) {
 	resp := getContextGET(t, server.URL+"/health/datastar.js")
 	defer resp.Body.Close()
 
-	withCache := mergeRow(serveHealthRow, matrixHeaders{
-		"cache-control": eq("public, max-age=86400"),
-	})
+	withCache := serveSDKRow
 	withCache.surface().
 		withContentType("text/javascript; charset=utf-8").
 		check(t, resp.Header, "GET /health/datastar.js")
@@ -639,7 +657,7 @@ func serveRouteExpectations() map[string]serveRouteExpectation {
 		HealthDashboardPath: {serveHealthRow.surface().withContentType("text/html; charset=utf-8"), http.StatusOK},
 		HealthSSEPath:       {probes.withContentType("text/plain; charset=utf-8"), 0},
 		HealthSDKPath: {
-			serveFaviconRow.surface().withContentType("text/javascript; charset=utf-8"),
+			serveSDKRow.surface().withContentType("text/javascript; charset=utf-8"),
 			http.StatusOK,
 		},
 		HealthFaviconPath:   {serveFaviconRow.surface().withContentType("image/svg+xml"), http.StatusOK},
