@@ -127,6 +127,13 @@ const (
 	VerifyGateEnvCode       = internalexecutor.VerifyGateEnvCode
 )
 
+// Receipt-verdict evidence terms (see MatchesEvidenceStage): matcher
+// aliases derived from the stored write-time Attestation.
+const (
+	EvidenceTermVerifyOK       = internalexecutor.EvidenceTermVerifyOK
+	EvidenceTermVerifyMismatch = internalexecutor.EvidenceTermVerifyMismatch
+)
+
 // IsGateArtifactDeath classifies a stored verify failure as the
 // unscoped-gofmt artifact (the vendor-gofmt death class).
 var IsGateArtifactDeath = internalexecutor.IsGateArtifactDeath
