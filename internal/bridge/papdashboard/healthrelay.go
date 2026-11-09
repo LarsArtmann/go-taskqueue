@@ -236,9 +236,9 @@ func (r *HealthRelay) forwardTransition(ctx context.Context, prev string, snap h
 			healthAggregate,
 			strconv.FormatInt(time.Now().UnixNano(), 10),
 			map[string]any{
-				"severity": healthSeverity(snap.Status),
-				"title":    "tq serve health: " + snap.Status,
-				"body":     healthBody(snap),
+				"severity":  healthSeverity(snap.Status),
+				"title":     "tq serve health: " + snap.Status,
+				"body":      healthBody(snap),
 				"sourceApp": r.ing.sourceApp,
 				"metadata": map[string]string{
 					"version": snap.Version,

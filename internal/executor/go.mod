@@ -4,6 +4,7 @@ go 1.27.3
 
 require (
 	github.com/LarsArtmann/go-crush-data v0.5.0
+	github.com/larsartmann/go-error-family v0.12.0
 	github.com/larsartmann/go-retry v0.9.0
 	github.com/larsartmann/go-taskqueue/internal/journal v0.4.2
 	github.com/larsartmann/go-taskqueue/internal/queue v0.4.2
@@ -17,7 +18,6 @@ require (
 	github.com/dustin/go-humanize v1.1.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/larsartmann/go-cqrs-lite/queue/v4 v4.0.3 // indirect
-	github.com/larsartmann/go-error-family v0.12.0 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/ncruces/go-strftime v1.1.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect

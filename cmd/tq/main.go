@@ -4304,16 +4304,16 @@ func cmdServe(args []string) error {
 	var demoted bool
 
 	cfg := webui.Config{
-		Addr:         *addr,
-		Poll:         *poll,
-		Version:      version,
-		RequestLog:   *verbose,
-		AuthToken:    *authToken,
-		AllowWrites:  *allowWrites,
-		DLQBackoff:   *dlqBackoff,
-		CrushServer:  *crushServer,
-		AlertURL:     *alertURL,
-		AlertAPIKey:  *alertKey,
+		Addr:        *addr,
+		Poll:        *poll,
+		Version:     version,
+		RequestLog:  *verbose,
+		AuthToken:   *authToken,
+		AllowWrites: *allowWrites,
+		DLQBackoff:  *dlqBackoff,
+		CrushServer: *crushServer,
+		AlertURL:    *alertURL,
+		AlertAPIKey: *alertKey,
 	}
 
 	if *readModel {

@@ -62,7 +62,26 @@ if [ "${1:-}" = "--self-test" ]; then
 	printf '%s' "$full" | grep -qF 'Closeout report: what changed and why.' || fail "body paragraph missing from commit message"
 	last=$(printf '%s' "$full" | grep -v '^$' | tail -n 1)
 	[ "$last" = "Task-Queue-ID: 0000000000000000abcd" ] || fail "with-body footer is not the last line: '$last'"
-	echo "commit-task self-test ok: footer is the last line with and without a body"
+	# --amend pin (08-43 f5): folding files into a footer-less daemon sweep
+	# rewrites subject+footer; the Task-Queue-ID trailer stays the ONLY one.
+	echo three >f.txt
+	GIT_COMMITTER_DATE="@$(($(date +%s) + 60))" git commit -qam "chore: auto-commit 1 changed file(s) (heuristic)"
+	"$self_dir/commit-task.sh" --amend 0000000000000000abcd amended-fold f.txt
+	subj=$(git log -1 --format='%s')
+	[ "$subj" = "amended-fold" ] || fail "--amend did not rewrite the daemon sweep subject: '$subj'"
+	last=$(git log -1 --format=%B | grep -v '^$' | tail -n 1)
+	[ "$last" = "Task-Queue-ID: 0000000000000000abcd" ] || fail "--amend footer is not the last line: '$last'"
+	[ "$(git log -1 --format=%B | grep -c '^Task-Queue-ID:')" = "1" ] || fail "--amend left more than one Task-Queue-ID trailer"
+	git show --name-only --format= HEAD | grep -qx f.txt || fail "--amend lost the staged file from the commit"
+	# Refusal pin: --amend on a commit that is neither a daemon sweep nor
+	# our footer must fail and leave nothing staged.
+	echo four >f.txt
+	git commit -qam "a foreign commit"
+	if "$self_dir/commit-task.sh" --amend 0000000000000000abcd should-fail f.txt 2>/dev/null; then
+		fail "--amend was not refused on a foreign commit"
+	fi
+	[ -z "$(git diff --cached --name-only)" ] || fail "--amend refusal left files staged"
+	echo "commit-task self-test ok: footer is the last line with and without a body; --amend folds daemon sweeps and refuses foreign commits"
 	exit 0
 fi
 
@@ -71,10 +90,16 @@ if [ $# -lt 3 ]; then
 	exit 1
 fi
 
+amend=0
+if [ "${1:-}" = "--amend" ]; then
+	amend=1
+	shift
+fi
 task_id=$1
 subject=$2
 shift 2
 
+amend=0
 body=''
 files=()
 
@@ -100,8 +125,7 @@ while [ $# -gt 0 ]; do
 		shift 2
 	elif [ "$1" = "--amend" ]; then
 		amend=1
-		shift
-	else
+		shift	else
 		files+=("$1")
 		shift
 	fi
