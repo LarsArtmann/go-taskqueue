@@ -10,7 +10,7 @@ re-run tests; uncommitted changes: read, judge, build on, never revert (size: Te
 **READER ROUTE — your lanes only**: executors → §Payload contracts +
 §Conventions; review/dlqfix/status → §Conventions + §Operational contracts; gate
 runners → §Commands + §Known Issues; store/queue → §Store invariants;
-platform/docs → §Relation to other projects. Scan §Known Issues before attributing;
+platform/docs → §Relation to other projects. Scan §Known Issues first;
 per-package maps: doc comments.
 
 ## Commands
@@ -329,7 +329,7 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   <id>` (span commits must carry trailer-parseable footers; `--self-test`;
   run standalone after ANY later rebuild); fallback = amend the unpushed
   HEAD once `git show --stat` proves it mine.
-- **`TestExactlyOnceUnderConcurrency` + `TestSelfManagingLoop` are load-flaky**: build storms drop at clean parents — re-run before attributing; both ride KNOWN_FLAKY (scripts/lib/verify-retry.sh).
+- **`TestExactlyOnceUnderConcurrency` is load-flaky and `TestSelfManagingLoop` is load-flaky**: build storms drop at clean parents — re-run before attributing; both ride KNOWN_FLAKY (scripts/lib/verify-retry.sh).
 - **Agent shells inherit `TQ_DB`** (PRODUCTION journal) — scratch smokes MUST export TQ_DB=<scratch>.
 - **Session shell hazards**: no `PIPESTATUS`; bare `unset VAR` leaks to
   children (`env -u VAR`); multi-file `tail` fails; zero-repeat `printf`
