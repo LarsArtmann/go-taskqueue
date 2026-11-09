@@ -27,6 +27,7 @@ import (
 	"time"
 
 	dashboard "github.com/larsartmann/go-health-dashboard"
+	"github.com/larsartmann/go-taskqueue/internal/bridge/papdashboard"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/readmodel"
 )
@@ -120,6 +121,15 @@ type Config struct {
 	// the pane is off and /agents/live serves 503 (routed runs are an
 	// L1 opt-in; local runs produce no workspace events).
 	CrushServer string
+	// AlertURL, when set, forwards the health dashboard's status
+	// transitions to PapDashboard (the same deployment --alert-url on the
+	// agent pool targets): a transition into warn/fail raises an alert
+	// naming the degraded checks, the transition back to pass resolves
+	// it. Empty = off (the only push consumer of health state remains
+	// the /health browser tab).
+	AlertURL string
+	// AlertAPIKey is the Bearer token for AlertURL's ingest route.
+	AlertAPIKey string
 }
 
 // ProjectionPump is the live-projection surface the server consumes on
@@ -181,6 +191,11 @@ type Server struct {
 	// the collector only runs when cfg.CrushServer is set).
 	agentFeed *AgentFeed
 
+	// healthRelay translates the health dashboard's webhook into
+	// PapDashboard alerts (nil unless cfg.AlertURL is set). New starts
+	// it; Run closes it on return.
+	healthRelay *papdashboard.HealthRelay
+
 	httpServer *http.Server
 }
 
@@ -191,14 +206,35 @@ func New(store queue.Store, cfg Config) *Server {
 
 	prober := newQueueProber(store, cfg.Version)
 
+	var webhookURL string
+
+	var relay *papdashboard.HealthRelay
+
+	if cfg.AlertURL != "" {
+		var err error
+
+		relay, err = papdashboard.NewHealthRelay(papdashboard.Config{
+			Endpoint: cfg.AlertURL,
+			APIKey:   cfg.AlertAPIKey,
+		})
+		if err != nil {
+			slog.Error("webui: health relay not started — health transitions stay dashboard-only",
+				"err", err)
+			relay = nil
+		} else {
+			webhookURL = relay.URL()
+		}
+	}
+
 	s := &Server{
-		store:     store,
-		hub:       NewHub(),
-		cfg:       cfg,
-		prober:    prober,
-		dash:      newHealthDashboard(prober),
-		writes:    newWriteRateLimiter(),
-		agentFeed: NewAgentFeed(),
+		store:       store,
+		hub:         NewHub(),
+		cfg:         cfg,
+		prober:      prober,
+		dash:        newHealthDashboard(prober, webhookURL),
+		writes:      newWriteRateLimiter(),
+		agentFeed:   NewAgentFeed(),
+		healthRelay: relay,
 	}
 
 	prober.projectionCursor = func(_ context.Context) (int64, bool) {
@@ -442,6 +478,13 @@ func withSecurityHeaders(next http.Handler) http.Handler {
 func (s *Server) Run(ctx context.Context) error {
 	if err := s.cfg.Validate(); err != nil {
 		return err
+	}
+
+	// The health relay (when AlertURL is set) lives exactly as long as the
+	// serving loop — its listener feeds the dashboard webhook, which stops
+	// firing once the pusher is down.
+	if s.healthRelay != nil {
+		defer func() { _ = s.healthRelay.Close() }()
 	}
 
 	// The health dashboard's SSE pusher must be active before any /health/sse

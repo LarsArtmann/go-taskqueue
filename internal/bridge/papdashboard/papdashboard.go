@@ -20,7 +20,6 @@
 package papdashboard
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -107,6 +106,7 @@ type Bridge struct {
 	cfg         Config
 	log         *slog.Logger
 	client      *http.Client
+	ing         *ingester // shared ingest wire contract (also used by HealthRelay)
 
 	// Daily-budget telemetry (Config.DailyBudget): the same projection the
 	// pool's budget.Guard uses, maintained incrementally from Enqueued facts.
@@ -168,6 +168,13 @@ func New(store FactSource, checkpoints WatermarkStore, cfg Config) *Bridge {
 		cfg:         cfg,
 		log:         log,
 		client:      cfg.Client,
+		ing: &ingester{
+			endpoint:  cfg.Endpoint,
+			apiKey:    cfg.APIKey,
+			sourceApp: cfg.SourceApp,
+			client:    cfg.Client,
+			log:       log,
+		},
 	}
 }
 
@@ -508,9 +515,8 @@ func (b *Bridge) everDeadLettered(ctx context.Context, taskID string) (bool, err
 	return false, nil
 }
 
-// post sends one ingest event. 2xx is success; 4xx is permanent (PapDashboard
-// will never accept this payload) and is logged then accepted; 5xx and
-// transport errors return an error so the fact retries.
+// post sends one ingest event via the shared ingester; the journal fact's
+// sequence rides as both the idempotency salt and the causation id.
 func (b *Bridge) post(
 	ctx context.Context,
 	eventType, idemKey string,
@@ -518,62 +524,7 @@ func (b *Bridge) post(
 	seq int64,
 	payload map[string]any,
 ) error {
-	doc := map[string]any{
-		"type":        eventType,
-		"aggregateId": aggregateID,
-		"payload":     payload,
-		"metadata": map[string]any{
-			"correlationId": aggregateID,
-			"causationId":   strconv.FormatInt(seq, 10),
-			"userId":        "",
-			"sourceApp":     b.cfg.SourceApp,
-		},
-	}
-
-	body, err := json.Marshal(doc)
-	if err != nil {
-		return fmt.Errorf("marshal ingest: %w", err)
-	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
-		b.cfg.Endpoint+"/api/ingest", bytes.NewReader(body))
-	if err != nil {
-		return fmt.Errorf("build ingest request: %w", err)
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+b.cfg.APIKey)
-	req.Header.Set("Idempotency-Key", idemKey)
-
-	resp, err := b.client.Do(req)
-	if err != nil {
-		return fmt.Errorf("ingest %s: %w", eventType, err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode >= 500 || resp.StatusCode == http.StatusTooManyRequests {
-		// 429 is transient by the same rule as 5xx: a rate-limited
-		// dashboard must not silently drop the alert (the permanent
-		// branch advances the checkpoint past the fact — the 2026-09-11
-		// bridge audit's finding). Retry on the next poll instead.
-		return fmt.Errorf(
-			"ingest %s: PapDashboard returned %d (transient)",
-			eventType,
-			resp.StatusCode,
-		)
-	}
-
-	if resp.StatusCode >= 400 {
-		b.log.Error("papdashboard ingest permanently rejected",
-			"event", eventType, "status", resp.StatusCode, "idempotencyKey", idemKey)
-
-		return nil
-	}
-
-	b.log.Info("papdashboard ingest accepted",
-		"event", eventType, "status", resp.StatusCode, "idempotencyKey", idemKey)
-
-	return nil
+	return b.ing.post(ctx, eventType, idemKey, aggregateID, strconv.FormatInt(seq, 10), payload)
 }
 
 func alertTitle(t task.Task) string {

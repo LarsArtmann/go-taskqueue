@@ -153,3 +153,4 @@ summary="windows=$windows_total done-row-hits=$done_hits"
 echo
 echo "Session-start ritual complete (SUMMARY: $summary). Read the output before editing anything."
 echo "REMINDER: after every green gate re-run 'git status' — the auto-commit daemon sweeps unstaged edits footer-less mid-window."
+echo "REMINDER: unstaged edits? commit them NOW via scripts/commit-task.sh <task-id> <subject> <file>… (stages exactly the named files + footer, the prevention for footer-less daemon sweeps; --amend folds a daemon sweep that already landed). Sweep already carried them? scripts/heal-daemon-sweep.sh."

@@ -344,9 +344,12 @@ func writeHealthJSON(w http.ResponseWriter, code int, resp health.Response) {
 
 // newHealthDashboard builds the health dashboard wired to tq's surfaces:
 // same-origin SDK and stylesheet (the CSP forbids CDNs), nonce extracted
-// from the request context that withSecurityHeaders publishes.
-func newHealthDashboard(pro dashboard.Prober) *dashboard.Dashboard {
-	return dashboard.New(pro,
+// from the request context that withSecurityHeaders publishes. webhookURL,
+// when non-empty (Config.AlertURL), is the loopback health-relay target:
+// the dashboard POSTs a snapshot there on every overall status transition,
+// and the relay translates it into PapDashboard alerts.
+func newHealthDashboard(pro dashboard.Prober, webhookURL string) *dashboard.Dashboard {
+	opts := []dashboard.Option{
 		dashboard.WithTitle("tq queue health"),
 		dashboard.WithRoutes(dashboard.Routes{
 			Dashboard:  HealthDashboardPath,
@@ -364,7 +367,13 @@ func newHealthDashboard(pro dashboard.Prober) *dashboard.Dashboard {
 		dashboard.WithEmbeddedDatastarSDK(),
 		dashboard.WithCSSPath("/static/app.css"),
 		dashboard.WithNonceExtractor(func(r *http.Request) string { return ctxNonce(r.Context()) }),
-	)
+	}
+
+	if webhookURL != "" {
+		opts = append(opts, dashboard.WithWebhook(webhookURL))
+	}
+
+	return dashboard.New(pro, opts...)
 }
 
 // withHealthHeaders adapts the shared security posture for the health

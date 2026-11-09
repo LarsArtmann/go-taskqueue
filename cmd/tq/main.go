@@ -4274,6 +4274,12 @@ func cmdServe(args []string) error {
 		"",
 		"unix socket of a running `crush server` to light the live-agents pane (L2 observability, default OFF): /agents/live streams distilled tool events from routed runs into an append-only pane (race-attach with reconnect); can share the agent-pool --crush-server socket; empty = pane hidden and /agents/live serves 503 (docs/planning/2026-10-30_04-43_crush-client-server-relations.md §L2)",
 	)
+	alertURL := fs.String(
+		"alert-url",
+		os.Getenv("TQ_PAP_URL"),
+		"PapDashboard base URL: health status transitions (store down, wedged fold, fold-follower demotion, recovery) raise/resolve alerts there — the same deployment the agent pool's --alert-url targets ($TQ_PAP_URL)",
+	)
+	alertKey := fs.String("alert-api-key", os.Getenv("TQ_PAP_API_KEY"), "PapDashboard API key for --alert-url (Bearer; $TQ_PAP_API_KEY)")
 
 	db := dbFlag(fs)
 
@@ -4298,14 +4304,16 @@ func cmdServe(args []string) error {
 	var demoted bool
 
 	cfg := webui.Config{
-		Addr:        *addr,
-		Poll:        *poll,
-		Version:     version,
-		RequestLog:  *verbose,
-		AuthToken:   *authToken,
-		AllowWrites: *allowWrites,
-		DLQBackoff:  *dlqBackoff,
-		CrushServer: *crushServer,
+		Addr:         *addr,
+		Poll:         *poll,
+		Version:      version,
+		RequestLog:   *verbose,
+		AuthToken:    *authToken,
+		AllowWrites:  *allowWrites,
+		DLQBackoff:   *dlqBackoff,
+		CrushServer:  *crushServer,
+		AlertURL:     *alertURL,
+		AlertAPIKey:  *alertKey,
 	}
 
 	if *readModel {

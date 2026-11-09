@@ -9,7 +9,7 @@
 # Task-Queue-ID trailer as the LAST line (git interpret-trailers must see
 # it — the commit-msg hook enforces the same shape).
 #
-# Usage: scripts/commit-task.sh <task-id> <subject> <file>… [--body <text>]
+# Usage: scripts/commit-task.sh [--amend] <task-id> <subject> <file>… [--body <text>]
 #
 #   <task-id>   queue-assigned ID, verbatim (hex, 16+ chars)
 #   <subject>   commit subject (first line)
@@ -18,6 +18,15 @@
 #                   subject and the footer so the Task-Queue-ID trailer
 #                   stays the LAST line (closeout commits with a real
 #                   message no longer need a hand-rolled heredoc)
+#   --amend     fold the named files into HEAD instead of creating a new
+#               commit — sanctioned ONLY when HEAD is a footer-less
+#               `chore: auto-commit` daemon sweep (the post-battery case:
+#               the sweep already folded exactly this work, 08-43 report
+#               f5) or already carries THIS task's footer (adding late
+#               files to your own unpushed commit). Anything else is
+#               refused — amending a foreign or already-forked commit
+#               orphans tick-claims (02-56 class); use
+#               scripts/heal-daemon-sweep.sh for the general heal.
 #
 # Exit codes: 0 committed; 1 bad args / missing file / staging or commit
 # failure (nothing is left staged on failure paths before commit).
@@ -58,7 +67,7 @@ if [ "${1:-}" = "--self-test" ]; then
 fi
 
 if [ $# -lt 3 ]; then
-	echo "usage: $0 <task-id> <subject> <file>… [--body <text>]" >&2
+	echo "usage: $0 [--amend] <task-id> <subject> <file>… [--body <text>]" >&2
 	exit 1
 fi
 
@@ -89,6 +98,9 @@ while [ $# -gt 0 ]; do
 		}
 		body=$2
 		shift 2
+	elif [ "$1" = "--amend" ]; then
+		amend=1
+		shift
 	else
 		files+=("$1")
 		shift
@@ -103,6 +115,30 @@ for f in "${files[@]}"; do
 done
 
 git add -- "${files[@]}"
+
+if [ "$amend" -eq 1 ]; then
+	head_subj=$(git log -1 --format='%s')
+	head_footer=$(git log -1 --format='%(trailers:key=Task-Queue-ID,valueonly)')
+	if printf '%s' "$head_subj" | grep -Eq '^chore: auto-commit'; then
+		# Footer-less daemon sweep: rewrite subject + body + footer onto it.
+		body_args=()
+		[ -z "$body" ] || body_args=(-m "$body")
+		git commit --amend -m "$subject" "${body_args[@]}" -m "Task-Queue-ID: $task_id"
+		echo "amended: $(git log -1 --oneline)"
+		exit 0
+	elif [ "$head_footer" = "$task_id" ]; then
+		# Our own footer commit: keep the message, fold the late files in.
+		git commit --amend --no-edit
+		echo "amended: $(git log -1 --oneline)"
+		exit 0
+	fi
+	echo "FAIL: --amend refused — HEAD is neither a 'chore: auto-commit' daemon sweep nor a commit carrying Task-Queue-ID: $task_id" >&2
+	echo "  HEAD: $(git log -1 --oneline)" >&2
+	echo "Amending anything else orphans tick-claims (02-56 class). If HEAD mixed in foreign files, heal instead:" >&2
+	echo "  scripts/heal-daemon-sweep.sh $task_id   # unpushed only; rails + verification built in" >&2
+	git restore --staged -- "${files[@]}"
+	exit 1
+fi
 
 # Heal-on-sweep: the daemon may have committed the same files between the
 # caller's edit and now (sweeps land <60s). A bare "nothing to commit"
