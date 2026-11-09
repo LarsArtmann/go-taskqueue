@@ -134,7 +134,7 @@ against the tree at HEAD 5195cd5f.
 Harvested (8 new rows, deduped by domain-noun greps against the 784 open
 rows):
 
-1. Fix master CI nix vendorHash drift (flake.nix `got:` refresh).
+1. Fix master CI nix vendorHash drift (flake.nix `got:` refresh). <!-- fresh:skip: harvested as TODO_LIST row 1802; freshness matcher rejects it because the token set is all-DF>=8 generic -->
 2. Doctor tag-ancestry test fixture/exemption so
    TestDoctorHealthyEmptyDB stops failing master CI + local module runs.
 3. heal-daemon-sweep.sh hardening trio (dry-run, --tip-only, tag-naming
@@ -144,6 +144,7 @@ rows):
    verifier.
 6. Investigate `tq ask` "task: not found" TQ_DB routing in dispatched
    sessions.
+   <!-- fresh:skip: harvested as TODO_LIST row 1807; matcher rejects the token set as generic -->
 7. BLOCKED (owner): retract the poisoned cmd/tq/v0.4.2 via a v0.4.4, or
    accept v0.4.3 supersession.
 8. BLOCKED (owner): rule the live-pool docs-gates bridge repo list +
