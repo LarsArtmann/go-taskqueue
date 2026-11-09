@@ -11,9 +11,10 @@
 # guess. Shrink is advisory-only; a NEW drifted cite (not listed here) fails the
 # gate, which is the whole point.
 #
-# Two rows cite paths that do not exist in this repo at all
-# (`pkg/analyzer/upcaster.go`, `backend/agent.go`): they are shorthand for files
-# in another project, kept because the surrounding row is about that project.
+# Three rows cite paths that do not exist in this repo at all
+# (`pkg/analyzer/upcaster.go`, `backend/agent.go`,
+# `pma-daemon/committer/committer.go`): they are shorthand for files in another
+# project, kept because the surrounding row is about that project.
 #
 # Prune a row the moment its drift is gone (a leftover row would mask a NEW
 # drift at the same path:line). Regenerate with:
@@ -24,4 +25,5 @@ internal/httpapi/httpapi.go:111
 internal/queue/companion/conform/suite.go:215
 internal/queue/companion/questions.go:76
 internal/worker/worker.go:567
+pma-daemon/committer/committer.go:112
 pkg/analyzer/upcaster.go:9
