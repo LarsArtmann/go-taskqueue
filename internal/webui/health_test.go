@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	health "github.com/larsartmann/go-health"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
@@ -345,5 +346,77 @@ func TestHealthFoldFollowerCheck(t *testing.T) {
 
 	if resp.Status != health.StatusWarn {
 		t.Errorf("overall = %q, want warn while demoted", resp.Status)
+	}
+}
+
+// panickingStore detonates on the first read: the evaluate-recover path.
+type panickingStore struct {
+	queue.Store
+}
+
+func (p *panickingStore) StatusCounts(context.Context) (map[task.Status]int, error) {
+	panic("store driver exploded")
+}
+
+// TestHealthEvaluationPanicRecovers pins the crash-recover contract: a
+// panicking check must degrade the response (fail + a prober check naming
+// the panic), never take the SSE pusher — and with it all of `tq serve` —
+// down (libs fleet review f11/f12: a pusher panic killed serve).
+func TestHealthEvaluationPanicRecovers(t *testing.T) {
+	t.Parallel()
+
+	s := New(&panickingStore{Store: newTestStore(t)}, Config{})
+	server := httptest.NewServer(s.Handler())
+	t.Cleanup(server.Close)
+
+	code, _, body := getBody(t, server.URL+HealthReadinessPath)
+	if code != http.StatusServiceUnavailable {
+		t.Fatalf("GET readiness after panic = %d, want 503", code)
+	}
+
+	for _, want := range []string{"health evaluation panicked", "store driver exploded"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("degraded body lacks %q: %s", want, body)
+		}
+	}
+
+	// The process-equivalent: the same server keeps answering after the
+	// panic — the prober survived to serve its degraded snapshot.
+	if code, _, _ = getBody(t, server.URL+HealthLivenessPath); code != http.StatusOK {
+		t.Fatalf("GET liveness after panic = %d, want 200", code)
+	}
+}
+
+// TestHealthStatusSinceAndLatency pins the probe-observed metadata the
+// dashboard renders: StatusSince carries across evaluations while a check
+// holds its status, and TotalLatencyMs reflects the batch (fleet review
+// f11: dashboard rows rendered empty without them).
+func TestHealthStatusSinceAndLatency(t *testing.T) {
+	t.Parallel()
+
+	p := newQueueProber(newTestStore(t), "test")
+
+	first := p.CachedResponse()
+	if first.TotalLatencyMs < 0 {
+		t.Errorf("TotalLatencyMs = %d, want >= 0", first.TotalLatencyMs)
+	}
+
+	dbFirst, ok := first.Checks["database"]
+	if !ok {
+		t.Fatal("database check missing")
+	}
+
+	if dbFirst.StatusSince.IsZero() {
+		t.Error("first observation must stamp StatusSince")
+	}
+
+	p.mu.Lock()
+	p.evalAt = time.Now().Add(-2 * healthRefreshInterval) // force refresh
+	p.mu.Unlock()
+
+	second := p.CachedResponse()
+	if !second.Checks["database"].StatusSince.Equal(dbFirst.StatusSince) {
+		t.Errorf("StatusSince drifted while the status held: %v -> %v",
+			dbFirst.StatusSince, second.Checks["database"].StatusSince)
 	}
 }

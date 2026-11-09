@@ -11,7 +11,9 @@ import (
 	"context"
 	"encoding/json/v2"
 	"fmt"
+	"log/slog"
 	"net/http"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -98,10 +100,28 @@ func (p *queueProber) CachedResponse() health.Response {
 
 	now := time.Now()
 	if !p.evaluated || now.Sub(p.evalAt) >= healthRefreshInterval {
-		p.evaluate(now)
+		p.evaluateSafely(now)
 	}
 
 	return p.resp
+}
+
+// evaluateSafely runs one evaluation batch, converting a panicking check
+// into a failed response instead of letting it kill the caller: the SSE
+// pusher goroutine rides this path on every refresh, and an unrecovered
+// panic there takes all of `tq serve` down with it.
+func (p *queueProber) evaluateSafely(now time.Time) {
+	defer func() {
+		if r := recover(); r != nil {
+			slog.Error("webui: health evaluation panicked — serving degraded response",
+				"panic", r, "stack", string(debug.Stack()))
+			p.finishEval(now, now, map[string]health.Check{
+				"prober": mkCheck(health.StatusFail, fmt.Sprintf("health evaluation panicked: %v", r)),
+			})
+		}
+	}()
+
+	p.evaluate(now)
 }
 
 // RefreshInterval reports the evaluation cadence; the dashboard uses it as
@@ -158,6 +178,7 @@ func (p *queueProber) StartupHandler() http.HandlerFunc {
 // evaluate runs one store-backed check batch (the doctor subset that needs
 // nothing but the store).
 func (p *queueProber) evaluate(now time.Time) {
+	batchStart := time.Now()
 	ctx, cancel := context.WithTimeout(context.Background(), healthEvalTimeout)
 	defer cancel()
 
@@ -169,7 +190,7 @@ func (p *queueProber) evaluate(now time.Time) {
 	if err != nil {
 		// Every check below reads the same store; one verdict beats five
 		// identical failures.
-		p.finishEval(now, checks)
+		p.finishEval(now, batchStart, checks)
 
 		return
 	}
@@ -225,7 +246,7 @@ func (p *queueProber) evaluate(now time.Time) {
 		)
 	}
 
-	p.finishEval(now, checks)
+	p.finishEval(now, batchStart, checks)
 }
 
 // mkCheck builds one check result; go-health grades the overall response
@@ -234,10 +255,10 @@ func mkCheck(st health.Status, errMsg string) health.Check {
 	return health.Check{Status: st, Error: errMsg}
 }
 
-func (p *queueProber) finishEval(now time.Time, checks map[string]health.Check) {
+func (p *queueProber) finishEval(now, batchStart time.Time, checks map[string]health.Check) {
 	overall := health.StatusPass
 
-	for _, c := range checks {
+	for name, c := range checks {
 		switch c.Status {
 		case health.StatusFail:
 			overall = health.StatusFail
@@ -246,14 +267,27 @@ func (p *queueProber) finishEval(now time.Time, checks map[string]health.Check) 
 				overall = health.StatusWarn
 			}
 		}
+
+		// StatusSince stamps the transition time: carried from the previous
+		// response while the check holds its status, reset to now on every
+		// transition (and on first observation) so the dashboard's "since"
+		// column is probe-observed truth, not render time.
+		if prev, ok := p.resp.Checks[name]; ok && prev.Status == c.Status && !prev.StatusSince.IsZero() {
+			c.StatusSince = prev.StatusSince
+		} else {
+			c.StatusSince = now
+		}
+
+		checks[name] = c
 	}
 
 	p.resp = health.Response{
-		Status:    overall,
-		Version:   p.version,
-		Uptime:    time.Since(p.startedAt).Round(time.Second).String(),
-		Timestamp: now,
-		Checks:    checks,
+		Status:         overall,
+		Version:        p.version,
+		Uptime:         time.Since(p.startedAt).Round(time.Second).String(),
+		Timestamp:      now,
+		TotalLatencyMs: time.Since(batchStart).Milliseconds(),
+		Checks:         checks,
 	}
 
 	p.evalAt = now
