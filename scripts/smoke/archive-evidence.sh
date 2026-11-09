@@ -110,7 +110,7 @@ git -C "$r" add docs/status/assets/arch
 past="@$(($(date +%s) - 3600))"
 GIT_AUTHOR_DATE="$past" GIT_COMMITTER_DATE="$past" \
 	git -C "$r" commit -q -m "chore: auto-commit 1 changed file(s) (heuristic)"
-out=$(run_in "$r" "$TARGET" ev/a.txt docs/status/assets/arch --wait 2) || fail "--wait with pre-dated daemon commit exited nonzero: $out"
+out=$(run_in "$r" "$TARGET" --wait 2 ev/a.txt docs/status/assets/arch) || fail "--wait with pre-dated daemon commit exited nonzero: $out"
 grep -q "^PENDING:" <<<"$out" || fail "--wait branch should end at PENDING on a pre-dated commit: $out"
 pass "--wait 2 with pre-dated (past) daemon commit: PENDING, exit 0"
 

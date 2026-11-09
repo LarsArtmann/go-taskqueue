@@ -36,7 +36,7 @@ if [ "${1:-}" = "--self-test" ]; then
 	git -C "$r" log -1 --format=%s | grep -qx init || fail "new_repo repo lacks the init commit"
 	git -C "$r" config user.name | grep -qx smoke || fail "new_repo repo lacks smoke identity"
 	run_in "$r" git rev-parse --verify HEAD >/dev/null || fail "run_in did not execute in the repo dir"
-	if fail "intentional" >/dev/null 2>&1; then
+	if (fail "intentional") >/dev/null 2>&1; then
 		fail "fail() did not exit nonzero"
 	fi
 	echo "smoke _lib.sh self-test ok: fail/pass/new_repo/run_in contract pinned"
