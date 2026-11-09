@@ -187,22 +187,34 @@ func TestMatchesEvidenceStageTable(t *testing.T) {
 			match:     true,
 		},
 		{
-			name:     "verify-ok via attestation",
-			evidence: FailureEvidence{Stage: "verify", Attestation: &VerifyVerdict{OK: true, Checked: []string{AttestationCheckReceipt}}},
-			want:     EvidenceTermVerifyOK,
-			match:    true,
+			name: "verify-ok via attestation",
+			evidence: FailureEvidence{
+				Stage:       "verify",
+				Attestation: &VerifyVerdict{OK: true, Checked: []string{AttestationCheckReceipt}},
+			},
+			want:  EvidenceTermVerifyOK,
+			match: true,
 		},
 		{
-			name:     "verify-ok does not match refused attestation",
-			evidence: FailureEvidence{Stage: "verify", Attestation: &VerifyVerdict{Refusal: AttestationCommandMismatch, Detail: "executed x"}},
-			want:     EvidenceTermVerifyOK,
-			match:    false,
+			name: "verify-ok does not match refused attestation",
+			evidence: FailureEvidence{
+				Stage:       "verify",
+				Attestation: &VerifyVerdict{Refusal: AttestationCommandMismatch, Detail: "executed x"},
+			},
+			want:  EvidenceTermVerifyOK,
+			match: false,
 		},
 		{
-			name:     "verify-mismatch via refused attestation",
-			evidence: FailureEvidence{Stage: "verify", Attestation: &VerifyVerdict{Refusal: AttestationHeadMismatch, Detail: "gate ran at aaa, completion claims bbb"}},
-			want:     EvidenceTermVerifyMismatch,
-			match:    true,
+			name: "verify-mismatch via refused attestation",
+			evidence: FailureEvidence{
+				Stage: "verify",
+				Attestation: &VerifyVerdict{
+					Refusal: AttestationHeadMismatch,
+					Detail:  "gate ran at aaa, completion claims bbb",
+				},
+			},
+			want:  EvidenceTermVerifyMismatch,
+			match: true,
 		},
 		{
 			name:     "verify-mismatch never matches a legacy task without attestation",

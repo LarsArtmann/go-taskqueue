@@ -1789,6 +1789,7 @@ func TestPersistOutcomeExhaustionIsLabeled(t *testing.T) {
 	t.Parallel()
 
 	var buf bytes.Buffer
+
 	pool := New(nil, Config{}, slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelWarn})))
 
 	attempts := 0

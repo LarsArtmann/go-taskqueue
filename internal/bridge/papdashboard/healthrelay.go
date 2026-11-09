@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"net/http"
 	"slices"
@@ -14,7 +16,6 @@ import (
 	"time"
 
 	"github.com/larsartmann/go-taskqueue/internal/bridge/httpx"
-	"log/slog"
 )
 
 // ingester posts one event to PapDashboard's /api/ingest route. The journal
@@ -133,7 +134,7 @@ type HealthRelay struct {
 // like Bridge.New's). Close releases the listener.
 func NewHealthRelay(cfg Config) (*HealthRelay, error) {
 	if cfg.Endpoint == "" {
-		return nil, fmt.Errorf("papdashboard: health relay needs an endpoint")
+		return nil, errors.New("papdashboard: health relay needs an endpoint")
 	}
 
 	if cfg.SourceApp == "" {
@@ -266,9 +267,11 @@ func healthBody(snap healthSnapshot) string {
 	for name := range snap.Checks {
 		names = append(names, name)
 	}
+
 	slices.Sort(names)
 
 	var b bytes.Buffer
+
 	for _, name := range names {
 		c := snap.Checks[name]
 		if c.Status == "pass" {
@@ -276,9 +279,11 @@ func healthBody(snap healthSnapshot) string {
 		}
 
 		fmt.Fprintf(&b, "%s: %s", name, c.Status)
+
 		if c.Error != "" {
 			fmt.Fprintf(&b, " — %s", c.Error)
 		}
+
 		b.WriteByte('\n')
 	}
 

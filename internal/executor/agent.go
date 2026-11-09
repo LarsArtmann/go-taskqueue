@@ -1063,6 +1063,7 @@ func (e *AgentExecutor) runCloseoutTurn(
 	}
 
 	_, err := execWithTransientRetry(closeoutOnce)
+
 	buf.WriteString(closeoutBuf.String())
 
 	if err == nil {

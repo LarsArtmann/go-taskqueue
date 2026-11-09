@@ -144,6 +144,7 @@ func binaryRunner(bin string, timeout time.Duration) Runner {
 		// whenever a gate FAILs, and the matrix on stdout is the verdict —
 		// an ExitError whose output parses is a result, not a failure.
 		var stdout bytes.Buffer
+
 		cmd.Stdout = &stdout
 
 		runErr := cmd.Run()
@@ -196,6 +197,7 @@ func (b *Bridge) Cursor(ctx context.Context) (int64, bool, error) {
 // the sweep returns the first mint error after checkpointing.
 func (b *Bridge) Sweep(ctx context.Context) (Stats, error) {
 	stats := Stats{Repos: len(b.cfg.Repos)}
+
 	var mintErr error
 
 	// Index existing fix tasks by dedup key: Enqueue's dedup hit returns

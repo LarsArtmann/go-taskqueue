@@ -39,6 +39,7 @@ func matrix(verdicts ...string) RunResult {
 
 	for _, v := range verdicts {
 		name := "freshness"
+
 		switch v {
 		case "FAIL":
 			name = strings.ToUpper(v + "-gate")
@@ -198,6 +199,7 @@ func TestSweepCompletedDedupKeyCountsKnown(t *testing.T) {
 	}
 
 	tk := listTasks(t, s)[0]
+
 	tk2, claim, err := s.ClaimDue(context.Background(), "test-owner", time.Minute)
 	if err != nil {
 		t.Fatalf("claim: %v", err)
@@ -223,6 +225,7 @@ func TestSweepCompletedDedupKeyCountsKnown(t *testing.T) {
 
 func TestBinaryRunnerParsesMatrix(t *testing.T) {
 	script := filepath.Join(t.TempDir(), "docs-gates")
+
 	stub := "#!/bin/sh\ncat <<'JSON'\n{\n  \"pass\": false,\n  \"gates\": [\n    {\"name\": \"freshness\", \"verdict\": \"FAIL\", \"exit_code\": 1, \"skipped\": false},\n    {\"name\": \"cadence\", \"verdict\": \"PASS\", \"exit_code\": 0, \"skipped\": false}\n  ]\n}\nJSON\n"
 	if err := os.WriteFile(script, []byte(stub), 0o700); err != nil {
 		t.Fatalf("write stub: %v", err)
@@ -246,6 +249,7 @@ func TestBinaryRunnerParsesMatrix(t *testing.T) {
 // must still mint fix tasks instead of aborting the sweep.
 func TestBinaryRunnerExitOneOnFAIL(t *testing.T) {
 	script := filepath.Join(t.TempDir(), "docs-gates")
+
 	stub := `#!/bin/sh
 cat <<'JSON'
 {"pass": false, "gates": [{"name": "freshness", "verdict": "FAIL", "exit_code": 1, "skipped": false}]}

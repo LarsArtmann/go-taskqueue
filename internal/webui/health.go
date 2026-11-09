@@ -193,6 +193,7 @@ func (p *queueProber) StartupHandler() http.HandlerFunc {
 // nothing but the store).
 func (p *queueProber) evaluate(now time.Time) {
 	batchStart := time.Now()
+
 	ctx, cancel := context.WithTimeout(context.Background(), healthEvalTimeout)
 	defer cancel()
 

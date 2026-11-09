@@ -35,6 +35,7 @@ func waitForCalls(t *testing.T, f *fakePap, n int) []recordedIngest {
 	t.Helper()
 
 	deadline := time.Now().Add(2 * time.Second)
+
 	for {
 		calls := f.calls()
 		if len(calls) >= n {
@@ -63,6 +64,7 @@ func TestHealthRelayTransitionsToAlerts(t *testing.T) {
 	if err != nil {
 		t.Fatalf("relay: %v", err)
 	}
+
 	t.Cleanup(func() { _ = relay.Close() })
 
 	postSnapshot(t, relay.URL(), "pass", map[string]healthRelayCheck{
@@ -145,6 +147,7 @@ func TestHealthRelayWarnIsWarning(t *testing.T) {
 	if err != nil {
 		t.Fatalf("relay: %v", err)
 	}
+
 	t.Cleanup(func() { _ = relay.Close() })
 
 	postSnapshot(t, relay.URL(), "warn", map[string]healthRelayCheck{

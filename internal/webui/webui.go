@@ -222,6 +222,7 @@ func New(store queue.Store, cfg Config) *Server {
 		if err != nil {
 			slog.Error("webui: health relay not started — health transitions stay dashboard-only",
 				"err", err)
+
 			relay = nil
 		} else {
 			webhookURL = relay.URL()

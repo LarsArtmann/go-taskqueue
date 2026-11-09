@@ -209,6 +209,7 @@ func TestDepBumpTimeoutContextDecision(t *testing.T) {
 			t.Parallel()
 
 			ctx := context.Background()
+
 			if tc.hasDL {
 				var cancel context.CancelFunc
 
@@ -268,6 +269,7 @@ func TestDepBumpRunGoDeadlineClamp(t *testing.T) {
 	}
 	dir := t.TempDir()
 	args := []string{"-test.run=^TestDepBumpRunGoFakeSleeper$"}
+
 	const clamp = 300 * time.Millisecond
 
 	t.Run("no deadline clamps to the runGo timeout", func(t *testing.T) {
@@ -276,6 +278,7 @@ func TestDepBumpRunGoDeadlineClamp(t *testing.T) {
 		_, err := e.runGo(context.Background(), dir, clamp, args...)
 
 		elapsed := time.Since(start)
+
 		if err == nil {
 			t.Fatalf("clamped run must fail (child killed at %v)", clamp)
 		}
@@ -294,6 +297,7 @@ func TestDepBumpRunGoDeadlineClamp(t *testing.T) {
 		_, err := e.runGo(ctx, dir, clamp, args...)
 
 		elapsed := time.Since(start)
+
 		if err == nil {
 			t.Fatalf("tightened run must fail (child killed at %v)", clamp)
 		}
@@ -312,6 +316,7 @@ func TestDepBumpRunGoDeadlineClamp(t *testing.T) {
 		_, err := e.runGo(ctx, dir, 30*time.Second, args...)
 
 		elapsed := time.Since(start)
+
 		if err == nil {
 			t.Fatalf("run under a tighter deadline must fail (child killed at %v)", clamp)
 		}
@@ -330,12 +335,16 @@ func TestDepBumpRunGoDeadlineClamp(t *testing.T) {
 		_, err := e.runGo(ctx, dir, 30*time.Second, args...)
 
 		elapsed := time.Since(start)
+
 		if err == nil {
 			t.Fatalf("run under an expired deadline must fail without restarting the clock")
 		}
 
 		if elapsed > 2*time.Second {
-			t.Fatalf("elapsed %v, want an immediate context-deadline failure (the clamp must not resurrect a past deadline into a 30s window)", elapsed)
+			t.Fatalf(
+				"elapsed %v, want an immediate context-deadline failure (the clamp must not resurrect a past deadline into a 30s window)",
+				elapsed,
+			)
 		}
 	})
 }

@@ -183,7 +183,11 @@ func TestErrorFamilyClassification(t *testing.T) {
 		t.Error("IsRetryable(PermanentError) = true, want false")
 	}
 
-	if code := perm.(*PermanentError).ErrorCode(); code != "executor.permanent" {
+	if code := func() *PermanentError {
+		target := &PermanentError{}
+		target, _ = errors.AsType[*PermanentError](perm)
+		return target
+	}().ErrorCode(); code != "executor.permanent" {
 		t.Errorf("ErrorCode = %q, want executor.permanent", code)
 	}
 

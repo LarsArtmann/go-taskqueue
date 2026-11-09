@@ -19,12 +19,14 @@ func TestSyncGomodDelegatesToBuildflow(t *testing.T) {
 	binDir := t.TempDir()
 	callsLog := filepath.Join(t.TempDir(), "calls.log")
 	stub := filepath.Join(binDir, "buildflow")
+
 	script := "#!/bin/sh\nprintf '%s\\n' \"buildflow gomod-check --fix ran: $*\" >> " + callsLog + "\necho buildflow-delegated\n"
 	if err := os.WriteFile(stub, []byte(script), 0o700); err != nil {
 		t.Fatalf("write stub: %v", err)
 	}
 
 	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+
 	e := &DepBumpExecutor{ExtraEnv: []string{GoEnvExperiment}}
 
 	covered := t.TempDir()
@@ -52,14 +54,21 @@ func TestSyncGomodDelegatesToBuildflow(t *testing.T) {
 // through the hand-rolled pair (environment class, not a contract
 // violation).
 func TestSyncGomodFallsBackWithoutBinary(t *testing.T) {
-	e := &DepBumpExecutor{ExtraEnv: []string{GoEnvExperiment}, BuildflowBin: filepath.Join(t.TempDir(), "absent-buildflow")}
+	e := &DepBumpExecutor{
+		ExtraEnv:     []string{GoEnvExperiment},
+		BuildflowBin: filepath.Join(t.TempDir(), "absent-buildflow"),
+	}
 
 	covered := t.TempDir()
 	if err := os.WriteFile(filepath.Join(covered, ".buildflow.yml"), []byte("version: 1\n"), 0o600); err != nil {
 		t.Fatalf("write marker: %v", err)
 	}
 
-	if err := os.WriteFile(filepath.Join(covered, "go.mod"), []byte("module example.com/fallback\n\ngo 1.27\n"), 0o600); err != nil {
+	if err := os.WriteFile(
+		filepath.Join(covered, "go.mod"),
+		[]byte("module example.com/fallback\n\ngo 1.27\n"),
+		0o600,
+	); err != nil {
 		t.Fatalf("write go.mod: %v", err)
 	}
 

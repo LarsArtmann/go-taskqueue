@@ -1461,7 +1461,7 @@ func cmdAgentPool(args []string) error {
 		}
 
 		if len(repos) == 0 {
-			return fmt.Errorf("tq: agent-pool: --docs-gates needs --docs-gates-repos (comma-separated repo names)")
+			return errors.New("tq: agent-pool: --docs-gates needs --docs-gates-repos (comma-separated repo names)")
 		}
 
 		docsGatesBridge = docsgates.NewBridge(docsgates.BridgeConfig{
@@ -4279,7 +4279,11 @@ func cmdServe(args []string) error {
 		os.Getenv("TQ_PAP_URL"),
 		"PapDashboard base URL: health status transitions (store down, wedged fold, fold-follower demotion, recovery) raise/resolve alerts there — the same deployment the agent pool's --alert-url targets ($TQ_PAP_URL)",
 	)
-	alertKey := fs.String("alert-api-key", os.Getenv("TQ_PAP_API_KEY"), "PapDashboard API key for --alert-url (Bearer; $TQ_PAP_API_KEY)")
+	alertKey := fs.String(
+		"alert-api-key",
+		os.Getenv("TQ_PAP_API_KEY"),
+		"PapDashboard API key for --alert-url (Bearer; $TQ_PAP_API_KEY)",
+	)
 
 	db := dbFlag(fs)
 

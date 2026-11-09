@@ -18,6 +18,7 @@ import (
 // the flat `verdict` spelling the row JSON pins.
 type verifyReceiptView struct {
 	executor.VerifyReceipt
+
 	// Verdict is the rendered attestation: "ok", one of the refusal classes
 	// (no-receipt / head-mismatch / command-mismatch / count-mismatch), or
 	// "unattested" for a receipt stored before verdicts were stamped.
