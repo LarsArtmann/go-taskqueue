@@ -799,6 +799,13 @@ func (e *AgentExecutor) runAgent(
 
 	args = append(args, "--", p.Prompt)
 
+	// The buffer lives OUTSIDE the attempt closure: DoWithValue returns
+	// the zero value when every attempt fails, but the captured tail must
+	// survive the error — failure evidence is the caller's exhibit. A
+	// retried ETXTBSY attempt produced no output (execve never ran), so
+	// retries cannot interleave into the buffer.
+	var buf bytes.Buffer
+
 	runOnce := func() (*bytes.Buffer, error) {
 		cmd := exec.CommandContext(ctx, e.binary(), args...)
 		cmd.Dir = repoDir
@@ -824,8 +831,6 @@ func (e *AgentExecutor) runAgent(
 			cmd.Env = append(cmd.Env, questionFileEnv+"="+questionPath)
 		}
 
-		var buf bytes.Buffer
-
 		cmd.Stdout = &buf
 		cmd.Stderr = &buf
 		// Kill the whole process tree on cancel (agents spawn children) and do
@@ -838,7 +843,7 @@ func (e *AgentExecutor) runAgent(
 		return &buf, err
 	}
 
-	buf, err := execWithTransientRetry(runOnce)
+	_, err := execWithTransientRetry(runOnce)
 	if err != nil {
 		// The captured output survives the error so the caller can pin the
 		// failure evidence's tail excerpt. The cancelled branch must keep
@@ -874,7 +879,7 @@ func (e *AgentExecutor) runAgent(
 	// the close-out self-review before the task completes. A failed closeout
 	// fails the attempt like any other contract breach; a missing session id
 	// degrades to a logged skip (the work itself already succeeded).
-	out, cerr := e.runCloseoutIfNeeded(ctx, id, repoDir, buf, verdictPath, questionPath)
+	out, cerr := e.runCloseoutIfNeeded(ctx, id, repoDir, &buf, verdictPath, questionPath)
 
 	return finish(out, cerr)
 }
@@ -1024,6 +1029,10 @@ func (e *AgentExecutor) runCloseoutTurn(
 
 	closeoutArgs = append(closeoutArgs, "--session", session, "--", closeout)
 
+	// Same buffer-outside-the-attempt shape as the work turn: the closeout
+	// report evidence must survive a failed DoWithValue (zero value).
+	var closeoutBuf bytes.Buffer
+
 	closeoutOnce := func() (*bytes.Buffer, error) {
 		cmd := exec.CommandContext(ctx, e.binary(), closeoutArgs...)
 		cmd.Dir = repoDir
@@ -1044,8 +1053,6 @@ func (e *AgentExecutor) runCloseoutTurn(
 			cmd.Env = append(cmd.Env, questionFileEnv+"="+questionPath)
 		}
 
-		var closeoutBuf bytes.Buffer
-
 		cmd.Stdout = &closeoutBuf
 		cmd.Stderr = &closeoutBuf
 		prepareProcessGroup(cmd)
@@ -1055,7 +1062,7 @@ func (e *AgentExecutor) runCloseoutTurn(
 		return &closeoutBuf, err
 	}
 
-	closeoutBuf, err := execWithTransientRetry(closeoutOnce)
+	_, err := execWithTransientRetry(closeoutOnce)
 	buf.WriteString(closeoutBuf.String())
 
 	if err == nil {

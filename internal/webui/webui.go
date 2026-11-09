@@ -27,6 +27,7 @@ import (
 	"time"
 
 	dashboard "github.com/larsartmann/go-health-dashboard"
+	"github.com/larsartmann/go-sse"
 	"github.com/larsartmann/go-taskqueue/internal/bridge/papdashboard"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/readmodel"
@@ -247,6 +248,14 @@ func New(store queue.Store, cfg Config) *Server {
 	}
 
 	prober.foldFollower = &s.foldFollower
+
+	// SSE hub visibility: the /health JSON carries subscriber/buffer state
+	// (a closed hub is a dead live dashboard under a healthy process).
+	prober.liveSSE = func() *sse.BroadcasterHealth {
+		snap := s.hub.bc.Health()
+
+		return &snap
+	}
 
 	return s
 }

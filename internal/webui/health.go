@@ -23,6 +23,7 @@ import (
 	"github.com/larsartmann/go-datastar/static"
 	health "github.com/larsartmann/go-health"
 	dashboard "github.com/larsartmann/go-health-dashboard"
+	"github.com/larsartmann/go-sse"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
@@ -75,6 +76,12 @@ type queueProber struct {
 	// mount): when set, the projection check becomes the follower
 	// staleness contract regardless of the cursor.
 	foldFollower *atomic.Bool
+
+	// liveSSE reports the SSE hub's lifecycle snapshot when the server
+	// wired one (nil = no check): subscriber/buffer visibility for the
+	// /health JSON (fleet review f18 — a closed hub means the live
+	// dashboard is dead while the process looks healthy).
+	liveSSE func() *sse.BroadcasterHealth
 
 	mu        sync.Mutex
 	resp      health.Response
@@ -244,6 +251,25 @@ func (p *queueProber) evaluate(now time.Time) {
 			health.StatusWarn,
 			"fold: follower — read-only projection mount (the fold lock is held by another serve): this dashboard's model is frozen at mount and its SSE stream will not fire; trust the lock-holding dashboard, or restart this serve once the lock frees",
 		)
+	}
+
+	if p.liveSSE != nil {
+		if hub := p.liveSSE(); hub != nil {
+			switch {
+			case hub.Closed:
+				checks["live-sse"] = mkCheck(
+					health.StatusFail,
+					"SSE hub closed — the live dashboard is dead; restart the serve",
+				)
+			case hub.Draining:
+				checks["live-sse"] = mkCheck(health.StatusWarn, "SSE hub draining (shutdown in progress)")
+			default:
+				checks["live-sse"] = mkCheck(
+					health.StatusPass,
+					fmt.Sprintf("%d live subscriber(s), buffer %d event(s)", hub.SubscriberCount, hub.BufferSize),
+				)
+			}
+		}
 	}
 
 	p.finishEval(now, batchStart, checks)
