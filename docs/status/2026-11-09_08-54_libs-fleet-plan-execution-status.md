@@ -7,13 +7,12 @@ plan's §5 recommendations — recorded in plan §7.
 
 ## Executive summary
 
-**15 of 20 M-tasks done, 1 partial (M13), 4 not started (M14, M15, M19,
-M20). 45 of 55 F-items done.** The 1%→51% core landed: the cqrs-lite
-security-class version wave, datastar v0.7.0 lockstep, the health
-crash-recover, and the PapDashboard webhook relay. All scoped tests green
-per module; the FULL battery (M15) has NOT yet run over the final tree —
-it is the gate that turns this into "verified done" and is the first
-thing the next window should run.
+**All 20 M-tasks done; 55 of 55 F-items done** (M13–M20 closed in the
+2026-11-09 follow-through window; see §a16–§a20). The 1%→51% core landed:
+the cqrs-lite security-class version wave, datastar v0.7.0 lockstep, the
+health crash-recover, and the PapDashboard webhook relay. Full battery
+receipts in §a18: 99 ok-countable lines, sole red = the §e1 pre-existing
+lineage class.
 
 ## a) FULLY DONE
 
@@ -85,36 +84,50 @@ thing the next window should run.
     (cqrs 2026-10-05 AND templ 2026-09-14) struck with pointers to their
     fleet successors.
 15. **M18 dead-SHA heal** (F50): patch-id analysis proved both dead
-    cites content-identical to reachable commits — fork records added:
-    `64b22f25` → `b9d09371`, `573acfee` → `ae1e13b8`.
+   cites content-identical to reachable commits — fork records added:
+   `64b22f25` → `b9d09371`, `573acfee` → `ae1e13b8`.
+16. **M13 re-score completion** (F42): post-wave delta sections landed —
+   go-datastar 17→83 ("moderate-high post-wave (2.5/3)": row 1 cache
+   identity FULL via static.Version, ScriptHandler flip, client-pin
+   close), go-cqrs-lite honestly HOLDS 82 (the wave closed §5
+   version-currency risk, not a §2 capability row; WithPrefetch now
+   UNLOCKED at the pinned v4.23.0); index.html score rows +
+   cross-cutting cards updated (9/9 adopted libs latest);
+   httputil-server-timing.md trial verdict KEEP.
+17. **M14 render-gate closure** (F43): index.png re-rendered at the
+   baseline's exact 1440×3400 (firefox --headless), ffmpeg blackdetect
+   zero blank frames, structural recheck 33 links / 0 missing / 0
+   broken anchors on the edited index.html.
+18. **M15 battery** (F44–F46): full `ci-local.sh` receipt over the final
+   tree (log /tmp/m15-cilocal9.log; CI_CHECK=off per the gate's own
+   escape — the red master run c84d2b5a predates this tree): **99
+   ok-countable lines, rc=1, sole red = TestDoctorHealthyEmptyDB
+   (tag-ancestry v0.4.2 forked lineage, §e1, retried 3×)** — identical
+   shape to the 08-10 batch receipt; everything through module
+   isolation green. Companion receipts 2026-11-09: module loop 27 ok,
+   root race rc=0 (20 ok), vendorHash FOD rc=0 ×3, facade parity OK,
+   check-script-syntax 134 ok, 3 random report verify re-runs. The
+   battery forced three real cures en route (§d5).
+19. **M19 digest ritual** (F51–F53): 266 root reports triaged → exactly
+   5 eligible (2026-10-09 done-prompt passes 12–16 — verify-only
+   DONE-ON-ARRIVAL layers) archived with index rows repointed in place,
+   digest 2026-11 accrual, archived/README.md manifest section;
+   check-status-index + check-ghost-archives + check-docs-gates green
+   (422 live rows stay above the 400 advisory threshold — the full
+   monthly ANNOTATE+ARCHIVE sweep remains its own future pass).
+20. **M20 harvest** (F54–F55): TODO_LIST "Library fleet execution
+   harvest" section — 3 `[x]` receipt rows + the landed-but-unticked
+   vendorHash row ticked; check-todo-list OK + check-docs-gates
+   3 PASS / 2 SKIP / 0 FAIL.
 
 ## b) PARTIALLY DONE
 
-1. **M13 re-score** (F42): both reports' §2/§4 rows and score math read
-   and re-derived (datastar 17 → ~83: two MISSED rows now FULL, one
-   PARTIAL now FULL; cqrs-lite 82 → 83: version-currency rows current);
-   the delta sections + index.html row updates are NOT yet written.
-2. Battery receipts are MID-SESSION: module loop, root race, and facade
-   parity all passed, but BEFORE M4–M10's code landed; vendorHash was
-   verified at the cqrs-wave point but codec + server_timing deps landed
-   after. Everything needs the M15 re-run over the final tree.
+None — M13 completed (§a16); the mid-session battery receipts were
+superseded by the §a18 final-tree run.
 
 ## c) NOT STARTED (not fucked up — ordered by the plan's graph)
 
-1. **M15 battery closure** (F44–F46) — now the FIRST next step: full
-   `ci-local.sh` (tee log, `grep -c '^ok:'` receipt), vendorHash +
-   `test-cmd-tq.sh` + root race re-runs over the final tree,
-   `check-script-syntax.sh`, 3 random report verify-block re-runs.
-2. **M13 completion** (F42): write the two delta sections + update
-   index.html rows/scores.
-3. **M20 harvest** (F54–F55): TODO_LIST.md completion notes for the
-   executed subset (machine shape, dedup vs rows 155/380/1067
-   neighborhoods), then `check-docs-gates.sh` +
-   `check-todo-list.sh` green.
-4. **M14 render-gate closure** (F43): vision pass on index.png or a
-   scripted pixel-diff harness.
-5. **M19 digest ritual** (F51–F53): docs/status/README at 422+ live rows
-   > 400 threshold — ANNOTATE+ARCHIVE sweep + digest row.
+None — all five former §c items closed (§a16–§a20).
 
 ## d) TOTALLY FUCKED UP (fixed in-session, recorded for the record)
 
@@ -142,6 +155,34 @@ thing the next window should run.
    `ssetest.Event` is a struct alias, not an interface (nil-compare
    invalid); one `MeasureServerTiming` call initially measured a
    zero-length span instead of wrapping the store read.
+5. **Battery forced three cures** (the M15 point, all landed):
+   (a) CHANGELOG's version-wave cites (`system/v4` …) tripped
+   check-doc-refs — allow entry added with ls-remote proof (3fb7387c);
+   (b) the concurrent sessions' `_lib.sh`/`session-start.sh` smokes
+   were unindexed — honest COVERAGE.md rows added (722712d6);
+   (c) the worker FACADE go.mod was tidy-stale since M6's go-codec
+   promotion (only the internal module was tidied) — surfaced as a
+   windows-loop failure, cured by facade tidy + root `go mod vendor`
+   (vendor-sync green).
+6. **Compress-prune broke a pinned grep**: the AGENTS budget prune
+   reworded the load-flaky bullet; check-verify's literal
+   `<Test> is load-flaky` grep failed — the pinned-summary convention
+   catching its own session's edit. Restored verbatim (e80b6e7e);
+   trimmed an unbound line instead. The prune itself was forced by
+   concurrent sessions growing AGENTS.md 27,028→27,557 past the 27,200
+   budget (constant resets are owner-gated; compress-only was the
+   sanctioned path — 27,193/27,200 now).
+7. **Daemon-sweep debt grandfathered**: 47 footer-less fleet-era sweeps
+   (22 unpushed, mixed ownership — foreign spans not healable here)
+   appended to the attribution baseline under a dated block (89ed017c,
+   07-58 precedent); 1649 baselined, 0 new after.
+8. **Receipt lost to /tmp pruning + stale handoff**: the mid-session
+   ci-local log was pruned before pickup (bare rc only) — re-ran with
+   rc-to-file discipline; same class as the 2026-10-08
+   archive-at-filing lesson (already rowed, not re-minted). And the
+   follow-through handoff claimed the M19 index rows were "not yet
+   repointed" when they already were — ground-truth the tree before
+   executing handoff next-steps literally.
 
 ## e) BLOCKERS, HELP, THREATS
 
@@ -166,6 +207,9 @@ thing the next window should run.
 ## f) Up to 50 things we should get done next
 
 <!-- fresh:skip: M13-M20 completion items are the ratified plan's own next steps (docs/planning/2026-11-09_03-30 §7); minting them as paid tasks was ruled against (plan §7 ruling 1) -->
+
+> 2026-11-09 follow-through note: items 1–13 below were EXECUTED this
+> window (receipts §a16–§a20); items 14–25 remain open candidates.
 
 1. M15: full ci-local.sh over the final tree; tee log; `grep -c '^ok:'`
    receipt (rc to a FILE, never a pipeline tail). <!-- fresh:skip: M15 battery is the ratified next window's first step (plan §7); not harvestable as a TODO row per the ruling against minting plan items -->
@@ -232,4 +276,6 @@ thing the next window should run.
    `9519eb06` belong to other sessions — heal them in the next
    docs-health pass, or leave strictly to their owners?
 
-— Recorded 2026-11-09_08-54 CET; session then WAITS FOR INSTRUCTIONS.
+— Recorded 2026-11-09_08-54 CET; amended 2026-11-09 ~20:30 CET after the
+follow-through window closed M13–M20 (M15 final receipts §a18). Session
+WAITS FOR INSTRUCTIONS.
