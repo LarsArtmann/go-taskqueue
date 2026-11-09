@@ -3,8 +3,8 @@ module github.com/larsartmann/go-taskqueue/internal/composition
 go 1.27.3
 
 require (
-	github.com/larsartmann/go-cqrs-lite/metaengine/sqliteengine/v4 v4.6.0
-	github.com/larsartmann/go-cqrs-lite/system/v4 v4.16.0
+	github.com/larsartmann/go-cqrs-lite/metaengine/sqliteengine/v4 v4.8.0
+	github.com/larsartmann/go-cqrs-lite/system/v4 v4.18.0
 	github.com/larsartmann/go-taskqueue/internal/config v0.4.2
 	github.com/larsartmann/go-taskqueue/internal/queue v0.4.2
 	github.com/larsartmann/go-taskqueue/internal/queue/sqlite v0.4.2
@@ -37,10 +37,10 @@ require (
 	github.com/larsartmann/go-cqrs-lite/dedup/v4 v4.3.0 // indirect
 	github.com/larsartmann/go-cqrs-lite/dispatcher/v4 v4.5.2 // indirect
 	github.com/larsartmann/go-cqrs-lite/event/v4 v4.15.2 // indirect
-	github.com/larsartmann/go-cqrs-lite/id/v4 v4.7.4 // indirect
+	github.com/larsartmann/go-cqrs-lite/id/v4 v4.7.5 // indirect
 	github.com/larsartmann/go-cqrs-lite/metadata/v4 v4.7.3 // indirect
 	github.com/larsartmann/go-cqrs-lite/metaengine/projectionadapter/v4 v4.6.2 // indirect
-	github.com/larsartmann/go-cqrs-lite/metaengine/v4 v4.20.0 // indirect
+	github.com/larsartmann/go-cqrs-lite/metaengine/v4 v4.23.0 // indirect
 	github.com/larsartmann/go-cqrs-lite/otel/v4 v4.5.3 // indirect
 	github.com/larsartmann/go-cqrs-lite/projection/v4 v4.4.2 // indirect
 	github.com/larsartmann/go-cqrs-lite/projectionhost/v4 v4.7.1 // indirect
