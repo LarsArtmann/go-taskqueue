@@ -16,25 +16,17 @@ set -euo pipefail
 
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 TARGET="$SCRIPT_DIR/../archive-evidence.sh"
+# POSIX guard (23-40 f9): the helper's manifest regen leans on GNU find's
+# -printf (the only `find -printf` use in the repo's scripts; audited
+# 2026-11-09). Skip cleanly where it is absent instead of failing every
+# branch for a platform limitation.
+if ! find . -maxdepth 0 -printf x >/dev/null 2>&1; then
+	echo "archive-evidence smoke: SKIP (GNU find -printf required)"
+	exit 0
+fi
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
-
-fail() {
-	echo "FAIL: $*" >&2
-	exit 1
-}
-pass() { echo "ok: $*"; }
-
-new_repo() {
-	local r="$WORK/$1"
-	git init -q "$r"
-	git -C "$r" config user.name smoke
-	git -C "$r" config user.email smoke@example.invalid
-	git -C "$r" commit -q --allow-empty -m init
-	echo "$r"
-}
-
-run_in() { (cd "$1" && "${@:2}"); }
+. "$SCRIPT_DIR/_lib.sh"
 
 # --- --help ---------------------------------------------------------------
 out=$(run_in "$WORK" "$TARGET" --help) || fail "--help exited nonzero"
@@ -106,6 +98,21 @@ grep -q "^PENDING:" <<<"$out" || fail "expected PENDING banner: $out"
 [ -f "$r/docs/status/assets/arch/SHA256SUMS" ] || fail "SHA256SUMS missing after PENDING run"
 [ "$(wc -l <"$r/docs/status/assets/arch/SHA256SUMS")" -eq 1 ] || fail "manifest must cover exactly the non-manifest archive files"
 pass "PENDING verdict, copy + manifest landed"
+
+# --- --wait N branch (23-40 f4): a PRE-DATED (past) daemon commit is not
+# counted as the sweep (%ct > copy wall clock is required), so --wait 2
+# polls, finds nothing new, and ends at PENDING with exit 0.
+r=$(new_repo wait-predated)
+mkdir -p "$r/ev" "$r/docs/status/assets/arch"
+echo x >"$r/ev/a.txt"
+echo old >"$r/docs/status/assets/arch/a.txt"
+git -C "$r" add docs/status/assets/arch
+past="@$(($(date +%s) - 3600))"
+GIT_AUTHOR_DATE="$past" GIT_COMMITTER_DATE="$past" \
+	git -C "$r" commit -q -m "chore: auto-commit 1 changed file(s) (heuristic)"
+out=$(run_in "$r" "$TARGET" ev/a.txt docs/status/assets/arch --wait 2) || fail "--wait with pre-dated daemon commit exited nonzero: $out"
+grep -q "^PENDING:" <<<"$out" || fail "--wait branch should end at PENDING on a pre-dated commit: $out"
+pass "--wait 2 with pre-dated (past) daemon commit: PENDING, exit 0"
 
 # --- SUCCESS (pre-seeded post-copy daemon commit, full set) ----------------
 r=$(new_repo success)
@@ -179,4 +186,4 @@ elif [ "$rc" -ne 1 ]; then
 fi
 pass "git check-ignore untracked-only semantics hold (tracked-ignored invisible)"
 
-echo "archive-evidence smoke: PASS (11 checks)"
+echo "archive-evidence smoke: PASS (12 checks)"

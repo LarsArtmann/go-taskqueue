@@ -25,6 +25,10 @@
 # Exit codes: 0 success (or verification PENDING, printed loudly), 1 failure
 # (ignored destination, outside-repo destination, copy/manifest error, or a
 # post-copy daemon commit missing an intended file — the f9 shape).
+#
+# The PENDING:/SUCCESS:/FAIL output strings are pinned by
+# scripts/smoke/archive-evidence.sh (23-40 f14) — reword UX messages there
+# in the same change. The manifest regen needs GNU find -printf (:183).
 set -uo pipefail
 
 wait_secs=0
@@ -198,7 +202,12 @@ verified=0
 daemon_sha=""
 check_daemon() {
 	local ctime missing want
-	daemon_sha=$(git log -1 --format=%H --grep='^chore: auto-commit' -- "$adir_rel")
+	# 23-40 f10: on a commit-less repo `git log` leaks `fatal:` to stderr —
+	# verify HEAD exists first (the smoke probes the same semantics).
+	daemon_sha=''
+	if git rev-parse -q --verify HEAD >/dev/null 2>&1; then
+		daemon_sha=$(git log -1 --format=%H --grep='^chore: auto-commit' -- "$adir_rel")
+	fi
 	if [ -z "$daemon_sha" ]; then
 		return 0
 	fi
