@@ -360,7 +360,8 @@ func (s *Server) writeBindings() []struct {
 //	GET /api/facts         JSON journal cursor (?after=SEQ&limit=N)
 //
 // The go-health-dashboard surface (healthBindings) mounts on top: /health,
-// /health/sse, /health/datastar.js, /health/favicon.svg, and the JSON
+// /health/sse, /health/datastar.js, /health/favicon.svg, the trend ring
+// (/health/trend + /health/export), and the JSON
 // probes /healthz, /readyz, /startupz — all read-only, all behind the same
 // auth gate; the /health page runs the dashboard's own CSP (health.go).
 //

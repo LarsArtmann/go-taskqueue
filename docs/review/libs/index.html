@@ -928,8 +928,8 @@
               <td><a href="go-cqrs-lite.md">go-cqrs-lite</a></td>
               <td><span class="badge badge-fixed">high &middot; 82</span></td>
               <td>27/33</td>
-              <td>4 modules behind latest wave</td>
-              <td>Ride <code>--dep-sweep</code> onto the 2026-11 waves (metaengine v4.23.0, sqliteengine v4.8.0, system v4.18.0 &mdash; AggregateFn SQL-injection hardening)</td>
+              <td>v0.4.18.0-wave LANDED 2026-11-09 (all 4 modules latest)</td>
+              <td>Score holds at 82 (the wave closed currency, not capability rows); cheapest next: <code>WithPrefetch</code> on TasksPage, now unlocked at pinned v4.23.0</td>
             </tr>
             <tr>
               <td><a href="templ-components.md">templ-components</a></td>
@@ -943,7 +943,7 @@
               <td><span class="badge badge-medium">moderate &middot; 68</span></td>
               <td>13/19</td>
               <td>v0.13.2 = latest</td>
-              <td><code>WithWebhook</code> bridging health transitions into the existing PapDashboard alert channel</td>
+              <td><code>WithWebhook</code> &rarr; PapDashboard <strong>landed 2026-11-09</strong> (loopback HealthRelay + <code>tq serve --alert-url</code>; trend/export ring also ON, /metrics deferred &mdash; re-score pending)</td>
             </tr>
             <tr>
               <td><a href="go-codec.md">go-codec</a></td>
@@ -964,14 +964,14 @@
               <td><span class="badge badge-high">low &middot; 32</span></td>
               <td>5.5/17</td>
               <td>v0.10.0 = latest</td>
-              <td>Populate <code>StatusSince</code>/<code>TotalLatencyMs</code> (dashboard rows render empty today); <code>recover</code> around <code>evaluate</code></td>
+              <td>Populate <code>StatusSince</code>/<code>TotalLatencyMs</code> + <code>recover</code> around <code>evaluate</code> &mdash; <strong>landed 2026-11-09</strong> (re-score pending)</td>
             </tr>
             <tr>
               <td><a href="go-datastar.md">go-datastar</a></td>
-              <td><span class="badge badge-critical">low &middot; 17</span></td>
-              <td>0.5/3</td>
-              <td>v0.6.x &rarr; v0.7.0 (behind)</td>
-              <td>Replace hand-rolled <code>serveDatastarSDK</code> with <code>ScriptHandler</code>; lockstep v0.7.0 bump (client v1.0.4)</td>
+              <td><span class="badge badge-high">mod-high &middot; 83</span></td>
+              <td>2.5/3</td>
+              <td>v0.7.0 everywhere (lockstep landed 2026-11-09)</td>
+              <td>Re-scored 17&rarr;83: <code>ScriptHandler</code> + versioned URL adopted; protocol rows stay N/A by ADR-0003 design</td>
             </tr>
             <tr>
               <td><a href="go-error-family.md">go-error-family</a></td>
@@ -1068,21 +1068,19 @@
         <div class="card card-warning">
           <h4>Version currency: one wave pending, one lib behind</h4>
           <p>
-            8 of 9 adopted libraries sit on the latest tag (checked against the
-            local checkouts on 2026-11-08). The exceptions: go-cqrs-lite has a
-            four-module wave pending (metaengine v4.20.0&rarr;v4.23.0,
-            sqliteengine v4.6.0&rarr;v4.8.0, system v4.16.0&rarr;v4.18.0 with
-            AggregateFn SQL-injection hardening, id v4.7.4&rarr;v4.7.5) and
-            go-datastar is one minor behind (v0.6.x&rarr;v0.7.0, static
-            v0.6.1&rarr;v0.7.0). The depsweep sweeper is the designed vehicle
-            for both.
+            9 of 9 adopted libraries sit on the latest tag (the 2026-11-09
+            execution session landed the cqrs-lite four-module wave &mdash;
+            metaengine v4.23.0, sqliteengine v4.8.0, system v4.18.0 with the
+            AggregateFn SQL-injection hardening, id v4.7.5 &mdash; and the
+            go-datastar v0.7.0 lockstep including static).
           </p>
         </div>
 
         <div class="card card-solution">
           <h4>Low scores are mostly deliberate seams, not neglect</h4>
           <p>
-            go-error-family (13), go-datastar (17) and go-health (32) each hold
+            go-error-family (13), go-datastar (was 17, re-scored 83 after the
+            ScriptHandler adoption) and go-health (32) each hold
             a small, deliberate seam: one dead-letter gate, one static-JS
             submodule, one wire schema next to a hand-rolled prober (upstream's
             classifier cannot express tq's per-check warns &mdash; a
