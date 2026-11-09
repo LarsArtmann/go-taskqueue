@@ -108,7 +108,13 @@ import (
 // art-dupl extraction triggers (doctor pending-listing, payload-validation,
 // companion/reads.go scan) moved out of status-report archaeology into the
 // Executor shared seams bullet; twin re-synced.
-const agentsDocMaxBytes = 26_800
+// 26_800 → 27_200 (2026-11-09, libs-fleet execution session): the owner
+// ruling (plan §7) restored the full fleet-verdict line — the 22-lib
+// review's outcome and its execution state (datastar/sse v0.7.0 current,
+// cqrs wave landed, server_timing trial mounted) is load-bearing
+// orientation every library-touching session needs, and the compact
+// pointer had already cost one stale-truth cycle; twin re-synced.
+const agentsDocMaxBytes = 27_200
 
 // TestAgentsDocSizeGuard keeps AGENTS.md from silently growing past its
 // byte budget (plan M89 residue); the failure names the top sections so a

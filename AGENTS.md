@@ -397,8 +397,11 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   `alert.triggered`, completions resolve; `NotifyDeadPool` = direct dead-pool
   path; pool detectors add worker-death, frozen-sweepers, budget-all-day.
 - **go-health-dashboard** (MIT): ADOPTED — `/health` inside the token
-  gate, tq CSS, same-origin Datastar. **httputil** NOT adopted (MIT
-  v1.5.0+; see `docs/review/libs/`); **go-nix-helpers**
+  gate, tq CSS, same-origin Datastar, trend/export ring, webhook →
+  PapDashboard relay (`tq serve --alert-url`). **httputil** NOT adopted
+  (MIT v1.5.0+; verdicts: `docs/review/libs/` — 22-lib fleet review,
+  executed 2026-11-09: datastar+sse v0.7.0 current, cqrs wave landed,
+  server_timing TRIAL MOUNTED behind `--verbose`); **go-nix-helpers**
   flake-input only, never local.
 - **docs-gates (ADOPTED 2026-11-06)**: `.docs-gates.json` + ci-local gate
   `scripts/check-docs-gates.sh` (battery `run --json`; absent binary →
