@@ -168,11 +168,11 @@ thing the next window should run.
 <!-- fresh:skip: M13-M20 completion items are the ratified plan's own next steps (docs/planning/2026-11-09_03-30 §7); minting them as paid tasks was ruled against (plan §7 ruling 1) -->
 
 1. M15: full ci-local.sh over the final tree; tee log; `grep -c '^ok:'`
-   receipt (rc to a FILE, never a pipeline tail).
+   receipt (rc to a FILE, never a pipeline tail). <!-- fresh:skip: M15 battery is the ratified next window's first step (plan §7); not harvestable as a TODO row per the ruling against minting plan items -->
 2. M15: re-run `nix build .#checks.x86_64-linux.vendor-hash` (codec +
    server_timing landed after the last green receipt).
 3. M15: re-run root `go test ./... -race` + `test-cmd-tq.sh` over the
-   final tree (expect only the §e1 pre-existing failure).
+   final tree (expect only the §e1 pre-existing failure). <!-- fresh:skip: same M15 battery window as f1; §e1 lineage red is owner-gated (§g1), not a TODO row -->
 4. M15: re-run the 20-module loop (code landed in 4 modules after the
    loop's green).
 5. M15: `check-script-syntax.sh` (scripts/check-agents-size.sh was
@@ -184,7 +184,7 @@ thing the next window should run.
 8. M13: update docs/review/libs/index.html (score cells, verdict table,
    cross-cutting cards: "all adopted libs current" now true).
 9. M20: TODO_LIST.md completion notes (machine shape) for M1–M12,
-   M16–M18; dedup against rows 155/380/1067 neighborhoods.
+   M16–M18; dedup against rows 155/380/1067 neighborhoods. <!-- fresh:skip: M20 harvest lands when M13–M15 close (plan ordering); completion notes for DONE work, not new pending rows -->
 10. M20: `check-docs-gates.sh` + `check-todo-list.sh` green after the
     harvest.
 11. M19: digest ritual prep — candidate list of fully-resolved
@@ -204,7 +204,7 @@ thing the next window should run.
     is active (operator confirmation the alerts channel is armed).
 19. v0.4.3 release prep: CHANGELOG Unreleased is loaded; release flow
     per docs/release/ (owner-gated).
-20. Owner push decision for the wave commits (§g2).
+20. Owner push decision for the wave commits (§g2). <!-- fresh:skip: owner-gated question, not agent-executable work (never push without an explicit order) -->
 21. Heal `9519eb06` dead cites in the three 07:25–07:33 fleet reports
     once their sessions close (§g3).
 22. Consider WithPrefetch on TasksPage reads (cqrs report §4 opportunity

@@ -1,6 +1,21 @@
 # go-datastar — Library Utilization Review
 
-**Verdict:** ADOPTED — low (0.5/3 capability rows leveraged)
+**Verdict:** ADOPTED — low→**moderate-high post-wave (2.5/3, re-scored 2026-11-09)** — the v0.7.0 lockstep + ScriptHandler adoption flipped two MISSED rows and the cache-identity PARTIAL: bundle serving now rides the library's own handler.
+
+**Post-wave delta (2026-11-09, plan M2):** pins = root + cmd/tq + static ALL at
+v0.7.0 (split healed); `serveDatastarSDK` hand-roll DELETED — the SDK is
+served by `datastar.ScriptHandler()` (ETag/304/HEAD/405; the SECURITY.md
+matrix gained the ETag row, pinned by `serveSDKRow`) and the dashboard
+loads it via `healthSDKSrc = HealthSDKPath + "?v=" + static.Version`
+(the version query collapses the 24 h stale-client window; built inline
+because the dashboard owns tag rendering — `ScriptTagVersioned` itself
+is unreachable from this integration shape, hence row 3 counts PARTIAL).
+Re-score: row 1 PARTIAL→FULL (static.Version now the cache identity),
+row 2 MISSED→FULL (ScriptHandler), row 3 MISSED→PARTIAL (cache-busting
+outcome achieved; the named helper unused). Σ = 1 + 1 + 0.5 = 2.5/3 →
+**83 — moderate-high** (was 17). N=11, N/A=8 unchanged: the protocol
+library (patches/broadcast/stores) stays deliberately untouched —
+ADR-0003's payload-less tick design is not a Datastar-patch design.
 **Pinned:** root `go.mod:57` `go-datastar v0.6.3 // indirect` (a manual pin above go-health-dashboard's v0.6.2 requirement) and `go.mod:108` `go-datastar/static v0.6.1` (direct, the only tq-imported package); `cmd/tq/go.mod:75-76` carries `v0.6.2` + `static v0.6.1 // indirect` (tidy-drifts to v0.6.3, see §5).
 **Latest:** v0.7.0 (local checkout /home/lars/projects/go-datastar, checked 2026-11-08; tag 2026-11-07, four-module lockstep: root, static, broadcast, datastartest — `broadcast/` is the NEW submodule)
 **Prior coverage:** none
