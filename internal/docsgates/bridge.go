@@ -10,6 +10,7 @@
 package docsgates
 
 import (
+	"bytes"
 	"context"
 	"encoding/json/jsontext"
 	"encoding/json/v2"
@@ -139,14 +140,21 @@ func binaryRunner(bin string, timeout time.Duration) Runner {
 		cmd := exec.CommandContext(runCtx, bin, "run", dir, "--json")
 		cmd.Dir = dir
 
-		stdout, err := cmd.Output()
-		if err != nil {
-			return RunResult{}, fmt.Errorf("docsgates: run %s in %s: %w", bin, dir, err)
-		}
+		// Capture stdout ourselves: the binary exits 1 (ExitFindings)
+		// whenever a gate FAILs, and the matrix on stdout is the verdict —
+		// an ExitError whose output parses is a result, not a failure.
+		var stdout bytes.Buffer
+		cmd.Stdout = &stdout
+
+		runErr := cmd.Run()
 
 		var res RunResult
-		if err := json.Unmarshal(stdout, &res); err != nil {
-			return RunResult{}, fmt.Errorf("docsgates: parse %s output for %s: %w", bin, repo.Name, err)
+		if perr := json.Unmarshal(stdout.Bytes(), &res); perr != nil {
+			if runErr == nil {
+				return RunResult{}, fmt.Errorf("docsgates: parse %s output for %s: %w", bin, repo.Name, perr)
+			}
+
+			return RunResult{}, fmt.Errorf("docsgates: run %s in %s: %w", bin, dir, runErr)
 		}
 
 		return res, nil

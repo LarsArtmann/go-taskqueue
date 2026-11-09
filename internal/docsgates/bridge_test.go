@@ -239,3 +239,31 @@ func TestBinaryRunnerParsesMatrix(t *testing.T) {
 		t.Fatalf("parsed matrix: %+v", res)
 	}
 }
+
+// TestBinaryRunnerExitOneOnFAIL pins the real binary's contract: `docs-gates
+// run --json` exits 1 (ExitFindings) when any gate FAILs, and the runner
+// must treat that as a verdict-carrying run, not an error — a red-gate repo
+// must still mint fix tasks instead of aborting the sweep.
+func TestBinaryRunnerExitOneOnFAIL(t *testing.T) {
+	script := filepath.Join(t.TempDir(), "docs-gates")
+	stub := `#!/bin/sh
+cat <<'JSON'
+{"pass": false, "gates": [{"name": "freshness", "verdict": "FAIL", "exit_code": 1, "skipped": false}]}
+JSON
+exit 1
+`
+	if err := os.WriteFile(script, []byte(stub), 0o700); err != nil {
+		t.Fatalf("write stub: %v", err)
+	}
+
+	run := binaryRunner(script, time.Minute)
+
+	res, err := run(context.Background(), Repo{Name: "r", Dir: "."})
+	if err != nil {
+		t.Fatalf("run stub (exit 1 with FAIL verdict must not error): %v", err)
+	}
+
+	if res.Pass || len(res.Gates) != 1 || res.Gates[0].Verdict != "FAIL" {
+		t.Fatalf("parsed matrix: %+v", res)
+	}
+}
