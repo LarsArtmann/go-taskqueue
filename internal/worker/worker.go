@@ -406,6 +406,14 @@ func (p *Pool) persistOutcome(ctx context.Context, id task.ID, write func(contex
 			p.log.Warn("outcome write hit a transient store busy; retrying",
 				"task", id, "attempt", attempt, "retry after", delay, "err", err)
 		},
+		// Exhaustion is loud by contract: the write then rides the
+		// lease-reclaim backstop, and a silent fallthrough would read
+		// as a stuck task instead of a known-lost write (fleet
+		// review f10).
+		OnExhausted: func(attempts int, err error) {
+			p.log.Error("outcome write exhausted store-busy retries; the lease-reclaim backstop owns the task now",
+				"task", id, "attempts", attempts, "err", err)
+		},
 	}, func(ctx context.Context, _ int) error {
 		return write(ctx)
 	})

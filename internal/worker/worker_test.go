@@ -1,6 +1,7 @@
 package worker
 
 import (
+	"bytes"
 	"context"
 	"encoding/json/jsontext"
 	"encoding/json/v2"
@@ -16,6 +17,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/larsartmann/go-retry"
 	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
@@ -1775,6 +1777,46 @@ func TestPersistOutcomeRetriesTransientBusy(t *testing.T) {
 
 	if attempts != 2 {
 		t.Fatalf("attempts = %d, want 2 (one busy failure, one success)", attempts)
+	}
+}
+
+// TestPersistOutcomeExhaustionIsLabeled pins the loud-exhaustion contract
+// (fleet review f10): three store-busy attempts fail with a
+// retry.ErrExhausted-wrapped error AND an ERROR-level label naming the
+// lease-reclaim backstop — a lost outcome write must read as a known
+// handoff, never as a silently stuck task.
+func TestPersistOutcomeExhaustionIsLabeled(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+	pool := New(nil, Config{}, slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelWarn})))
+
+	attempts := 0
+
+	err := pool.persistOutcome(context.Background(), task.ID("t1"), func(context.Context) error {
+		attempts++
+
+		return errors.New("database is locked (5) (SQLITE_BUSY)")
+	})
+	if err == nil {
+		t.Fatal("persistOutcome: want the exhaustion error")
+	}
+
+	if !errors.Is(err, retry.ErrExhausted) {
+		t.Fatalf("err = %v, want retry.ErrExhausted wrapping", err)
+	}
+
+	if attempts != 3 {
+		t.Fatalf("attempts = %d, want 3", attempts)
+	}
+
+	log := buf.String()
+	if !strings.Contains(log, "exhausted store-busy retries") {
+		t.Errorf("exhaustion label missing from log: %q", log)
+	}
+
+	if !strings.Contains(log, "level=ERROR") {
+		t.Errorf("exhaustion must log at ERROR level: %q", log)
 	}
 }
 

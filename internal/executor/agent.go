@@ -1118,23 +1118,15 @@ DO NOT RESEARCH UNRELATED STUFF. Report based on THIS task's work and what you n
 // the whole failure class instead of failing a task attempt. Every other
 // error passes through untouched.
 func execWithTransientRetry[T any](run func() (T, error)) (T, error) {
-	var out T
-
-	err := retry.Do(context.Background(), retry.Config{ //nolint:exhaustruct // optional hooks unset
+	return retry.DoWithValue[T](context.Background(), retry.Config{ //nolint:exhaustruct // optional hooks unset
 		MaxAttempts:  3,
 		InitialDelay: 50 * time.Millisecond,
 		MaxDelay:     100 * time.Millisecond,
 		Multiplier:   2.0,
 		IsRetryable:  func(err error) bool { return errors.Is(err, syscall.ETXTBSY) },
-	}, func(_ context.Context, _ int) error {
-		var attemptErr error
-
-		out, attemptErr = run()
-
-		return attemptErr
+	}, func(_ context.Context, _ int) (T, error) {
+		return run()
 	})
-
-	return out, err
 }
 
 // VerifyOutcome is one verify-gate run's result: the bounded output tail, the
