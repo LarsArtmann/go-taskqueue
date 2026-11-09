@@ -43,7 +43,7 @@
 #     `git commit --amend` territory per the AGENTS.md Known Issues
 #     fallback), or the sanctioned soft-reset fold.
 #
-# Usage: scripts/heal-daemon-sweep.sh [--from <ref>] [--retitle <subject>] <Task-Queue-ID>
+# Usage: scripts/heal-daemon-sweep.sh [--repo <path>] [--from <ref>] [--retitle <subject>] <Task-Queue-ID>
 #        scripts/heal-daemon-sweep.sh --self-test
 #   --from <ref>  EXCLUSIVE base bound of the heal range (default:
 #                 origin/master, then @{upstream}, then the root commit).
@@ -73,8 +73,11 @@ die() {
 }
 
 usage() {
-	echo "usage: $0 [--from <ref>] [--retitle <subject>] <Task-Queue-ID>" >&2
+	echo "usage: $0 [--repo <path>] [--from <ref>] [--retitle <subject>] <Task-Queue-ID>" >&2
 	echo "       $0 --self-test" >&2
+	echo "  --repo <path> heal a DIFFERENT repository (cross-repo mode): all git" >&2
+	echo "  operations run with <path> as cwd, so sweeps outside go-taskqueue" >&2
+	echo "  heal through these rails instead of a hand-rolled rebase." >&2
 	echo "  --from <ref> is an EXCLUSIVE base bound: only <ref>..HEAD is healed;" >&2
 	echo "  the commit AT <ref> itself is never rewritten (it may stay footer-less)." >&2
 	echo "  --retitle renames ONLY footer-less sweeps; commits already carrying a" >&2
@@ -386,9 +389,14 @@ check_citations() {
 }
 
 main() {
-	local base_arg="" footer="" retitle="" base id
+	local base_arg="" footer="" retitle="" repo_arg="" base id
 	while [ $# -gt 0 ]; do
 		case $1 in
+		--repo)
+			[ $# -ge 2 ] || usage
+			repo_arg=$2
+			shift 2
+			;;
 		--from)
 			[ $# -ge 2 ] || usage
 			base_arg=$2
@@ -416,6 +424,10 @@ main() {
 	done
 	[ -n "$footer" ] || usage
 	need_git
+	if [ -n "$repo_arg" ]; then
+		[ -d "$repo_arg" ] || die "--repo '$repo_arg' is not a directory"
+		cd "$repo_arg" || die "cannot cd into --repo '$repo_arg'"
+	fi
 	git rev-parse --is-inside-work-tree >/dev/null 2>&1 || die "not inside a git work tree"
 	base=$(resolve_base "$base_arg")
 
@@ -887,6 +899,33 @@ EOF
 		echo "SELF-TEST FAIL: dirty worktree must heal and preserve the dirt" >&2
 		cat "$tmp/out_dirty" "$tmp/err_dirty" >&2
 	fi
+
+	# Cross-repo mode (--repo <path>): invoked from a FOREIGN cwd, the heal
+	# must run entirely inside the target repo — same rails, same footer.
+	local repo6="$tmp/repo6"
+	git init -q "$repo6"
+	git -C "$repo6" config user.email t@t
+	git -C "$repo6" config user.name t
+	echo a >"$repo6/a.txt"
+	git -C "$repo6" add a.txt
+	git -C "$repo6" commit -qm "base"
+	git -C "$repo6" update-ref refs/remotes/origin/master HEAD
+	echo s1 >"$repo6/s1.txt"
+	git -C "$repo6" add s1.txt
+	git -C "$repo6" commit -qm "chore: foreign sweep"
+	(cd "$tmp" && "$self" --repo "$repo6" --from origin/master deadbeef0000000000000000000000000000000a) >"$tmp/out_repo" 2>"$tmp/err_repo"
+	if [ "$?" = "0" ] &&
+		footer_well_formed "$(git -C "$repo6" log -1 --format='%B' HEAD)" "deadbeef0000000000000000000000000000000a" &&
+		[ "$(git -C "$repo6" rev-parse HEAD~1)" = "$(git -C "$repo6" rev-parse origin/master)" ]; then
+		ok=$((ok + 1))
+	else
+		fail=$((fail + 1))
+		echo "SELF-TEST FAIL: --repo cross-repo heal must footer the foreign sweep" >&2
+		cat "$tmp/out_repo" "$tmp/err_repo" >&2
+	fi
+	# --repo must REFUSE a non-directory path.
+	(cd "$tmp" && "$self" --repo "$tmp/no-such-dir" deadbeef0000000000000000000000000000000b) >"$tmp/out_repo2" 2>"$tmp/err_repo2"
+	expect_refusal "--repo nonexistent directory" "$?" "--repo" "$tmp/err_repo2"
 
 	# Exclusive --from base bound (2026-10-26 03-22 §d2): the commit AT the
 	# --from ref is NEVER healed — sha unmoved, still footer-less — while
