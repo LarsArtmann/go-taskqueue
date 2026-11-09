@@ -8,6 +8,56 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- **Health alerts via PapDashboard** (`tq serve --alert-url` /
+  `--alert-api-key`, same env vars as the pool's bridge): the health
+  dashboard's status transitions now reach the operator's alert surface —
+  a fall into warn/fail raises an alert naming the degraded checks (store
+  down, wedged fold, fold-follower demotion), recovery resolves it.
+  Default OFF (no URL = unchanged).
+
+- **Health trend + export** (`GET /health/trend`, `GET /health/export`):
+  the health dashboard now records a status-history ring (72 samples ≈ 6
+  minutes at the refresh cadence), renders the trend sparkline, and
+  exports the history as JSON/CSV/NDJSON — "has this check been warning
+  since Tuesday?" is answerable from the surface instead of process
+  memory.
+
+- **Server-Timing trial on `tq serve`**: with `--verbose` (request
+  logging) the dashboard's JSON endpoints carry a `Server-Timing` header
+  (`stats`, `facts`, auto `total`) — browser DevTools visibility into
+  per-segment latency, never shipped on the default loopback posture.
+
+### Changed
+
+- **go-cqrs-lite version wave** (security + currency): `system/v4`
+  v4.16.0→v4.18.0 (AggregateFn SQL-injection hardening in the engine
+  family tq ships), `metaengine/v4` v4.20.0→v4.23.0,
+  `metaengine/sqliteengine/v4` v4.6.0→v4.8.0, `id/v4` v4.7.4→v4.7.5
+  across every module in the graph.
+
+- **go-datastar v0.7.0 lockstep + go-sse v0.7.0 residue sweep**: all
+  9 adopted libraries now sit on their latest tags; the embedded health
+  SDK is served by `datastar.ScriptHandler` (ETag + conditional GET +
+  HEAD) with a versioned script URL, replacing the hand-rolled handler.
+
+- **`tq serve` survives a panicking health probe**: a panic in one
+  health-check batch now degrades the response (fail + a prober check
+  naming the panic) instead of killing the SSE pusher goroutine — and
+  with it the whole serve process.
+
+- **Health rows carry metadata**: per-check "since" transition times and
+  the batch latency (`total_latency_ms`) now populate, so the dashboard's
+  since/latency columns render instead of sitting empty; the `/health`
+  JSON also carries a `live-sse` check (subscriber census, fail when the
+  SSE hub is closed).
+
+- **Exhausted store-busy retries are loud**: when an outcome write
+  exhausts its 3 store-busy attempts, the worker logs at ERROR that the
+  lease-reclaim backstop owns the task — a known handoff, not a silently
+  stuck task.
+
+### Fixed
+
 ## [v0.4.2] - 2026-11-07
 
 ### Added

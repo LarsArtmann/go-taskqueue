@@ -188,3 +188,33 @@ grep -n 'go-datastar' go.mod cmd/tq/go.mod           # split healed after M2?
 ```
 
 — Plan written 2026-11-09_03-30; execution NOT started (plan-only session; no code touched).
+
+## 7. Execution record + owner rulings (2026-11-09, execution session)
+
+The owner's blanket "execute the whole list" order green-lit the plan and
+stands in for the two owner gates; the §5 recommendations were adopted as
+ruled:
+
+1. **Harvest ruling (M11/§g q1)**: RULED — execute in-session, not minted
+   as paid tq tasks. M1-M4 (and the rest) were executed directly by the
+   2026-11-09 session; the tail stays report-only per the recommendation
+   (minting it would pay hygiene at leverage prices). M20 therefore lands
+   as completion notes, not new tasks.
+2. **Train timing (M11/§g q2)**: RULED — wave NOW, ahead of any v0.4.3
+   train. The system v4.18.0 security-class hardening shipped unpinned
+   outweighs release-train tidiness (M1 executed first, exactly per the
+   1%→51% call).
+3. **AGENTS budget (M16/§g q3)**: RULED — modest conscious reset (+400 B)
+   so the fleet-verdict line fits (guard exists to force the decision,
+   not forbid the bytes).
+
+Execution notes: M2's datastar split was already root v0.6.3/cmd-tq
+v0.6.3 (half-healed before this session); the sse v0.7.0 residue sweep
+(F34) rode the same wave. M10's trial verdict: KEEP (see
+docs/review/libs/httputil-server-timing.md §Trial verdict). M12 decision:
+trend + export ON (72-sample ring), /metrics deferred — no scraper exists
+to poll it; /health JSON + alerts cover the local-first operator
+(right-sized observability, not gold-plating). M4 landed via a loopback
+HealthRelay in internal/bridge/papdashboard (PapDashboard speaks only its
+own /api/ingest schema; the report's "/health-events" sketch assumed an
+endpoint that does not exist — the relay translates in-process).
