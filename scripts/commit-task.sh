@@ -99,9 +99,7 @@ task_id=$1
 subject=$2
 shift 2
 
-amend=0
 body=''
-files=()
 
 case $task_id in
 *[!a-f0-9]* | '')
@@ -125,7 +123,8 @@ while [ $# -gt 0 ]; do
 		shift 2
 	elif [ "$1" = "--amend" ]; then
 		amend=1
-		shift	else
+		shift
+	else
 		files+=("$1")
 		shift
 	fi

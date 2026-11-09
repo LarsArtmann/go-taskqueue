@@ -152,5 +152,25 @@ summary="windows=$windows_total done-row-hits=$done_hits"
 [ "$#" -eq 0 ] && summary="windows=0 (no IDs passed) done-row-hits=0"
 echo
 echo "Session-start ritual complete (SUMMARY: $summary). Read the output before editing anything."
+# Mechanical unstaged-age nudge (08-43 report f1): an edit left unstaged
+# past the daemon sweep window (<60s) is sweep-food; name the oldest one
+# instead of trusting the agent to remember the prose reminder below.
+if [ -n "$(git diff --name-only 2>/dev/null)" ]; then
+	oldest=''
+	now=$(date +%s)
+	for f in $(git diff --name-only); do
+		[ -f "$f" ] || continue
+		m=$(stat -c %Y "$f" 2>/dev/null) || continue
+		if [ -z "$oldest" ] || [ "$m" -lt "$oldest" ]; then
+			oldest=$m
+		fi
+	done
+	if [ -n "$oldest" ]; then
+		age=$((now - oldest))
+		if [ "$age" -ge 30 ]; then
+			echo "WARN: unstaged edits older than ${age}s — daemon sweep-food. Commit NOW: scripts/commit-task.sh <task-id> <subject> <file>…"
+		fi
+	fi
+fi
 echo "REMINDER: after every green gate re-run 'git status' — the auto-commit daemon sweeps unstaged edits footer-less mid-window."
 echo "REMINDER: unstaged edits? commit them NOW via scripts/commit-task.sh <task-id> <subject> <file>… (stages exactly the named files + footer, the prevention for footer-less daemon sweeps; --amend folds a daemon sweep that already landed). Sweep already carried them? scripts/heal-daemon-sweep.sh."
