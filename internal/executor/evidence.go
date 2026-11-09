@@ -171,6 +171,16 @@ func MatchesEvidenceStage(evidence FailureEvidence, lastError, want string) bool
 	}
 
 	switch want {
+	case EvidenceTermVerifyOK:
+		// The receipt verdict as a filter term: the stored write-time
+		// attestation is the trust fact (AGENTS.md "Signals, never
+		// scores"), so a DLQ/audit sweep can separate gates that passed
+		// their contract from gates that ran a different command/HEAD
+		// than the completion claims. Absent attestation matches
+		// neither term — a legacy task is unverified, not verified.
+		return evidence.Attestation != nil && evidence.Attestation.OK
+	case EvidenceTermVerifyMismatch:
+		return evidence.Attestation != nil && !evidence.Attestation.OK
 	case string(VerifyGateEnvironmental):
 		return strings.Contains(lastError, VerifyGateEnvCode) ||
 			strings.Contains(lastError, "agent verify gate environmental")
@@ -183,10 +193,20 @@ func MatchesEvidenceStage(evidence FailureEvidence, lastError, want string) bool
 	return false
 }
 
+// EvidenceTermVerifyOK and EvidenceTermVerifyMismatch are the receipt-
+// verdict filter terms: aliases the matcher derives from the stored
+// write-time Attestation (the same derivation class as the verify-gate
+// error-text aliases), never a stamped Stage value.
+const (
+	EvidenceTermVerifyOK       = "verify-ok"
+	EvidenceTermVerifyMismatch = "verify-mismatch"
+)
+
 // KnownEvidenceTerms is the closed vocabulary the executor itself stamps
 // into FailureEvidence today: the three Stage words, the four
-// VerifyStage values, and the three verify-gate aliases (matched via
-// error text). FailureEvidence.Class is an open field (retry taxonomy),
+// VerifyStage values, the three verify-gate aliases (matched via
+// error text), and the two receipt-verdict aliases (matched via the
+// stored Attestation). FailureEvidence.Class is an open field (retry taxonomy),
 // so class terms are deliberately NOT listed — a term is "known" only
 // when the executor can stamp a value the matcher would hit. Consumers
 // warn on unknown POSITIVE spec terms so a typo cannot silently yield an
@@ -196,6 +216,7 @@ func KnownEvidenceTerms() []string {
 		"agent", "command", "verify", TaskTypeDepBump,
 		VerifyStageGofmt, VerifyStageTest, VerifyStageE2ETimeout, VerifyStageRun,
 		string(VerifyGateEnvironmental), string(VerifyGateDead), string(VerifyGateSlow),
+		EvidenceTermVerifyOK, EvidenceTermVerifyMismatch,
 	}
 }
 

@@ -11,22 +11,13 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
-// verifyReceiptView is the cmd/tq TWIN of executor.VerifyReceipt plus the
-// stored executor.VerifyVerdict: this module is replace-free (ADR-0017) and
-// resolves internal/* from the last published tag, so it cannot name the
-// receipt types until a release re-pins them. The same boundary the evidence=
-// suffix lives behind (parked.go's failureEvidenceSummary twin).
-//
-// Keep the JSON spelling in lockstep with internal/executor/receipt.go;
-// TestVerifyReceiptViewDecodesExecutorSpelling pins it against a literal
-// produced by the real struct. Delete this twin the day cmd/tq re-pins past
-// the release that shipped the receipt.
+// verifyReceiptView renders the stored executor.VerifyReceipt plus its
+// write-time attestation for the `tq show` / `tq dlq` surfaces. Receipt and
+// verdict are the REAL executor types — internal/executor v0.4.2 shipped
+// them, so the pre-v0.4.2 JSON-spelling twin is gone and the view only adds
+// the flat `verdict` spelling the row JSON pins.
 type verifyReceiptView struct {
-	Command string `json:"command,omitempty"`
-	RC      int    `json:"rc"`
-	Head    string `json:"head,omitempty"`
-	OK      int    `json:"ok"`
-	Fail    int    `json:"fail"`
+	executor.VerifyReceipt
 	// Verdict is the rendered attestation: "ok", one of the refusal classes
 	// (no-receipt / head-mismatch / command-mismatch / count-mismatch), or
 	// "unattested" for a receipt stored before verdicts were stamped.
@@ -41,14 +32,8 @@ type verifyReceiptView struct {
 // terminalVerifyDetail is the slice of a completion/failure detail the receipt
 // view needs. Everything is optional: a legacy detail has neither key.
 type terminalVerifyDetail struct {
-	Verify *verifyReceiptView `json:"verify"`
-	// Attestation is the stored executor.VerifyVerdict.
-	Attestation *struct {
-		OK      bool     `json:"ok"`
-		Refusal string   `json:"refusal,omitempty"`
-		Detail  string   `json:"detail,omitempty"`
-		Checked []string `json:"checked,omitempty"`
-	} `json:"attestation"`
+	Verify      *executor.VerifyReceipt `json:"verify"`
+	Attestation *executor.VerifyVerdict `json:"attestation"`
 }
 
 // buildVerifyReceiptView decodes the verify receipt off the task's terminal
@@ -71,8 +56,7 @@ func buildVerifyReceiptView(trail []journal.Fact) *verifyReceiptView {
 			continue
 		}
 
-		view := detail.Verify
-		view.Verdict = "unattested"
+		view := verifyReceiptView{VerifyReceipt: *detail.Verify, Verdict: "unattested"}
 
 		if att := detail.Attestation; att != nil {
 			view.Checked = att.Checked
@@ -84,7 +68,7 @@ func buildVerifyReceiptView(trail []journal.Fact) *verifyReceiptView {
 			}
 		}
 
-		return view
+		return &view
 	}
 
 	return nil
@@ -104,7 +88,7 @@ func verifyReceiptFor(ctx context.Context, store *sqlite.Store, id task.ID) *ver
 
 // dlqForensicsFor reads ONE trail per dead task and returns both surfaces the
 // `tq dlq` row renders: the typed failure evidence (pinned-tag shape) and the
-// verify receipt twin. One IO for two views, because the row carries both and
+// verify receipt view. One IO for two views, because the row carries both and
 // the DLQ read cap must stay a cap on READS, not on rows.
 func dlqForensicsFor(
 	ctx context.Context,

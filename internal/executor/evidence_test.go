@@ -62,6 +62,7 @@ func TestKnownEvidenceTermsMatchesStampedVocabulary(t *testing.T) {
 		TaskTypeDepBump, // depbump.go's fail() closure (row 241)
 		VerifyStageGofmt, VerifyStageTest, VerifyStageE2ETimeout, VerifyStageRun,
 		string(VerifyGateEnvironmental), string(VerifyGateDead), string(VerifyGateSlow),
+		EvidenceTermVerifyOK, EvidenceTermVerifyMismatch, // attestation-derived aliases (receipt slice R5.3)
 	}
 
 	if len(terms) != len(stamped) {
@@ -184,6 +185,36 @@ func TestMatchesEvidenceStageTable(t *testing.T) {
 			lastError: `agent verify gate slow ("test"): deadline before a verdict`,
 			want:      string(VerifyGateSlow),
 			match:     true,
+		},
+		{
+			name:     "verify-ok via attestation",
+			evidence: FailureEvidence{Stage: "verify", Attestation: &VerifyVerdict{OK: true, Checked: []string{AttestationCheckReceipt}}},
+			want:     EvidenceTermVerifyOK,
+			match:    true,
+		},
+		{
+			name:     "verify-ok does not match refused attestation",
+			evidence: FailureEvidence{Stage: "verify", Attestation: &VerifyVerdict{Refusal: AttestationCommandMismatch, Detail: "executed x"}},
+			want:     EvidenceTermVerifyOK,
+			match:    false,
+		},
+		{
+			name:     "verify-mismatch via refused attestation",
+			evidence: FailureEvidence{Stage: "verify", Attestation: &VerifyVerdict{Refusal: AttestationHeadMismatch, Detail: "gate ran at aaa, completion claims bbb"}},
+			want:     EvidenceTermVerifyMismatch,
+			match:    true,
+		},
+		{
+			name:     "verify-mismatch never matches a legacy task without attestation",
+			evidence: FailureEvidence{Stage: "verify"},
+			want:     EvidenceTermVerifyMismatch,
+			match:    false,
+		},
+		{
+			name:     "verify-ok never matches absent attestation",
+			evidence: FailureEvidence{Stage: "verify"},
+			want:     EvidenceTermVerifyOK,
+			match:    false,
 		},
 		{
 			name:     "no match",

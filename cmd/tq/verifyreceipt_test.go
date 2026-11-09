@@ -214,6 +214,72 @@ func TestCmdDLQRowsCarryVerifySuffix(t *testing.T) {
 	}
 }
 
+// TestCmdDLQEvidenceStageVerifyTerms pins the receipt verdict as a filter
+// term (R5.3): `--evidence-stage verify-mismatch` keeps a dead task whose
+// stored attestation refused, `verify-ok` drops it, and neither term reads
+// as unknown vocabulary. Absence of an attestation (legacy evidence) matches
+// neither term — unverified is not verified.
+func TestCmdDLQEvidenceStageVerifyTerms(t *testing.T) {
+	t.Parallel()
+
+	dbPath := filepath.Join(t.TempDir(), "dlq-evidence-verify.db")
+	store := openTestStore(t, dbPath)
+	ctx := context.Background()
+
+	enq, err := store.Enqueue(ctx, task.New{
+		Type:        executor.TaskTypeAgent,
+		Project:     "demo",
+		Payload:     []byte(`{"repo":"demo","prompt":"p"}`),
+		MaxAttempts: 1,
+	})
+	if err != nil {
+		t.Fatalf("enqueue: %v", err)
+	}
+
+	_, claim, err := store.ClaimDue(ctx, "dlq-evidence-verify", time.Minute)
+	if err != nil {
+		t.Fatalf("claim: %v", err)
+	}
+
+	evidence, err := json.Marshal(executor.FailureEvidence{
+		Stage:  "verify",
+		Verify: &executor.VerifyReceipt{Command: "go test ./...", RC: 1, OK: 2, Fail: 1},
+		Attestation: &executor.VerifyVerdict{
+			Refusal: executor.AttestationCommandMismatch,
+			Checked: []string{executor.AttestationCheckReceipt, executor.AttestationCheckCommand},
+		},
+	})
+	if err != nil {
+		t.Fatalf("marshal evidence: %v", err)
+	}
+
+	if err := store.Fail(ctx, enq.ID, claim, "verify failed", 0, evidence); err != nil {
+		t.Fatalf("fail: %v", err)
+	}
+
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, tc := range []struct {
+		stage string
+		want  bool
+	}{
+		{stage: "verify-mismatch", want: true},
+		{stage: "verify-ok", want: false},
+		{stage: "!verify-ok", want: true},
+	} {
+		var buf bytes.Buffer
+		if err := runDLQ([]string{"--db", dbPath, "--evidence-stage", tc.stage}, &buf); err != nil {
+			t.Fatalf("runDLQ %s: %v", tc.stage, err)
+		}
+
+		if got := strings.Contains(buf.String(), enq.ID.String()); got != tc.want {
+			t.Fatalf("--evidence-stage %s: row present = %v, want %v\n%s", tc.stage, got, tc.want, buf.String())
+		}
+	}
+}
+
 // openTestStore opens a sqlite store at path or fails the test.
 func openTestStore(t *testing.T, path string) *sqlite.Store {
 	t.Helper()
