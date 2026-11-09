@@ -44,3 +44,11 @@ implement — <reason>`.
 - docs/planning/2026-09-15_ci-topology-one-pager.md → ARCHIVE: rows 590/591 + AGENTS:255 toolchain entry; parent row closed per O9; 3 strikes
 - docs/feedback/2026-09-13_helpcentre-reply-draft.md → ARCHIVE: all 5 asks struck shipped (09-30 sweep); ADR-0017 cured the go-install limitation
 - docs/feedback/new/2026-09-13_external-adoption-blocked-by-internal-paths.md → ARCHIVE: all 5 asks struck shipped (09-30 sweep); Offer section is external prose
+
+## 2026-11-09 libs-fleet M19 digest ritual (5 files; 2026-10-09 release-hardening done-prompt passes 12–16)
+
+- 2026-10-09_01-45_release-hardening-done-prompt-window-twelfth-pass.md → ARCHIVE: verify-only DONE-ON-ARRIVAL layer (pass 12 of the 000001a11d8b… re-dispatch chain; zero appends, no new §g)
+- 2026-10-09_01-47_release-hardening-done-prompt-window-thirteenth-pass.md → ARCHIVE: verify-only DONE-ON-ARRIVAL layer (pass 13; zero appends, no new §g)
+- 2026-10-09_01-52_release-hardening-done-prompt-window-fourteenth-pass.md → ARCHIVE: verify-only DONE-ON-ARRIVAL layer (pass 14; zero appends, no new §g)
+- 2026-10-09_02-18_release-hardening-done-prompt-window-fifteenth-pass.md → ARCHIVE: verify-only DONE-ON-ARRIVAL layer (pass 15; zero appends, no new §g)
+- 2026-10-09_02-40_release-hardening-done-prompt-window-sixteenth-pass.md → ARCHIVE: verify-only DONE-ON-ARRIVAL layer (pass 16; zero appends, no new §g; canonical sixth pass 2026-10-09_00-40 stays live)
