@@ -129,3 +129,10 @@ legs (`ratelimit-e2e.sh`, `questions-e2e.sh`, `webui.sh`) assert against
 captured files per leg — no cross-stream grep found in the sweep.
 Future legs: grep the `fmt.Printf` vs `fmt.Fprintln(os.Stderr` map of
 the code under test BEFORE writing the assertion (§e1 lesson).
+
+## Scratch-repo factory + session-start pin (2026-11-09)
+
+| Leg                                  | Surface                              | Key assertions                                                                                                                                                                                              | Stream  |
+| ------------------------------------ | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| `_lib.sh` (sourced; `--self-test`)   | scratch-repo factory for repo-surface smokes | fail exits 1; pass prints `ok: …`; `new_repo` yields an init-committed repo with smoke identity; `run_in` executes in-repo; bootstrap-install/release-gates deliberately exempt (flag-only git identity is a load-bearing premise) | —       |
+| `session-start.sh`                   | `scripts/session-start.sh` WITH-ARGS branch | hermetic ID-args path via grep-backed `rg` + `tq` PATH stubs: prior-reports lookup, verdict surfacing, DONE-row detection, footer scan, queue-record block; degraded-path messages for absent check-ci/hooks/docs asserted | stdout  |
