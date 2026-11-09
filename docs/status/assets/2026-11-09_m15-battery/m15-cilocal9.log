@@ -1,0 +1,628 @@
+GOTOOLCHAIN pinned to go1.27.3 (go.mod floor == setup-go pin, one source)
+
+== host env probe (GOCACHE/GOROOT sanity)
+disk: 63G free on /
+GOCACHE=/home/lars/.cache/go-build
+GOROOT=/home/lars/.cache/go-mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64
+
+== master CI state (check-ci; CI_CHECK=off to bypass)
+check-ci: skipped (CI_CHECK=off)
+check-ci: skipped (CI_CHECK=off)
+
+== transient-retry self-test (with_transient_retry behavior pin)
+ok: shipped defaults are 45s x 3 polls
+ok: plain gate passes first try (no WARN, no poll) (rc=0, warns=0, runs=1)
+ok: compound gate heals on first retry (real module-loop shape) (rc=0, warns=1, runs=2)
+ok: heal case mentions the expected text
+ok: heal case success line mentions the expected text
+ok: always-red gate exhausts 3 polls then fails (rc=1, warns=3, runs=4)
+ok: exhaust case mentions the expected text
+ok: exhaust case mentions the expected text
+ok: TRANSIENT_MAX_POLLS=0 escape hatch fails immediately (rc=1, runs=1, no polls, exhaust canary names 0 polls)
+transient-retry self-test ok (extraction pinned, defaults 45/3, heal/exhaust/escape-hatch semantics verified)
+
+== verify-wrapper self-test (flake-retry semantics + .tq-verify parity pin)
+ok: verify.sh battery is byte-identical to .tq-verify
+ok: pin 6 empty-extraction failure message fires on a reworded Known Issues bullet
+ok: green gate passes first try (single run, no retry) (rc=0, runs=1)
+ok: green case does not mention 'retrying ONCE'
+ok: green case does not mention 'FLAKE-RETRY'
+ok: flaky signature heals on the ONE retry (rc=0, runs=2)
+ok: heal case mentions the expected text
+ok: heal case mentions the expected text
+ok: flaky signature still red after the retry (rc=1, runs=2)
+ok: exhaust case mentions the expected text
+ok: non-signature failure does not retry (rc=1, runs=1)
+ok: non-signature case does not mention 'retrying ONCE'
+ok: non-signature case does not mention 'FLAKE-RETRY'
+ok: non-signature case mentions the expected text
+ok: in-situ verify.sh flake-heal (rc=0)
+ok: in-situ heal case mentions the expected text
+ok: in-situ heal case mentions the expected text
+ok: in-situ heal case mentions the expected text
+ok: in-situ genuine-red case does not mention 'retrying ONCE'
+ok: in-situ genuine-red case does not mention 'FLAKE-RETRY'
+ok: in-situ genuine-red case mentions the expected text
+ok: in-situ verify.sh genuine-red (rc=1, one go invocation, zero retry lines)
+ok: in-situ test-stage case mentions the expected text
+ok: in-situ test-stage case does not mention 'retrying ONCE'
+ok: in-situ test-stage case does not mention 'FLAKE-RETRY'
+ok: in-situ verify.sh genuine-red at the TEST stage (rc=1, one go test invocation, zero retry lines)
+verify self-test ok (battery parity with .tq-verify, wrapper + lib markers, root-gate extraction, green/heal/exhaust/non-signature semantics, in-situ verify.sh flake-heal verified, KNOWN_FLAKY↔AGENTS.md bidirectional cross-check (+ reworded-bullet empty-extraction self-test), in-situ genuine-red rc=1 no-retry verified (build-stage + test-stage))
+
+== commit-msg hook self-test (Task-Queue-ID trailer placement pin)
+ok: footer as final line after attribution (sanctioned) (rc=0)
+ok: footer above attribution block (the 05-47 defect) (rc=1)
+ok: plain footer without attribution (rc=0)
+ok: no footer (presence stays optional) (rc=0)
+ok: two footers (rc=1)
+ok: malformed footer value (rc=1)
+ok: footer with editor comment tail stays accepted (rc=0)
+ok: trailing prose after footer (rc=1)
+ok: footer mid-trailer-block (footer-final-line pin: last non-empty line must BE the footer) (rc=1)
+ok: footer above a separate trailer block (rc=1)
+ok: CRLF message with footer as final line stays accepted (rc=0)
+ok: CRLF footer above attribution block rejects (rc=1)
+ok: fixup! subject with footer-final stays accepted (rc=0)
+ok: squash! body with footer-final stays accepted (rc=0)
+ok: merge message with footer-final stays accepted (rc=0)
+commit-msg hook pin ok (extraction guarded, 15 cases: placement, last-line, count, format, comment-tail, trailing-prose, crlf, special-shapes)
+
+== session-start probe self-test (red-master tolerance pin)
+ok: rc-capture shape present, no bare probe call
+ok: red master reported, ritual still completed (rc=0)
+ok: tq probe guarded by command -v
+ok: args branch surfaced report, verdict, DONE-row, footer (tq absent)
+ok: unknown id tolerated, counters windows=1 done-row-hits=0
+
+== push-timing guard self-test (pre-push refusal pin)
+push-timing self-test ok (summary format pin + range-walk battery: backdated allowed, fresh refused, healed allowed, mid-history fresh under allowed tip refused, new-branch zero-remote refused; --check dry-run: refused with age+heal, allowed pin, unknown sha exit 2)
+
+== AGENTS.md size budget (agentsDocMaxBytes twin)
+agents-size OK: AGENTS.md is 27193/27200 B
+
+== heal-daemon-sweep self-test (refusal rail pin)
+Deleted tag 'sweep-tag' (was a089378)
+Deleted tag 'base-tag' (was 8ad76da)
+SELF-TEST OK (27 checks)
+
+== footer-record reachability (protected-records roster)
+footer-record-reachability: 3 protected records reachable from HEAD
+
+== daemon-sweep doc gate self-test (selection pin)
+self-test ok: sweep selection (daemon shape, footer-less, doc-gated) + gate roster pinned
+
+== daemon-sweep doc gate (footer-less doc-gated sweeps)
+footer-less daemon sweeps touched doc-gated files:
+  e2f9b28dbe7469cd9681e6795e074cc9053626b5
+  9c469f011aba8225da4c0540845fcf25e1cece64
+  8eced0a4b4319c3b9face1e58ef22e6a9ce2089c
+  39b86a22ce7d1ec0c4dcb5ff9ec314e6c37022aa
+  275f7ff8afb58cd407eb8c1efe5596d45a955709
+  ae5f7bcd381efc5452f9abd8d7f08758ff595957
+  90affecb9b5c06d8ed3c351d125dcb4c2c5ad89a
+  aba739dc95e10e118b88d7815f94f4f48238f5ad
+  0006e04fbc295e61cb28e43e2915032a3d481ef2
+  6f40b60d53a070d61915e38bf7b3c70cee9ff7c0
+  3b8e61b551bf8fb98bab1e95098cde9f87712e15
+  1f7ce89642c88bdc0586c7691d3fef007cb08e7c
+running cheap doc gates:
+-- check-doc-refs.sh
+doc refs ok
+-- check-todo-list.sh
+UNBLOCKED-OWNER-GATED: - [ ] Decide and implement go.work.sum coverage for `lint_leak_scan`: scan `cmd/tq/go.work.sum` and `vendor/*/go.work.sum` (same foreign-entry shapes observed there), or exempt them with a comment citing why replace-graph artifacts are legitimate — owner input recorded in the 2026-11-07_10-05 report §g1
+  -> append ' — BLOCKED: <reason>' or rephrase so an agent can execute it
+UNBLOCKED-OWNER-GATED: - [ ] docs/release/VERSION-SURFACES.md: add the "tagged-but-unpublished window" surface note — local annotated tags are not proxy truth, and every GOWORK=off/proxy graph load of cmd/tq at HEAD stays broken by design until the owner-gated push lands (the erraudit devwork-shim commits are the recurring symptom class), so release triage stops re-deriving it (source: closeout §e3)
+  -> append ' — BLOCKED: <reason>' or rephrase so an agent can execute it
+UNBLOCKED-OWNER-GATED: - [ ] Retro-cure task 000001a1382a1765: TODO rows 225/226 never landed while the queue shows COMPLETED — re-enqueue or evidence-tick them per the owner ruling, and write the missing closeout report (docs/status/tasks/2026-10-28_00-09_task-000001a17d734f96d765c62a6daa00000000.md §b3)
+  -> append ' — BLOCKED: <reason>' or rephrase so an agent can execute it
+UNBLOCKED-OWNER-GATED: - [ ] heal-daemon-sweep.sh: document (or fix, owner call) that the `--from` blocker walk can oscillate (ever-older blockers, no convergence — 2026-11-02 live: three contradictory suggestions) and pin the walkthrough as a --self-test fixture so the amend-fallback exit is exercised, not folklore (source: docs/status/tasks/2026-11-02_23-50_task-000001a19e70c92e46db137a7a3000000000.md §f8/§f9)
+  -> append ' — BLOCKED: <reason>' or rephrase so an agent can execute it
+UNBLOCKED-OWNER-GATED: - [ ] Consciously re-tighten the AGENTS.md budget constant: [PREMISE UPDATED 2026-11-03 (task …fda6cc4e): the 2026-10-30 numbers are stale — file is 25,306/25,400 after the CI-log one-liner reset (52ed2015), which also re-synced a 350 B pre-existing drift left red at HEAD 586c640a] — a compress-only prune of phrasing waste down to ~24,000 followed by a re-tighten of BOTH twins (agentsDocMaxBytes + scripts/check-agents-size.sh in one commit, gates green) restores the guard's early-warning value; the reset history makes constant moves owner-conscious, hence this row instead of a silent change; the same commit should sync the AGENTS §Conventions hooks bullet with the 2026-11-03 advisories (trash + fixtures-under-/tmp; source: docs/status/tasks/2026-11-03_07-36_task-000001a1a01a87786efaa0c0a05400000000.md §f3)
+  -> append ' — BLOCKED: <reason>' or rephrase so an agent can execute it
+UNBLOCKED-OWNER-GATED: - [ ] Resolve the generic_return interface-satisfaction blocker (owner ruling pending, see the migration row's BLOCKED note): pick the sanctioned pattern for rule findings on functions whose `error` signature is contractual (journal/cqrs ReadAll implements event.Journal) — permitted `//nolint` convention, erraudit tool support for interface-satisfaction detection, or an adapter-wrapper pattern — then sweep the blocked class and drop `--disable generic_return` from scripts/check-erraudit.sh when zero is reachable
+  -> append ' — BLOCKED: <reason>' or rephrase so an agent can execute it
+UNBLOCKED-OWNER-GATED: - [ ] Go-health v0.7.0→v0.8.1 bump verification + ownership: the foreign daemon bump rides master (pushed in origin 1bc6f499, local f44a50f6, root build+vet+check-gomod-vendor-sync green 2026-10-28) — run the remaining verification nobody has evidenced (root `go test ./... -race`, release-gates, check-go-mods go-directive floor, flake vendorHash refresh), find the owning session or adopt the bump, and record it in the release notes (source: docs/status/tasks/2026-10-28_05-23_task-000001a18096fad86282b400c94a00000000.md §g1)
+  -> append ' — BLOCKED: <reason>' or rephrase so an agent can execute it
+UNBLOCKED-OWNER-GATED: - [ ] Reconcile the local/origin master divergence: merge-base ddbecce0, origin/master 1bc6f499 (go.mod bump identical to local f44a50f6 + the 04-18 closeout report), local master 4 footer commits + 1 foreign daemon commit ahead — rebase the local line onto origin (duplicate go.mod hunks should drop clean) or record the owner-preferred ritual; verify each footer commit's diff survives intact; never push (source: docs/status/tasks/2026-10-28_05-23_task-000001a18096fad86282b400c94a00000000.md §g2)
+  -> append ' — BLOCKED: <reason>' or rephrase so an agent can execute it
+UNBLOCKED-OWNER-GATED: - [ ] Verify the new internal/retryx module that landed via footer-less daemon sweeps (a8f58aba/3cc59e16, 2026-10-28: go.mod + rename.go + rename_test.go + dependabot entry, plus a 22-line internal/readmodel/schema.go reduction in the same sweep): confirm the graduation intent (relates to the row-1165 renameWithTransientRetry shared-home ask), run the module gate with GOWORK=off, check check-go-mods + vendor-sync + flake vendorHash, and record adoption/ownership — the work is currently invisible to footer-based attribution (source: docs/status/2026-10-28_11-02_done-prompt-window-report-eighteenth-dispatch.md §d3/§f7)
+  -> append ' — BLOCKED: <reason>' or rephrase so an agent can execute it
+UNBLOCKED-OWNER-GATED: - [ ] Promote the UNBLOCKED-OWNER-GATED advisory warn to a hard gate for the dispatching batch's OWN anchor set (whole-file rows stay WARN) so an owner-gated row can never leave a batch as a plain open row again (source: task 000001a18b317e4294f03323193700000000 §d1/§f2)
+  -> append ' — BLOCKED: <reason>' or rephrase so an agent can execute it
+UNBLOCKED-OWNER-GATED: - [ ] Propose finding-envelope dedup: carry an anchor-text hash in dispatch envelopes so the pre-flight grep detects sibling-ticket cures of the same finding under a fresh Task-Queue-ID (this ticket re-paid a finding cured one window earlier under …b317e4294f; platform ask, owner-gated queue change) (source: docs/status/tasks/2026-10-30_06-22_task-000001a18b317e9d014fca9698a100000000.md §e4)
+  -> append ' — BLOCKED: <reason>' or rephrase so an agent can execute it
+UNBLOCKED-OWNER-GATED: - [ ] RULING-BY-AGENT marker convention: when an agent executes an owner-pending ruling row, its tick + index row carry an explicit agent-ruling marker so the owner can audit cheaply — add the convention line to AGENTS.md and backfill it onto the row-1210 tick (docs/status/tasks/2026-10-30_07-50_task-…8d0aff5 §e5)
+  -> append ' — BLOCKED: <reason>' or rephrase so an agent can execute it
+UNBLOCKED-OWNER-GATED: - [ ] Retention policy for `calibration.jsonl`: `collectSidecars` sweeps only `*.log`, so the dataset grows unbounded on long-lived pools — decide sweep-vs-keep (owner input pending on the cap) and implement
+  -> append ' — BLOCKED: <reason>' or rephrase so an agent can execute it
+UNBLOCKED-OWNER-GATED: - [ ] Corpus-wide stale-wording sweep extension: run the "stays open"/"owner question" + footer|attribution|placement phrase sweep over docs/architecture-understanding/, replay/, and per-package ADOPTION/docs files (the row-1234 sweep covered README/AGENTS/FEATURES/adr/memos/problems/release/planning only) (report §f1)
+  -> append ' — BLOCKED: <reason>' or rephrase so an agent can execute it
+UNBLOCKED-OWNER-GATED: - [ ] heal-daemon-sweep.sh: document (or change, owner call) that --retitle discards the BODY of footer-less sweeps, not just the subject — verify_heal pins subjects only
+  -> append ' — BLOCKED: <reason>' or rephrase so an agent can execute it
+UNBLOCKED-OWNER-GATED: - [ ] Document the read-only production-journal probe recipe for done-prompt sessions in AGENTS.md (or a docs/problems note): `python3` sqlite3 `file:/mnt/pool/services/tq/tq.db?mode=ro` uri-mode — the path prior verification passes used but no doc records, which cost this session a wrong first-pass disposition (interim for owner-blocked row 1260; read-only, never written)
+  -> append ' — BLOCKED: <reason>' or rephrase so an agent can execute it
+UNBLOCKED-OWNER-GATED: - [ ] Close the daemon hook bypass for go-taskqueue: the pma auto-commit daemon commits with `NoVerify: true` (projects-management-automation pma-daemon/committer/committer.go:112 → git_commander.go `--no-verify`), so NO repo hook — including the 39cd5471 zero-byte guard — fires on daemon sweeps and the 2026-10-27 11:39 empty-statusresume class remains possible; probe it live (scratch repo, staged empty .go, observe the sweep commit landing), then take the owner ruling: drop --no-verify for this repo in pma, mirror the zero-byte refusal in committer.go (protects all swept repos), or record accept-as-is in AGENTS.md Known Issues (report §b1/§g1)
+  -> append ' — BLOCKED: <reason>' or rephrase so an agent can execute it
+UNBLOCKED-OWNER-GATED: - [ ] Flip the rewrite-rate threshold default from constant MAX=3 to TQ_REWRITE_RATE_ADAPTIVE p95 once the owner rules (22 of 28 live days hot at MAX=3; the code is landed, only the default is pending) — owner-gated: if the ruling is keep-constant, instead raise MAX to kill the constant-noise WARN (source: same report §g2)
+  -> append ' — BLOCKED: <reason>' or rephrase so an agent can execute it
+UNBLOCKED-OWNER-GATED: - [ ] Done-prompt amend-vs-cite interaction: the checkpoint-early protocol amends the skeleton commit, killing its sha — add a prompt line telling the reporting agent to cite only POST-amend shas, and verify the queue's attribution tolerates the amended-commit shape (one footer commit after amend) plus the died-before-amend shape (skeleton footer commit left standing) (source: same report §g1; pending the owner ruling on two-footers-per-task)
+  -> append ' — BLOCKED: <reason>' or rephrase so an agent can execute it
+UNBLOCKED-OWNER-GATED: - [ ] Extend the fixtures-under-/tmp advisory to plain `>` redirects (non-heredoc) writing non-Go fixtures into the repo tree — same daemon-food class, second syntax; decide sibling rule id (fixture-tmp) vs extending heredoc-fixture-tmp (owner lean recorded in report §g3) (source: docs/status/tasks/2026-11-03_07-36_task-000001a1a01a87786efaa0c0a05400000000.md §f5/§g3)
+  -> append ' — BLOCKED: <reason>' or rephrase so an agent can execute it
+UNBLOCKED-OWNER-GATED: - [ ] Give the doctor tag-ancestry check a test fixture or exemption shape so `TestDoctorHealthyEmptyDB` stops failing every cmd/tq module run and the master CI test job while the orphaned-lineage state persists (owner call on shape: fixture repo vs excluding the check from that test's worst-status aggregation; CI evidence run 42551677517, tag-ancestry Status:warn v0.4.2; source: docs/status/tasks/2026-11-09_01-14_task-…3a2b200000000.md §e5)
+  -> append ' — BLOCKED: <reason>' or rephrase so an agent can execute it
+UNBLOCKED-OWNER-GATED: - [ ] Investigate why `tq ask --task <id>` returns "task: not found" in dispatched sessions for the ID the dispatch envelope itself carries — likely a TQ_DB routing mismatch between the dispatching queue and the agent shell; the owner-question channel is then dead for dispatched runs (source: docs/status/tasks/2026-11-09_01-14_task-…3a2b200000000.md §a7/§g3)
+  -> append ' — BLOCKED: <reason>' or rephrase so an agent can execute it
+todo-list summary: 22 advisory warn(s), 0 structural violation class(es) — advisory warnings do not fail the gate
+TODO_LIST gate ok
+-- check-status-index.sh
+TRAILER WARNING: docs/status/2026-10-01_00-07_task-000001a0f458e2a9c8ead6fdab8300000000.md names task 000001a0f458e2a9… but no commit carries its Task-Queue-ID trailer (f26 cluster class; owner ruling pending)
+TRAILER WARNING: docs/status/2026-10-01_00-20_task-000001a0f4669545817d7683289500000000.md names task 000001a0f4669545… but no commit carries its Task-Queue-ID trailer (f26 cluster class; owner ruling pending)
+INDEX BLOAT WARNING: 422 live rows in docs/status/README.md (threshold 400) — run the ratified monthly digest ritual: an ANNOTATE+ARCHIVE sweep that lands its `digest 20…` row in docs/status/README.md (08-25 f20; 2026-10-26 closeout §e4)
+status index ok
+
+== prompt-const fold gate self-test (selection pin)
+self-test ok: fold selection (daemon shape, footer-less, prompt-const) pinned
+
+== prompt-const fold gate (footer-less prompt-const sweeps)
+ok: no footer-less daemon sweeps touched prompt-const files since origin/master
+
+== fleet gate-ordering guard self-test (ORDERING property pin)
+ok: ordered gates pass (arg + env-prefixed forms) (rc=0)
+ok: inverted wiring fails naming the gate (rc=1)
+ok: real-only gate is not a violation (rc=0)
+gate-ordering self-test ok (3 ok / 0 fail) — ordering property + inversion refusal + real-only tolerance
+
+== fleet gate-ordering guard (self-test ahead of real gate)
+gate-ordering summary: 39 gate(s) ordered, 0 violations
+
+== smoke-coverage freshness gate self-test (name-coverage pin)
+ok: indexed leg passes (rc=0)
+ok: unindexed leg fails (rc=1)
+ok: empty smoke dir is a no-op green (rc=0)
+smoke-coverage self-test ok (3 ok / 0 fail) — name-coverage floor + pinned summary
+
+== smoke-coverage freshness gate (leg-to-assertion index)
+smoke-coverage summary: 34 leg(s) indexed, 0 unindexed
+
+== worktree-consumer allowlist self-test (audit pin)
+ok: real tree green (rc=0)
+ok: new consumer fails (rc=1)
+ok: clean non-consumer file passes (rc=0)
+worktree-consumers self-test ok (3 ok / 0 fail) — allowlist pin + new-consumer refusal
+
+== worktree-consumer allowlist (OR-over-store audit)
+worktree-consumers summary: 2 sanctioned file(s), 0 violations
+
+== tracked-ignored path guard self-test (fold-lock class pin)
+ok: clean repo green (rc=0)
+ok: tracked ignored sidecar fails (rc=1)
+tracked-ignored self-test ok (2 ok / 0 fail) — clean-repo green + committed-sidecar refusal
+
+== tracked-ignored path guard (daemon-sweep class)
+tracked-ignored summary: 0 tracked path(s) matching ignore rules
+
+== erraudit gate self-test (summary + negative-path pins)
+self-test ok: erraudit summary + module-named negative paths pinned (rc-1 fail + rc-0 findings)
+
+== erraudit gate (per-module, ruled disable set)
+ok: erraudit executor clean
+ok: erraudit internal/composition clean
+ok: erraudit internal/config clean
+ok: erraudit internal/dlqbackoff clean
+ok: erraudit internal/executor clean
+ok: erraudit internal/journal clean
+ok: erraudit internal/journal/cqrs clean
+ok: erraudit internal/queue clean
+ok: erraudit internal/queue/companion clean
+ok: erraudit internal/queue/postgres clean
+ok: erraudit internal/queue/postgresv4 clean
+ok: erraudit internal/queue/sqlite clean
+ok: erraudit internal/queue/sqlitev4 clean
+ok: erraudit internal/readmodel clean
+ok: erraudit internal/retryx clean
+ok: erraudit internal/task clean
+ok: erraudit internal/testastguard clean
+ok: erraudit internal/worker clean
+ok: erraudit journal clean
+ok: erraudit queue clean
+ok: erraudit queue/postgres clean
+ok: erraudit queue/sqlite clean
+ok: erraudit task clean
+ok: erraudit worker clean
+ok: erraudit . clean
+ok: erraudit cmd/tq clean
+erraudit summary: 26 modules clean, 0 violations (generic_return + legacy_is disabled by ruling)
+
+== dlq-sidecar-citations gate self-test (summary + negative-path pins)
+SELF-TEST OK (7 checks)
+
+== dlq-sidecar-citations gate (pre-fix shape sweep)
+dlq-sidecar-citations: 79 living md file(s) scanned, 0 stale pre-fix citation(s)
+
+== docs-gates gate self-test (summary + negative-path pins)
+ok: green battery passes with pinned summary (rc=0)
+ok: red battery fails naming gate + timeout (rc=1)
+ok: red battery counts the FAIL row (rc=1)
+ok: battery rc=2 with 0 FAIL rows fails loud (rc=1)
+ok: non-JSON battery output fails loud (rc=1)
+ok: missing binary SKIPs (rc=0)
+docs-gates self-test: 6 ok / 0 fail
+
+== docs-gates gate (doctrine battery, tuned config)
+docs-gates gate: 5 gate(s), 3 PASS / 2 SKIP / 0 FAIL
+
+== tq-bash-guard hook self-test (deny/advise/silent battery)
+
+== tq-bash-guard benign corpus (fleet FP boundary)
+
+== tq-edit-advice hook self-test (per-path advice battery)
+
+== tq-edit-advice benign corpus (silent-path boundary)
+
+== hook-fp triage check self-test (deny-log shape pin)
+self-test ok: hook-fp-triage summary + rule breakdown + malformed-row negative path pinned (deny + advisory mirror)
+
+== vet
+
+== build
+
+== windows cross-compile (build + vet)
+
+== tests (-race)
+?   	github.com/larsartmann/go-taskqueue/examples/api	[no test files]
+?   	github.com/larsartmann/go-taskqueue/examples/fullcore	[no test files]
+?   	github.com/larsartmann/go-taskqueue/examples/sse	[no test files]
+ok  	github.com/larsartmann/go-taskqueue/internal/bridge/cqa	1.023s
+?   	github.com/larsartmann/go-taskqueue/internal/bridge/httpx	[no test files]
+ok  	github.com/larsartmann/go-taskqueue/internal/bridge/papdashboard	1.747s
+ok  	github.com/larsartmann/go-taskqueue/internal/budget	1.033s
+ok  	github.com/larsartmann/go-taskqueue/internal/consumer	1.446s
+ok  	github.com/larsartmann/go-taskqueue/internal/depsweep	1.068s
+ok  	github.com/larsartmann/go-taskqueue/internal/dlqfix	1.332s
+ok  	github.com/larsartmann/go-taskqueue/internal/docsgates	1.152s
+ok  	github.com/larsartmann/go-taskqueue/internal/e2e	8.108s
+ok  	github.com/larsartmann/go-taskqueue/internal/harvest	3.890s
+ok  	github.com/larsartmann/go-taskqueue/internal/httpapi	2.095s
+ok  	github.com/larsartmann/go-taskqueue/internal/httpauth	1.010s
+ok  	github.com/larsartmann/go-taskqueue/internal/incident	1.970s
+?   	github.com/larsartmann/go-taskqueue/internal/lockout	[no test files]
+ok  	github.com/larsartmann/go-taskqueue/internal/prioritize	1.331s
+ok  	github.com/larsartmann/go-taskqueue/internal/review	1.283s
+ok  	github.com/larsartmann/go-taskqueue/internal/runactor	1.059s
+ok  	github.com/larsartmann/go-taskqueue/internal/session	1.349s
+ok  	github.com/larsartmann/go-taskqueue/internal/status	1.386s
+ok  	github.com/larsartmann/go-taskqueue/internal/watermark	1.009s
+ok  	github.com/larsartmann/go-taskqueue/internal/webui	19.698s
+ok  	github.com/larsartmann/go-taskqueue/scripts/facadeparity	1.009s
+
+== module isolation gates (GOWORK=off per sub-module)
+== executor
+ok  	github.com/larsartmann/go-taskqueue/executor	0.003s
+== internal/composition
+ok  	github.com/larsartmann/go-taskqueue/internal/composition	0.219s
+== internal/config
+ok  	github.com/larsartmann/go-taskqueue/internal/config	0.002s
+== internal/dlqbackoff
+ok  	github.com/larsartmann/go-taskqueue/internal/dlqbackoff	0.001s
+== internal/executor
+ok  	github.com/larsartmann/go-taskqueue/internal/executor	14.311s
+== internal/journal
+ok  	github.com/larsartmann/go-taskqueue/internal/journal	0.001s
+== internal/journal/cqrs
+ok  	github.com/larsartmann/go-taskqueue/internal/journal/cqrs	0.003s
+== internal/queue
+ok  	github.com/larsartmann/go-taskqueue/internal/queue	0.002s
+== internal/queue/companion
+ok  	github.com/larsartmann/go-taskqueue/internal/queue/companion	0.002s
+?   	github.com/larsartmann/go-taskqueue/internal/queue/companion/conform	[no test files]
+== internal/queue/postgres
+?   	github.com/larsartmann/go-taskqueue/internal/queue/postgres	[no test files]
+== internal/queue/postgresv4
+ok  	github.com/larsartmann/go-taskqueue/internal/queue/postgresv4	0.003s
+== internal/queue/sqlite
+ok  	github.com/larsartmann/go-taskqueue/internal/queue/sqlite	0.007s
+== internal/queue/sqlitev4
+ok  	github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4	3.754s
+ok  	github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4/migration	0.026s
+?   	github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4/replay	[no test files]
+== internal/readmodel
+ok  	github.com/larsartmann/go-taskqueue/internal/readmodel	0.243s
+== internal/retryx
+ok  	github.com/larsartmann/go-taskqueue/internal/retryx	0.003s
+== internal/task
+ok  	github.com/larsartmann/go-taskqueue/internal/task	0.002s
+== internal/testastguard
+ok  	github.com/larsartmann/go-taskqueue/internal/testastguard	0.002s
+== internal/worker
+ok  	github.com/larsartmann/go-taskqueue/internal/worker	4.748s
+== journal
+ok  	github.com/larsartmann/go-taskqueue/journal	0.001s
+== queue
+ok  	github.com/larsartmann/go-taskqueue/queue	0.001s
+== queue/postgres
+ok  	github.com/larsartmann/go-taskqueue/queue/postgres	0.003s
+== queue/sqlite
+ok  	github.com/larsartmann/go-taskqueue/queue/sqlite	0.004s
+== task
+ok  	github.com/larsartmann/go-taskqueue/task	0.002s
+== worker
+ok  	github.com/larsartmann/go-taskqueue/worker	0.003s
+tq ask: question 82d51c6df045f6ed recorded for task 000001a1c1bdc680d05f76b0079300000000 (expires 2026-11-09T21:16:42+01:00); end your turn — the task parks until the owner answers
+tq ask: question e1c89745da6db205 recorded for task 000001a1c1bdc68381afff57d87300000000 (expires 2026-11-12T20:16:42+01:00); end your turn — the task parks until the owner answers
+tq ask: question e1c89745da6db205 recorded for task 000001a1c1bdc68381afff57d87300000000 (expires 2026-11-12T20:16:42+01:00); end your turn — the task parks until the owner answers
+tq ask: question 2ae0f05f5e55de01 recorded for task 000001a1c1bdc685d25380a2e65400000000 (expires 2026-11-12T20:16:42+01:00); end your turn — the task parks until the owner answers
+tq ask: question 2ae0f05f5e55de01 was already answered — honor the ruling in the prompt instead of re-asking
+tq: bootstrap: installed
+  unit   /tmp/TestInstallServiceRendersUnitAndConfigWithoutTouchingSystem3084456574/001/.config/systemd/user/tq-agent-pool.service
+  config /tmp/TestInstallServiceRendersUnitAndConfigWithoutTouchingSystem3084456574/001/.config/tq/pool.conf
+  follow: journalctl --user -u tq-agent-pool -f
+  status: tq serve   # read-only dashboard (add --auth-token for LAN)
+
+== demo (/tmp/TestBootstrapDryRunWritesNothing3953942354/001/demo) ==
+  WARN  not a git checkout — agents cannot commit or close the loop
+  todo  1 open item(s) → tasks after harvest
+  WARN  no verify command (tasks complete without proof) — pass --verify demo=<cmd>
+  crush autonomy granted in .crushrc (changed: true)
+  git   dry-run — would commit .tq-verify, .crushrc if changed
+tq: bootstrap: dry-run — nothing written, pool not started
+would run: tq agent-pool --projects-dir /tmp/TestBootstrapDryRunWritesNothing3953942354/001 --repos /tmp/TestBootstrapDryRunWritesNothing3953942354/001/demo --concurrency 1 --max-concurrent-agents 1 --interval 5m0s --daily-budget 20 --max-per-tick 10 --yolo=true --review=true --review-autofix=true --project-exclusive=true --allow-dirty=false --log-dir /home/lars/.local/state/tq/logs --db /tmp/TestBootstrapDryRunWritesNothing3953942354/003/tasks.db
+session sess-wrap closed (repo /tmp/TestCrushWrapperClosesOnExit791969750/002): 1 attributed commit(s), oldest first:
+  6557e6a78 wrapped work
+review task 000001a1c1bdc6a87353b94cd74600000000 enqueued
+status task 000001a1c1bdc6a91e8dccb938df00000000 enqueued
+session sess-wrap closed (repo /tmp/TestCrushWrapperClosesOnCrash1863430138/002)
+no commits carry the Crush-Session: sess-wrap footer — nothing to review or report
+next time, attribute your commits by ending the commit message with this footer line:
+
+Crush-Session: sess-wrap
+--- FAIL: TestDoctorHealthyEmptyDB (0.16s)
+    doctor_test.go:82: worst = warn, want ok; results: [{Name:db Status:ok Detail:integrity ok Items:[]} {Name:wal Status:ok Detail:wal enabled Items:[]} {Name:queue Status:ok Detail:pending=0 running=0 completed=0 dead=0 cancelled=0 Items:[]} {Name:dlq Status:ok Detail:0 dead-lettered task(s) Items:[]} {Name:parked Status:ok Detail:no rate-limit-parked tasks Items:[]} {Name:dlq-repair Status:ok Detail:no dead letters Items:[]} {Name:paid-noops Status:ok Detail:no completed paid tasks with zero attributable output Items:[]} {Name:worker Status:ok Detail:no recent heartbeats, but the queue is empty (idle, not stuck) Items:[]} {Name:review-sweeper Status:ok Detail:no cursor (sweeper never ran here) Items:[]} {Name:status-sweeper Status:ok Detail:no cursor (sweeper never ran here) Items:[]} {Name:dlqfix-sweeper Status:ok Detail:no cursor (sweeper never ran here) Items:[]} {Name:prioritize-sweeper Status:ok Detail:no cursor (sweeper never ran here) Items:[]} {Name:incident-policy Status:ok Detail:no cursor (sweeper never ran here) Items:[]} {Name:projection-cursor Status:ok Detail:no cursor (serve never folded here) Items:[]} {Name:projection-db Status:ok Detail:no projection db yet (created on the first serve) Items:[]} {Name:projection-worker Status:ok Detail:no worker-death marker Items:[]} {Name:open-sessions Status:ok Detail:no open sessions Items:[]} {Name:agent-binary Status:ok Detail:/tmp/go-build4269560289/b001/tq.test found Items:[]} {Name:crush-version Status:ok Detail:crush 0.99.0 (floor 0.94.1, proven pin 0.99.0) Items:[]} {Name:tool:git Status:ok Detail:git found Items:[]} {Name:tool:go Status:ok Detail:go found Items:[]} {Name:verdict-channel Status:ok Detail:/run/current-system/sw/bin/tq found (differs from the running /tmp/go-build4269560289/b001/tq.test — PATH shadowing) Items:[]} {Name:go-env Status:ok Detail:encoding/json/v2 builds in this environment — no env lie Items:[]} {Name:tag-ancestry Status:warn Detail:1 release tag(s) unreachable from HEAD (forked lineage — releases must not cut until healed): v0.4.2 Items:[]}]
+task 000001a1c1bdd524e167eaafa46800000000 parked until 2026-11-09T21:16:45+01:00 (by lars)
+task 000001a1c1bdd524e167eaafa46800000000 released — claims re-arm now
+session sess-e2e opened (repo /tmp/TestCmdSessionBridgeEndToEnd3655572737/002, project demo)
+attribute your commits by ending the commit message with this footer line:
+
+Crush-Session: sess-e2e
+session sess-e2e closed (repo /tmp/TestCmdSessionBridgeEndToEnd3655572737/002): 2 attributed commit(s), oldest first:
+  d629f88c4 work one
+  3ad60d038 work two
+review task 000001a1c1bdd5d032cc52da339200000000 enqueued
+status task 000001a1c1bdd5d032cc52da339200000001 enqueued
+session sess-e2e closed (repo /tmp/TestCmdSessionBridgeEndToEnd3655572737/002): 2 attributed commit(s), oldest first:
+  d629f88c4 work one
+  3ad60d038 work two
+review task 000001a1c1bdd5d032cc52da339200000000 known (dedup)
+status task 000001a1c1bdd5d032cc52da339200000001 known (dedup)
+session sess-crash opened (repo /tmp/TestCmdSessionListAndDryRun330178321/002, project demo)
+attribute your commits by ending the commit message with this footer line:
+
+Crush-Session: sess-crash
+1 open session(s), newest first:
+  sess-crash  opened 2026-11-09 20:16:46  repo /tmp/TestCmdSessionListAndDryRun330178321/002  project demo
+dry run: 1 attributed commit(s), oldest first:
+  69b828dba crashed session work
+close would enqueue one review task and one status task over these commits (dedup-keyed, replay-safe)
+2026/11/09 20:16:46 INFO readmodel: empty projection under a nonzero cursor — replaying from zero checkpoint=1
+2026/11/09 20:16:46 INFO readmodel: empty projection under a nonzero cursor — replaying from zero checkpoint=2
+tq verdict: recorded 36 bytes
+tq verdict: recorded 14 bytes
+tq verdict: recorded 13 bytes
+tq verdict: recorded 19 bytes
+2026/11/09 20:16:46 WARN effort: estimate cache unreadable, starting empty path=/tmp/TestParseAgentPoolOptionsJev558647041/002/tq.db.effort.json err="open /tmp/TestParseAgentPoolOptionsJev558647041/002/tq.db.effort.json: no such file or directory"
+2026/11/09 20:16:46 WARN effort: estimate cache unreadable, starting empty path=/tmp/TestParseAgentPoolOptionsJev558647041/002/tq.db.effort.json err="open /tmp/TestParseAgentPoolOptionsJev558647041/002/tq.db.effort.json: no such file or directory"
+evidence read skipped: 201 dead tasks exceeds the 200-row cap; rows render without evidence= (narrow with --evidence-stage)
+2026/11/09 20:16:46 INFO readmodel: empty projection under a nonzero cursor — replaying from zero checkpoint=1
+FAIL
+FAIL	github.com/larsartmann/go-taskqueue/cmd/tq	4.762s
+FAIL
+WARN: cmd/tq gate failed — possible concurrent edit in flight; retry poll 1/3 in 45s
+tq ask: question e1b5d581c116f579 recorded for task 000001a1c1be905a01c070aa378300000000 (expires 2026-11-09T21:17:33+01:00); end your turn — the task parks until the owner answers
+tq ask: question 58ec17c13a469feb recorded for task 000001a1c1be905f01ea71c74b9b00000000 (expires 2026-11-12T20:17:33+01:00); end your turn — the task parks until the owner answers
+tq ask: question 58ec17c13a469feb recorded for task 000001a1c1be905f01ea71c74b9b00000000 (expires 2026-11-12T20:17:33+01:00); end your turn — the task parks until the owner answers
+tq ask: question 8d75bf7b4e909df1 recorded for task 000001a1c1be9061d2b126bad49400000000 (expires 2026-11-12T20:17:33+01:00); end your turn — the task parks until the owner answers
+tq ask: question 8d75bf7b4e909df1 was already answered — honor the ruling in the prompt instead of re-asking
+tq: bootstrap: installed
+  unit   /tmp/TestInstallServiceRendersUnitAndConfigWithoutTouchingSystem4194983269/001/.config/systemd/user/tq-agent-pool.service
+  config /tmp/TestInstallServiceRendersUnitAndConfigWithoutTouchingSystem4194983269/001/.config/tq/pool.conf
+  follow: journalctl --user -u tq-agent-pool -f
+  status: tq serve   # read-only dashboard (add --auth-token for LAN)
+
+== demo (/tmp/TestBootstrapDryRunWritesNothing1232056346/001/demo) ==
+  WARN  not a git checkout — agents cannot commit or close the loop
+  todo  1 open item(s) → tasks after harvest
+  WARN  no verify command (tasks complete without proof) — pass --verify demo=<cmd>
+  crush autonomy granted in .crushrc (changed: true)
+  git   dry-run — would commit .tq-verify, .crushrc if changed
+tq: bootstrap: dry-run — nothing written, pool not started
+would run: tq agent-pool --projects-dir /tmp/TestBootstrapDryRunWritesNothing1232056346/001 --repos /tmp/TestBootstrapDryRunWritesNothing1232056346/001/demo --concurrency 1 --max-concurrent-agents 1 --interval 5m0s --daily-budget 20 --max-per-tick 10 --yolo=true --review=true --review-autofix=true --project-exclusive=true --allow-dirty=false --log-dir /home/lars/.local/state/tq/logs --db /tmp/TestBootstrapDryRunWritesNothing1232056346/003/tasks.db
+session sess-wrap closed (repo /tmp/TestCrushWrapperClosesOnExit207942630/002): 1 attributed commit(s), oldest first:
+  3a62b5c28 wrapped work
+review task 000001a1c1be9092f572008ccdca00000000 enqueued
+status task 000001a1c1be9092f572008ccdca00000001 enqueued
+session sess-wrap closed (repo /tmp/TestCrushWrapperClosesOnCrash586184890/002)
+no commits carry the Crush-Session: sess-wrap footer — nothing to review or report
+next time, attribute your commits by ending the commit message with this footer line:
+
+Crush-Session: sess-wrap
+--- FAIL: TestDoctorHealthyEmptyDB (0.18s)
+    doctor_test.go:82: worst = warn, want ok; results: [{Name:db Status:ok Detail:integrity ok Items:[]} {Name:wal Status:ok Detail:wal enabled Items:[]} {Name:queue Status:ok Detail:pending=0 running=0 completed=0 dead=0 cancelled=0 Items:[]} {Name:dlq Status:ok Detail:0 dead-lettered task(s) Items:[]} {Name:parked Status:ok Detail:no rate-limit-parked tasks Items:[]} {Name:dlq-repair Status:ok Detail:no dead letters Items:[]} {Name:paid-noops Status:ok Detail:no completed paid tasks with zero attributable output Items:[]} {Name:worker Status:ok Detail:no recent heartbeats, but the queue is empty (idle, not stuck) Items:[]} {Name:review-sweeper Status:ok Detail:no cursor (sweeper never ran here) Items:[]} {Name:status-sweeper Status:ok Detail:no cursor (sweeper never ran here) Items:[]} {Name:dlqfix-sweeper Status:ok Detail:no cursor (sweeper never ran here) Items:[]} {Name:prioritize-sweeper Status:ok Detail:no cursor (sweeper never ran here) Items:[]} {Name:incident-policy Status:ok Detail:no cursor (sweeper never ran here) Items:[]} {Name:projection-cursor Status:ok Detail:no cursor (serve never folded here) Items:[]} {Name:projection-db Status:ok Detail:no projection db yet (created on the first serve) Items:[]} {Name:projection-worker Status:ok Detail:no worker-death marker Items:[]} {Name:open-sessions Status:ok Detail:no open sessions Items:[]} {Name:agent-binary Status:ok Detail:/tmp/go-build2895133374/b001/tq.test found Items:[]} {Name:crush-version Status:ok Detail:crush 0.99.0 (floor 0.94.1, proven pin 0.99.0) Items:[]} {Name:tool:git Status:ok Detail:git found Items:[]} {Name:tool:go Status:ok Detail:go found Items:[]} {Name:verdict-channel Status:ok Detail:/run/current-system/sw/bin/tq found (differs from the running /tmp/go-build2895133374/b001/tq.test — PATH shadowing) Items:[]} {Name:go-env Status:ok Detail:encoding/json/v2 builds in this environment — no env lie Items:[]} {Name:tag-ancestry Status:warn Detail:1 release tag(s) unreachable from HEAD (forked lineage — releases must not cut until healed): v0.4.2 Items:[]}]
+task 000001a1c1bea0f7dbe71514787e00000000 parked until 2026-11-09T21:17:38+01:00 (by lars)
+task 000001a1c1bea0f7dbe71514787e00000000 released — claims re-arm now
+session sess-e2e opened (repo /tmp/TestCmdSessionBridgeEndToEnd2401243220/002, project demo)
+attribute your commits by ending the commit message with this footer line:
+
+Crush-Session: sess-e2e
+session sess-e2e closed (repo /tmp/TestCmdSessionBridgeEndToEnd2401243220/002): 2 attributed commit(s), oldest first:
+  6dc4b9541 work one
+  33f1dd94e work two
+review task 000001a1c1bea1a8945115019c3500000000 enqueued
+status task 000001a1c1bea1a8945115019c3500000001 enqueued
+session sess-e2e closed (repo /tmp/TestCmdSessionBridgeEndToEnd2401243220/002): 2 attributed commit(s), oldest first:
+  6dc4b9541 work one
+  33f1dd94e work two
+review task 000001a1c1bea1a8945115019c3500000000 known (dedup)
+status task 000001a1c1bea1a8945115019c3500000001 known (dedup)
+session sess-crash opened (repo /tmp/TestCmdSessionListAndDryRun3900609351/002, project demo)
+attribute your commits by ending the commit message with this footer line:
+
+Crush-Session: sess-crash
+1 open session(s), newest first:
+  sess-crash  opened 2026-11-09 20:17:38  repo /tmp/TestCmdSessionListAndDryRun3900609351/002  project demo
+dry run: 1 attributed commit(s), oldest first:
+  4b02c4b6a crashed session work
+close would enqueue one review task and one status task over these commits (dedup-keyed, replay-safe)
+2026/11/09 20:17:38 INFO readmodel: empty projection under a nonzero cursor — replaying from zero checkpoint=1
+2026/11/09 20:17:38 INFO readmodel: empty projection under a nonzero cursor — replaying from zero checkpoint=2
+tq verdict: recorded 36 bytes
+tq verdict: recorded 14 bytes
+tq verdict: recorded 13 bytes
+tq verdict: recorded 19 bytes
+2026/11/09 20:17:38 WARN effort: estimate cache unreadable, starting empty path=/tmp/TestParseAgentPoolOptionsJev3655065318/002/tq.db.effort.json err="open /tmp/TestParseAgentPoolOptionsJev3655065318/002/tq.db.effort.json: no such file or directory"
+2026/11/09 20:17:38 WARN effort: estimate cache unreadable, starting empty path=/tmp/TestParseAgentPoolOptionsJev3655065318/002/tq.db.effort.json err="open /tmp/TestParseAgentPoolOptionsJev3655065318/002/tq.db.effort.json: no such file or directory"
+evidence read skipped: 201 dead tasks exceeds the 200-row cap; rows render without evidence= (narrow with --evidence-stage)
+2026/11/09 20:17:39 INFO readmodel: empty projection under a nonzero cursor — replaying from zero checkpoint=1
+FAIL
+FAIL	github.com/larsartmann/go-taskqueue/cmd/tq	5.285s
+FAIL
+WARN: cmd/tq gate failed — possible concurrent edit in flight; retry poll 2/3 in 45s
+tq ask: question 185b0c81881cd86a recorded for task 000001a1c1bf5a7c0a8cf82279ad00000000 (expires 2026-11-09T21:18:25+01:00); end your turn — the task parks until the owner answers
+tq ask: question 9f73daf069be7d11 recorded for task 000001a1c1bf5a7f1873694a476700000000 (expires 2026-11-12T20:18:25+01:00); end your turn — the task parks until the owner answers
+tq ask: question 9f73daf069be7d11 recorded for task 000001a1c1bf5a7f1873694a476700000000 (expires 2026-11-12T20:18:25+01:00); end your turn — the task parks until the owner answers
+tq ask: question 2c75b24e0a4312dc recorded for task 000001a1c1bf5a81a7ef12da3b6a00000000 (expires 2026-11-12T20:18:25+01:00); end your turn — the task parks until the owner answers
+tq ask: question 2c75b24e0a4312dc was already answered — honor the ruling in the prompt instead of re-asking
+tq: bootstrap: installed
+  unit   /tmp/TestInstallServiceRendersUnitAndConfigWithoutTouchingSystem2546888868/001/.config/systemd/user/tq-agent-pool.service
+  config /tmp/TestInstallServiceRendersUnitAndConfigWithoutTouchingSystem2546888868/001/.config/tq/pool.conf
+  follow: journalctl --user -u tq-agent-pool -f
+  status: tq serve   # read-only dashboard (add --auth-token for LAN)
+
+== demo (/tmp/TestBootstrapDryRunWritesNothing3946118171/001/demo) ==
+  WARN  not a git checkout — agents cannot commit or close the loop
+  todo  1 open item(s) → tasks after harvest
+  WARN  no verify command (tasks complete without proof) — pass --verify demo=<cmd>
+  crush autonomy granted in .crushrc (changed: true)
+  git   dry-run — would commit .tq-verify, .crushrc if changed
+tq: bootstrap: dry-run — nothing written, pool not started
+would run: tq agent-pool --projects-dir /tmp/TestBootstrapDryRunWritesNothing3946118171/001 --repos /tmp/TestBootstrapDryRunWritesNothing3946118171/001/demo --concurrency 1 --max-concurrent-agents 1 --interval 5m0s --daily-budget 20 --max-per-tick 10 --yolo=true --review=true --review-autofix=true --project-exclusive=true --allow-dirty=false --log-dir /home/lars/.local/state/tq/logs --db /tmp/TestBootstrapDryRunWritesNothing3946118171/003/tasks.db
+session sess-wrap closed (repo /tmp/TestCrushWrapperClosesOnExit1635790119/002): 1 attributed commit(s), oldest first:
+  825c575b6 wrapped work
+review task 000001a1c1bf5aa2d7a6213c60d700000000 enqueued
+status task 000001a1c1bf5aa2d7a6213c60d700000001 enqueued
+session sess-wrap closed (repo /tmp/TestCrushWrapperClosesOnCrash1370680914/002)
+no commits carry the Crush-Session: sess-wrap footer — nothing to review or report
+next time, attribute your commits by ending the commit message with this footer line:
+
+Crush-Session: sess-wrap
+--- FAIL: TestDoctorHealthyEmptyDB (0.14s)
+    doctor_test.go:82: worst = warn, want ok; results: [{Name:db Status:ok Detail:integrity ok Items:[]} {Name:wal Status:ok Detail:wal enabled Items:[]} {Name:queue Status:ok Detail:pending=0 running=0 completed=0 dead=0 cancelled=0 Items:[]} {Name:dlq Status:ok Detail:0 dead-lettered task(s) Items:[]} {Name:parked Status:ok Detail:no rate-limit-parked tasks Items:[]} {Name:dlq-repair Status:ok Detail:no dead letters Items:[]} {Name:paid-noops Status:ok Detail:no completed paid tasks with zero attributable output Items:[]} {Name:worker Status:ok Detail:no recent heartbeats, but the queue is empty (idle, not stuck) Items:[]} {Name:review-sweeper Status:ok Detail:no cursor (sweeper never ran here) Items:[]} {Name:status-sweeper Status:ok Detail:no cursor (sweeper never ran here) Items:[]} {Name:dlqfix-sweeper Status:ok Detail:no cursor (sweeper never ran here) Items:[]} {Name:prioritize-sweeper Status:ok Detail:no cursor (sweeper never ran here) Items:[]} {Name:incident-policy Status:ok Detail:no cursor (sweeper never ran here) Items:[]} {Name:projection-cursor Status:ok Detail:no cursor (serve never folded here) Items:[]} {Name:projection-db Status:ok Detail:no projection db yet (created on the first serve) Items:[]} {Name:projection-worker Status:ok Detail:no worker-death marker Items:[]} {Name:open-sessions Status:ok Detail:no open sessions Items:[]} {Name:agent-binary Status:ok Detail:/tmp/go-build4224905940/b001/tq.test found Items:[]} {Name:crush-version Status:ok Detail:crush 0.99.0 (floor 0.94.1, proven pin 0.99.0) Items:[]} {Name:tool:git Status:ok Detail:git found Items:[]} {Name:tool:go Status:ok Detail:go found Items:[]} {Name:verdict-channel Status:ok Detail:/run/current-system/sw/bin/tq found (differs from the running /tmp/go-build4224905940/b001/tq.test — PATH shadowing) Items:[]} {Name:go-env Status:ok Detail:encoding/json/v2 builds in this environment — no env lie Items:[]} {Name:tag-ancestry Status:warn Detail:1 release tag(s) unreachable from HEAD (forked lineage — releases must not cut until healed): v0.4.2 Items:[]}]
+task 000001a1c1bf69aa78fd6ad4a31500000000 parked until 2026-11-09T21:18:29+01:00 (by lars)
+task 000001a1c1bf69aa78fd6ad4a31500000000 released — claims re-arm now
+session sess-e2e opened (repo /tmp/TestCmdSessionBridgeEndToEnd760049832/002, project demo)
+attribute your commits by ending the commit message with this footer line:
+
+Crush-Session: sess-e2e
+session sess-e2e closed (repo /tmp/TestCmdSessionBridgeEndToEnd760049832/002): 2 attributed commit(s), oldest first:
+  fecd7231b work one
+  e00b22367 work two
+review task 000001a1c1bf6a5c24d8638e78ad00000000 enqueued
+status task 000001a1c1bf6a5c24d8638e78ad00000001 enqueued
+session sess-e2e closed (repo /tmp/TestCmdSessionBridgeEndToEnd760049832/002): 2 attributed commit(s), oldest first:
+  fecd7231b work one
+  e00b22367 work two
+review task 000001a1c1bf6a5c24d8638e78ad00000000 known (dedup)
+status task 000001a1c1bf6a5c24d8638e78ad00000001 known (dedup)
+session sess-crash opened (repo /tmp/TestCmdSessionListAndDryRun3119196477/002, project demo)
+attribute your commits by ending the commit message with this footer line:
+
+Crush-Session: sess-crash
+1 open session(s), newest first:
+  sess-crash  opened 2026-11-09 20:18:29  repo /tmp/TestCmdSessionListAndDryRun3119196477/002  project demo
+dry run: 1 attributed commit(s), oldest first:
+  dc10d5584 crashed session work
+close would enqueue one review task and one status task over these commits (dedup-keyed, replay-safe)
+2026/11/09 20:18:29 INFO readmodel: empty projection under a nonzero cursor — replaying from zero checkpoint=1
+2026/11/09 20:18:29 INFO readmodel: empty projection under a nonzero cursor — replaying from zero checkpoint=2
+tq verdict: recorded 36 bytes
+tq verdict: recorded 14 bytes
+tq verdict: recorded 13 bytes
+tq verdict: recorded 19 bytes
+2026/11/09 20:18:29 WARN effort: estimate cache unreadable, starting empty path=/tmp/TestParseAgentPoolOptionsJev4171719779/002/tq.db.effort.json err="open /tmp/TestParseAgentPoolOptionsJev4171719779/002/tq.db.effort.json: no such file or directory"
+2026/11/09 20:18:29 WARN effort: estimate cache unreadable, starting empty path=/tmp/TestParseAgentPoolOptionsJev4171719779/002/tq.db.effort.json err="open /tmp/TestParseAgentPoolOptionsJev4171719779/002/tq.db.effort.json: no such file or directory"
+evidence read skipped: 201 dead tasks exceeds the 200-row cap; rows render without evidence= (narrow with --evidence-stage)
+2026/11/09 20:18:30 INFO readmodel: empty projection under a nonzero cursor — replaying from zero checkpoint=1
+FAIL
+FAIL	github.com/larsartmann/go-taskqueue/cmd/tq	4.924s
+FAIL
+WARN: cmd/tq gate failed — possible concurrent edit in flight; retry poll 3/3 in 45s
+tq ask: question 7e242a9b183b8412 recorded for task 000001a1c1c023127665b90b2b3d00000000 (expires 2026-11-09T21:19:17+01:00); end your turn — the task parks until the owner answers
+tq ask: question 31ddbab303b88f2e recorded for task 000001a1c1c023175c55738c814500000000 (expires 2026-11-12T20:19:17+01:00); end your turn — the task parks until the owner answers
+tq ask: question 31ddbab303b88f2e recorded for task 000001a1c1c023175c55738c814500000000 (expires 2026-11-12T20:19:17+01:00); end your turn — the task parks until the owner answers
+tq ask: question 7f8a4652a65133c3 recorded for task 000001a1c1c0231989855623c7f600000000 (expires 2026-11-12T20:19:17+01:00); end your turn — the task parks until the owner answers
+tq ask: question 7f8a4652a65133c3 was already answered — honor the ruling in the prompt instead of re-asking
+tq: bootstrap: installed
+  unit   /tmp/TestInstallServiceRendersUnitAndConfigWithoutTouchingSystem3938347194/001/.config/systemd/user/tq-agent-pool.service
+  config /tmp/TestInstallServiceRendersUnitAndConfigWithoutTouchingSystem3938347194/001/.config/tq/pool.conf
+  follow: journalctl --user -u tq-agent-pool -f
+  status: tq serve   # read-only dashboard (add --auth-token for LAN)
+
+== demo (/tmp/TestBootstrapDryRunWritesNothing2944314521/001/demo) ==
+  WARN  not a git checkout — agents cannot commit or close the loop
+  todo  1 open item(s) → tasks after harvest
+  WARN  no verify command (tasks complete without proof) — pass --verify demo=<cmd>
+  crush autonomy granted in .crushrc (changed: true)
+  git   dry-run — would commit .tq-verify, .crushrc if changed
+tq: bootstrap: dry-run — nothing written, pool not started
+would run: tq agent-pool --projects-dir /tmp/TestBootstrapDryRunWritesNothing2944314521/001 --repos /tmp/TestBootstrapDryRunWritesNothing2944314521/001/demo --concurrency 1 --max-concurrent-agents 1 --interval 5m0s --daily-budget 20 --max-per-tick 10 --yolo=true --review=true --review-autofix=true --project-exclusive=true --allow-dirty=false --log-dir /home/lars/.local/state/tq/logs --db /tmp/TestBootstrapDryRunWritesNothing2944314521/003/tasks.db
+session sess-wrap closed (repo /tmp/TestCrushWrapperClosesOnExit2974801407/002): 1 attributed commit(s), oldest first:
+  5be63cce2 wrapped work
+review task 000001a1c1c0233b656f1454059a00000000 enqueued
+status task 000001a1c1c0233b656f1454059a00000001 enqueued
+session sess-wrap closed (repo /tmp/TestCrushWrapperClosesOnCrash183116360/002)
+no commits carry the Crush-Session: sess-wrap footer — nothing to review or report
+next time, attribute your commits by ending the commit message with this footer line:
+
+Crush-Session: sess-wrap
+--- FAIL: TestDoctorHealthyEmptyDB (0.15s)
+    doctor_test.go:82: worst = warn, want ok; results: [{Name:db Status:ok Detail:integrity ok Items:[]} {Name:wal Status:ok Detail:wal enabled Items:[]} {Name:queue Status:ok Detail:pending=0 running=0 completed=0 dead=0 cancelled=0 Items:[]} {Name:dlq Status:ok Detail:0 dead-lettered task(s) Items:[]} {Name:parked Status:ok Detail:no rate-limit-parked tasks Items:[]} {Name:dlq-repair Status:ok Detail:no dead letters Items:[]} {Name:paid-noops Status:ok Detail:no completed paid tasks with zero attributable output Items:[]} {Name:worker Status:ok Detail:no recent heartbeats, but the queue is empty (idle, not stuck) Items:[]} {Name:review-sweeper Status:ok Detail:no cursor (sweeper never ran here) Items:[]} {Name:status-sweeper Status:ok Detail:no cursor (sweeper never ran here) Items:[]} {Name:dlqfix-sweeper Status:ok Detail:no cursor (sweeper never ran here) Items:[]} {Name:prioritize-sweeper Status:ok Detail:no cursor (sweeper never ran here) Items:[]} {Name:incident-policy Status:ok Detail:no cursor (sweeper never ran here) Items:[]} {Name:projection-cursor Status:ok Detail:no cursor (serve never folded here) Items:[]} {Name:projection-db Status:ok Detail:no projection db yet (created on the first serve) Items:[]} {Name:projection-worker Status:ok Detail:no worker-death marker Items:[]} {Name:open-sessions Status:ok Detail:no open sessions Items:[]} {Name:agent-binary Status:ok Detail:/tmp/go-build4008139126/b001/tq.test found Items:[]} {Name:crush-version Status:ok Detail:crush 0.99.0 (floor 0.94.1, proven pin 0.99.0) Items:[]} {Name:tool:git Status:ok Detail:git found Items:[]} {Name:tool:go Status:ok Detail:go found Items:[]} {Name:verdict-channel Status:ok Detail:/run/current-system/sw/bin/tq found (differs from the running /tmp/go-build4008139126/b001/tq.test — PATH shadowing) Items:[]} {Name:go-env Status:ok Detail:encoding/json/v2 builds in this environment — no env lie Items:[]} {Name:tag-ancestry Status:warn Detail:1 release tag(s) unreachable from HEAD (forked lineage — releases must not cut until healed): v0.4.2 Items:[]}]
+task 000001a1c1c031b3fd1f5820206700000000 parked until 2026-11-09T21:19:20+01:00 (by lars)
+task 000001a1c1c031b3fd1f5820206700000000 released — claims re-arm now
+session sess-e2e opened (repo /tmp/TestCmdSessionBridgeEndToEnd2055839832/002, project demo)
+attribute your commits by ending the commit message with this footer line:
+
+Crush-Session: sess-e2e
+session sess-e2e closed (repo /tmp/TestCmdSessionBridgeEndToEnd2055839832/002): 2 attributed commit(s), oldest first:
+  2b73888ff work one
+  6f5c7984a work two
+review task 000001a1c1c0325b1f5853f12d0300000000 enqueued
+status task 000001a1c1c0325b1f5853f12d0300000001 enqueued
+session sess-e2e closed (repo /tmp/TestCmdSessionBridgeEndToEnd2055839832/002): 2 attributed commit(s), oldest first:
+  2b73888ff work one
+  6f5c7984a work two
+review task 000001a1c1c0325b1f5853f12d0300000000 known (dedup)
+status task 000001a1c1c0325b1f5853f12d0300000001 known (dedup)
+session sess-crash opened (repo /tmp/TestCmdSessionListAndDryRun1854319566/002, project demo)
+attribute your commits by ending the commit message with this footer line:
+
+Crush-Session: sess-crash
+1 open session(s), newest first:
+  sess-crash  opened 2026-11-09 20:19:20  repo /tmp/TestCmdSessionListAndDryRun1854319566/002  project demo
+dry run: 1 attributed commit(s), oldest first:
+  478fd9e4c crashed session work
+close would enqueue one review task and one status task over these commits (dedup-keyed, replay-safe)
+2026/11/09 20:19:20 INFO readmodel: empty projection under a nonzero cursor — replaying from zero checkpoint=1
+2026/11/09 20:19:20 INFO readmodel: empty projection under a nonzero cursor — replaying from zero checkpoint=2
+tq verdict: recorded 36 bytes
+tq verdict: recorded 14 bytes
+tq verdict: recorded 13 bytes
+tq verdict: recorded 19 bytes
+2026/11/09 20:19:21 WARN effort: estimate cache unreadable, starting empty path=/tmp/TestParseAgentPoolOptionsJev2431030956/002/tq.db.effort.json err="open /tmp/TestParseAgentPoolOptionsJev2431030956/002/tq.db.effort.json: no such file or directory"
+2026/11/09 20:19:21 WARN effort: estimate cache unreadable, starting empty path=/tmp/TestParseAgentPoolOptionsJev2431030956/002/tq.db.effort.json err="open /tmp/TestParseAgentPoolOptionsJev2431030956/002/tq.db.effort.json: no such file or directory"
+evidence read skipped: 201 dead tasks exceeds the 200-row cap; rows render without evidence= (narrow with --evidence-stage)
+2026/11/09 20:19:21 INFO readmodel: empty projection under a nonzero cursor — replaying from zero checkpoint=1
+FAIL
+FAIL	github.com/larsartmann/go-taskqueue/cmd/tq	4.755s
+FAIL
+FAIL: cmd/tq gate still failing after 3 retry polls (45s apart).
+If the errors above are in files you did not edit, a concurrent edit was likely in flight — let it land (or re-run this gate on a quiet tree) before judging the work.
