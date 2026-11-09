@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # scripts/smoke/_lib.sh — scratch-repo factory shared by repo-surface smokes
 # (extracted from smoke/archive-evidence.sh, 23-40 report f8). Sourcing
 # smoke assumes: WORK set to a mktemp dir cleaned by the caller's trap,
