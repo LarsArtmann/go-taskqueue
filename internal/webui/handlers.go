@@ -15,6 +15,7 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
+	servertiming "github.com/larsartmann/httputil/server_timing"
 )
 
 // parseFilter reads the view filter from the request URL query, including
@@ -162,7 +163,15 @@ func (s *Server) handleFacts(w http.ResponseWriter, r *http.Request) {
 		limit = v
 	}
 
+	stopFacts := servertiming.MeasureServerTiming(r.Context(), "facts")
+
 	facts, err := s.store.Facts(r.Context(), after, limit)
+
+	// Record before the first write: the Server-Timing header is stamped
+	// at first write, so a metric recorded after it is lost
+	// (server_timing contract; mounted under RequestLog only).
+	stopFacts()
+
 	if err != nil {
 		http.Error(w, "facts: "+err.Error(), http.StatusInternalServerError)
 
@@ -192,7 +201,13 @@ func (s *Server) handleFacts(w http.ResponseWriter, r *http.Request) {
 // counts directly — a full snapshot projection would be wasted work for a
 // stats poll — and always reports every known status, zeros included.
 func (s *Server) handleStats(w http.ResponseWriter, r *http.Request) {
+	stopStats := servertiming.MeasureServerTiming(r.Context(), "stats")
+
 	counts, err := s.statusCounts(r.Context())
+
+	// Record before the first write (Server-Timing stamps at first write).
+	stopStats()
+
 	if err != nil {
 		http.Error(w, "load stats: "+err.Error(), http.StatusInternalServerError)
 

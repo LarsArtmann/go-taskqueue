@@ -123,6 +123,7 @@ require (
 	github.com/larsartmann/go-taskqueue/internal/task v0.4.2
 	github.com/larsartmann/go-taskqueue/internal/testastguard v0.4.2
 	github.com/larsartmann/go-taskqueue/internal/worker v0.4.2
+	github.com/larsartmann/httputil/server_timing v1.0.3
 	github.com/larsartmann/templ-components v1.27.0
 	github.com/larsartmann/templ-components/icons v1.27.0
 	github.com/larsartmann/templ-components/utils v1.27.0

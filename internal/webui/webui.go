@@ -31,6 +31,7 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/bridge/papdashboard"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/readmodel"
+	servertiming "github.com/larsartmann/httputil/server_timing"
 )
 
 // Default configuration values.
@@ -407,6 +408,15 @@ func (s *Server) Handler() http.Handler {
 	// Security headers wrap everything — including auth rejections — so
 	// even the 401 page is CSP-covered.
 	handler = withSecurityHeaders(handler)
+
+	// Server-Timing trial (fleet review f21): per-segment latency in the
+	// response header, mounted ONLY where the operator already opted
+	// into request logging — the header leaks internal performance
+	// detail (server_timing README), so it never ships on the default
+	// loopback posture. SSE-safe: the wrapper passes Flush through.
+	handler = servertiming.ServerTimingMiddlewareWhen(func(*http.Request) bool {
+		return s.cfg.RequestLog
+	})(handler)
 
 	// Request logging wraps auth so rejected requests are logged too.
 	if s.cfg.RequestLog {

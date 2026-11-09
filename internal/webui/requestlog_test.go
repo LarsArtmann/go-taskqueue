@@ -1,9 +1,43 @@
 package webui
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 )
+
+// TestServerTimingHeaderBehindRequestLog pins the server_timing trial's
+// mount contract (fleet review f21): the Server-Timing header (per-segment
+// + total) ships ONLY where the operator opted into request logging — the
+// header leaks internal performance detail, so the default loopback
+// posture never carries it.
+func TestServerTimingHeaderBehindRequestLog(t *testing.T) {
+	t.Parallel()
+
+	logged := New(newTestStore(t), Config{RequestLog: true})
+	loggedServer := httptest.NewServer(logged.Handler())
+	t.Cleanup(loggedServer.Close)
+
+	code, header, _ := getBody(t, loggedServer.URL+"/api/stats")
+	if code != http.StatusOK {
+		t.Fatalf("GET /api/stats = %d, want 200", code)
+	}
+
+	if st := header.Get("Server-Timing"); !strings.Contains(st, "stats") || !strings.Contains(st, "total") {
+		t.Errorf("Server-Timing = %q, want stats + total segments under RequestLog", st)
+	}
+
+	plain := New(newTestStore(t), Config{})
+	plainServer := httptest.NewServer(plain.Handler())
+	t.Cleanup(plainServer.Close)
+
+	_, header, _ = getBody(t, plainServer.URL+"/api/stats")
+	if st := header.Get("Server-Timing"); st != "" {
+		t.Errorf("Server-Timing shipped without RequestLog: %q", st)
+	}
+}
 
 // TestRedactedRequestURITable pins the redaction contract directly (the
 // end-to-end TestRequestLogRedactsToken proves the logging wrapper; this
