@@ -19,6 +19,7 @@ allow=(
 	'^refs/original'                          # git backup-ref namespace written by filter-branch — a ref, not a path (AGENTS.md, 2026-09-16)
 	'^queue/v4'                               # go-cqrs-lite module path@version, not a repo path (AGENTS.md ADR-0019 bullet; tags verified pushed on origin 2026-09-22)
 	'^claiming/v4'                            # go-cqrs-lite module path@version, not a repo path (AGENTS.md ADR-0019 bullet; tags verified pushed on origin 2026-09-22)
+	'^(system|metaengine|metaengine/sqliteengine|id)/v4$' # go-cqrs-lite module path@version cites in the CHANGELOG version-wave row (tags verified pushed on origin 2026-11-09 via ls-remote: system/v4.18.0, metaengine/v4.23.0, sqliteengine/v4.8.0, id/v4.7.5)
 	'^internal/queue/cqrsqlite$'              # CHANGELOG O12 deletion entry cites the deleted module historically (added 2026-10-06)
 	'^internal/executor/result_fuzz_test.go$' # CHANGELOG cites the deleted fuzz target historically (target removed 2026-11-02, daemon 7765f27b)
 	'^cmd/tq/v0\.4\.3$'                       # CHANGELOG names the post-push CLI module TAG for the v0.4.2 wave (supersedes the proxy-poisoned cmd/tq@v0.4.2) — a tag, not a path
