@@ -186,6 +186,7 @@ func TestErrorFamilyClassification(t *testing.T) {
 	if code := func() *PermanentError {
 		target := &PermanentError{}
 		target, _ = errors.AsType[*PermanentError](perm)
+
 		return target
 	}().ErrorCode(); code != "executor.permanent" {
 		t.Errorf("ErrorCode = %q, want executor.permanent", code)
