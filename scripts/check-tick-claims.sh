@@ -47,6 +47,18 @@
 #   - `--batch-anchors <file>` (row 1403): every anchor's TODO row must be
 #     `[x]` or carry `— BLOCKED:` — the pre-final-commit tick-audit rail,
 #     FAILing (not WARN) because the caller names its own batch.
+#
+# Two-tick fusion rail (row 1661, 28th-dispatch §f26; 2026-11-10): an
+# UNCHECKED TODO_LIST.md row landing on/after the convention date
+# (TQ_TICK_TWO_TICK_SINCE, default 2026-11-02) that fuses BOTH legs of a
+# verify-before-filing pair — the clean-room repro AND the upstream filing
+# — into ONE item warns (TWO-TICK WARN): a NOT-reproducible outcome can
+# then only tick the repro leg, never strand the filing. Rows describing
+# the mechanization itself (they quote the pattern: "two-tick",
+# "check-tick-claims", "mechanize"), ticked rows, and pre-convention rows
+# are grandfathered. Countable summary: "two-tick fusion summary: N
+# flagged, M grandfathered"; TQ_TICK_FUSION_CMD overrides the record feed
+# ('lineno<TAB>epoch<TAB>row') for the self-test negative battery.
 set -uo pipefail
 export LC_ALL=C
 cd "$(dirname "$0")/.." || exit 1
@@ -214,6 +226,57 @@ msg_records() {
 	else
 		git log -n "$win" --format='%H%x09%s' -- TODO_LIST.md 2>/dev/null || true
 	fi
+}
+
+fusion_records() {
+	# One 'lineno<TAB>epoch<TAB>row' record per TODO_LIST.md line at HEAD
+	# (epoch = the line's blame author-time; TQ_TICK_FUSION_CMD overrides
+	# for the self-test negative battery, same record contract).
+	if [ -n "${TQ_TICK_FUSION_CMD:-}" ]; then
+		"$TQ_TICK_FUSION_CMD"
+		return 0
+	fi
+	git blame --line-porcelain HEAD -- TODO_LIST.md 2>/dev/null | awk '
+		/^author-time /{ t = substr($0, 13) + 0 }
+		/^\t/{ n++; sub(/^\t/, ""); printf "%d\t%s\t%s\n", n, t, $0 }'
+}
+
+scan_two_tick_fusion() {
+	# Row 1661: mechanize the two-tick verify-before-filing convention. An
+	# UNCHECKED row landing on/after the convention date that pairs BOTH
+	# legs — repro AND upstream filing — in one item is a fused verdict in
+	# waiting (NOT-reproducible can then only tick the repro leg and the
+	# filing strand is invisible to every gate). WARN-only; countable
+	# summary; the self-test pins both counters.
+	local since="${TQ_TICK_TWO_TICK_SINCE:-2026-11-02}"
+	local lineno epoch row date flags=0 kept=0
+	local repro_re='repro'
+	local file_re='(file|filing|report)[[:space:]]+([[:alpha:]]+[[:space:]]+)?upstream|upstream[[:space:]]+(issue|report|request|filing)'
+	local meta_re='two-tick|check-tick-claims|mechanize'
+	while IFS=$'\t' read -r lineno epoch row; do
+		[ -n "${row:-}" ] || continue
+		case "$row" in
+		'- [x]'* | '- [X]'*) continue ;;
+		esac
+		row="${row,,}"
+		[[ "$row" =~ $repro_re ]] || continue
+		[[ "$row" =~ $file_re ]] || continue
+		[[ "$row" =~ $meta_re ]] && continue
+		date="$(date -u -d "@${epoch}" +%F 2>/dev/null)" || date=""
+		if [ -z "$date" ]; then
+			skips=$((skips + 1))
+			echo "TICK-CLAIM SKIP: TODO_LIST.md:$lineno — unparseable blame epoch ${epoch:-<empty>}"
+			continue
+		fi
+		if [[ "$date" < "$since" ]]; then
+			kept=$((kept + 1))
+			continue
+		fi
+		flags=$((flags + 1))
+		echo "TWO-TICK WARN: TODO_LIST.md:$lineno unchecked row (landed $date) fuses the repro leg and the upstream filing leg in ONE item"
+		echo "  split into TWO unchecked items — 'rebuild the repro' + 'file upstream' — so a NOT-reproducible outcome ticks the repro leg (AGENTS.md two-tick convention)"
+	done < <(fusion_records)
+	echo "two-tick fusion summary: $flags flagged, $kept grandfathered"
 }
 
 scan_line() {
@@ -405,6 +468,18 @@ EOF
 exit 0
 EOF
 	chmod +x "$tmp/ancmd.sh"
+	# pins: two-tick fusion rail (row 1661) — records are
+	# 'lineno<TAB>epoch<TAB>row'; epochs 1793404800=2026-10-31
+	# (pre-convention, grandfathered), 1794268800=2026-11-10 (in force).
+	cat >"$tmp/fusioncmd.sh" <<'EOF'
+#!/bin/sh
+printf '1\t1794268800\t- [ ] repro the crash in a clean tree and file upstream with the engine named\n'
+printf '2\t1793404800\t- [ ] repro the crash in a clean tree and file upstream with the engine named\n'
+printf '3\t1794268800\t- [x] repro leg ticked, file upstream leg pending\n'
+printf '4\t1794268800\t- [ ] repro the crash in a clean tree\n'
+printf '5\t1794268800\t- [ ] check-tick-claims.sh: flag rows fusing repro and file upstream (mechanize the two-tick convention)\n'
+EOF
+	chmod +x "$tmp/fusioncmd.sh"
 	printf 'report says row 1 ticked, rows 1/3 [x], and rows 1-3 [x]\n' >"$tmp/f1.md"
 	printf 'sha-cited rows 1-2 ticked in aaaaaaaaaaaaaaaa plus row 2 ticked in bbbbbbbbbbbbbbbb\n' >"$tmp/f2.md"
 	printf 'negatives: rows 1-2 unticked, row 3 not ticked, row 4 was UNCHECKED\n' >"$tmp/f3.md"
@@ -419,7 +494,7 @@ EOF
 	printf 'blocked claim: BLOCKED rows written (dddddddddddddddd)\nBLOCKED rows written (cccccccccccccccc)\n' >"$tmp/f6.md"
 	local files out out2
 	files="$(printf '%s\n' "$tmp/f1.md" "$tmp/f2.md" "$tmp/f3.md" "$tmp/f4.md" "$tmp/2026-01-01_00-00_selftest.md" "$tmp/f5.md" "$tmp/f6.md" "$tmp/f7.md" "$tmp/f8.md")"
-	out="$(TQ_TICK_LIST_CMD="$tmp/listcmd.sh" TQ_TICK_DIFF_CMD="$tmp/diffcmd.sh" TQ_TICK_MSG_CMD="$tmp/msgcmd.sh" TQ_TICK_ANCESTOR_CMD="$tmp/ancmd.sh" TQ_TICK_CLAIM_FILES="$files" "$self_abs" 2>&1)"
+	out="$(TQ_TICK_LIST_CMD="$tmp/listcmd.sh" TQ_TICK_DIFF_CMD="$tmp/diffcmd.sh" TQ_TICK_MSG_CMD="$tmp/msgcmd.sh" TQ_TICK_ANCESTOR_CMD="$tmp/ancmd.sh" TQ_TICK_FUSION_CMD="$tmp/fusioncmd.sh" TQ_TICK_CLAIM_FILES="$files" "$self_abs" 2>&1)"
 	# file-claims: 5 ok / 5 warned / 1 skipped (as before) + the new
 	# ancestor rail: f7 +1 warn, f8 silent → 6/8/1; message-claims:
 	# eeee bare-claim ok (+1), ffff "both … (cccc)" needs 2 but cccc adds 1
@@ -484,6 +559,30 @@ EOF
 		printf '%s\n' "$out"
 		exit 1
 	fi
+	# Row 1661 two-tick fusion rail: exactly one fused row flagged (the
+	# post-convention unchecked pair), the pre-convention twin
+	# grandfathered, the ticked/repro-only/mechanization-quoting rows
+	# silent.
+	if [ "$(grep -c '^TWO-TICK WARN' <<<"$out")" -ne 1 ]; then
+		echo "FAIL: two-tick fusion rail must flag exactly 1 fused row"
+		printf '%s\n' "$out"
+		exit 1
+	fi
+	if ! grep -q 'TODO_LIST.md:1 unchecked row (landed 2026-11-10)' <<<"$out"; then
+		echo "FAIL: fusion WARN does not name the flagged row and its landing date"
+		printf '%s\n' "$out"
+		exit 1
+	fi
+	if grep -q 'TODO_LIST.md:2' <<<"$out"; then
+		echo "FAIL: pre-convention fused row was flagged (must be grandfathered)"
+		printf '%s\n' "$out"
+		exit 1
+	fi
+	if ! grep -qF 'two-tick fusion summary: 1 flagged, 1 grandfathered' <<<"$out"; then
+		echo "FAIL: fusion summary pin off (want 1 flagged, 1 grandfathered)"
+		printf '%s\n' "$out"
+		exit 1
+	fi
 	out2="$("$self_abs" 2>&1)"
 	if ! grep -Eq '^tick-claims summary: [0-9]+ ok, [0-9]+ warned, [0-9]+ skipped$' <<<"$out2"; then
 		echo "FAIL: real-run summary missing or malformed"
@@ -502,7 +601,7 @@ EOF
 		echo "FAIL: batch-anchors rail (want clean=0 bad=1, got $rc2/$rc3)"
 		exit 1
 	fi
-	echo "tick-claims self-test ok (summary format pin + negative counter battery + no-flip/blocked/wide-window/batch-anchors/commit-message rails + unpushed-sha ancestry rail)"
+	echo "tick-claims self-test ok (summary format pin + negative counter battery + no-flip/blocked/wide-window/batch-anchors/commit-message rails + unpushed-sha ancestry rail + two-tick fusion rail)"
 	exit 0
 }
 
@@ -544,6 +643,7 @@ done
 # scanning stays live there via TQ_TICK_MSG_CMD so both surfaces are
 # exercised in one run.
 scan_commit_messages
+scan_two_tick_fusion
 
 echo "tick-claims summary: $oks ok, $warns warned, $skips skipped"
 echo "advisory (WARN-only; cite-the-tick-commit convention, TODO row 1058) — continuing"
