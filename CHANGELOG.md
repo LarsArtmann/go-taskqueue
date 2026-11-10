@@ -264,6 +264,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Internal
 
+- heal cross-repo mode (2026-11-10): `scripts/heal-daemon-sweep.sh --repo
+  <path>` runs the full heal rails (contiguity guard, backup-on-failure,
+  footer verification, citation sweep) against a sibling checkout, so daemon
+  sweeps outside go-taskqueue heal through the script instead of hand-rolled
+  `GIT_SEQUENCE_EDITOR` rebases; all git operations run inside the target
+  repo; `--self-test` pins the cross-repo heal and the nonexistent-dir
+  refusal.
+
 - post-heal attribution gate (2026-11-09): `scripts/check-footer-attribution.sh
   <Task-Queue-ID>` re-runs the queue's footer view (`git log --grep`) against
   the unpushed span and FAILS when any span commit lacks a trailer-parseable
