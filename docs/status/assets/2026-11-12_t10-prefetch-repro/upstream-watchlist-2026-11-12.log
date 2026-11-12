@@ -1,0 +1,15 @@
+# Upstream watchlist round — 2026-11-12 (T23, repair-verify-deepen window)
+
+- go-cqrs-lite queue tags: ceiling STILL queue/v4.0.3 (ls-remote, no queue/v5*) —
+  T01's v4-facade restore remains the correct disposition; the finish path stays
+  owner-gated on the upstream tag.
+- go-health: v0.10.0 still newest tag (= pin); severity-override design doc
+  unchanged since 2026-11-04, Status: PROPOSED — demand-gated. No drift.
+- templ-components: v1.27.0 max across all five module families (fresh ls-remote
+  receipt: templ-components-tag-audit-2026-11-12.log). No drift.
+- cmdguard: v5.1.0 still newest (= the 2026-11-11 refresh). No drift.
+- go-credentials-store: v0.4.2 still newest. No drift.
+- go-appkit: v0.12.0 still newest. No drift.
+
+Verdict: ZERO upstream drift since the 2026-11-11 refresh round — no report
+headers require updates; every keep-out and pin stays honest as written.
