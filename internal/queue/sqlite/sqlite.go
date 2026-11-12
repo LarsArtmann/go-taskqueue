@@ -23,12 +23,12 @@ import (
 
 type (
 	// Store is the durable store; one queue per database file.
-	Store = v5.Store
+	Store = v4.Store
 	// StoreOption configures optional Store behavior.
-	StoreOption = v5.StoreOption
+	StoreOption = v4.StoreOption
 	// ArchiveStats reports hot vs archived fact counts and the compaction
 	// watermark (highest archived seq; -1 when nothing was archived yet).
-	ArchiveStats = v5.ArchiveStats
+	ArchiveStats = v4.ArchiveStats
 )
 
 // Open opens (creating if needed) the queue database at path. A legacy
@@ -38,7 +38,7 @@ func Open(path string, opts ...StoreOption) (*Store, error) {
 		return nil, err
 	}
 
-	return v5.Open(path, opts...)
+	return v4.Open(path, opts...)
 }
 
 // OpenWithDeployment opens the store from the resolved deployment struct
@@ -50,7 +50,7 @@ func OpenWithDeployment(d config.Deployment, opts ...StoreOption) (*Store, error
 		return nil, err
 	}
 
-	return v5.OpenWithDeployment(d, opts...)
+	return v4.OpenWithDeployment(d, opts...)
 }
 
 // WithProjectExclusivity turns on store-level per-project serialization:
@@ -60,4 +60,4 @@ func OpenWithDeployment(d config.Deployment, opts ...StoreOption) (*Store, error
 // agents never work the same repo simultaneously. Every pool sharing the DB
 // must opt in; pools that do not opt in ignore the guard. Tasks with an
 // empty project are exempt (they are not tied to a repo).
-var WithProjectExclusivity = v5.WithProjectExclusivity
+var WithProjectExclusivity = v4.WithProjectExclusivity
