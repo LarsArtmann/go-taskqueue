@@ -1,3 +1,8 @@
+> **Archived 2026-11-12 (monthly digest sweep):** point-in-time snapshot
+> past its freshness window — forward-looking items live in
+> TODO_LIST.md (the harvest convention owns open work); re-verify before
+> treating any claim as current. Moved from docs/status/.
+
 # Brutal self-review + v0.3.0 release retro — execution session
 
 Point-in-time snapshot of the session that executed the facade-adoption

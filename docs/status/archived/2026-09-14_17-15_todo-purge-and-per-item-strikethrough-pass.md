@@ -1,3 +1,8 @@
+> **Archived 2026-11-12 (monthly digest sweep):** point-in-time snapshot
+> past its freshness window — forward-looking items live in
+> TODO_LIST.md (the harvest convention owns open work); re-verify before
+> treating any claim as current. Moved from docs/status/.
+
 # TODO purge + per-item strikethrough pass — self-review and status
 
 > Point-in-time snapshot of the 2026-09-14 ~15:30–17:10 docs-health session

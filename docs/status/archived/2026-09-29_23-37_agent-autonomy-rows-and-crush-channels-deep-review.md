@@ -1,3 +1,8 @@
+> **Archived 2026-11-12 (monthly digest sweep):** point-in-time snapshot
+> past its freshness window — forward-looking items live in
+> TODO_LIST.md (the harvest convention owns open work); re-verify before
+> treating any claim as current. Moved from docs/status/.
+
 # Agent-autonomy rows mint + crush Claude-Channels deep review (interactive owner session)
 
 **Session shape**: interactive owner session (no pool task ID) — two directives

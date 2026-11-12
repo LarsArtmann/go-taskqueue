@@ -1,3 +1,8 @@
+> **Archived 2026-11-12 (monthly digest sweep):** point-in-time snapshot
+> past its freshness window — forward-looking items live in
+> TODO_LIST.md (the harvest convention owns open work); re-verify before
+> treating any claim as current. Moved from docs/status/.
+
 # Session Close-Out: CSP/Noindex Hardening, Baseline Regen, Instrument Pass FINALLY SEEN (3 Screenshots)
 
 > **ANNOTATED 31 Oct 2026** (digest-ritual ANNOTATE pass, batch 000001a18fe3eac5; per-item triage at HEAD; owner of residue = the ratified monthly digest ritual). Dispositions — SHIPPED: X-Robots-Tag header matrix pin (internal/webui/headermatrix_test.go); shots harness productized (row 798 RULED scripts/webui-screenshots.sh); 08-28/12-11/12-30 archive sweeps. ROUTED: dark-mode CDP shots (row 305); X-Robots-Tag/CSP curl smoke asserts (row 301); ci-local compound (row 225); tq.home.lan deploy (row 53 BLOCKED owner). OPEN: upstream go-health-dashboard issues (f17-20).

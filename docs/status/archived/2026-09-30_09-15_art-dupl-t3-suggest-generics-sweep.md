@@ -1,3 +1,8 @@
+> **Archived 2026-11-12 (monthly digest sweep):** point-in-time snapshot
+> past its freshness window — forward-looking items live in
+> TODO_LIST.md (the harvest convention owns open work); re-verify before
+> treating any claim as current. Moved from docs/status/.
+
 # art-dupl `-t 3 --suggest-generics` Sweep — Session Close-Out
 
 > **ANNOTATED 4 Nov 2026** (docs-health ANNOTATE pass — the 2026-0* corpus sweep at `d65b9774`; per-item triage against HEAD, TODO_LIST, CHANGELOG; residue owned by the TODO_LIST rows minted this pass + the ratified monthly digest ritual). Dispositions — SHIPPED: runGo clamp extraction alive at HEAD (depbump.go:674); show-suppressed superseded by mirror-gate enforcement (mirror-baseline.txt new-group-fails); mirror-clones zero + dupe-baseline growth gate (row 678 DONE); -t 3 re-runs done (row 696); both-files commit check indexed (README:463); ci-local before push superseded (row 1293); harvest row 838 minted. ROUTED: run-gate.sh row 838 (open); transient -race scoped-rerun row 838; index placement row 546; user-directed-session ritual row 850. OWNER: f21 brutal-self-review value call (never recorded). OPEN: c5/f9 runGo deadline-clamp unit test (depbump_test.go grep zero — MINTED this pass); c2/c3 ephemeral unverifiables; f2 lint-delta battery row; f10 --suggest-generics default pin; f11-f13 ledger-trigger extraction sites (MINTED as one row); f15 mustMarshalDetail (covered by the companion row); f19 mirror-baseline.txt delete (MINTED); f22/f24-f30 untracked. VERDICT: KEEP — clamp test + ledger pins minted; ephemerals honestly unverifiable.

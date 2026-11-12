@@ -1,3 +1,8 @@
+> **Archived 2026-11-12 (monthly digest sweep):** point-in-time snapshot
+> past its freshness window — forward-looking items live in
+> TODO_LIST.md (the harvest convention owns open work); re-verify before
+> treating any claim as current. Moved from docs/status/.
+
 # Confidentiality incident retro — external-evaluator identity on public surfaces
 
 > **ANNOTATED 4 Nov 2026** (docs-health ANNOTATE pass — the 2026-0* corpus sweep at `d65b9774`; per-item triage against HEAD, TODO_LIST, CHANGELOG; residue owned by the TODO_LIST rows minted this pass + the ratified monthly digest ritual). Dispositions — SHIPPED: stray fullcore binary trashed; T5 out-of-tree consumer CI + embed parity (ci.yml:342-356, :199); facadeparity self-test; release.sh clean-room + fresh-cache re-tidy (release.sh:80/:307/:195); cqrs-lint + journal-drift carried gates; pkg.go.dev x8 (row 104); red-master O15 disclose-only ruling; release retro + VERSION-SURFACES in docs/release/; cmd/tq replace-free (ADR-0017); dependabot pins advanced to v0.4.1 (superseded). OWNER: proxy.golang.org removal + history rewrite (row 210 BLOCKED owner); evaluator re-send decision; org-wide sibling sweep — all owner-run. OPEN: f4 confidentiality gate in AGENTS.md (row 210, grep zero hits at HEAD); f12 CHANGELOG multi-writer rule; f13 unpushed-tag re-cut rule; T15 park lot x5 — untracked. VERDICT: KEEP — the gate is still unlanded (row 210); owner leak-remediation calls stand.

@@ -1,3 +1,8 @@
+> **Archived 2026-11-12 (monthly digest sweep):** point-in-time snapshot
+> past its freshness window — forward-looking items live in
+> TODO_LIST.md (the harvest convention owns open work); re-verify before
+> treating any claim as current. Moved from docs/status/.
+
 # 2026-09-27 06-41 — art-dupl `-t 2` sweep: brutal self-review (a–g)
 
 > **ANNOTATED 4 Nov 2026** (docs-health ANNOTATE pass — the 2026-0* corpus sweep at `d65b9774`; per-item triage against HEAD, TODO_LIST, CHANGELOG; residue owned by the TODO_LIST rows minted this pass + the ratified monthly digest ritual). Dispositions — SHIPPED: readmodel/v0.3.0 + companion/v0.3.0 sub-tags sealed (CHANGELOG:1302); TestStatsReadModelSeam row 945 [x] (re-attributed); actionlint + cqrs-lint wired (ci-local.sh:601/:921); dead-sha rows 652/656 healed (row 416 campaign); art-dupl config landed (check-mirror-clones.sh:26); session-start prior-report grep (session-start.sh:34); vendorHash drill + master CI (rows 104/105). ROUTED: SQLITE_BUSY fix row 209 + repro harness row 599; nix FOD superseded (rows 104/105); TestSelfManagingLoop KNOWN_FLAKY (AGENTS.md:317) + rows 432/1496; docs-health residue = digest ritual; full ci-local standing. OWNER: M4 upstream enrich (row 112); f19 claimDue ruling self-settled. OPEN: SQLITE_BUSY fix itself still open (rows 209/599); TestSelfManagingLoop root cause (row 432); lint-shrink policy pass unrowed. VERDICT: KEEP — tracked rows open, nothing untracked of substance.

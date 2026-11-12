@@ -1,3 +1,8 @@
+> **Archived 2026-11-12 (monthly digest sweep):** point-in-time snapshot
+> past its freshness window — forward-looking items live in
+> TODO_LIST.md (the harvest convention owns open work); re-verify before
+> treating any claim as current. Moved from docs/status/.
+
 # 2026-09-30 04-32 — Log-Path Question Session Status (Interactive, Zero Code)
 
 > **ANNOTATED 4 Nov 2026** (docs-health ANNOTATE pass — the 2026-0* corpus sweep at `d65b9774`; per-item triage against HEAD, TODO_LIST, CHANGELOG; residue owned by the TODO_LIST rows minted this pass + the ratified monthly digest ritual). Dispositions — SHIPPED: README 'Where do logs live' (README.md:352); retention labeling (README:216, agentpool.go:352); rationale comment in code (main.go:796 'logs are state, not config'); httpauth CHANGELOG carry (CHANGELOG:1479); index-bloat sweep carry (row 736 + digest ritual); dead-sha fork records (dead-sha-baseline.txt:17-51). ROUTED: doctor/stats log-dir row 664 (open; embodies the g3 self-serve ruling); NixOS pin row 664; defaultLogDir unit pin row 664; SECURITY posture row 664; B-item carries to pre-existing rows (512/535/662/850/586). OWNER: c1/f3 XDG_STATE_HOME honoring (row 850 BLOCKED owner; code unchanged main.go:799 os.UserHomeDir only). OPEN: f8 sibling UserHomeDir XDG audit (untracked); f10 tq show sidecar-log path (no surface, untracked); f48/f49 cancelled-run semantics; f9 other half (bootstrap rendered pool.conf lacks the rationale line). VERDICT: KEEP — XDG owner row 850 + untracked micro-tail.

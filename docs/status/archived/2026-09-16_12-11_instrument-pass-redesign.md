@@ -1,3 +1,8 @@
+> **Archived 2026-11-12 (monthly digest sweep):** point-in-time snapshot
+> past its freshness window — forward-looking items live in
+> TODO_LIST.md (the harvest convention owns open work); re-verify before
+> treating any claim as current. Moved from docs/status/.
+
 # 2026-09-16 12:11 — "why is tq.home.lan still so ugly?" → diagnosis + instrument-pass redesign
 
 > **ANNOTATED 31 Oct 2026** (digest-ritual ANNOTATE pass, batch 000001a18fe3eac5; per-item triage at HEAD; owner of residue = the ratified monthly digest ritual). Dispositions — SHIPPED: CSP composition + noindex /health (internal/webui/health.go withHealthHeaders + health_test.go); screenshots harness (scripts/webui-screenshots.sh); CHANGELOG/FEATURES entries. ROUTED: ci-local soak (row 225); dark-mode /health + browser health test + knobs ADR (row 305). OPEN: board/detail-page instrument pass, board keyboard/drag notes, WithTrend/Prometheus/prober extensions, SECURITY/README health product rows (no open rows).

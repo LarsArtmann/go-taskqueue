@@ -1,3 +1,8 @@
+> **Archived 2026-11-12 (monthly digest sweep):** point-in-time snapshot
+> past its freshness window — forward-looking items live in
+> TODO_LIST.md (the harvest convention owns open work); re-verify before
+> treating any claim as current. Moved from docs/status/.
+
 # 20-01 — Session status + brutal self-review — conform-consolidation window
 
 > **ANNOTATED 4 Nov 2026** (docs-health ANNOTATE pass — the 2026-0* corpus sweep at `d65b9774`; per-item triage against HEAD, TODO_LIST, CHANGELOG; residue owned by the TODO_LIST rows minted this pass + the ratified monthly digest ritual). Dispositions — SHIPPED: companion-extraction design annotated EXECUTED+ARCHIVED (archived/2026-09-26_...:3); companion/v0.3.0 sub-tag sealed (CHANGELOG:1302); scratch-postgres conform path (rows 992/466); check-ci in battery (ci-local.sh:105); ci-local end-to-end standing; gofmt ScopedGofmtStage (AGENTS.md:375); footer-last hook (row 980); canonical verify-window battery (AGENTS.md:213). ROUTED: S2 row 111 (UNBLOCKED); S3/S4 rows per TODO_LIST:710; subtest addressing row 471; f7/f13/pg residue row 906. OWNER: pg role provisioning (row 906 BLOCKED); M4 ratification memo (row 112) gating row 371 drift tests; push/CI ownership; pool-unit GOEXPERIMENT (row 188 BLOCKED sudo). OPEN: f1 scripts/go wrapper absent; f3 CHANGELOG entry for the consolidation missing; f4 new-package lint-regen AGENTS rule absent; f6 mirror-gate failure-path self-test absent; f9-f11 unverifiable — untracked. VERDICT: KEEP — owner rows open + untracked convention/gate gaps.

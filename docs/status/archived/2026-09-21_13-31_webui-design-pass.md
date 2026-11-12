@@ -1,3 +1,8 @@
+> **Archived 2026-11-12 (monthly digest sweep):** point-in-time snapshot
+> past its freshness window — forward-looking items live in
+> TODO_LIST.md (the harvest convention owns open work); re-verify before
+> treating any claim as current. Moved from docs/status/.
+
 # Status Report — WebUI/UX Design Pass (interactive session, no task id)
 
 > **ANNOTATED 31 Oct 2026** (digest-ritual ANNOTATE pass, batch 000001a18fe3eac5; per-item triage at HEAD; owner of residue = the ratified monthly digest ritual). Dispositions — SHIPPED: AGENTS GOTOOLCHAIN truthing (row 917, d34b3770); screenshot harness productized (row 798 RULED); CHANGELOG instrument-pass entry. ROUTED: `tq serve --daily-budget` + role=meter a11y (row 617). OPEN: app.js Esc-handler overlay-close verification (no row).

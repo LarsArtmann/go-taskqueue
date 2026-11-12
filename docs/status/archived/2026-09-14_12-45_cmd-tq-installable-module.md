@@ -1,3 +1,8 @@
+> **Archived 2026-11-12 (monthly digest sweep):** point-in-time snapshot
+> past its freshness window — forward-looking items live in
+> TODO_LIST.md (the harvest convention owns open work); re-verify before
+> treating any claim as current. Moved from docs/status/.
+
 # Status: cmd/tq proxy-installability (ADR-0017) — task 000001a09ccb4fb72fc0fd35c832b31bfea9
 
 > **ANNOTATED 4 Nov 2026** (docs-health ANNOTATE pass — the 2026-0* corpus sweep at `d65b9774`; per-item triage against HEAD, TODO_LIST, CHANGELOG; residue owned by the TODO_LIST rows minted this pass + the ratified monthly digest ritual). Dispositions — SHIPPED: replace-free cmd/tq module verified (zero replace, v0.4.1 pins); go install clean-room proof (release.sh:80/:307; v0.4.x published CHANGELOG:162/:338; v0.3.1 retracted); shim tidy fail-loud (row 996); committed cmd/tq/go.work (row 378, CHANGELOG:622, ADR-0017); lint fan-out includes cmd/tq (row 179); go-crush-data pin = FOD contract documented (go.mod:29); CHANGELOG entries (CHANGELOG:2154); release fresh-cache tidy gate; resolvability probe (check-cleanroom-install.sh, ci-local.sh:393); sub-tag enumeration (release.sh:189/:270); VERSION-SURFACES. OWNER: g1 revert mystery mooted. OPEN: b2/f3 nix test-loop cmd/tq leg (flake.nix:467 documents root-scope-on-purpose — deliberate, still uncovered); b4/e7 FOD find heuristic (flake.nix:99); v0.2.0 mixed-graph hazard (row 727); SECURITY/README go-install path unverified; dry-run sub-tag assert; ADR-index guard — unverified. VERDICT: KEEP — module split fully proven at v0.4.2; small open set remains.

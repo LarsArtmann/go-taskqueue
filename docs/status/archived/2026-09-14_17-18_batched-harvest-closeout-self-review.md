@@ -1,3 +1,8 @@
+> **Archived 2026-11-12 (monthly digest sweep):** point-in-time snapshot
+> past its freshness window — forward-looking items live in
+> TODO_LIST.md (the harvest convention owns open work); re-verify before
+> treating any claim as current. Moved from docs/status/.
+
 # Batched Harvest Close-Out — Full Status + Brutal Self-Review
 
 _2026-09-14 17:18, interactive session. Owner prompt: "batch tasks more,
