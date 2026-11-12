@@ -132,6 +132,13 @@ type Config struct {
 	AlertURL string
 	// AlertAPIKey is the Bearer token for AlertURL's ingest route.
 	AlertAPIKey string
+	// Metrics enables the health dashboard's Prometheus exposition at
+	// /health/metrics (dashboard.WithMetrics): a zero-dependency scrape
+	// surface for pools whose dashboards want tq series. Default off —
+	// the deliberate min-surface posture — and when on it rides the same
+	// middleware stack (security headers + AuthToken gate) as every
+	// other health route. Read-only: no write-endpoint review needed.
+	Metrics bool
 }
 
 // ProjectionPump is the live-projection surface the server consumes on
@@ -234,7 +241,7 @@ func New(store queue.Store, cfg Config) *Server {
 		hub:         NewHub(),
 		cfg:         cfg,
 		prober:      prober,
-		dash:        newHealthDashboard(prober, webhookURL),
+		dash:        newHealthDashboard(prober, webhookURL, cfg.Metrics),
 		writes:      newWriteRateLimiter(),
 		agentFeed:   NewAgentFeed(),
 		healthRelay: relay,

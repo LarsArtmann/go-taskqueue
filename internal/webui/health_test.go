@@ -318,6 +318,44 @@ func TestHealthRoutesBehindAuth(t *testing.T) {
 	}
 }
 
+// TestHealthMetricsFlag pins the Prometheus exposition (pareto T19):
+// default-off (404 — the deliberate min-surface posture), flag-on serves
+// the exposition at /health/metrics inside the token gate (401 without
+// the token, 200 with), and the body is Prometheus text.
+func TestHealthMetricsFlag(t *testing.T) {
+	t.Parallel()
+
+	off := New(newTestStore(t), Config{})
+	offServer := httptest.NewServer(off.Handler())
+	t.Cleanup(offServer.Close)
+
+	if code, _, _ := getBody(t, offServer.URL+HealthMetricsPath); code != http.StatusNotFound {
+		t.Fatalf("metrics default-on? = %d, want 404 (flag must enable the surface)", code)
+	}
+
+	on := New(newTestStore(t), Config{Metrics: true, AuthToken: "sekrit"})
+	onServer := httptest.NewServer(on.Handler())
+	t.Cleanup(onServer.Close)
+
+	if code, _, _ := getBody(t, onServer.URL+HealthMetricsPath); code != http.StatusUnauthorized {
+		t.Fatalf("metrics unauthenticated = %d, want 401 (inside the token gate)", code)
+	}
+
+	code, header, body := getBody(t, onServer.URL+HealthMetricsPath+"?token=sekrit")
+
+	if code != http.StatusOK {
+		t.Fatalf("metrics with token = %d, want 200", code)
+	}
+
+	if ct := header.Get("Content-Type"); !strings.Contains(ct, "text/plain") {
+		t.Errorf("metrics content-type = %q, want Prometheus text exposition", ct)
+	}
+
+	if !strings.Contains(body, "health") {
+		t.Errorf("metrics body carries no health metric families: %.120s", body)
+	}
+}
+
 func TestHealthStaticAssets(t *testing.T) {
 	t.Parallel()
 

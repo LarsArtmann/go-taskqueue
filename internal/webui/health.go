@@ -40,6 +40,7 @@ const (
 	HealthStartupPath   = "/startupz"
 	HealthTrendPath     = "/health/trend"
 	HealthExportPath    = "/health/export"
+	HealthMetricsPath   = "/health/metrics"
 )
 
 const (
@@ -513,22 +514,24 @@ func writeHealthJSON(w http.ResponseWriter, code int, resp health.Response) {
 // when non-empty (Config.AlertURL), is the loopback health-relay target:
 // the dashboard POSTs a snapshot there on every overall status transition,
 // and the relay translates it into PapDashboard alerts.
-func newHealthDashboard(pro dashboard.Prober, webhookURL string) *dashboard.Dashboard {
+func newHealthDashboard(pro dashboard.Prober, webhookURL string, metrics bool) *dashboard.Dashboard {
+	routes := dashboard.Routes{
+		Dashboard:  HealthDashboardPath,
+		SSE:        HealthSSEPath,
+		Favicon:    HealthFaviconPath,
+		Liveness:   HealthLivenessPath,
+		Readiness:  HealthReadinessPath,
+		Startup:    HealthStartupPath,
+		Metrics:    "",
+		Trend:      HealthTrendPath,
+		Export:     HealthExportPath,
+		Introspect: "",
+		DatastarJS: healthSDKSrc,
+	}
+
 	opts := []dashboard.Option{
 		dashboard.WithTitle("tq queue health"),
-		dashboard.WithRoutes(dashboard.Routes{
-			Dashboard:  HealthDashboardPath,
-			SSE:        HealthSSEPath,
-			Favicon:    HealthFaviconPath,
-			Liveness:   HealthLivenessPath,
-			Readiness:  HealthReadinessPath,
-			Startup:    HealthStartupPath,
-			Metrics:    "",
-			Trend:      HealthTrendPath,
-			Export:     HealthExportPath,
-			Introspect: "",
-			DatastarJS: healthSDKSrc,
-		}),
+		dashboard.WithRoutes(routes),
 		dashboard.WithEmbeddedDatastarSDK(),
 		dashboard.WithCSSPath("/static/app.css"),
 		dashboard.WithTrend(healthTrendSamples),
@@ -537,6 +540,17 @@ func newHealthDashboard(pro dashboard.Prober, webhookURL string) *dashboard.Dash
 
 	if webhookURL != "" {
 		opts = append(opts, dashboard.WithWebhook(webhookURL))
+	}
+
+	// The Prometheus exposition (pareto T19, 2026-11-12): opt-in via the
+	// Metrics config flag, served at HealthMetricsPath INSIDE the same
+	// middleware stack (security headers + token gate) as every other
+	// health route — the vendored doc's own recommendation. Default off
+	// keeps the deliberate min-surface posture; the flag only un-hides
+	// the capability for pools whose dashboards want tq series.
+	if metrics {
+		routes.Metrics = HealthMetricsPath
+		opts = append(opts, dashboard.WithMetrics(true))
 	}
 
 	return dashboard.New(pro, opts...)
