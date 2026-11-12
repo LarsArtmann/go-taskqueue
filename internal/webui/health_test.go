@@ -429,15 +429,17 @@ func TestHealthFoldFollowerCheck(t *testing.T) {
 	s := New(store, Config{})
 
 	resp := s.prober.CachedResponse()
-	if _, mounted := resp.Checks["projection"]; mounted {
-		t.Fatalf("non-follower projection check emitted: %+v", resp.Checks["projection"])
+
+	proj := resp.Checks["projection"]
+	if proj.Status != health.StatusOff {
+		t.Fatalf("non-follower projection = %+v, want off (the visible unmounted row)", proj)
 	}
 
 	s.MarkFoldFollower()
 
 	resp = s.prober.CachedResponse()
 
-	proj := resp.Checks["projection"]
+	proj = resp.Checks["projection"]
 	if proj.Status != health.StatusWarn {
 		t.Errorf("follower projection = %+v, want warn", proj)
 	}
