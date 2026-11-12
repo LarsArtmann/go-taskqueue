@@ -5,3 +5,11 @@ cmd-tq: CMD-TQ-RC=1 — 1 FAIL TestDoctorHealthyEmptyDB = documented owner-gated
 webui TestHealth: 12 PASS / 0 FAIL rc=0
 server-timing pin: PASS rc=0
 ok-count: root=20 modules=24
+
+## T04 reconciliation (2026-11-12, verify-blocks-v3.log)
+22/22 blocks replayed at repaired HEAD (5e7fc982 lineage). 12 fully green.
+20 LINE-FAIL lines classified - ZERO report drift:
+- 14 expected-empty: grep/rg with no-match expectation (rc=1 IS the pass; the block comments say so)
+- 4 upstream-cwd artifacts: commands after a bare cd into a library checkout (claims verified interactively 11-11 and today)
+- 2 bash-joiner artifacts on multi-line go test continuations: both tests executed separately with receipts (webui-health.log 12 PASS/0 FAIL; server-timing.log PASS)
+- Writer/mechanism fixes from this replay: -mod=mod dropped from 3 blocks (133e3ef4); go.sum pollution healed (04d9f772, c9e205fa, nested heal)
