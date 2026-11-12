@@ -1,0 +1,25 @@
+?   	github.com/larsartmann/go-taskqueue/examples/api	[no test files]
+?   	github.com/larsartmann/go-taskqueue/examples/fullcore	[no test files]
+?   	github.com/larsartmann/go-taskqueue/examples/sse	[no test files]
+ok  	github.com/larsartmann/go-taskqueue/internal/bridge/cqa	1.065s
+?   	github.com/larsartmann/go-taskqueue/internal/bridge/httpx	[no test files]
+ok  	github.com/larsartmann/go-taskqueue/internal/bridge/papdashboard	1.880s
+ok  	github.com/larsartmann/go-taskqueue/internal/budget	1.100s
+ok  	github.com/larsartmann/go-taskqueue/internal/consumer	1.721s
+ok  	github.com/larsartmann/go-taskqueue/internal/depsweep	1.126s
+ok  	github.com/larsartmann/go-taskqueue/internal/dlqfix	1.688s
+ok  	github.com/larsartmann/go-taskqueue/internal/docsgates	1.324s
+ok  	github.com/larsartmann/go-taskqueue/internal/e2e	30.131s
+ok  	github.com/larsartmann/go-taskqueue/internal/harvest	10.183s
+ok  	github.com/larsartmann/go-taskqueue/internal/httpapi	4.768s
+ok  	github.com/larsartmann/go-taskqueue/internal/httpauth	1.031s
+ok  	github.com/larsartmann/go-taskqueue/internal/incident	4.926s
+?   	github.com/larsartmann/go-taskqueue/internal/lockout	[no test files]
+ok  	github.com/larsartmann/go-taskqueue/internal/prioritize	2.067s
+ok  	github.com/larsartmann/go-taskqueue/internal/review	1.899s
+ok  	github.com/larsartmann/go-taskqueue/internal/runactor	1.090s
+ok  	github.com/larsartmann/go-taskqueue/internal/session	2.158s
+ok  	github.com/larsartmann/go-taskqueue/internal/status	2.251s
+ok  	github.com/larsartmann/go-taskqueue/internal/watermark	1.033s
+ok  	github.com/larsartmann/go-taskqueue/internal/webui	25.567s
+ok  	github.com/larsartmann/go-taskqueue/scripts/facadeparity	1.020s
