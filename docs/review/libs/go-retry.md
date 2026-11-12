@@ -14,7 +14,7 @@
 
 ## 1. Usage inventory
 
-Convention (AGENTS.md:287-288): "Retry loops use go-retry (supervisor loops and persisted domain backoff exempt)." All three call sites — there are no other in-process retry loops outside the exemptions:
+Convention (AGENTS.md §Conventions, retry-loop bullet): "Retry loops use go-retry (supervisor loops and persisted domain backoff exempt)." All three call sites — there are no other in-process retry loops outside the exemptions:
 
 | Site | Config | Predicate | Hooks |
 | --- | --- | --- | --- |
@@ -28,7 +28,7 @@ All three pass struct literals carrying `//nolint:exhaustruct // optional hooks 
 
 | Capability | Status | Evidence |
 | --- | --- | --- |
-| `Do` loop + `Config` | 🟢 FULL | all 3 non-exempt sites (§1); AGENTS.md:290 convention holds |
+| `Do` loop + `Config` | 🟢 FULL | all 3 non-exempt sites (§1); AGENTS.md retry-loop convention holds |
 | Custom `IsRetryable` predicate | 🟢 FULL | agent.go:1134 (ETXTBSY sentinel), worker.go:404 (store-busy) |
 | Default family predicate (`errorfamily.IsRetryable`) | 🟡 PARTIAL | only retryx rides it; the other two sites override |
 | `DoWithValue[T]` | 🟢 FULL | agent.go:1129 — F2 landed 2026-11-09/10; the closure dance is gone |
@@ -37,7 +37,7 @@ All three pass struct literals carrying `//nolint:exhaustruct // optional hooks 
 | `OnRetry` hook | 🟢 FULL | worker.go:405-408 (task, attempt, delay, err) |
 | `OnExhausted` hook | 🟢 FULL | worker.go:413-416 — F4 landed; ERROR label names the lease-reclaim backstop, pinned by worker_test.go:1786-1806 |
 | Sentinel discrimination (`ErrExhausted`/`ErrCanceled`/`ErrDeadlineExceeded`) | 🟢 FULL | `errors.Is(err, retry.ErrExhausted)` pinned at worker_test.go:1806 (exhaustion contract test); ErrCanceled/ErrDeadlineExceeded remain unused — but the exhaustion sentinel, the one this repo's loops can emit, is discriminated |
-| `DelayFunc` (server-provided delays) | ⚪ N/A | provider 429 reset windows are persisted requeue parking (rateLimitWait → requeue evidence), which the AGENTS.md:287 exemption covers — not an in-process loop |
+| `DelayFunc` (server-provided delays) | ⚪ N/A | provider 429 reset windows are persisted requeue parking (rateLimitWait → requeue evidence), which the AGENTS.md retry-loop exemption covers — not an in-process loop |
 | Last-attempt code promotion (v0.9.0) | ⚪ N/A | attempt errors at all three sites are uncoded raw errors (`syscall.ETXTBSY`, sql errors), so `errorfamily.Code` promotion is inert by construction |
 | `Backoff`/`ComputeDelay` preview helpers | ⚪ N/A | no delay-preview/telemetry surface; the persisted ladder's math is documented where it lives (worker.go:223-240) |
 | `FromPolicy` interop | ⚪ N/A | no `errorfamily.RetryPolicy` producer exists in this repo |
@@ -45,7 +45,7 @@ All three pass struct literals carrying `//nolint:exhaustruct // optional hooks 
 
 ## 3. Findings
 
-**F1 — Convention compliance is complete and verifiable.** lib: `Do`/`DefaultConfig` (checkout retry.go, config.go). repo: the three sites in §1 are exactly the non-exempt retry loops; supervisor idle/heartbeat loops and the persisted requeue ladder stay hand-rolled per AGENTS.md:287. Nothing to widen — any new in-process loop should copy the retryx shape.
+**F1 — Convention compliance is complete and verifiable.** lib: `Do`/`DefaultConfig` (checkout retry.go, config.go). repo: the three sites in §1 are exactly the non-exempt retry loops; supervisor idle/heartbeat loops and the persisted requeue ladder stay hand-rolled per the AGENTS.md retry-loop exemption. Nothing to widen — any new in-process loop should copy the retryx shape.
 
 **F2 — ~~`execWithTransientRetry` re-implements `DoWithValue`~~ RESOLVED (landed 2026-11-09/10).** lib: `DoWithValue[T]` "removes the closure-plus-variable dance — the successful attempt's result comes straight back" (checkout retry.go `DoWithValue`; README "Retries that produce a value"; pinned by `ExampleDoWithValue`). repo: internal/executor/agent.go:1128-1137 is now exactly the recommended shape — `retry.DoWithValue[T](…)`, no `var out T`, no closure mutation:
 
@@ -83,7 +83,7 @@ Pinned v0.9.0 == latest tag (checkout 5 commits past tag, `v0.9.0-5-ga3ed997` re
 
 ## 6. Conclusion
 
-The convention does what AGENTS.md:290 says: every in-process transient retry in the repo is a `retry.Do`/`retry.DoWithValue`, and the exemptions (supervisor loops, persisted ladder, dlqbackoff) are honored rather than abused. The 2026-11-09/10 landings closed both former top gaps — the executor seam now returns values through `DoWithValue`, and exhausted store-busy writes are loud and sentinel-discriminated — moving utilization 44 → 78. What's left is polish, not adoption: the options tail (the last MISSED row) and deterministic-jitter tests. The library is at its latest tag; deepening use carries no version risk.
+The convention does what AGENTS.md §Conventions says: every in-process transient retry in the repo is a `retry.Do`/`retry.DoWithValue`, and the exemptions (supervisor loops, persisted ladder, dlqbackoff) are honored rather than abused. The 2026-11-09/10 landings closed both former top gaps — the executor seam now returns values through `DoWithValue`, and exhausted store-busy writes are loud and sentinel-discriminated — moving utilization 44 → 78. What's left is polish, not adoption: the options tail (the last MISSED row) and deterministic-jitter tests. The library is at its latest tag; deepening use carries no version risk.
 
 ## How to verify
 
