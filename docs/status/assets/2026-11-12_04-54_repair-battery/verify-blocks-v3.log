@@ -1,0 +1,1701 @@
+=== cmdguard.md ===
+LINE-FAIL[1]: rg -i 'cmdguard' -g 'go.mod' -g 'go.sum' -g '!vendor/**' .            # → no out
+LINE-FAIL[1]: rg -i 'cmdguard' --glob '*.go' --glob '!vendor/**' .                   # → no ou
+0
+LINE-FAIL[1]: grep -c 'cobra' cmd/tq/go.mod                                          # → 0
+	commands := map[string]func([]string) error{
+		"bootstrap":    cmdBootstrap,
+		"enqueue":      cmdEnqueue,
+		"ask":          cmdAsk,
+		"worker":       cmdWorker,
+		"harvest":      cmdHarvest,
+		"reprioritize": cmdReprioritize,
+		"verdict":      cmdVerdict,
+		"agent-pool":   cmdAgentPool,
+		"stats":        cmdStats,
+		"tasks":        cmdTasks,
+		"audit":        cmdAudit,
+		"pool-health":  cmdPoolHealth,
+		"doctor":       cmdDoctor,
+		"top":          cmdTop,
+		"show":         cmdShow,
+		"dlq":          cmdDLQ,
+		"cancel":       cmdCancel,
+		"park":         cmdPark,
+		"facts":        cmdFacts,
+		"tail":         cmdTail,
+		"watermarks":   cmdWatermarks,
+		"session":      cmdSession,
+		"crush":        cmdCrush,
+		"serve":        cmdServe,
+		"version":      cmdVersion,
+		"api":          cmdAPI,
+		"incidents":    cmdIncidents,
+	}
+
+	switch name := os.Args[1]; name {
+	case "-h", "--help", "help":
+		fmt.Print(usage)
+	default:
+		cmd, ok := commands[name]
+		if !ok {
+			fmt.Fprintf(os.Stderr, "tq: unknown command %q\n\n%s", name, usage)
+			os.Exit(2)
+		}
+
+		if err := cmd(os.Args[2:]); err != nil {
+			fmt.Fprintf(os.Stderr, "tq: %v\n", err)
+			os.Exit(1)
+		}
+27
+4397 cmd/tq/main.go
+v4.3.1
+v5.0.0
+v5.1.0
+2026-11-11 671c128
+18
+## [5.1.0] - 2026-11-11
+
+### Added
+
+- **Strict positional-args control.** `WithStrictPositionalArgs()` makes a
+  command reject undeclared positional args (inert when an explicit validator
+  like `WithExactArgs` is already set); `WithArgsPassthrough()` explicitly
+  accepts and ignores extras. Pinned by `cli_args_strict_test.go`.
+
+### Fixed
+
+- **`Builder` is safe for concurrent use.** `Add`/`AddParent`/`Try`/`Check`/
+  `Build` serialize on a mutex, so queueing commands from multiple goroutines
+  followed by one `Build()` no longer races on the internal slices.
+- **`doctor`'s schema-validator doc example** referenced the removed
+  `schema.ValidateFile` shape; it now shows `schema.FromConfig` + `Emit`.
+- Release workflow lint invocation (`args: run ./...` → `./...`) — the action
+  already supplies `run`, so the duplicated subcommand made every `v*` release
+  check exit 7 since v4.1.0 (fixed on master and `release/v4`).
+
+## [4.3.1] - 2026-11-11
+
+Final release of the retired v4 major line, cut on the `release/v4` branch.
+v4.3.0 pinned the root module's sibling requires to published versions (v4 had
+been unresolvable through `go get` since v4.2.1, whose go.mod pointed at
+2026-11-11 c423a30 chore(deps): bump cmdguard/v5 to v5.1.0
+---
+name: cmdguard
+description: Build, extend, or review Go CLIs built with cmdguard v5 (`github.com/larsartmann/cmdguard/v5`) — the LarsArtmann Cobra wrapper with typed struct-tag flags, per-command flag structs, DI, middleware, config files, and exit-code contracts. Use whenever a project imports cmdguard, when adding subcommands or flags (especially per-command or scoped flags), when wiring config/env precedence, output formats, middleware, prompts, spinners, or telemetry, or when any cmdguard API question arises — even when cmdguard is not named ("add a flag only to the X subcommand", "why is --foo accepted on every command", "unknown flag" surprises). Also covers the cmdguard-lint rules and the optional sub-modules. Not for developing cmdguard itself (that repo's AGENTS.md is authoritative for contributors).
+---
+
+# cmdguard — validated Cobra CLIs with type-safe flags and DI
+
+cmdguard v5 wraps spf13/cobra with struct-tag flags, samber/do DI, middleware,
+config-file loading, rich output, and a no-panics API. Everything returns errors.
+Module: `github.com/larsartmann/cmdguard/v5`, package `pkg/cmdguard/v5`.
+Published: v5.0.0 (2026-11-08).
+
+## v5 in one paragraph
+
+v5 ships the paved road: production batteries (strict validation, signal handling
+with graceful DI shutdown, strict config keys, hints, `version`/`doctor` commands)
+are **on by default**; every one has a `Without*` opt-out. The error ladder is
+replaced by the `Builder` (`NewBuilder` + `Add`/`AddParent`/`Try`/`Check`/`Build`).
+Renames: `CommandInfo` → `CommandMetadata`, `TypeHandler` → `TypeCodec`,
+`HuhRunner` → `HuhPrompter` (prompts sub-module). Migration:
+=== cqrs-htmx.md ===
+func (s *Server) routeBindings() []struct {
+	method  string
+	pattern string
+	handler func(http.ResponseWriter, *http.Request)
+} {
+	return []struct {
+		method  string
+		pattern string
+		handler func(http.ResponseWriter, *http.Request)
+	}{
+		{"GET", "/{$}", s.handleIndex},
+		{"GET", "/project/{name}", s.handleProject},
+		{"GET", "/task/{id}", s.handleTaskDetail},
+		{"GET", "/task/{id}/events", s.handleTaskEvents},
+		{"GET", "/api/events", s.handleEvents},
+		{"GET", "/api/stats", s.handleStats},
+		{"GET", "/api/facts", s.handleFacts},
+		{"GET", "/agents/live", s.handleAgentLive},
+		{"GET", "/static/", nil}, // staticHandler, wired in Handler
+		{"POST", "/task/{id}/cancel", s.handleTaskCancelPOST},
+		{"POST", "/task/{id}/rescue", s.handleTaskRescuePOST},
+		{"POST", "/task/{id}/answer", s.handleTaskAnswerPOST},
+	mux.HandleFunc("POST /api/v1/tasks", s.handleEnqueue)
+	mux.HandleFunc("POST /api/v1/errors", s.handleReportError)
+	mux.HandleFunc("GET /api/v1/stats", s.handleStats)
+	mux.HandleFunc("GET /api/v1/healthz", s.handleHealth)
+// dashboardProps builds the shared page shell for both pages. HTMX is
+// suppressed entirely: the dashboard streams over vanilla EventSource.
+// The nonce comes from the security-headers middleware (ctxNonce) and is
+// stamped onto the theme bootstrap + toggle inline scripts so the strict
+// script-src CSP admits them.
+func dashboardProps(title, nonce string) layout.PageProps {
+	props := layout.DefaultPageProps()
+	props.Title = title
+	props.Description = "Live, read-only projection of the tq task-queue journal."
+	props.CSSPath = "/static/app.css"
+	props.Favicon = "/static/favicon.svg"
+	props.HTMXVersion = ""
+	props.HTMXSrc = ""
+	props.HTMXResponseTargets = false
+worker/v0.4.2
+19d6ff85 2026-11-12
+200
+head: cannot open 'docs/adr/0046-drop-websocket-sse-only.md' for reading: No such file or directory
+LINE-FAIL[1]: head -30 docs/adr/0046-drop-websocket-sse-only.md  # SSE-only ruling
+=== go-appkit.md ===
+LINE-FAIL[1]: rg -i 'go-appkit' -g 'go.mod' -g 'go.sum' -g '!vendor/**' .            # → no ou
+LINE-FAIL[1]: rg -i 'go-appkit' --glob '*.go' --glob '!vendor/**' .                   # → no o
+405:  (`--alert-url`). **httputil** NOT adopted (MIT v1.5.0+; fleet verdicts
+8:	github.com/larsartmann/httputil v1.8.0
+9:	github.com/larsartmann/httputil/server_timing v1.0.3
+v0.5.1
+v0.6.0
+v0.7.0
+v0.8.0
+v0.9.0
+v0.10.0
+v0.11.0
+v0.12.0
+13
+72
+httpx/v0.2.0-11-ged79e4f
+ed79e4f chore: auto-commit 1 changed file(s) (heuristic)
+86bd621 chore: auto-commit 1 changed file(s) (heuristic)
+0a39c3b chore: auto-commit 4 changed file(s) (heuristic)
+e1a1b55 chore: auto-commit 37 changed file(s) (heuristic)
+4b7459c chore: auto-commit 2 changed file(s) (heuristic)
+f96c0be docs: finalize wave close-out in TODO_LIST (reworded for docs-gates safety)
+130c5ca chore: auto-commit 3 changed file(s) (heuristic)
+6c6c9e6 fix(httpx): make wrapcheck suppression version-proof across golangci 2.14/2.15
+15b9228 chore: auto-commit 2 changed file(s) (heuristic)
+08f487d fix(integration): adopt canonical proxy hashes for re-cut wave tags
+c6859aa chore: auto-commit 1 changed file(s) (heuristic)
+2cb44aa chore: auto-commit 1 changed file(s) (heuristic)
+b4ff7b7 chore: auto-commit 4 changed file(s) (heuristic)
+c2f527f chore: auto-commit 3 changed file(s) (heuristic)
+425df46 chore: auto-commit 4 changed file(s) (heuristic)
+252910f chore: auto-commit 2 changed file(s) (heuristic)
+8d5eaac chore: auto-commit 2 changed file(s) (heuristic)
+515600f chore: auto-commit 2 changed file(s) (heuristic)
+966f4f0 chore: auto-commit 1 changed file(s) (heuristic)
+40dac7b chore: auto-commit 3 changed file(s) (heuristic)
+aa0def6 chore: auto-commit 2 changed file(s) (heuristic)
+f62ff91 chore: auto-commit 1 changed file(s) (heuristic)
+97ae339 chore: auto-commit 2 changed file(s) (heuristic)
+ceb6e18 chore: auto-commit 7 changed file(s) (heuristic)
+40cdb3c chore: auto-commit 6 changed file(s) (heuristic)
+760bea8 chore: auto-commit 4 changed file(s) (heuristic)
+ceff731 chore: auto-commit 2 changed file(s) (heuristic)
+582a3e1 chore: auto-commit 2 changed file(s) (heuristic)
+365543b chore: auto-commit 5 changed file(s) (heuristic)
+4806416 chore: auto-commit 8 changed file(s) (heuristic)
+c888c64 chore: auto-commit 4 changed file(s) (heuristic)
+7988da2 chore: auto-commit 3 changed file(s) (heuristic)
+a6bf25f chore: auto-commit 5 changed file(s) (heuristic)
+126b543 chore: auto-commit 5 changed file(s) (heuristic)
+709ea0c chore: auto-commit 3 changed file(s) (heuristic)
+360c1bd chore: auto-commit 4 changed file(s) (heuristic)
+55f42a5 chore: auto-commit 2 changed file(s) (heuristic)
+cbf33ae chore: auto-commit 19 changed file(s) (heuristic)
+3bea492 chore: auto-commit 5 changed file(s) (heuristic)
+7b527f7 chore: auto-commit 2 changed file(s) (heuristic)
+662e67f chore: auto-commit 2 changed file(s) (heuristic)
+4a77b08 chore: auto-commit 1 changed file(s) (heuristic)
+04fb375 docs: 11:00 close-out report (continued mandate: C1 + httpx + three tags, a-g with 50 ranked next tasks)
+9899e45 ci: add workflow_dispatch to CI; correct the missing-run gotcha (paths-ignore skips docs-only pushes by design)
+3e850f4 docs: land the tag-push vs tip-CI visibility race gotcha (hit three times today)
+ce6f453 docs: record the httpx tagged-tree LICENSE gap (rides v0.1.1, health precedent)
+37a30b8 chore(deps): bump the minor-and-patch group (#58)
+6cb100d fix: httpx in the pin-drift pattern registry + the module LICENSE (guards caught both on CI)
+f541338 docs: close out the continued-mandate session (C1 composition + httpx battery status report)
+85906e1 chore: auto-commit 2 changed file(s) (heuristic)
+8adec88 chore: add httpx to the gosum-canonical default module list
+5c5597f docs: httpx v0.1.0 release-state sync (AGENTS/FEATURES/TODO + claims-guard httpx pattern)
+44ce8e8 chore: auto-commit 8 changed file(s) (heuristic)
+bb25e60 chore: auto-commit 8 changed file(s) (heuristic)
+03265c5 chore: auto-commit 8 changed file(s) (heuristic)
+fcb0cd2 chore: auto-commit 4 changed file(s) (heuristic)
+49317e7 chore: auto-commit 7 changed file(s) (heuristic)
+7bff1bb chore: auto-commit 1 changed file(s) (heuristic)
+b7c42d7 release: core v0.12.0 + otel v0.4.0 + config v0.1.1 (integration re-pin + release-state sync)
+662715b chore: auto-commit 4 changed file(s) (heuristic)
+2026-11-07 34edcd2
+// dropped for that client; the next change notification triggers a full
+// server-rendered snapshot, so the page self-heals.
+const subscriberBufferSize = 128
+
+// Hub fans out change notifications to all connected SSE clients.
+// Notifications carry no payload — every one triggers a server-side
+// re-render and a fresh full snapshot to each client (projection, not
+// client state). The event ID is the journal watermark so browsers resume
+// with a meaningful Last-Event-ID.
+type Hub struct {
+	bc *sse.Broadcaster[sse.Event]
+}
+
+// NewHub creates a ready-to-use Hub.
+func NewHub() *Hub {
+	return &Hub{
+		bc: sse.NewBroadcaster[sse.Event](sse.WithBufferSize[sse.Event](subscriberBufferSize)),
+	}
+}
+
+// Notify broadcasts a change notification to every subscriber. seq is the
+// journal watermark the notification represents.
+func (h *Hub) Notify(seq int64) {
+	h.bc.Broadcast(sse.Event{
+		Event: "tick",
+		ID:    sse.NewEventID(formatSeq(seq)),
+	})
+}
+
+// Subscribe returns a channel receiving notifications.
+func (h *Hub) Subscribe() <-chan sse.Event {
+	return h.bc.Subscribe()
+}
+
+// Unsubscribe removes a subscriber channel.
+// Package runactor composes long-running components under one signal
+// story: named actors run concurrently, the first exit (or failure) ends
+// the whole group, teardown runs LIFO, and an interrupt actor turns
+// SIGINT/SIGTERM into graceful cancellation — a second signal exits hard.
+//
+// Stdlib + golang.org/x/sync/errgroup only (ADR-0004's framework-free
+// stance). This is the pattern steal from cordis's run.Group, shaped so
+// the drain invariant stays expressible: an actor's context is its
+// shutdown signal, NEVER its task-execution context (see ExecutionScope).
+package runactor
+
+import (
+	"context"
+	"errors"
+=== go-atomic-write.md ===
+LINE-FAIL[1]: rg -i 'go-atomic-write' -g 'go.mod' -g 'go.sum' -g '!vendor/**' .          # → n
+LINE-FAIL[1]: rg -i 'go-atomic-write' --glob '*.go' --glob '!vendor/**' .                 # → 
+./internal/readmodel/workerfailed.go:82:	if err := retryx.RenameTransient(tmp, path); err != nil {
+./internal/readmodel/schema.go:170:		if err := retryx.RenameTransient(path+suffix, snapshot+suffix); err != nil && !os.IsNotExist(err) {
+./internal/executor/depbump.go:588:	if err := retryx.RenameTransient(workFile, workFile+".bak"); err != nil {
+./internal/executor/depbump.go:592:	return func() { _ = retryx.RenameTransient(workFile+".bak", workFile) }, nil
+// Windows sharing violation on a recently closed reader heals instead
+// of failing the caller. A nonexistent source is tolerated as success
+// (callers that must observe absence stat first).
+func RenameTransient(src, dst string) error {
+	return retry.Do(context.Background(), retry.Config{ //nolint:exhaustruct // optional hooks unset
+		MaxAttempts:  3,
+		InitialDelay: 50 * time.Millisecond,
+		MaxDelay:     100 * time.Millisecond,
+		Multiplier:   2.0,
+	}, func(_ context.Context, _ int) error {
+		err := os.Rename(src, dst)
+		if os.IsNotExist(err) {
+			return nil
+		}
+
+		return err
+	})
+}
+	if err := os.WriteFile(tmp, raw, 0o644); err != nil {
+		return fmt.Errorf("readmodel: write worker-death marker: %w", err)
+	}
+
+	if err := retryx.RenameTransient(tmp, path); err != nil {
+		_ = os.Remove(tmp)
+
+		return fmt.Errorf("readmodel: publish worker-death marker: %w", err)
+	}
+func atomicRename(path, tmpPath string) error {
+	const maxRetries = 5
+	const baseBackoff = time.Millisecond
+
+	var lastErr error
+
+	for attempt := range maxRetries {
+		lastErr = os.Rename(tmpPath, path)
+		if lastErr == nil {
+			return nil
+		}
+
+		if !isRetryableRename(lastErr) {
+			break
+		}
+
+		time.Sleep(baseBackoff << uint(attempt))
+	}
+
+	return fmt.Errorf("renaming %s to %s: %w", tmpPath, path, lastErr)
+}
+v0.6.2-40-g6428b85
+12
+=== go-codec.md ===
+./cmd/tq/facts_cqrs_test.go
+./internal/executor/payload.go
+./internal/journal/cqrs/journal_test.go
+./internal/journal/cqrs/journal.go
+internal/journal/cqrs/journal.go:164:		event.WithCodec(codec.JSONCodec{}),
+internal/journal/cqrs/journal_test.go:148:	// encoding stamp; codec.ForEncoding refuses an empty stamp.
+internal/journal/cqrs/journal_test.go:150:		if enc := evt.Encoding(); enc != codec.EncodingJSON {
+internal/journal/cqrs/journal_test.go:151:			t.Fatalf("event %d encoding = %q, want %q", i, enc, codec.EncodingJSON)
+cmd/tq/facts_cqrs_test.go:137:		if evt.Encoding() != codec.EncodingJSON {
+cmd/tq/facts_cqrs_test.go:138:			t.Fatalf("store event %d encoding = %q, want %q", i, evt.Encoding(), codec.EncodingJSON)
+10:// payloadCodec is the ONE JSON door executor payload decoding goes through:
+15:var payloadCodec = codec.JSONCodec{}
+28:	if err := payloadCodec.Decode(t.Payload, &payload); err != nil {
+3
+	// DecodePayloadAuto — the decode path every go-cqrs-lite consumer of
+	// this journal uses — refuses unstamped payloads.
+	evt, newErr := event.New(
+		event.Type(fact.Type),
+		streamID,
+		streamType,
+		event.Version(uint64(fact.Seq)),
+		factPayload{
+			TaskID:  fact.TaskID,
+			Type:    fact.Type,
+			Owner:   fact.Owner,
+			Attempt: fact.Attempt,
+			Error:   fact.Error,
+			Detail:  fact.Detail,
+		},
+		event.WithCodec(codec.JSONCodec{}),
+type factPayload struct {
+	//cqrs-lint:ignore(A032) wire mirror of journal.Fact.TaskID (a plain string in the leaf module); branding here buys coupling, not safety
+	TaskID  string           `json:"taskId"`
+	Type    journal.FactType `json:"type"`
+	Owner   string           `json:"owner,omitempty"`
+	Attempt int              `json:"attempt,omitempty"`
+	Error   string           `json:"error,omitempty"`
+	Detail  jsontext.Value   `json:"detail,omitempty"`
+// JSON codec), so DecodePayloadAuto is the matching decode path.
+func (p FoldProjection) Handle(ctx context.Context, evt event.Event) error {
+	payload, err := event.DecodePayloadAuto[foldPayload](evt)
+	if err != nil {
+		return fmt.Errorf("readmodel: decode fact payload seq event %s: %w", evt.ID(), err)
+	}
+
+// migration), DecodePayloadAuto picks the right codec per event. Unlike
+// [DecodePayload], it does NOT require the caller to know or pass the codec.
+//
+// Returns an error if the event's encoding has no built-in codec (e.g. "raw",
+// "encrypted") — in that case, the caller must handle decoding manually.
+func DecodePayloadAuto[T any](evt Event) (T, error) {
+	var zero T
+
+	c, err := codec.ForEncoding(evt.Encoding())
+	if err != nil {
+		return zero, errorfamily.WrapCorruption(
+			err,
+			"event.decode_payload_auto_no_codec",
+			"no built-in codec for encoding "+string(evt.Encoding())+
+				" (decode payload for event "+string(evt.Type())+")",
+		)
+	}
+
+	return DecodePayload[T](evt, c)
+}
+var payloadCodec = codec.JSONCodec{}
+
+// decodePayload parses a task payload under the executor input convention:
+// an empty payload and undecodable JSON are both permanent input-contract
+// misses whose errors name the executor kind and show the wanted shape.
+// Per-type business-rule validation stays with the caller.
+func decodePayload[T any](t task.Task, kind, want string) (T, error) {
+	var payload T
+
+	if len(t.Payload) == 0 {
+		return payload, Permanent(fmt.Errorf("%s: empty payload, want %s", kind, want))
+	}
+
+	if err := payloadCodec.Decode(t.Payload, &payload); err != nil {
+		return payload, Permanent(fmt.Errorf("%s: decode payload: %w", kind, err))
+	}
+
+	return payload, nil
+}
+		if err := json.Unmarshal(fact.Detail, &detail); err != nil {
+	if err := json.Unmarshal(fact.Detail, &detail); err == nil {
+	if err := json.Unmarshal(fact.Detail, &detail); err != nil {
+LINE-FAIL[1]: grep -n 'json' internal/executor/redact.go                # → no matches (F4)
+const CalibrationDataset = "calibration.jsonl"
+	b, err := json.Marshal(row)
+v0.3.3-3-g759d752
+=== go-cqrs-lite.md ===
+25
+155
+94:	sys, err := system.New(ctx, system.DomainConfig{}, deployment)
+300:	host, err := projectionhost.New(journal, WatermarkCheckpoints{Src: src}, hostOpts...)
+30:	statusRaw, err := metaengine.ExecuteTyped[statusCountsInput, map[string]int64](
+37:	projectRaw, err := metaengine.ExecuteTyped[projectStatusCountsInput, map[string]int64](
+565:// (metaengine ScanPage + WithCursor, the upstream COOKBOOK §Cursor
+604:	rows, next, err := metaengine.NewReader[TaskRow](m.store, tasksCollection).ScanPage(ctx, opts...)
+152:	engine, err := usqlite.OpenDB[[]byte](db, usqlite.WithCodec(companion.IdentityCodec()))
+408:	return s.engine.WithFacts(ctx, func(sink uqueue.FactSink) error {
+39:type FactType = facts.FactType
+44:type Fact = facts.Fact
+LINE-FAIL[1]: grep -rn 'AggregateFn\|EnforceCap\|WithPrefetch' internal cmd --include='*.go'  
+d315904f 2026-11-09 chore: auto-commit 26 changed file(s) (heuristic)
+- **go-cqrs-lite version wave** (security + currency): `system/v4`
+  v4.16.0→v4.18.0 (AggregateFn SQL-injection hardening in the engine
+  family tq ships), `metaengine/v4` v4.20.0→v4.23.0,
+  `metaengine/sqliteengine/v4` v4.6.0→v4.8.0, `id/v4` v4.7.4→v4.7.5
+  across every module in the graph.
+
+- **go-datastar v0.7.0 lockstep + go-sse v0.7.0 residue sweep**: all
+  9 adopted libraries now sit on their latest tags; the embedded health
+  SDK is served by `datastar.ScriptHandler` (ETag + conditional GET +
+  HEAD) with a versioned script URL, replacing the hand-rolled handler.
+
+- **`tq serve` survives a panicking health probe**: a panic in one
+  health-check batch now degrades the response (fail + a prober check
+  naming the panic) instead of killing the SSE pusher goroutine — and
+  with it the whole serve process.
+
+- **Health rows carry metadata**: per-check "since" transition times and
+  the batch latency (`total_latency_ms`) now populate, so the dashboard's
+  since/latency columns render instead of sitting empty; the `/health`
+  JSON also carries a `live-sse` check (subscriber census, fail when the
+  SSE hub is closed).
+
+- **Exhausted store-busy retries are loud**: when an outcome write
+  exhausts its 3 store-busy attempts, the worker logs at ERROR that the
+  lease-reclaim backstop owns the task — a known handoff, not a silently
+  stuck task.
+
+### Fixed
+
+## [v0.4.2] - 2026-11-07
+
+### Added
+
+- **docs-gates bridge sweeper** (`tq agent-pool --docs-gates`,
+  `--docs-gates-repos`, `--docs-gates-bin`, `--docs-gates-interval`,
+  default 30m): on a timer the pool runs
+  `docs-gates run <repo> --json` per listed repo (names resolve against
+  `--projects-dir`) and mints ONE agent fix task per FAIL gate — dedup
+  key `docs-gates:<repo>:<gate>` makes repeat sweeps free; the minted
+  task's verify gate is `docs-gates run .`, so the fix must green the
+  battery to complete. A journal watermark cursor (`docsgates-bridge`,
+  `tq watermarks show`) checkpoints each fully-successful pass; a repo
+  whose gate run fails aborts the pass WITHOUT checkpointing, so the
+  next tick re-assesses. Opt-in flag, default OFF.
+
+- **Effort-aware batch sizing + optional Jev estimates** (2026-11-03):
+  batched runs now also stop at an effort budget — `--effort-budget`
+  (minutes; 0 = batch-items x 30m, which under the flat default
+  estimates reproduces the count-cap grouping exactly, so nothing
+  changes unless configured) — and `--jev` (default OFF) sizes runs by
+  per-item effort predicted by TypeSafe's Jev: one 5-level rubric
+  score per item, mapped to minutes (clamped 10..240) in code, cached
+  in `<db>.effort.json` keyed by item key and model-stamped. Estimates
+  are scheduling signals only: they may RAISE payload timeouts, never
+  lower them below the count ceiling; the unset `--task-timeout`
+  default covers the clamp while `--jev` is on; any API failure falls
+  back to flat per-item sizing. WARNING: with `--jev`, item texts,
+  section headings, repo name and repo purpose are sent to the
+  TypeSafe API. Payloads record per-member `effortMinutes` for the
+  later estimate-vs-outcome audit.
+- **Failure evidence carries the files a dying run already changed**
+  (2026-11-01, row 806): `tq show`'s `failure` section and
+  `tq dlq --json` evidence rows gain `files_changed` — the union of
+  files the run's `Task-Queue-ID`-footer commits touched, derived
+  after a failing agent/verify run so a DLQ autopsy sees what shipped
+  before the death without re-deriving from rotated sidecar logs
+  (empty when the run died before any footer commit).
+- **`tq doctor` verdict-channel check** (2026-11-01, row 806): a new
+ok  	github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4	4.068s
+=== go-credentials-store.md ===
+LINE-FAIL[1]: rg -i 'go-credentials-store' -g 'go.mod' -g 'go.sum' -g '!vendor/**' .   # → no 
+LINE-FAIL[1]: rg -i 'go-credentials-store' --glob '*.go' --glob '!vendor/**' .         # → no 
+cmd/tq/main.go:4315:		AuthToken:   *authToken,
+internal/webui/webui.go:81:	// AuthToken, when set, requires every request (pages, API, SSE, static)
+internal/webui/webui.go:84:	AuthToken string
+internal/webui/webui.go:408:	if s.cfg.AuthToken != "" {
+internal/webui/webui.go:409:		handler = withTokenAuth(s.cfg.AuthToken, handler)
+internal/webui/auth.go:19:// the address binds beyond the loopback interface without an AuthToken.
+internal/webui/auth.go:30:// non-loopback interfaces requires AuthToken. The zero Config (loopback
+internal/webui/auth.go:41:	if c.AuthToken != "" || isLoopbackAddr(c.Addr) {
+// Package httpauth carries the token-channel primitives shared by the two
+// HTTP surfaces (`tq serve` dashboard, `tq api`): how a bearer token may be
+// presented, and how a presented value is compared to the configured one.
+// The presentation channels are the Authorization header and the `?token=`
+// query parameter (the fallback for clients that cannot set headers —
+// browsers' EventSource, curl one-liners); the dashboard adds a
+// session-cookie channel on top, which stays in internal/webui because it
+// is a browser-only concern (the API never issues or accepts cookies).
+// Comparison is constant-time over SHA-256 digests, so the secret's length
+// never leaks through timing.
+package httpauth
+
+import (
+	"crypto/sha256"
+func renderPoolConfig(bootOpts bootstrapOptions) string {
+	var b strings.Builder
+
+	fmt.Fprintf(
+		&b,
+		"# generated by `tq bootstrap --install` %s — edit freely, flags on the CLI win\n",
+		time.Now().Format(time.RFC3339),
+	)
+	fmt.Fprintf(&b, "projects-dir = %s\n", bootOpts.projectsDir)
+	fmt.Fprintf(&b, "repos = %s\n", strings.Join(bootOpts.repos, ","))
+	fmt.Fprintf(&b, "concurrency = %d\n", bootOpts.agents)
+	fmt.Fprintf(&b, "max-concurrent-agents = %d\n", bootOpts.agents)
+	fmt.Fprintf(&b, "interval = %s\n", bootOpts.interval)
+	fmt.Fprintf(&b, "daily-budget = %d\n", bootOpts.dailyBudget)
+	fmt.Fprintf(&b, "max-per-tick = %d\n", bootOpts.maxPerTick)
+	fmt.Fprintf(&b, "yolo = %v\n", bootOpts.yolo)
+	fmt.Fprintf(&b, "review = %v\n", bootOpts.review)
+	fmt.Fprintf(&b, "review-autofix = %v\n", bootOpts.reviewAutofix)
+	fmt.Fprintf(&b, "project-exclusive = %v\n", bootOpts.exclusive)
+	fmt.Fprintf(&b, "allow-dirty = %v\n", bootOpts.allowDirty)
+
+54:	MasterKeys: map[encryption.KeyID][]byte{"v1": key},
+v0.4.2-25-gc423a30
+11
+2026-11-11 c423a30 chore(deps): bump cmdguard/v5 to v5.1.0
+8:	github.com/larsartmann/cmdguard/v5 v5.1.0
+32
+=== go-daemon.md ===
+LINE-FAIL[1]: rg -i 'go-daemon' -g 'go.mod' -g 'go.sum' -g '!vendor/**' .            # → no ou
+LINE-FAIL[1]: rg -i 'go-daemon' --glob '*.go' --glob '!vendor/**' .                   # → no o
+LINE-FAIL[1]: rg -n -i 'sd_notify' --glob '*.go' --glob '!vendor/**' --glob '!*_test.go' .  # 
+// Package runactor composes long-running components under one signal
+// story: named actors run concurrently, the first exit (or failure) ends
+// the whole group, teardown runs LIFO, and an interrupt actor turns
+// SIGINT/SIGTERM into graceful cancellation — a second signal exits hard.
+//
+// Stdlib + golang.org/x/sync/errgroup only (ADR-0004's framework-free
+// stance). This is the pattern steal from cordis's run.Group, shaped so
+// the drain invariant stays expressible: an actor's context is its
+// shutdown signal, NEVER its task-execution context (see ExecutionScope).
+package runactor
+
+import (
+	"context"
+	"errors"
+const systemdUnitTemplate = `[Unit]
+Description=tq agent-pool (self-managing TODO_LIST harvest + headless agents)
+Documentation=https://github.com/LarsArtmann/go-taskqueue
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+# ExecStart is rendered by ` + "`tq bootstrap --install`" + ` with the installed
+# binary path; runtime settings live in the pool config file.
+ExecStart={{BIN}} agent-pool --config %h/.config/tq/pool.conf
+Restart=on-failure
+RestartSec=30s
+
+# Graceful drain: agents may run for a long time; give them a wide stop
+# window. The pool survives the first SIGTERM and finishes in-flight tasks.
+TimeoutStopSec=45min
+KillSignal=SIGINT
+KillMode=process
+
+# Hardening. Deliberately conservative: the pool execs headless agents that
+# write/commit inside ~/projects and talk to the network, so no sandboxing
+# below may break either. NoNewPrivileges and the kernel/cgroup namespaces
+	scanner := bufio.NewScanner(r)
+	scanner.Buffer(make([]byte, 0, 64<<10), watchScanLimit)
+
+	var dataLines []string
+
+	for scanner.Scan() {
+		line := scanner.Text()
+
+		if line == "" {
+			if len(dataLines) > 0 {
+				payload := strings.Join(dataLines, "\n")
+				dataLines = dataLines[:0]
+
+				var event daemonWatchEvent
+				if err := json.Unmarshal([]byte(payload), &event); err == nil {
+					emit(event)
+				}
+			}
+
+			continue
+		}
+
+		if strings.HasPrefix(line, ":") || !strings.HasPrefix(line, "data:") {
+			continue
+		}
+
+		value := line[len("data:"):]
+		if len(value) > 0 && value[0] == ' ' {
+			value = value[1:]
+		}
+
+		dataLines = append(dataLines, value)
+	}
+
+	if err := scanner.Err(); err != nil {
+		return fmt.Errorf("harvest: parse watch stream: %w", err)
+	}
+
+	return nil
+}
+
+// dispatchEvent applies the trigger rules to one daemon event: only project
+// additions and changes fire, the project must be in the configured scope,
+// and the repo must be outside its --repo-interval debounce gap.
+LINE-FAIL[1]: rg -n -i 'fork|daemonize|setsid|supervis' /home/lars/projects/go-daemon/*.go  # 
+v0.4.0-33-g82bb135
+5
+=== go-datastar.md ===
+./cmd/tq/go.mod:75:	github.com/larsartmann/go-datastar v0.7.0 // indirect
+./cmd/tq/go.mod:76:	github.com/larsartmann/go-datastar/static v0.7.0 // indirect
+./go.mod:107:	github.com/larsartmann/go-datastar v0.7.0
+./go.mod:108:	github.com/larsartmann/go-datastar/static v0.7.0
+./internal/webui/health.go
+# github.com/larsartmann/go-datastar
+github.com/larsartmann/go-taskqueue/internal/webui
+github.com/larsartmann/go-datastar
+21:const Version = "1.0.4"
+21:const Version = "1.0.4"
+internal/webui/health.go:448:// healthSDKScript serves the embedded Datastar client bundle same-origin —
+internal/webui/health.go:452:var healthSDKScript = datastar.ScriptHandler()
+internal/webui/webui.go:324:		{"GET", HealthSDKPath, withHealthHeaders(healthSDKScript).ServeHTTP},
+147:| `ETag`                    | quoted truncated SHA-256 content digest on the embedded health SDK bundle (`/health/datastar.js`, served by `datastar.ScriptHandler`; `If-None-Match` answers 304)                                                                                                                                                                                                               | —                                               |
+// healthSDKSrc is the versioned SDK URL the health dashboard loads. The
+// handler pins Cache-Control max-age=86400, so a browser skips ETag
+// revalidation for up to 24h; the v query turns each static.Version bump
+// into a fresh cache key and collapses that stale window to zero.
+var healthSDKSrc = HealthSDKPath + "?v=" + static.Version
+
+// healthSDKScript serves the embedded Datastar client bundle same-origin —
+// script-src 'self' covers the load; the policy's 'unsafe-eval' covers the
+// run. datastar.ScriptHandler adds the ETag, conditional-GET, and HEAD
+// semantics the hand-rolled version lacked.
+var healthSDKScript = datastar.ScriptHandler()
+// serveSDKRow is the `/health/datastar.js` row: the favicon's cacheable
+// static-asset set plus the bundle's content ETag (datastar.ScriptHandler
+// serves conditional GETs off it).
+var serveSDKRow = mergeRow(serveFaviconRow, matrixHeaders{
+	"etag": quotedETag,
+})
+broadcast/v0.7.0-5-g67d99c6
+bash: line 1: cd: cmd/tq: No such file or directory
+go: can't compute 'all' using the vendor directory
+	(Use -mod=mod or -mod=readonly to bypass.)
+ok  	github.com/larsartmann/go-taskqueue/internal/webui	0.013s
+=== go-error-family.md ===
+./internal/executor/executor.go:53:func (e *PermanentError) ErrorFamily() errorfamily.Family { return errorfamily.Rejection }
+./internal/executor/executor.go:94:func (e *PreflightError) ErrorFamily() errorfamily.Family { return errorfamily.Transient }
+./internal/executor/executor_test.go:178:	if fam := errorfamily.Classify(perm); fam != errorfamily.Rejection {
+./internal/executor/executor_test.go:182:	if errorfamily.IsRetryable(perm) {
+./internal/executor/executor_test.go:196:	if fam := errorfamily.Classify(pre); fam != errorfamily.Transient {
+./internal/executor/executor_test.go:200:	if !errorfamily.IsRetryable(pre) {
+./internal/httpapi/httpapi_test.go:854:	return errorfamily.NewCorruption("test.api-poison", "deliberate poison")
+./internal/readmodel/events.go:255:			return nil, false, errorfamily.WrapCorruption(
+./internal/readmodel/events.go:295:		return nil, false, errorfamily.WrapCorruption(
+./internal/readmodel/host.go:58:		return id.EventID{}, errorfamily.NewRejection(
+./internal/readmodel/host.go:132:		return errorfamily.NewRejection(
+./internal/readmodel/host.go:208:		return errorfamily.NewCorruption(
+./internal/readmodel/host_test.go:352:	return errorfamily.NewCorruption("test.poison", "deliberate poison")
+./internal/readmodel/host_test.go:403:		if errorfamily.IsRetryable(err) {
+./cmd/tq/go.mod:77:	github.com/larsartmann/go-error-family v0.12.0 // indirect
+./examples/embed/go.mod:32:	github.com/larsartmann/go-error-family v0.12.0 // indirect
+./executor/go.mod:17:	github.com/larsartmann/go-error-family v0.12.0 // indirect
+./internal/composition/go.mod:54:	github.com/larsartmann/go-error-family v0.12.0 // indirect
+./internal/executor/go.mod:8:	github.com/larsartmann/go-error-family v0.12.0
+./internal/journal/cqrs/go.mod:23:	github.com/larsartmann/go-error-family v0.12.0 // indirect
+./internal/queue/companion/go.mod:12:require github.com/larsartmann/go-error-family v0.12.0 // indirect
+./internal/queue/postgres/go.mod:25:	github.com/larsartmann/go-error-family v0.12.0 // indirect
+./internal/queue/postgresv4/go.mod:30:	github.com/larsartmann/go-error-family v0.12.0 // indirect
+./internal/queue/sqlite/go.mod:24:	github.com/larsartmann/go-error-family v0.12.0 // indirect
+./internal/queue/sqlitev4/go.mod:27:	github.com/larsartmann/go-error-family v0.12.0 // indirect
+./internal/readmodel/go.mod:13:	github.com/larsartmann/go-error-family v0.12.0
+./internal/worker/go.mod:18:	github.com/larsartmann/go-error-family v0.12.0 // indirect
+./internal/retryx/go.mod:7:require github.com/larsartmann/go-error-family v0.12.0 // indirect
+./queue/postgres/go.mod:24:	github.com/larsartmann/go-error-family v0.12.0 // indirect
+./queue/sqlite/go.mod:23:	github.com/larsartmann/go-error-family v0.12.0 // indirect
+./worker/go.mod:14:	github.com/larsartmann/go-error-family v0.12.0 // indirect
+./go.mod:109:	github.com/larsartmann/go-error-family v0.12.0
+v0.12.0-8-g5beae0e
+		if !errorfamily.IsRetryable(err) {
+			// class so the projectionhost dead-letters it instead of
+			// burning the restart budget.
+			return nil, false, errorfamily.WrapCorruption(
+				err, "readmodel.enqueue_detail",
+				fmt.Sprintf("enqueue detail for task %s is malformed", fact.TaskID),
+			)
+func (e *PermanentError) Error() string                   { return "permanent: " + e.Cause.Error() }
+func (e *PermanentError) Unwrap() error                   { return e.Cause }
+func (e *PermanentError) ErrorFamily() errorfamily.Family { return errorfamily.Rejection }
+func (e *PermanentError) ErrorCode() string               { return "executor.permanent" }
+
+// Permanent wraps cause in a *PermanentError; nil passes through unchanged.
+func (e *PreflightError) Error() string                   { return "preflight: " + e.Cause.Error() }
+func (e *PreflightError) Unwrap() error                   { return e.Cause }
+func (e *PreflightError) ErrorFamily() errorfamily.Family { return errorfamily.Transient }
+func (e *PreflightError) ErrorCode() string               { return "executor.preflight" }
+
+
+	perm := Permanent(errors.New("bad payload"))
+	if fam := errorfamily.Classify(perm); fam != errorfamily.Rejection {
+		t.Errorf("Classify(PermanentError) = %v, want Rejection", fam)
+	}
+
+	if errorfamily.IsRetryable(perm) {
+		t.Error("IsRetryable(PermanentError) = true, want false")
+	}
+
+	if code := func() *PermanentError {
+		target := &PermanentError{}
+		target, _ = errors.AsType[*PermanentError](perm)
+
+		return target
+	}().ErrorCode(); code != "executor.permanent" {
+		t.Errorf("ErrorCode = %q, want executor.permanent", code)
+	}
+
+	pre := &PreflightError{Cause: ErrDirtyTree}
+	if fam := errorfamily.Classify(pre); fam != errorfamily.Transient {
+		t.Errorf("Classify(PreflightError) = %v, want Transient", fam)
+	}
+
+	if !errorfamily.IsRetryable(pre) {
+		t.Error("IsRetryable(PreflightError) = false, want true (requeue, no burn)")
+	}
+// isTransientStoreBusy reports whether err is a store lock-contention
+// failure worth retrying in-process. The sqlite driver surfaces the
+// SQLITE_BUSY family (base 5 and extended 517 BUSY_SNAPSHOT et al) with
+// the token in the message, and its English form is "database is
+// locked"; matching strings keeps the worker driver-agnostic. A false
+// positive is harmless — the retried write is guarded by the store's
+// RowsAffected re-checks; a false negative merely falls back to the
+// lease-reclaim backstop.
+func isTransientStoreBusy(err error) bool {
+	if _, ok := errors.AsType[*PermanentError](cause); ok {
+		return cause
+	}
+
+	return &PermanentError{Cause: cause}
+}
+
+// PreflightError signals the executor refused to START a task: the
+// environment is not ready (dirty repo waiting on a human commit, autonomy
+// config missing, verify tool absent) but neither the task nor the payload
+// is wrong. Workers must requeue the task WITHOUT burning an attempt — it
+	ErrNotFound = errors.New("task: not found")
+	// ErrLeaseNotHeld is returned when completing/failing/heartbeating a task
+	// whose lease is owned by someone else or already expired.
+	ErrLeaseNotHeld = errors.New("task: lease not held")
+	// ErrDuplicateID is returned when enqueueing a task whose ID already exists.
+	ErrDuplicateID = errors.New("task: duplicate id")
+	// ErrInvalidTransition is returned by stores that validate transitions.
+	ErrInvalidTransition = errors.New("task: invalid status transition")
+	out="$(cd "$dir" && "$bin" lint ./... --type-aware --no-suppress --disable-extensions --disable generic_return --disable legacy_is --enforce-coded-errors --enforce-deferred-close --enforce-go-error-family --enforce-samber-oops 2>&1)" || rc=$?
+88
+./internal/executor/executor_test.go:160:	) { //nolint:legacyerrors // value identity match: pins double-wrap no-op, no fields to extract
+=== go-etag.md ===
+internal/webui/headermatrix_test.go:320:// static-asset set plus the bundle's content ETag (datastar.ScriptHandler
+internal/webui/headermatrix_test.go:323:	"etag": quotedETag,
+internal/webui/headermatrix_test.go:326:// etagRe pins the shape datastar.ETagFor computes: a quoted, truncated
+internal/webui/headermatrix_test.go:328:var etagRe = regexp.MustCompile(`^"[0-9a-f]{32}"$`)
+internal/webui/headermatrix_test.go:330:func quotedETag(t testing.TB, got string) {
+internal/webui/headermatrix_test.go:333:	if !etagRe.MatchString(got) {
+internal/webui/headermatrix_test.go:334:		t.Errorf("ETag = %q, want a quoted 32-hex digest", got)
+internal/webui/health.go:443:// handler pins Cache-Control max-age=86400, so a browser skips ETag
+internal/webui/health.go:450:// run. datastar.ScriptHandler adds the ETag, conditional-GET, and HEAD
+internal/httpapi/httpapi.go:247:		w.Header().Set("Cache-Control", "no-store")
+internal/webui/health.go:443:// handler pins Cache-Control max-age=86400, so a browser skips ETag
+// handleFacts serves GET /api/facts?after=SEQ&limit=N: a forward cursor
+// over the journal in ascending seq order (the infinite-scroll viewer's
+// data source; the dashboard feed stays the SSE tail). limit is capped.
+// after=-N selects a tail window: the newest N facts — the journal browser
+// opens at the live end and pages older from there.
+func (s *Server) handleFacts(w http.ResponseWriter, r *http.Request) {
+	after, _ := strconv.ParseInt(r.URL.Query().Get("after"), 10, 64)
+
+	if after < 0 {
+		head, err := s.store.HeadSeq(r.Context())
+		if err != nil {
+			http.Error(w, "facts: "+err.Error(), http.StatusInternalServerError)
+
+			return
+		}
+
+		if after = head + after; after < 0 {
+			after = 0
+		}
+	}
+
+	limit := factViewerPageSize
+	if v, err := strconv.Atoi(r.URL.Query().Get("limit")); err == nil && v > 0 &&
+		v <= factViewerPageSize {
+		limit = v
+	}
+
+	stopFacts := servertiming.MeasureServerTiming(r.Context(), "facts")
+
+	facts, err := s.store.Facts(r.Context(), after, limit)
+
+	// Record before the first write: the Server-Timing header is stamped
+	// at first write, so a metric recorded after it is lost
+	// (server_timing contract; mounted under RequestLog only).
+	stopFacts()
+
+	if err != nil {
+		http.Error(w, "facts: "+err.Error(), http.StatusInternalServerError)
+
+v0.7.0
+6e53195 2026-11-10 chore: auto-commit 1 changed file(s) (heuristic)
+MIT License
+
+Copyright (c) 2026 Lars Artmann
+=== go-filewatcher.md ===
+LINE-FAIL[1]: rg -i 'go-filewatcher' -g 'go.mod' -g 'go.sum' -g '!vendor/**' .          # → no
+LINE-FAIL[1]: rg -i 'go-filewatcher' --glob '*.go' --glob '!vendor/**' .                 # → n
+LINE-FAIL[1]: rg -n -i 'fsnotify|inotify\(' --glob '*.go' --glob '!vendor/**' --glob '!*_test.
+// tail is the single journal tailer: it polls Facts(after) every cfg.Poll
+// and notifies the hub once per batch of new facts (burst coalescing).
+// The watermark starts at the journal head so a freshly started server
+// does not replay history — new clients get a full snapshot on connect
+// anyway. Each poll reads at most tailBatchLimit facts: the tailer only
+// signals that something changed, so a burst longer than the cap skips
+// middle facts without losing the notification.
+func (s *Server) tail(ctx context.Context) error {
+	watermark, err := s.journalHead(ctx)
+	if err != nil {
+		return err
+	}
+
+	ticker := time.NewTicker(s.cfg.Poll)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-ticker.C:
+		}
+
+		facts, err := s.store.Facts(ctx, watermark, tailBatchLimit)
+		if err != nil {
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
+
+			continue
+		}
+
+		if len(facts) == 0 {
+			continue
+		}
+
+		watermark = facts[len(facts)-1].Seq
+		s.hub.Notify(watermark)
+	}
+}
+// project events into coalesced harvest-tick triggers. It is purely additive:
+// a dead or missing watch stream never stalls the pool — the interval tick
+// stays the fallback heartbeat, and the trigger channel simply stays silent.
+type Watcher struct {
+	cfg            WatchConfig
+	triggers       chan struct{}
+	initialBackoff time.Duration
+
+	mu          sync.Mutex
+	lastTrigger map[string]time.Time
+}
+
+// NewWatcher creates a Watcher. Signals are delivered on a coalescing channel
+// of capacity one: while a tick runs, further events collapse into at most
+// one pending tick.
+func NewWatcher(cfg WatchConfig) *Watcher {
+	initial := cfg.InitialBackoff
+	if initial <= 0 {
+		initial = defaultWatchInitialBackoff
+	}
+
+	return &Watcher{
+		cfg:            cfg,
+		triggers:       make(chan struct{}, 1),
+		initialBackoff: initial,
+		lastTrigger:    make(map[string]time.Time),
+	}
+}
+
+// Triggers yields harvest-tick signals. The channel is never closed; when the
+// daemon is unreachable it simply stays quiet (the interval tick owns
+// progress). A nil channel (watch off) blocks its select case forever.
+func (w *Watcher) Triggers() <-chan struct{} { return w.triggers }
+	follow := fs.Bool("f", false, "follow (live)")
+
+	db := dbFlag(fs)
+	if err := fs.Parse(args); err != nil {
+v2.5.0-4-g9f44dee
+15
+=== go-health-dashboard.md ===
+./internal/webui/health.go:1:// The health dashboard mounts github.com/larsartmann/go-health-dashboard
+./internal/webui/health.go:25:	dashboard "github.com/larsartmann/go-health-dashboard"
+./internal/webui/webui.go:29:	dashboard "github.com/larsartmann/go-health-dashboard"
+./cmd/tq/go.mod:79:	github.com/larsartmann/go-health v0.10.0 // indirect
+./cmd/tq/go.mod:80:	github.com/larsartmann/go-health-dashboard v0.13.2 // indirect
+./go.mod:110:	github.com/larsartmann/go-health v0.10.0
+./go.mod:111:	github.com/larsartmann/go-health-dashboard v0.13.2
+dashboard.
+dashboard.Config
+dashboard.Dashboard
+dashboard.HealthRelay
+dashboard.New
+dashboard.NewHealthRelay
+dashboard.Option
+dashboard.Prober
+dashboard.RecommendedCSP
+dashboard.Routes
+dashboard.WithCSSPath
+dashboard.WithEmbeddedDatastarSDK
+dashboard.WithNonceExtractor
+dashboard.WithRoutes
+dashboard.WithTitle
+dashboard.WithTrend
+dashboard.WithWebhook
+395:			Metrics:    "",
+396:			Trend:      HealthTrendPath,
+397:			Export:     HealthExportPath,
+398:			Introspect: "",
+403:		dashboard.WithTrend(healthTrendSamples),
+408:		opts = append(opts, dashboard.WithWebhook(webhookURL))
+func newHealthDashboard(pro dashboard.Prober, webhookURL string) *dashboard.Dashboard {
+	opts := []dashboard.Option{
+		dashboard.WithTitle("tq queue health"),
+		dashboard.WithRoutes(dashboard.Routes{
+			Dashboard:  HealthDashboardPath,
+			SSE:        HealthSSEPath,
+			Favicon:    HealthFaviconPath,
+			Liveness:   HealthLivenessPath,
+			Readiness:  HealthReadinessPath,
+			Startup:    HealthStartupPath,
+			Metrics:    "",
+			Trend:      HealthTrendPath,
+			Export:     HealthExportPath,
+			Introspect: "",
+			DatastarJS: healthSDKSrc,
+		}),
+		dashboard.WithEmbeddedDatastarSDK(),
+		dashboard.WithCSSPath("/static/app.css"),
+		dashboard.WithTrend(healthTrendSamples),
+		dashboard.WithNonceExtractor(func(r *http.Request) string { return ctxNonce(r.Context()) }),
+	}
+
+	if webhookURL != "" {
+		opts = append(opts, dashboard.WithWebhook(webhookURL))
+	}
+
+	return dashboard.New(pro, opts...)
+}
+
+func (s *Server) healthBindings() []struct {
+	method  string
+	pattern string
+	handler func(http.ResponseWriter, *http.Request)
+} {
+	return []struct {
+		method  string
+		pattern string
+		handler func(http.ResponseWriter, *http.Request)
+	}{
+		{"GET", HealthDashboardPath, withHealthHeaders(s.dash.Handler()).ServeHTTP},
+		{"GET", HealthSSEPath, withHealthHeaders(s.dash.SSEHandler()).ServeHTTP},
+		{"GET", HealthSDKPath, withHealthHeaders(healthSDKScript).ServeHTTP},
+		{"GET", HealthFaviconPath, withHealthHeaders(s.dash.FaviconHandler()).ServeHTTP},
+		{"GET", HealthTrendPath, withHealthHeaders(s.dash.TrendHandler()).ServeHTTP},
+		{"GET", HealthExportPath, withHealthHeaders(s.dash.ExportHandler()).ServeHTTP},
+		{"GET", HealthLivenessPath, withHealthHeaders(s.prober.LivenessHandler()).ServeHTTP},
+func (s *Server) Handler() http.Handler {
+	mux := http.NewServeMux()
+
+	for _, route := range s.routeBindings() {
+		if route.handler == nil {
+			mux.Handle(route.method+" "+route.pattern, http.StripPrefix("/static/", staticHandler()))
+
+			continue
+		}
+
+		mux.HandleFunc(route.method+" "+route.pattern, route.handler)
+	}
+
+	for _, route := range s.healthBindings() {
+		mux.HandleFunc(route.method+" "+route.pattern, route.handler)
+	}
+
+	// The CSRF wrapper is innermost: page GETs issue/refresh the token
+	// cookie and publish it to the render chain; write POSTs verify it.
+	handler := withCSRFIssue(http.Handler(mux))
+
+	if s.cfg.AllowWrites {
+		for _, route := range s.writeBindings() {
+			// Rate limit OUTSIDE CSRF: three failed tokens lock the client
+			// out of the write routes entirely for a minute, so the token
+			// cannot be brute-forced request-by-request.
+			mux.Handle(route.method+" "+route.pattern,
+				s.writes.wrap(withCSRF(http.HandlerFunc(route.handler))))
+		}
+	}
+
+	if s.cfg.AuthToken != "" {
+		handler = withTokenAuth(s.cfg.AuthToken, handler)
+	}
+
+	// Security headers wrap everything — including auth rejections — so
+	// even the 401 page is CSP-covered.
+	handler = withSecurityHeaders(handler)
+
+	// Server-Timing trial (fleet review f21): per-segment latency in the
+	// response header, mounted ONLY where the operator already opted
+	// into request logging — the header leaks internal performance
+	// detail (server_timing README), so it never ships on the default
+	// loopback posture. SSE-safe: the wrapper passes Flush through.
+	handler = servertiming.ServerTimingMiddlewareWhen(func(*http.Request) bool {
+		return s.cfg.RequestLog
+	})(handler)
+
+	// Request logging wraps auth so rejected requests are logged too.
+	if s.cfg.RequestLog {
+		return withRequestLog(handler)
+	}
+
+	return handler
+}
+bash: line 1: \: command not found
+LINE-FAIL[127]: GOCACHE=/tmp/go-build-cache GOEXPERIMENT=jsonv2 GOWORK=off \
+12
+v0.13.2-32-g219d47b
+fatal: ambiguous argument 'v0.13.2..HEAD': unknown revision or path not in the working tree.
+Use '--' to separate paths from revisions, like this:
+'git <command> [<revision>...] -- [<file>...]'
+0
+grep: options.go: No such file or directory
+LINE-FAIL[2]: grep -n 'WithWebhook\b\|WithTrend(\|WithMetrics(' options.go          # → 172/18
+=== go-health.md ===
+./internal/webui/health_test.go:14:	health "github.com/larsartmann/go-health"
+./internal/webui/health.go:24:	health "github.com/larsartmann/go-health"
+./cmd/tq/go.mod:79:	github.com/larsartmann/go-health v0.10.0 // indirect
+./cmd/tq/go.mod:80:	github.com/larsartmann/go-health-dashboard v0.13.2 // indirect
+./go.mod:110:	github.com/larsartmann/go-health v0.10.0
+./go.mod:111:	github.com/larsartmann/go-health-dashboard v0.13.2
+      7 health.Check
+      3 health.go
+      6 health.Response
+      3 health.Status
+     10 health.StatusFail
+     11 health.StatusPass
+     12 health.StatusWarn
+117:		p.evaluateSafely(now)
+123:// evaluateSafely runs one evaluation batch, converting a panicking check
+127:func (p *queueProber) evaluateSafely(now time.Time) {
+305:		// StatusSince stamps the transition time: carried from the previous
+309:		if prev, ok := p.resp.Checks[name]; ok && prev.Status == c.Status && !prev.StatusSince.IsZero() {
+310:			c.StatusSince = prev.StatusSince
+312:			c.StatusSince = now
+323:		TotalLatencyMs: time.Since(batchStart).Milliseconds(),
+v0.10.0-2-gc16cfab
+bash: line 1: \: command not found
+LINE-FAIL[127]: GOCACHE=/tmp/go-build-cache GOEXPERIMENT=jsonv2 GOWORK=off \
+12
+func mkCheck(st health.Status, errMsg string) health.Check {
+	return health.Check{Status: st, Error: errMsg}
+}
+// into a failed response instead of letting it kill the caller: the SSE
+// pusher goroutine rides this path on every refresh, and an unrecovered
+// panic there takes all of `tq serve` down with it.
+func (p *queueProber) evaluateSafely(now time.Time) {
+	defer func() {
+		if r := recover(); r != nil {
+			slog.Error("webui: health evaluation panicked — serving degraded response",
+				"panic", r, "stack", string(debug.Stack()))
+			p.finishEval(now, now, map[string]health.Check{
+				"prober": mkCheck(health.StatusFail, fmt.Sprintf("health evaluation panicked: %v", r)),
+			})
+		}
+	}()
+
+	p.evaluate(now)
+}
+
+// RefreshInterval reports the evaluation cadence; the dashboard uses it as
+// the default push interval.
+func writeHealthJSON(w http.ResponseWriter, code int, resp health.Response) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+
+	if err := json.MarshalWrite(w, resp); err != nil {
+		return
+	}
+}
+
+func NewChecks(checks map[string]CheckFunc, opts ...Option) *Probe {
+	cfg := buildStandaloneConfig(opts)
+
+	runChecks := runNamedChecks(checks)
+
+	return assemble(func(ctx context.Context) map[string]CheckDetail { return runChecks(ctx) }, cfg)
+}
+analytics sink, a background sync partner. Today their choices are:
+
+- register the check **critical** → a blip pages someone (503) — too loud;
+- register it **non-critical** → every prolonged outage pins the roll-up at
+=== go-idempotency.md ===
+12
+// ErrTaskDone is the enqueue done-guard: the dedup key matched a stored
+// task that already COMPLETED, so a re-dispatch is refused. Without it a
+// dispatcher that treats the returned row as admission would mint a fresh
+// window for already-finished work (the DONE-on-arrival burn class). The
+// guard lives on the Queue wrapper, not the Store: cancelled/dead keys
+// keep their documented suppress-and-return semantics (rescue and re-arm
+// flows read the stored row), and re-arming a completed item deliberately
+// means a fresh key (edit the item text).
+var ErrTaskDone = errors.New("queue: dedup key already completed; re-dispatch refused (edit the item text to re-arm)")
+// Enqueue normalized-and-enqueues a task. A dedup key whose stored task
+// already completed returns the stored row PLUS ErrTaskDone — the
+// done-guard refusing the re-dispatch.
+func (q *Queue) Enqueue(ctx context.Context, n task.New) (task.Task, error) {
+	t, err := q.Store.Enqueue(ctx, n.Normalize())
+	if err == nil && t.Status == task.Completed {
+		return t, ErrTaskDone
+	}
+
+	return t, err
+}
+func TestEnqueueDedupKey(t *testing.T) {
+	ctx, s := freshStore(t)
+
+	first, err := s.Enqueue(ctx, task.New{Project: "demo", Type: "agent", DedupKey: "todo:demo:abc"})
+	if err != nil {
+		t.Fatalf("first Enqueue: %v", err)
+	}
+
+	second, err := s.Enqueue(ctx, task.New{Project: "demo", Type: "agent", DedupKey: "todo:demo:abc"})
+	if err != nil {
+		t.Fatalf("second Enqueue: %v", err)
+	}
+
+	if first.ID != second.ID {
+		t.Fatalf("dedup enqueue returned new task: %s vs %s", first.ID, second.ID)
+	}
+
+	tasks, err := s.List(ctx, queue.Filter{})
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+
+	if len(tasks) != 1 {
+		t.Fatalf("stored %d tasks, want 1", len(tasks))
+	}
+
+	facts, err := s.Facts(ctx, 0, 0)
+	if err != nil {
+		t.Fatalf("Facts: %v", err)
+	}
+
+	enqueued := 0
+
+	for _, f := range facts {
+		if f.Type == journal.Enqueued {
+			enqueued++
+		}
+	}
+
+	if enqueued != 1 {
+		t.Fatalf("journal has %d task.enqueued facts, want 1 (no duplicate on suppressed enqueue)", enqueued)
+	}
+
+	// Store-level layering pin for the enqueue done-guard: a COMPLETED
+	// key still suppresses at the STORE (row returned unchanged, no new
+	// fact) — the re-dispatch REFUSAL (ErrTaskDone) lives in the Queue
+	// wrapper, so rescue/inspection flows reading the store keep working.
+	claimed, claim := claimDue(t, ctx, s, "doneguard")
+
+	if err := s.Complete(ctx, claimed.ID, claim, jsontext.Value(`{}`)); err != nil {
+		t.Fatalf("Complete: %v", err)
+	}
+
+	third, err := s.Enqueue(ctx, task.New{Project: "demo", Type: "agent", DedupKey: "todo:demo:abc"})
+	if err != nil {
+		t.Fatalf("Enqueue over completed key: %v", err)
+	}
+
+	if third.ID != second.ID || third.Status != task.Completed {
+		t.Fatalf(
+			"completed-key suppress returned %s/%s, want the stored completed row %s",
+			third.ID,
+			third.Status,
+			second.ID,
+		)
+	}
+}
+304:	DedupKey    string         `json:"dedupKey,omitempty"`
+347:		DedupKey:    req.DedupKey,
+v0.3.2
+MIT License
+
+Copyright (c) 2026 Lars Artmann
+=== go-output.md ===
+cmd/tq/top.go:221:			fmt.Print("\x1b[2J\x1b[H")
+10
+func printTaskListTo(
+	w io.Writer,
+	tasks []task.Task,
+	limit int,
+	total func() (int, error),
+	requeueEvidence map[string]queue.RequeueEvidence,
+	evidence map[string]string,
+) {
+	if len(tasks) == 0 {
+		fmt.Fprintln(w, "no matching tasks")
+
+		return
+	}
+
+	fmt.Fprintf(
+		w,
+		"%-36s %-14s %-16s %-7s %5s %-9s  %s\n",
+		"ID",
+		"STATUS",
+		"PROJECT",
+		"TYPE",
+		"ATT",
+		"NOTBEFORE",
+		"LAST ERROR",
+	)
+
+	now := time.Now()
+	for _, t := range tasks {
+		row := fmt.Sprintf("%-36s %-14s %-16s %-7s %5d %-9s  %s",
+			t.ID.String(), statusCell(t, now), t.Project, t.Type, t.Attempts,
+			notBeforeCell(t, now),
+			truncate(parkedCell(t, requeueEvidence), 60),
+		)
+		// The evidence= suffix keeps tq dlq's self-describing row shape on
+		// parked rows too (verify-stage/class of the death that parked it,
+		// alias-only deaths included) — TODO row 1414.
+		if summary := evidence[t.ID.String()]; summary != "" {
+			row += "  evidence=" + summary
+		}
+
+		fmt.Fprintln(w, row)
+
+		// Dirty-tree parks are foreign dirt waiting, not task sickness —
+		// the hint keeps the no-attempt-burn contract visible on the text
+		// surface (JSON consumers read requeue_class=preflight + the
+		// refusal's [dirty tree] marker).
+		if requeueEvidence != nil && requeueEvidence[t.ID.String()].Class == queue.RequeueClassPreflight &&
+			strings.Contains(oneLine(t.LastError), "dirty tree") {
+			fmt.Fprintln(w, "       ↳ parked by a dirty tree — waits for the tree to clean; no attempt burn")
+		}
+	}
+
+	if limit > 0 && len(tasks) == limit {
+		if n, err := total(); err == nil {
+			fmt.Fprintf(
+				w,
+				"showing %d of %d matching task(s) (capped by --limit %d; --limit 0 lists all, --count prints just the total)\n",
+				len(tasks),
+				n,
+				limit,
+			)
+
+			return
+		}
+	}
+
+	fmt.Fprintf(w, "%d task(s)\n", len(tasks))
+}
+	DefaultPoll      = 500 * time.Millisecond
+	DefaultHeartbeat = 15 * time.Second
+
+	// BannerPrefix and BannerReadOnlySuffix define the serve startup
+	// banner's exact shape — shared by the CLI print and the e2e/smoke
+	// parsers, which nearly broke twice over string drift (00:21 e3).
+	BannerPrefix         = "tq: dashboard on http://"
+	BannerReadOnlySuffix = " (read-only)"
+	BannerWritesSuffix   = " (writes ENABLED: cancel/rescue from the UI)"
+	// BannerFoldFollowerSuffix marks the demoted serve: the projection
+v0.38.7
+MIT License
+
+Copyright (c) 2026 Lars Artmann
+=== go-retry.md ===
+./internal/executor/agent.go
+./internal/worker/worker.go
+./internal/worker/worker_test.go
+./internal/retryx/rename.go
+internal/executor/agent.go:1129:	return retry.DoWithValue[T](context.Background(), retry.Config{ //nolint:exhaustruct // optional hooks unset
+internal/worker/worker.go:399:	return retry.Do(ctx, retry.Config{ //nolint:exhaustruct // optional hooks unset
+internal/retryx/rename.go:24:	return retry.Do(context.Background(), retry.Config{ //nolint:exhaustruct // optional hooks unset
+internal/executor/agent.go:1129:	return retry.DoWithValue[T](context.Background(), retry.Config{ //nolint:exhaustruct // optional hooks unset
+internal/worker/worker_test.go:1785:// retry.ErrExhausted-wrapped error AND an ERROR-level label naming the
+internal/worker/worker_test.go:1806:	if !errors.Is(err, retry.ErrExhausted) {
+internal/worker/worker_test.go:1807:		t.Fatalf("err = %v, want retry.ErrExhausted wrapping", err)
+internal/executor/go.mod:9:	github.com/larsartmann/go-retry v0.9.0
+internal/worker/go.mod:48:	github.com/larsartmann/go-retry v0.9.0
+internal/retryx/go.mod:5:require github.com/larsartmann/go-retry v0.9.0
+LINE-FAIL[1]: grep -rn 'go-retry' internal/dlqbackoff/    # → no output (exempt module, §1)
+  (`errors.AsType[E]`, `SplitSeq`, `for range n`) — don't undo.
+413:		OnExhausted: func(attempts int, err error) {
+// lease-reclaim backstop — a lost outcome write must read as a known
+// handoff, never as a silently stuck task.
+func TestPersistOutcomeExhaustionIsLabeled(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+
+	pool := New(nil, Config{}, slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelWarn})))
+
+	attempts := 0
+
+	err := pool.persistOutcome(context.Background(), task.ID("t1"), func(context.Context) error {
+		attempts++
+
+		return errors.New("database is locked (5) (SQLITE_BUSY)")
+	})
+	if err == nil {
+		t.Fatal("persistOutcome: want the exhaustion error")
+	}
+
+	if !errors.Is(err, retry.ErrExhausted) {
+func (p *Pool) persistOutcome(ctx context.Context, id task.ID, write func(context.Context) error) error {
+	return retry.Do(ctx, retry.Config{ //nolint:exhaustruct // optional hooks unset
+		MaxAttempts:  3,
+		InitialDelay: 50 * time.Millisecond,
+		MaxDelay:     400 * time.Millisecond,
+		Multiplier:   2.0,
+		IsRetryable:  isTransientStoreBusy,
+		OnRetry: func(attempt int, delay time.Duration, err error) {
+			p.log.Warn("outcome write hit a transient store busy; retrying",
+				"task", id, "attempt", attempt, "retry after", delay, "err", err)
+		},
+		// Exhaustion is loud by contract: the write then rides the
+		// lease-reclaim backstop, and a silent fallthrough would read
+		// as a stuck task instead of a known-lost write (fleet
+		// review f10).
+		OnExhausted: func(attempts int, err error) {
+			p.log.Error("outcome write exhausted store-busy retries; the lease-reclaim backstop owns the task now",
+				"task", id, "attempts", attempts, "err", err)
+		},
+	}, func(ctx context.Context, _ int) error {
+		return write(ctx)
+	})
+}
+
+// isTransientStoreBusy reports whether err is a store lock-contention
+// failure worth retrying in-process. The sqlite driver surfaces the
+// SQLITE_BUSY family (base 5 and extended 517 BUSY_SNAPSHOT et al) with
+// the token in the message, and its English form is "database is
+// locked"; matching strings keeps the worker driver-agnostic. A false
+// positive is harmless — the retried write is guarded by the store's
+// RowsAffected re-checks; a false negative merely falls back to the
+// lease-reclaim backstop.
+func isTransientStoreBusy(err error) bool {
+	Backoff     func(attempt int) time.Duration // retry backoff (default exp)
+// window the way percentage jitter would.
+func rateLimitDelay(d time.Duration) time.Duration {
+	spread := min(d/20, time.Minute)
+
+	return d - spread + time.Duration(rand.Int64N(2*int64(spread)+1))
+	jitter := 0.8 + 0.4*rand.Float64()
+v0.9.0-5-ga3ed997
+=== go-sse.md ===
+./cmd/tq/go.mod:82:	github.com/larsartmann/go-sse v0.7.0 // indirect
+./examples/embed/go.mod:34:	github.com/larsartmann/go-sse v0.7.0 // indirect
+./internal/composition/go.mod:57:	github.com/larsartmann/go-sse v0.7.0 // indirect
+./internal/queue/postgres/go.mod:26:	github.com/larsartmann/go-sse v0.7.0 // indirect
+./internal/queue/postgresv4/go.mod:31:	github.com/larsartmann/go-sse v0.7.0 // indirect
+./internal/queue/sqlite/go.mod:25:	github.com/larsartmann/go-sse v0.7.0 // indirect
+./internal/queue/sqlitev4/go.mod:28:	github.com/larsartmann/go-sse v0.7.0 // indirect
+./internal/readmodel/go.mod:43:	github.com/larsartmann/go-sse v0.7.0 // indirect
+./internal/worker/go.mod:19:	github.com/larsartmann/go-sse v0.7.0 // indirect
+./queue/postgres/go.mod:25:	github.com/larsartmann/go-sse v0.7.0 // indirect
+./queue/sqlite/go.mod:24:	github.com/larsartmann/go-sse v0.7.0 // indirect
+./go.mod:59:	github.com/larsartmann/go-sse/sseparse v0.2.1 // indirect
+./go.mod:112:	github.com/larsartmann/go-sse v0.7.0
+./go.mod:113:	github.com/larsartmann/go-sse/ssetest v0.5.0
+      7 sse.Stream
+      7 sse.Event
+      6 sse.BroadcasterHealth
+      3 sse.NewEventID
+      2 sse.WithBufferSize
+      2 sse.NewStream
+      2 sse.NewBroadcaster
+      2 sse.Broadcaster
+      1 sse.LastEventIDFromRequest
+     14 ssetest.WithPath
+      8 ssetest.CollectN
+      6 ssetest.CollectWithTimeout
+      2 ssetest.Event
+      1 ssetest.WithLastEventID
+      1 ssetest.RequestOption
+      1 ssetest.MustReadEvents
+      1 ssetest.FilterByType
+      1 ssetest.EventsString
+go: can't compute 'all' using the vendor directory
+	(Use -mod=mod or -mod=readonly to bypass.)
+bash: line 1: cd: cmd/tq: No such file or directory
+v0.7.0-2-gd79edb5
+79:type BroadcasterHealth struct {
+	// (a closed hub is a dead live dashboard under a healthy process).
+	prober.liveSSE = func() *sse.BroadcasterHealth {
+		snap := s.hub.bc.Health()
+
+		return &snap
+	}
+	if p.liveSSE != nil {
+		if hub := p.liveSSE(); hub != nil {
+			switch {
+			case hub.Closed:
+				checks["live-sse"] = mkCheck(
+					health.StatusFail,
+					"SSE hub closed — the live dashboard is dead; restart the serve",
+				)
+			case hub.Draining:
+				checks["live-sse"] = mkCheck(health.StatusWarn, "SSE hub draining (shutdown in progress)")
+			default:
+				checks["live-sse"] = mkCheck(
+					health.StatusPass,
+					fmt.Sprintf("%d live subscriber(s), buffer %d event(s)", hub.SubscriberCount, hub.BufferSize),
+ok  	github.com/larsartmann/go-taskqueue/internal/webui	0.181s
+ok  	github.com/larsartmann/go-taskqueue/internal/webui	0.011s
+=== httputil-endpoints.md ===
+func (s *Server) Handler() http.Handler {
+	mux := http.NewServeMux()
+	mux.HandleFunc("POST /api/v1/tasks", s.handleEnqueue)
+	mux.HandleFunc("POST /api/v1/errors", s.handleReportError)
+	mux.HandleFunc("GET /api/v1/stats", s.handleStats)
+	mux.HandleFunc("GET /api/v1/healthz", s.handleHealth)
+
+	return s.guard(mux)
+}
+// routeBindings is the complete route table as data, so the read-only
+// guardrail test can prove the dashboard registers no mutating handler
+// (ADR-0003: the worst failure is a stale dashboard, never journal
+// corruption). Adding a POST route fails TestRoutesAreReadOnly. The nil
+// handler is the static file tree, wired in Handler.
+func (s *Server) routeBindings() []struct {
+	method  string
+	pattern string
+	handler func(http.ResponseWriter, *http.Request)
+} {
+	return []struct {
+		method  string
+		pattern string
+		handler func(http.ResponseWriter, *http.Request)
+	}{
+		{"GET", "/{$}", s.handleIndex},
+		{"GET", "/project/{name}", s.handleProject},
+		{"GET", "/task/{id}", s.handleTaskDetail},
+		{"GET", "/task/{id}/events", s.handleTaskEvents},
+		{"GET", "/api/events", s.handleEvents},
+		{"GET", "/api/stats", s.handleStats},
+		{"GET", "/api/facts", s.handleFacts},
+		{"GET", "/agents/live", s.handleAgentLive},
+		{"GET", "/static/", nil}, // staticHandler, wired in Handler
+	}
+}
+endpoints/v0.1.0
+02e6591 2026-11-06 docs: mark the endpoints first-release items resolved by endpoints/v0.1.0
+MIT License
+
+Copyright (c) 2026 Lars Artmann
+=== httputil-server-timing.md ===
+./go.mod:126:	github.com/larsartmann/httputil/server_timing v1.0.3
+internal/webui/handlers.go:18:	servertiming "github.com/larsartmann/httputil/server_timing"
+internal/webui/handlers.go:166:	stopFacts := servertiming.MeasureServerTiming(r.Context(), "facts")
+internal/webui/handlers.go:170:	// Record before the first write: the Server-Timing header is stamped
+internal/webui/handlers.go:204:	stopStats := servertiming.MeasureServerTiming(r.Context(), "stats")
+internal/webui/handlers.go:208:	// Record before the first write (Server-Timing stamps at first write).
+internal/webui/requestlog_test.go:11:// TestServerTimingHeaderBehindRequestLog pins the server_timing trial's
+internal/webui/requestlog_test.go:12:// mount contract (fleet review f21): the Server-Timing header (per-segment
+internal/webui/requestlog_test.go:16:func TestServerTimingHeaderBehindRequestLog(t *testing.T) {
+internal/webui/requestlog_test.go:28:	if st := header.Get("Server-Timing"); !strings.Contains(st, "stats") || !strings.Contains(st, "total") {
+internal/webui/requestlog_test.go:29:		t.Errorf("Server-Timing = %q, want stats + total segments under RequestLog", st)
+internal/webui/requestlog_test.go:37:	if st := header.Get("Server-Timing"); st != "" {
+internal/webui/requestlog_test.go:38:		t.Errorf("Server-Timing shipped without RequestLog: %q", st)
+internal/webui/webui.go:34:	servertiming "github.com/larsartmann/httputil/server_timing"
+internal/webui/webui.go:416:	// Server-Timing trial (fleet review f21): per-segment latency in the
+internal/webui/webui.go:421:	handler = servertiming.ServerTimingMiddlewareWhen(func(*http.Request) bool {
+func withRequestLog(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		rec := &statusRecorder{ResponseWriter: w}
+		start := time.Now()
+
+		defer func() {
+			slog.Info("webui: request",
+				"method", r.Method,
+				"path", redactedRequestURI(r.URL),
+				"status", rec.status,
+				"duration", time.Since(start),
+			)
+		}()
+
+		next.ServeHTTP(rec, r)
+	})
+}
+	// Server-Timing trial (fleet review f21): per-segment latency in the
+	// response header, mounted ONLY where the operator already opted
+	// into request logging — the header leaks internal performance
+	// detail (server_timing README), so it never ships on the default
+	// loopback posture. SSE-safe: the wrapper passes Flush through.
+	handler = servertiming.ServerTimingMiddlewareWhen(func(*http.Request) bool {
+		return s.cfg.RequestLog
+	})(handler)
+ok  	github.com/larsartmann/go-taskqueue/internal/webui	0.010s
+module github.com/larsartmann/httputil/server_timing
+
+go 1.27
+server_timing/v0.9.1
+server_timing/v0.10.0
+server_timing/v0.12.0
+server_timing/v1.0.1
+server_timing/v1.0.2
+server_timing/v1.0.3
+MIT License
+
+Copyright (c) 2026 Lars Artmann
+=== httputil.md ===
+./go.mod:126:	github.com/larsartmann/httputil/server_timing v1.0.3
+./internal/webui/handlers.go:18:	servertiming "github.com/larsartmann/httputil/server_timing"
+./internal/webui/webui.go:34:	servertiming "github.com/larsartmann/httputil/server_timing"
+405:  (`--alert-url`). **httputil** NOT adopted (MIT v1.5.0+; fleet verdicts
+- **pkg.go.dev license gating — all three modules are MIT** (owner decisions 2026-10-08 for `server_timing`, 2026-10-09 for the root, `endpoints` MIT from creation 2026-11-06; recorded in CHANGELOG [1.5.0]) — pkg.go.dev hides READMEs AND all docs for non-redistributable licenses (empirically verified 2026-10-08: the root page at `v1.4.2`, 18 importers, rendered neither the 782-line root `README.md` nor any documentation), and it re-indexes per tagged release, so visibility arrives only from the first tag cut after a LICENSE change (`v1.5.0` root, `server_timing/v1.0.2` sub-module; the `endpoints` page arrives with its first tag). The old "root stays Proprietary — do NOT mirror the MIT switch without an explicit owner decision" guard is resolved; do not reintroduce a Proprietary LICENSE in this repo without an explicit owner decision.
+
+## Testing Conventions
+
+MIT License
+
+Copyright (c) 2026 Lars Artmann
+29
+func (s *Server) Handler() http.Handler {
+	mux := http.NewServeMux()
+
+	for _, route := range s.routeBindings() {
+		if route.handler == nil {
+			mux.Handle(route.method+" "+route.pattern, http.StripPrefix("/static/", staticHandler()))
+
+			continue
+		}
+
+		mux.HandleFunc(route.method+" "+route.pattern, route.handler)
+	}
+
+	for _, route := range s.healthBindings() {
+		mux.HandleFunc(route.method+" "+route.pattern, route.handler)
+	}
+
+	// The CSRF wrapper is innermost: page GETs issue/refresh the token
+	// cookie and publish it to the render chain; write POSTs verify it.
+	handler := withCSRFIssue(http.Handler(mux))
+
+	if s.cfg.AllowWrites {
+		for _, route := range s.writeBindings() {
+			// Rate limit OUTSIDE CSRF: three failed tokens lock the client
+			// out of the write routes entirely for a minute, so the token
+			// cannot be brute-forced request-by-request.
+			mux.Handle(route.method+" "+route.pattern,
+				s.writes.wrap(withCSRF(http.HandlerFunc(route.handler))))
+		}
+	}
+
+	if s.cfg.AuthToken != "" {
+		handler = withTokenAuth(s.cfg.AuthToken, handler)
+	}
+
+	// Security headers wrap everything — including auth rejections — so
+	// even the 401 page is CSP-covered.
+	handler = withSecurityHeaders(handler)
+
+	// Server-Timing trial (fleet review f21): per-segment latency in the
+	// response header, mounted ONLY where the operator already opted
+	// into request logging — the header leaks internal performance
+	// detail (server_timing README), so it never ships on the default
+	// loopback posture. SSE-safe: the wrapper passes Flush through.
+	handler = servertiming.ServerTimingMiddlewareWhen(func(*http.Request) bool {
+		return s.cfg.RequestLog
+	})(handler)
+
+	// Request logging wraps auth so rejected requests are logged too.
+	if s.cfg.RequestLog {
+		return withRequestLog(handler)
+	}
+
+	return handler
+}
+func (s *Server) guard(next http.Handler) http.Handler {
+	expected := httpauth.HashToken(s.token)
+	policy := httpauth.APIPolicy()
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+
+		key := remoteHost(r)
+		if retry, locked := s.strikes.Locked(key); locked {
+			w.Header().Set("Retry-After", strconv.Itoa(int(retry/time.Second)+1))
+			writeError(
+				w,
+				http.StatusTooManyRequests,
+				"too many failed auth attempts — locked for "+retry.Round(time.Second).String(),
+				"wait out the lockout window before retrying",
+			)
+
+			return
+		}
+
+		presented, _ := policy.Presented(r)
+
+		if !httpauth.TokenMatches(expected, presented) {
+			s.strikes.Add(key)
+
+			w.Header().Set("WWW-Authenticate", `Bearer realm="tq-api"`)
+			writeError(
+				w,
+				http.StatusUnauthorized,
+				"unauthorized",
+				"present a valid bearer token (Authorization: Bearer <token> or ?token=<token>)",
+			)
+
+			return
+		}
+
+		s.strikes.Reset(key)
+
+		w.Header().Set("Cache-Control", "no-store")
+
+		next.ServeHTTP(w, r)
+	})
+}
+=== templ-components.md ===
+     12 display.Badge
+     11 display.BadgeProps
+      8 display.CardProps
+      8 display.Card
+      8 display.BadgeSizeSM
+      5 utils.BaseProps
+      5 display.EmptyStateProps
+      5 display.EmptyState
+      4 display.CardPaddingMD
+      4 display.BadgeInfo
+      3 layout.Base
+      3 display.TableProps
+1
+	componentCallRe = regexp.MustCompile(`(display|layout|feedback|navigation)\.([A-Z][A-Za-z0-9]*)\s*\(`)
+660:	props.HeadContent = layout.MetaRefresh(3600, "")
+153:				StickyHeader: true,
+187:						StickyHeader: true,
+5:// MetaRefresh renders a `<meta http-equiv="refresh">` tag that reloads or
+12://	@layout.MetaRefresh(5, "/login?retry=1")
+188:	// StickyHeader, when true, pins the header row to the top of the table's
+193:	StickyHeader bool
+269:				<thead class={ utils.Ternary(props.StickyHeader, "sticky top-0 z-10 bg-gray-50 dark:bg-gray-800", "bg-gray-50 dark:bg-gray-800") }>
+115:	@copyButtonScriptComponent(props.Nonce)
+33:	// NoScript skips the per-render singleton script emission. Set it when
+39:	NoScript bool
+58:// NoScript on those buttons; page-load buttons keep the default emission.
+charts/echarts/v1.27.0-88-g2ad4cb74
+go: can't compute 'all' using the vendor directory
+	(Use -mod=mod or -mod=readonly to bypass.)
+ok  	github.com/larsartmann/go-taskqueue/internal/webui	0.007s

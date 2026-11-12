@@ -50,7 +50,7 @@
         # from THIS attr (single source; check-version-agreement.sh verifies
         # the set against CHANGELOG).
         version = "0.4.2";
-        vendorHash = "sha256-bojOAivH5/6l1XsIIj/giFOvTnS/t/Pl7CcVW5Azu4I=";
+        vendorHash = "sha256-+JIm293yLjRrZGzaZV2d+OEjfyDyL0judEoReC1Ir+Q="; # 2026-11-12 lint-leak go.sum purge drift (got: from .#checks vendor-hash)
         # go.mod floor 1.27.1 > nixpkgs go_1_26 (1.26.7); build the
         # toolchain from the go.dev source tarball until nixpkgs ships
         # >= 1.27.1 (drop-day doctrine — delete this block then).

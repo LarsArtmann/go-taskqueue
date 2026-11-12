@@ -1,0 +1,29 @@
+ok: root vendor/ in sync (content hash 42b96dba5ee90aef59c09fc631637f82327e65435281adf1170bce4c42debd84)
+ok: root go.mod/go.sum (go mod vendor) in sync
+ok: executor tidy in sync
+ok: internal/composition tidy in sync
+ok: internal/config tidy in sync
+ok: internal/dlqbackoff tidy in sync
+ok: internal/executor tidy in sync
+ok: internal/journal tidy in sync
+ok: internal/journal/cqrs tidy in sync
+ok: internal/queue tidy in sync
+ok: internal/queue/companion tidy in sync
+ok: internal/queue/postgres tidy in sync
+ok: internal/queue/postgresv4 tidy in sync
+ok: internal/queue/sqlite tidy in sync
+ok: internal/queue/sqlitev4 tidy in sync
+ok: internal/readmodel tidy in sync
+ok: internal/retryx tidy in sync
+ok: internal/task tidy in sync
+ok: internal/testastguard tidy in sync
+ok: internal/worker tidy in sync
+ok: journal tidy in sync
+ok: queue tidy in sync
+ok: queue/postgres tidy in sync
+ok: queue/sqlite tidy in sync
+ok: task tidy in sync
+ok: worker tidy in sync
+ok: no lint-toolchain entries in scanned go.sums
+ok: cmd/tq cqrs pins in parity with the root sub-module graph
+vendor-sync summary: root vendor + all module tidies in sync
