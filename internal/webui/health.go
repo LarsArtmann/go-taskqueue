@@ -529,6 +529,17 @@ func newHealthDashboard(pro dashboard.Prober, webhookURL string, metrics bool) *
 		DatastarJS: healthSDKSrc,
 	}
 
+	// The Prometheus exposition (pareto T19, 2026-11-12): opt-in via the
+	// Metrics config flag, served at HealthMetricsPath INSIDE the same
+	// middleware stack (security headers + token gate) as every other
+	// health route — the vendored doc's own recommendation. Default off
+	// keeps the deliberate min-surface posture; the flag only un-hides
+	// the capability for pools whose dashboards want tq series. The
+	// route path must be set BEFORE WithRoutes captures the struct.
+	if metrics {
+		routes.Metrics = HealthMetricsPath
+	}
+
 	opts := []dashboard.Option{
 		dashboard.WithTitle("tq queue health"),
 		dashboard.WithRoutes(routes),
@@ -538,19 +549,12 @@ func newHealthDashboard(pro dashboard.Prober, webhookURL string, metrics bool) *
 		dashboard.WithNonceExtractor(func(r *http.Request) string { return ctxNonce(r.Context()) }),
 	}
 
-	if webhookURL != "" {
-		opts = append(opts, dashboard.WithWebhook(webhookURL))
+	if metrics {
+		opts = append(opts, dashboard.WithMetrics(true))
 	}
 
-	// The Prometheus exposition (pareto T19, 2026-11-12): opt-in via the
-	// Metrics config flag, served at HealthMetricsPath INSIDE the same
-	// middleware stack (security headers + token gate) as every other
-	// health route — the vendored doc's own recommendation. Default off
-	// keeps the deliberate min-surface posture; the flag only un-hides
-	// the capability for pools whose dashboards want tq series.
-	if metrics {
-		routes.Metrics = HealthMetricsPath
-		opts = append(opts, dashboard.WithMetrics(true))
+	if webhookURL != "" {
+		opts = append(opts, dashboard.WithWebhook(webhookURL))
 	}
 
 	return dashboard.New(pro, opts...)

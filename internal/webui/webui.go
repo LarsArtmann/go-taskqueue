@@ -321,7 +321,7 @@ func (s *Server) healthBindings() []struct {
 	pattern string
 	handler func(http.ResponseWriter, *http.Request)
 } {
-	return []struct {
+	bindings := []struct {
 		method  string
 		pattern string
 		handler func(http.ResponseWriter, *http.Request)
@@ -336,6 +336,19 @@ func (s *Server) healthBindings() []struct {
 		{"GET", HealthReadinessPath, withHealthHeaders(s.prober.ReadinessHandler()).ServeHTTP},
 		{"GET", HealthStartupPath, withHealthHeaders(s.prober.StartupHandler()).ServeHTTP},
 	}
+
+	// The Prometheus exposition (pareto T19): flag-gated, same header
+	// posture as the rest of the health mount; unregistered (404) when
+	// Metrics is off.
+	if s.cfg.Metrics {
+		bindings = append(bindings, struct {
+			method  string
+			pattern string
+			handler func(http.ResponseWriter, *http.Request)
+		}{"GET", HealthMetricsPath, withHealthHeaders(s.dash.MetricsHandler()).ServeHTTP})
+	}
+
+	return bindings
 }
 
 // writeBindings is the opt-in admin route table (Config.AllowWrites). It
