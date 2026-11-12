@@ -2,7 +2,8 @@
 
 **Verdict:** ADOPTED — low (2.5/12 capability rows leveraged; was 1.5/12 before the 2026-11-09 landing) — two load-bearing seams now: the readmodel fold → cqrs-lite dead-letter gate AND the executor's typed refusals classified into the shared taxonomy; the rest of the repo still runs parallel hand-rolled taxonomies.
 
-**2026-11-11 refresh:** F2 PARTIALLY landed — `PermanentError` and `PreflightError` now implement `ErrorFamily()`/`ErrorCode()` into the SHARED taxonomy (internal/executor/executor.go:53-54, 94-95 — exactly the finding's first half, "fleet review f8"), with `errorfamily.Classify`/`IsRetryable` pins at internal/executor/executor_test.go:178-200; the `WrapOnce` collapse (finding's second half) was NOT taken — `Permanent` still hand-rolls the AsType double-wrap guard (executor.go:66-73). Score re-derived: 13 → 21. Call-site inventory grew 8 → 14 occurrences; §1/§2 cites re-verified against HEAD 2026-11-11 by grep; checkout now `v0.12.0-8-g5beae0e`, still pinned v0.12.0 = latest tag.
+**2026-11-12 refresh:** F3 LANDED — the store-busy classifier registers in worker init (pareto T07) with a pin test; F2-second-half RULED OUT (the WrapOnce collapse would break the domain-type classification — see F2); score re-derived 21 → 29. Cites re-verified against HEAD by grep.
+**2026-11-11 refresh:** F2 PARTIALLY landed — `PermanentError` and `PreflightError` now implement `ErrorFamily()`/`ErrorCode()` into the SHARED taxonomy (internal/executor/executor.go:53-54, 94-95 — exactly the finding's first half, "fleet review f8"), with `errorfamily.Classify`/`IsRetryable` pins at internal/executor/executor_test.go:178-200. Score re-derived: 13 → 21. Call-site inventory grew 8 → 14 occurrences; §1/§2 cites re-verified against HEAD 2026-11-11 by grep; checkout now `v0.12.0-8-g5beae0e`, still pinned v0.12.0 = latest tag.
 
 **Pinned:** v0.12.0 — direct requires: `go.mod:109` (root/app layer), `internal/readmodel/go.mod:13`; `// indirect` in 16 more modules (via go-retry + go-cqrs-lite). Verified 2026-11-08 by `grep -rn 'go-error-family' --include=go.mod . | grep -v vendor`.
 
@@ -44,7 +45,7 @@ The runtime classifier is NOT in this repo: the readmodel's fold errors flow int
 | Multi-error worst-severity (`errors.Join` + `Classify`) | 🔴 MISSED | 7 join sites (runactor.go:157-174, cmd/tq/main.go:4363) render raw; never classified |
 | Domain error types implementing the six interfaces | 🟢 FULL | `PermanentError`→Rejection (executor.go:53-54) + `PreflightError`→Transient (executor.go:94-95) — F2's first half landed 2026-11-09; cqrs-lite's gate and go-retry's default predicate classify executor refusals without bespoke checks |
 | Sentinel registration (`RegisterClassification`) | 🔴 MISSED | `internal/task/errors.go:7-14` sentinels unregistered |
-| Dynamic classifiers (`RegisterClassifier`) | 🔴 MISSED | store-busy detected by string sniff (internal/worker/worker.go:442-450, now also extended 517 BUSY_SNAPSHOT) |
+| Dynamic classifiers (`RegisterClassifier`) | 🟢 FULL | landed 2026-11-12 (pareto T07): worker init registers the store-busy classifier (internal/worker/worker.go, `errorfamily.RegisterClassifier` → `isTransientStoreBusy` — the driver-agnostic predicate is retained DELIBERATELY, not a string-sniff leftover: promoting modernc `*sqlite.Error` would couple worker to the driver); pinned by `TestStoreBusyClassifierRegistered` (busy_classify_test.go) |
 | `WrapOnce` idempotent wrap | 🔵 REJECTED BY DESIGN (2026-11-12) | the hand-rolled `Permanent` guard is the DOMAIN analog: `WrapOnce` collapses onto the library's `*Error`, but `PermanentError` is tq's domain type — a swap would make `ClassifyFailure`'s `AsType[*PermanentError]` miss every fresh wrap and degrade the whole class to TRANSIENT (classify.go:46), break the `"permanent: "` prefix + identity no-op pins (executor_test.go:144-165) |
 | `errorfamilytest` assertions | 🔴 MISSED | host_test.go:403-405 + executor_test.go:178-200 hand-roll `AssertRetryable`/`AssertFamily`'s job |
 | Exit codes (`ExitCode`/`ExitCoder`) | 🔴 MISSED | cmd/tq/main.go:128,168,173,194 hardcode `os.Exit(1/2)` |
@@ -75,8 +76,8 @@ The runtime classifier is NOT in this repo: the readmodel's fold errors flow int
 
 ## 4. Score + top opportunities
 
-Inputs (re-derived 2026-11-11): N=15 rows, N/A=3, A=12. FULL=2 (family constructors; domain error types), PARTIAL=1 (0.5), MISSED=9, MISUSED=0 → Σ=2.5.
-Score = round(100 × 2.5/12) = **21 — low** (was 13 before the landing).
+Inputs (re-derived 2026-11-12): N=15 rows, N/A=3, A=12. FULL=3 (family constructors; domain error types; the store-busy classifier — T07), PARTIAL=1 (0.5), MISSED=8, MISUSED=0 → Σ=3.5.
+Score = round(100 × 3.5/12) = **29 — low** (21 before T07; 13 before the executor landing).
 
 Top opportunities, in value order: (1) F3 — classifier for store-busy, deleting the string sniff (landed 2026-11-12, T07); (2) F7 — `errorfamilytest` swap (now 10 hand-rolled pin sites). F2-second-half is RULED OUT (see F2 — WrapOnce would break the domain-type classification); F5/F6 are optional and behavior-visible.
 
