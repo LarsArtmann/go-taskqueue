@@ -598,6 +598,7 @@ func TestHealthLiveSSECheck(t *testing.T) {
 // 2026-11-12) needs a probe that ignores its deadline on purpose.
 type wedgedWorkersStore struct {
 	queue.Store
+
 	release chan struct{}
 }
 
@@ -619,6 +620,7 @@ func TestHealthSlowCheckAbandonedAtBatchDeadline(t *testing.T) {
 
 	prev := healthEvalTimeout
 	healthEvalTimeout = 50 * time.Millisecond
+
 	t.Cleanup(func() { healthEvalTimeout = prev })
 
 	p := newQueueProber(s, "abandon-test")

@@ -242,6 +242,7 @@ func (p *queueProber) evaluate(now time.Time) {
 	checks := map[string]health.Check{}
 
 	dbStart := time.Now()
+
 	var counts map[task.Status]int
 
 	err := boundedCheck(ctx, func(ctx context.Context) error {
@@ -266,6 +267,7 @@ func (p *queueProber) evaluate(now time.Time) {
 	}
 
 	workersStart := time.Now()
+
 	var beats int64
 
 	err = boundedCheck(ctx, func(ctx context.Context) error {
@@ -291,6 +293,7 @@ func (p *queueProber) evaluate(now time.Time) {
 	checks["workers"] = mkCheck(workersStatus, workersErr, time.Since(workersStart))
 
 	queueStart := time.Now()
+
 	var stuck int
 
 	stuckErr := boundedCheck(ctx, func(ctx context.Context) error {
@@ -326,7 +329,6 @@ func (p *queueProber) evaluate(now time.Time) {
 
 			return nil
 		})
-
 		if projErr != nil {
 			checks["projection"] = mkCheck(health.StatusFail, errText(projErr), time.Since(projStart))
 		} else if mounted {
