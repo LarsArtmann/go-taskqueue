@@ -130,7 +130,7 @@ func (p *queueProber) evaluateSafely(now time.Time) {
 			slog.Error("webui: health evaluation panicked — serving degraded response",
 				"panic", r, "stack", string(debug.Stack()))
 			p.finishEval(now, now, map[string]health.Check{
-				"prober": mkCheck(health.StatusFail, fmt.Sprintf("health evaluation panicked: %v", r)),
+				"prober": mkCheck(health.StatusFail, fmt.Sprintf("health evaluation panicked: %v", r), 0),
 			})
 		}
 	}()
@@ -199,9 +199,10 @@ func (p *queueProber) evaluate(now time.Time) {
 
 	checks := map[string]health.Check{}
 
+	dbStart := time.Now()
 	counts, err := p.store.StatusCounts(ctx)
 
-	checks["database"] = mkCheck(statusOr(err == nil, health.StatusPass, health.StatusFail), errText(err))
+	checks["database"] = mkCheck(statusOr(err == nil, health.StatusPass, health.StatusFail), errText(err), time.Since(dbStart))
 	if err != nil {
 		// Every check below reads the same store; one verdict beats five
 		// identical failures.
@@ -210,6 +211,7 @@ func (p *queueProber) evaluate(now time.Time) {
 		return
 	}
 
+	workersStart := time.Now()
 	beats, err := p.store.CountFacts(ctx, journal.Heartbeat, now.Add(-healthHeartbeatWindow))
 
 	workersErr := ""
@@ -224,32 +226,35 @@ func (p *queueProber) evaluate(now time.Time) {
 			"no worker heartbeat in "+healthHeartbeatWindow.String()+" — pool idle or down"
 	}
 
-	checks["workers"] = mkCheck(workersStatus, workersErr)
+	checks["workers"] = mkCheck(workersStatus, workersErr, time.Since(workersStart))
 
+	queueStart := time.Now()
 	stuck := queue.CountStuckRunning(ctx, p.store, now)
 	checks["queue"] = mkCheck(
 		statusOr(stuck == 0, health.StatusPass, health.StatusWarn),
-		stuckNote(stuck))
+		stuckNote(stuck), time.Since(queueStart))
 
 	dead := counts[task.Dead]
 	checks["dlq"] = mkCheck(
 		statusOr(dead == 0, health.StatusPass, health.StatusWarn),
-		dlqNote(dead))
+		dlqNote(dead), 0)
 
 	if p.projectionCursor != nil {
+		projStart := time.Now()
 		cursor, mounted := p.projectionCursor(ctx)
 		if mounted {
+			projDur := time.Since(projStart)
 			head, headErr := p.store.HeadSeq(ctx)
 
 			switch {
 			case headErr != nil:
-				checks["projection"] = mkCheck(health.StatusFail, errText(headErr))
+				checks["projection"] = mkCheck(health.StatusFail, errText(headErr), projDur)
 			case head-cursor > healthProjectionLagTolerance:
 				checks["projection"] = mkCheck(health.StatusWarn, fmt.Sprintf(
 					"fold %d fact(s) behind the journal head (#%d of #%d) — the fold is wedged or restarting",
-					head-cursor, cursor, head))
+					head-cursor, cursor, head), projDur)
 			default:
-				checks["projection"] = mkCheck(health.StatusPass, fmt.Sprintf("at #%d (head #%d)", cursor, head))
+				checks["projection"] = mkCheck(health.StatusPass, fmt.Sprintf("at #%d (head #%d)", cursor, head), projDur)
 			}
 		}
 	}
@@ -258,23 +263,28 @@ func (p *queueProber) evaluate(now time.Time) {
 		checks["projection"] = mkCheck(
 			health.StatusWarn,
 			"fold: follower — read-only projection mount (the fold lock is held by another serve): this dashboard's model is frozen at mount and its SSE stream will not fire; trust the lock-holding dashboard, or restart this serve once the lock frees",
+			0,
 		)
 	}
 
 	if p.liveSSE != nil {
+		sseStart := time.Now()
 		if hub := p.liveSSE(); hub != nil {
+			sseDur := time.Since(sseStart)
 			switch {
 			case hub.Closed:
 				checks["live-sse"] = mkCheck(
 					health.StatusFail,
 					"SSE hub closed — the live dashboard is dead; restart the serve",
+					sseDur,
 				)
 			case hub.Draining:
-				checks["live-sse"] = mkCheck(health.StatusWarn, "SSE hub draining (shutdown in progress)")
+				checks["live-sse"] = mkCheck(health.StatusWarn, "SSE hub draining (shutdown in progress)", sseDur)
 			default:
 				checks["live-sse"] = mkCheck(
 					health.StatusPass,
 					fmt.Sprintf("%d live subscriber(s), buffer %d event(s)", hub.SubscriberCount, hub.BufferSize),
+					sseDur,
 				)
 			}
 		}
@@ -284,9 +294,10 @@ func (p *queueProber) evaluate(now time.Time) {
 }
 
 // mkCheck builds one check result; go-health grades the overall response
-// from the per-check statuses.
-func mkCheck(st health.Status, errMsg string) health.Check {
-	return health.Check{Status: st, Error: errMsg}
+// from the per-check statuses. dur feeds the dashboard's duration column
+// (DurationNanos; omitted from the JSON when zero = unknown).
+func mkCheck(st health.Status, errMsg string, dur time.Duration) health.Check {
+	return health.Check{Status: st, Error: errMsg, DurationNanos: dur.Nanoseconds()}
 }
 
 func (p *queueProber) finishEval(now, batchStart time.Time, checks map[string]health.Check) {
@@ -369,10 +380,16 @@ func errText(err error) string {
 
 func writeHealthJSON(w http.ResponseWriter, code int, resp health.Response) {
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-cache")
 	w.WriteHeader(code)
 
-	if err := json.MarshalWrite(w, resp); err != nil {
-		return
+	// Coerce before marshal: a store error string with invalid UTF-8 would
+	// otherwise truncate or poison the JSON body the dashboard parses
+	// (pareto T08, 2026-11-12).
+	if err := json.MarshalWrite(w, health.CoerceValidUTF8(resp)); err != nil {
+		slog.Error("webui: health response marshal failed — serving static fallback body",
+			"err", err)
+		_, _ = fmt.Fprint(w, `{"status":"fail","error":"health marshal failed"}`)
 	}
 }
 
