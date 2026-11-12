@@ -48,9 +48,6 @@ const (
 	healthRefreshInterval = 5 * time.Second
 	// healthHeartbeatWindow mirrors `tq doctor`'s worker-liveness window.
 	healthHeartbeatWindow = 10 * time.Minute
-	// healthEvalTimeout bounds one evaluation batch; a slow store must not
-	// stall the SSE pusher goroutine beyond the refresh cadence.
-	healthEvalTimeout = 5 * time.Second
 	// healthProjectionLagTolerance is the fold-lag head gap the projection
 	// check tolerates before warning: the tail polls at DefaultPoll and
 	// the fold applies within a batch, so only a wedged fold lags wide.
@@ -61,6 +58,32 @@ const (
 	// was the gap).
 	healthTrendSamples = 72
 )
+
+// healthEvalTimeout bounds one evaluation batch; a slow store must not
+// stall the SSE pusher goroutine beyond the refresh cadence. A var so the
+// abandonment tests can shrink the deadline (never mutated in prod code).
+var healthEvalTimeout = 5 * time.Second
+
+// boundedCheck runs one blocking probe against the batch deadline and
+// abandons it there: a store call that ignores its context (wedged driver,
+// lock storm) can no longer stall the whole evaluation — the laggard's
+// goroutine leaks until it returns while the batch proceeds with the
+// remaining checks (the upstream runBoundedCheck shape, go-health
+// checks.go:94-126 — hand-rolled here because upstream keeps it
+// unexported; pareto T16, 2026-11-12). The done channel is buffered so
+// an abandoned probe's late result can never block.
+func boundedCheck(ctx context.Context, run func(context.Context) error) error {
+	done := make(chan error, 1)
+
+	go func() { done <- run(ctx) }()
+
+	select {
+	case err := <-done:
+		return err
+	case <-ctx.Done():
+		return fmt.Errorf("health: probe did not finish before the batch deadline: %w", ctx.Err())
+	}
+}
 
 // queueProber adapts the task queue's store-derived health onto
 // dashboard.Prober: CachedResponse is a short-TTL cache over one evaluation
@@ -200,7 +223,15 @@ func (p *queueProber) evaluate(now time.Time) {
 	checks := map[string]health.Check{}
 
 	dbStart := time.Now()
-	counts, err := p.store.StatusCounts(ctx)
+	var counts map[task.Status]int
+
+	err := boundedCheck(ctx, func(ctx context.Context) error {
+		var countsErr error
+
+		counts, countsErr = p.store.StatusCounts(ctx)
+
+		return countsErr
+	})
 
 	checks["database"] = mkCheck(
 		statusOr(err == nil, health.StatusPass, health.StatusFail),
@@ -216,7 +247,15 @@ func (p *queueProber) evaluate(now time.Time) {
 	}
 
 	workersStart := time.Now()
-	beats, err := p.store.CountFacts(ctx, journal.Heartbeat, now.Add(-healthHeartbeatWindow))
+	var beats int64
+
+	err = boundedCheck(ctx, func(ctx context.Context) error {
+		var beatsErr error
+
+		beats, beatsErr = p.store.CountFacts(ctx, journal.Heartbeat, now.Add(-healthHeartbeatWindow))
+
+		return beatsErr
+	})
 
 	workersErr := ""
 
@@ -233,10 +272,22 @@ func (p *queueProber) evaluate(now time.Time) {
 	checks["workers"] = mkCheck(workersStatus, workersErr, time.Since(workersStart))
 
 	queueStart := time.Now()
-	stuck := queue.CountStuckRunning(ctx, p.store, now)
-	checks["queue"] = mkCheck(
-		statusOr(stuck == 0, health.StatusPass, health.StatusWarn),
-		stuckNote(stuck), time.Since(queueStart))
+	var stuck int
+
+	stuckErr := boundedCheck(ctx, func(ctx context.Context) error {
+		stuck = queue.CountStuckRunning(ctx, p.store, now)
+
+		return nil
+	})
+
+	switch {
+	case stuckErr != nil:
+		checks["queue"] = mkCheck(health.StatusFail, errText(stuckErr), time.Since(queueStart))
+	default:
+		checks["queue"] = mkCheck(
+			statusOr(stuck == 0, health.StatusPass, health.StatusWarn),
+			stuckNote(stuck), time.Since(queueStart))
+	}
 
 	dead := counts[task.Dead]
 	checks["dlq"] = mkCheck(
@@ -246,10 +297,32 @@ func (p *queueProber) evaluate(now time.Time) {
 	if p.projectionCursor != nil {
 		projStart := time.Now()
 
-		cursor, mounted := p.projectionCursor(ctx)
-		if mounted {
+		var (
+			cursor  int64
+			mounted bool
+		)
+
+		projErr := boundedCheck(ctx, func(ctx context.Context) error {
+			cursor, mounted = p.projectionCursor(ctx)
+
+			return nil
+		})
+
+		if projErr != nil {
+			checks["projection"] = mkCheck(health.StatusFail, errText(projErr), time.Since(projStart))
+		} else if mounted {
 			projDur := time.Since(projStart)
-			head, headErr := p.store.HeadSeq(ctx)
+
+			var (
+				head    int64
+				headErr error
+			)
+
+			headErr = boundedCheck(ctx, func(ctx context.Context) error {
+				head, headErr = p.store.HeadSeq(ctx)
+
+				return headErr
+			})
 
 			switch {
 			case headErr != nil:

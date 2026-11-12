@@ -14,6 +14,7 @@ import (
 
 	health "github.com/larsartmann/go-health"
 	"github.com/larsartmann/go-sse"
+	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
@@ -537,5 +538,61 @@ func TestHealthLiveSSECheck(t *testing.T) {
 	resp = p.CachedResponse()
 	if got := resp.Checks["live-sse"]; got.Status != health.StatusFail {
 		t.Errorf("closed-hub live-sse = %+v, want fail", got)
+	}
+}
+
+// wedgedWorkersStore wedges the worker-heartbeat probe on a channel and
+// ignores its context: the abandonment shape T16 pins (pareto plan,
+// 2026-11-12) needs a probe that ignores its deadline on purpose.
+type wedgedWorkersStore struct {
+	queue.Store
+	release chan struct{}
+}
+
+func (w *wedgedWorkersStore) CountFacts(_ context.Context, _ journal.FactType, _ time.Time) (int64, error) {
+	<-w.release
+
+	return 0, errors.New("unreachable: probe was abandoned, not completed")
+}
+
+// TestHealthSlowCheckAbandonedAtBatchDeadline pins the per-check
+// abandonment (pareto T16): a workers probe wedged past the batch
+// deadline fails closed with the abandonment message while the batch
+// still completes — database stays pass, every remaining check lands in
+// the snapshot, nothing stalls past the deadline.
+func TestHealthSlowCheckAbandonedAtBatchDeadline(t *testing.T) {
+	release := make(chan struct{})
+	s := &wedgedWorkersStore{Store: newTestStore(t), release: release}
+	t.Cleanup(func() { close(release) })
+
+	prev := healthEvalTimeout
+	healthEvalTimeout = 50 * time.Millisecond
+	t.Cleanup(func() { healthEvalTimeout = prev })
+
+	p := newQueueProber(s, "abandon-test")
+	p.evaluateSafely(time.Now())
+
+	p.mu.Lock()
+	resp := p.resp
+	p.mu.Unlock()
+
+	db, ok := resp.Checks["database"]
+	if !ok || db.Status != health.StatusPass {
+		t.Fatalf("database check = %+v, want present pass (nothing wedged there)", db)
+	}
+
+	workers, ok := resp.Checks["workers"]
+	if !ok || workers.Status != health.StatusFail {
+		t.Fatalf("workers check = %+v, want present fail (the wedged probe)", workers)
+	}
+
+	if !strings.Contains(workers.Error, "did not finish before the batch deadline") {
+		t.Errorf("workers error = %q, want the abandonment message", workers.Error)
+	}
+
+	for _, name := range []string{"queue", "dlq"} {
+		if _, ok := resp.Checks[name]; !ok {
+			t.Errorf("%s check missing — the batch did not complete past the abandoned workers probe", name)
+		}
 	}
 }
