@@ -1245,3 +1245,474 @@ MIT License
 Copyright (c) 2026 Lars Artmann
 === go-output.md ===
 LINE-EMPTY-OK: grep -rn 'larsartmann/go-output' --include=go.mod . | grep -v vendor       # → no output
+LINE-EMPTY-OK: grep -rn 'larsartmann/go-output' --include='*.go' . | grep -v vendor       # → no output
+LINE-EMPTY-OK: grep -rn 'tabwriter' --include='*.go' cmd internal | grep -v vendor        # → no output (no tabwriter today)
+cmd/tq/top.go:221:			fmt.Print("\x1b[2J\x1b[H")
+10
+func printTaskListTo(
+	w io.Writer,
+	tasks []task.Task,
+	limit int,
+	total func() (int, error),
+	requeueEvidence map[string]queue.RequeueEvidence,
+	evidence map[string]string,
+) {
+	if len(tasks) == 0 {
+		fmt.Fprintln(w, "no matching tasks")
+
+		return
+	}
+
+	fmt.Fprintf(
+		w,
+		"%-36s %-14s %-16s %-7s %5s %-9s  %s\n",
+		"ID",
+		"STATUS",
+		"PROJECT",
+		"TYPE",
+		"ATT",
+		"NOTBEFORE",
+		"LAST ERROR",
+	)
+
+	now := time.Now()
+	for _, t := range tasks {
+		row := fmt.Sprintf("%-36s %-14s %-16s %-7s %5d %-9s  %s",
+			t.ID.String(), statusCell(t, now), t.Project, t.Type, t.Attempts,
+			notBeforeCell(t, now),
+			truncate(parkedCell(t, requeueEvidence), 60),
+		)
+		// The evidence= suffix keeps tq dlq's self-describing row shape on
+		// parked rows too (verify-stage/class of the death that parked it,
+		// alias-only deaths included) — TODO row 1414.
+		if summary := evidence[t.ID.String()]; summary != "" {
+			row += "  evidence=" + summary
+		}
+
+		fmt.Fprintln(w, row)
+
+		// Dirty-tree parks are foreign dirt waiting, not task sickness —
+		// the hint keeps the no-attempt-burn contract visible on the text
+		// surface (JSON consumers read requeue_class=preflight + the
+		// refusal's [dirty tree] marker).
+		if requeueEvidence != nil && requeueEvidence[t.ID.String()].Class == queue.RequeueClassPreflight &&
+			strings.Contains(oneLine(t.LastError), "dirty tree") {
+			fmt.Fprintln(w, "       ↳ parked by a dirty tree — waits for the tree to clean; no attempt burn")
+		}
+	}
+
+	if limit > 0 && len(tasks) == limit {
+		if n, err := total(); err == nil {
+			fmt.Fprintf(
+				w,
+				"showing %d of %d matching task(s) (capped by --limit %d; --limit 0 lists all, --count prints just the total)\n",
+				len(tasks),
+				n,
+				limit,
+			)
+
+			return
+		}
+	}
+
+	fmt.Fprintf(w, "%d task(s)\n", len(tasks))
+}
+	DefaultPoll      = 500 * time.Millisecond
+	DefaultHeartbeat = 15 * time.Second
+
+	// BannerPrefix and BannerReadOnlySuffix define the serve startup
+	// banner's exact shape — shared by the CLI print and the e2e/smoke
+	// parsers, which nearly broke twice over string drift (00:21 e3).
+	BannerPrefix         = "tq: dashboard on http://"
+	BannerReadOnlySuffix = " (read-only)"
+	BannerWritesSuffix   = " (writes ENABLED: cancel/rescue from the UI)"
+	// BannerFoldFollowerSuffix marks the demoted serve: the projection
+v0.38.7
+MIT License
+
+Copyright (c) 2026 Lars Artmann
+=== go-retry.md ===
+./internal/executor/agent.go
+./internal/worker/worker.go
+./internal/worker/worker_test.go
+./internal/retryx/rename.go
+internal/executor/agent.go:1129:	return retry.DoWithValue[T](context.Background(), retry.Config{ //nolint:exhaustruct // optional hooks unset
+internal/worker/worker.go:399:	return retry.Do(ctx, retry.Config{ //nolint:exhaustruct // optional hooks unset
+internal/retryx/rename.go:24:	return retry.Do(context.Background(), retry.Config{ //nolint:exhaustruct // optional hooks unset
+internal/executor/agent.go:1129:	return retry.DoWithValue[T](context.Background(), retry.Config{ //nolint:exhaustruct // optional hooks unset
+internal/worker/worker_test.go:1785:// retry.ErrExhausted-wrapped error AND an ERROR-level label naming the
+internal/worker/worker_test.go:1806:	if !errors.Is(err, retry.ErrExhausted) {
+internal/worker/worker_test.go:1807:		t.Fatalf("err = %v, want retry.ErrExhausted wrapping", err)
+LINE-EMPTY-OK: grep -rn 'retry.With\|retry.FromPolicy\|retry.Backoff\|retry.ComputeDelay\|retry.JitterNone' --include='*.go' . | grep -v '^./vendor/'
+internal/executor/go.mod:9:	github.com/larsartmann/go-retry v0.9.0
+internal/worker/go.mod:48:	github.com/larsartmann/go-retry v0.9.0
+internal/retryx/go.mod:5:require github.com/larsartmann/go-retry v0.9.0
+LINE-FAIL[1]: grep -rn 'go-retry' internal/dlqbackoff/    # → no output (exempt module, §1)
+  (`errors.AsType[E]`, `SplitSeq`, `for range n`) — don't undo.
+413:		OnExhausted: func(attempts int, err error) {
+// lease-reclaim backstop — a lost outcome write must read as a known
+// handoff, never as a silently stuck task.
+func TestPersistOutcomeExhaustionIsLabeled(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+
+	pool := New(nil, Config{}, slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelWarn})))
+
+	attempts := 0
+
+	err := pool.persistOutcome(context.Background(), task.ID("t1"), func(context.Context) error {
+		attempts++
+
+		return errors.New("database is locked (5) (SQLITE_BUSY)")
+	})
+	if err == nil {
+		t.Fatal("persistOutcome: want the exhaustion error")
+	}
+
+	if !errors.Is(err, retry.ErrExhausted) {
+func (p *Pool) persistOutcome(ctx context.Context, id task.ID, write func(context.Context) error) error {
+	return retry.Do(ctx, retry.Config{ //nolint:exhaustruct // optional hooks unset
+		MaxAttempts:  3,
+		InitialDelay: 50 * time.Millisecond,
+		MaxDelay:     400 * time.Millisecond,
+		Multiplier:   2.0,
+		IsRetryable:  isTransientStoreBusy,
+		OnRetry: func(attempt int, delay time.Duration, err error) {
+			p.log.Warn("outcome write hit a transient store busy; retrying",
+				"task", id, "attempt", attempt, "retry after", delay, "err", err)
+		},
+		// Exhaustion is loud by contract: the write then rides the
+		// lease-reclaim backstop, and a silent fallthrough would read
+		// as a stuck task instead of a known-lost write (fleet
+		// review f10).
+		OnExhausted: func(attempts int, err error) {
+			p.log.Error("outcome write exhausted store-busy retries; the lease-reclaim backstop owns the task now",
+				"task", id, "attempts", attempts, "err", err)
+		},
+	}, func(ctx context.Context, _ int) error {
+		return write(ctx)
+	})
+}
+
+// isTransientStoreBusy reports whether err is a store lock-contention
+// failure worth retrying in-process. The sqlite driver surfaces the
+// SQLITE_BUSY family (base 5 and extended 517 BUSY_SNAPSHOT et al) with
+// the token in the message, and its English form is "database is
+// locked"; matching strings keeps the worker driver-agnostic. A false
+// positive is harmless — the retried write is guarded by the store's
+// RowsAffected re-checks; a false negative merely falls back to the
+// lease-reclaim backstop.
+func isTransientStoreBusy(err error) bool {
+	Backoff     func(attempt int) time.Duration // retry backoff (default exp)
+// window the way percentage jitter would.
+func rateLimitDelay(d time.Duration) time.Duration {
+	spread := min(d/20, time.Minute)
+
+	return d - spread + time.Duration(rand.Int64N(2*int64(spread)+1))
+	jitter := 0.8 + 0.4*rand.Float64()
+v0.9.0-5-ga3ed997
+=== go-sse.md ===
+./cmd/tq/go.mod:82:	github.com/larsartmann/go-sse v0.7.0 // indirect
+./examples/embed/go.mod:34:	github.com/larsartmann/go-sse v0.7.0 // indirect
+./internal/composition/go.mod:57:	github.com/larsartmann/go-sse v0.7.0 // indirect
+./internal/queue/postgres/go.mod:25:	github.com/larsartmann/go-sse v0.7.0 // indirect
+./internal/queue/postgresv4/go.mod:28:	github.com/larsartmann/go-sse v0.7.0 // indirect
+./internal/queue/sqlite/go.mod:25:	github.com/larsartmann/go-sse v0.7.0 // indirect
+./internal/queue/sqlitev4/go.mod:27:	github.com/larsartmann/go-sse v0.7.0 // indirect
+./internal/readmodel/go.mod:43:	github.com/larsartmann/go-sse v0.7.0 // indirect
+./internal/worker/go.mod:19:	github.com/larsartmann/go-sse v0.7.0 // indirect
+./queue/postgres/go.mod:25:	github.com/larsartmann/go-sse v0.7.0 // indirect
+./queue/sqlite/go.mod:24:	github.com/larsartmann/go-sse v0.7.0 // indirect
+./go.mod:59:	github.com/larsartmann/go-sse/sseparse v0.2.1 // indirect
+./go.mod:112:	github.com/larsartmann/go-sse v0.7.0
+./go.mod:113:	github.com/larsartmann/go-sse/ssetest v0.5.0
+      7 sse.Stream
+      7 sse.Event
+      6 sse.BroadcasterHealth
+      3 sse.NewEventID
+      2 sse.WithBufferSize
+      2 sse.NewStream
+      2 sse.NewBroadcaster
+      2 sse.Broadcaster
+      1 sse.LastEventIDFromRequest
+     14 ssetest.WithPath
+      8 ssetest.CollectN
+      6 ssetest.CollectWithTimeout
+      2 ssetest.Event
+      1 ssetest.WithLastEventID
+      1 ssetest.RequestOption
+      1 ssetest.MustReadEvents
+      1 ssetest.FilterByType
+      1 ssetest.EventsString
+go: can't compute 'all' using the vendor directory
+	(Use -mod=mod or -mod=readonly to bypass.)
+LINE-EMPTY-OK: go list -m all | grep 'go-sse'          # effective: v0.7.0 / v0.2.1 / v0.5.0 (readonly default — the -mod=mod prefix was a lint-leak writer, dropped 2026-11-12)
+bash: line 1: cd: cmd/tq: No such file or directory
+LINE-EMPTY-OK: cd cmd/tq && GOWORK=off go mod tidy -diff 2>/dev/null | grep 'go-sse'   # empty — no drift
+v0.7.0-2-gd79edb5
+79:type BroadcasterHealth struct {
+	// (a closed hub is a dead live dashboard under a healthy process).
+	prober.liveSSE = func() *sse.BroadcasterHealth {
+		snap := s.hub.bc.Health()
+
+		return &snap
+	}
+	if p.liveSSE != nil {
+		if hub := p.liveSSE(); hub != nil {
+			switch {
+			case hub.Closed:
+				checks["live-sse"] = mkCheck(
+					health.StatusFail,
+					"SSE hub closed — the live dashboard is dead; restart the serve",
+				)
+			case hub.Draining:
+				checks["live-sse"] = mkCheck(health.StatusWarn, "SSE hub draining (shutdown in progress)")
+			default:
+				checks["live-sse"] = mkCheck(
+					health.StatusPass,
+					fmt.Sprintf("%d live subscriber(s), buffer %d event(s)", hub.SubscriberCount, hub.BufferSize),
+ok  	github.com/larsartmann/go-taskqueue/internal/webui	0.486s
+ok  	github.com/larsartmann/go-taskqueue/internal/webui	0.028s
+=== httputil-endpoints.md ===
+LINE-EMPTY-OK: grep -rn 'httputil/endpoints' --include=go.mod . | grep -v vendor       # → no output
+LINE-EMPTY-OK: grep -rn 'httputil/endpoints' --include='*.go' . | grep -v vendor       # → no output
+func (s *Server) Handler() http.Handler {
+	mux := http.NewServeMux()
+	mux.HandleFunc("POST /api/v1/tasks", s.handleEnqueue)
+	mux.HandleFunc("POST /api/v1/errors", s.handleReportError)
+	mux.HandleFunc("GET /api/v1/stats", s.handleStats)
+	mux.HandleFunc("GET /api/v1/healthz", s.handleHealth)
+
+	return s.guard(mux)
+}
+// routeBindings is the complete route table as data, so the read-only
+// guardrail test can prove the dashboard registers no mutating handler
+// (ADR-0003: the worst failure is a stale dashboard, never journal
+// corruption). Adding a POST route fails TestRoutesAreReadOnly. The nil
+// handler is the static file tree, wired in Handler.
+func (s *Server) routeBindings() []struct {
+	method  string
+	pattern string
+	handler func(http.ResponseWriter, *http.Request)
+} {
+	return []struct {
+		method  string
+		pattern string
+		handler func(http.ResponseWriter, *http.Request)
+	}{
+		{"GET", "/{$}", s.handleIndex},
+		{"GET", "/project/{name}", s.handleProject},
+		{"GET", "/task/{id}", s.handleTaskDetail},
+		{"GET", "/task/{id}/events", s.handleTaskEvents},
+		{"GET", "/api/events", s.handleEvents},
+		{"GET", "/api/stats", s.handleStats},
+		{"GET", "/api/facts", s.handleFacts},
+		{"GET", "/agents/live", s.handleAgentLive},
+		{"GET", "/static/", nil}, // staticHandler, wired in Handler
+	}
+}
+endpoints/v0.1.0
+02e6591 2026-11-06 docs: mark the endpoints first-release items resolved by endpoints/v0.1.0
+MIT License
+
+Copyright (c) 2026 Lars Artmann
+=== httputil-server-timing.md ===
+./go.mod:126:	github.com/larsartmann/httputil/server_timing v1.0.3
+internal/webui/handlers.go:18:	servertiming "github.com/larsartmann/httputil/server_timing"
+internal/webui/handlers.go:166:	stopFacts := servertiming.MeasureServerTiming(r.Context(), "facts")
+internal/webui/handlers.go:170:	// Record before the first write: the Server-Timing header is stamped
+internal/webui/handlers.go:204:	stopStats := servertiming.MeasureServerTiming(r.Context(), "stats")
+internal/webui/handlers.go:208:	// Record before the first write (Server-Timing stamps at first write).
+internal/webui/requestlog_test.go:11:// TestServerTimingHeaderBehindRequestLog pins the server_timing trial's
+internal/webui/requestlog_test.go:12:// mount contract (fleet review f21): the Server-Timing header (per-segment
+internal/webui/requestlog_test.go:16:func TestServerTimingHeaderBehindRequestLog(t *testing.T) {
+internal/webui/requestlog_test.go:28:	if st := header.Get("Server-Timing"); !strings.Contains(st, "stats") || !strings.Contains(st, "total") {
+internal/webui/requestlog_test.go:29:		t.Errorf("Server-Timing = %q, want stats + total segments under RequestLog", st)
+internal/webui/requestlog_test.go:37:	if st := header.Get("Server-Timing"); st != "" {
+internal/webui/requestlog_test.go:38:		t.Errorf("Server-Timing shipped without RequestLog: %q", st)
+internal/webui/webui.go:34:	servertiming "github.com/larsartmann/httputil/server_timing"
+internal/webui/webui.go:416:	// Server-Timing trial (fleet review f21): per-segment latency in the
+internal/webui/webui.go:421:	handler = servertiming.ServerTimingMiddlewareWhen(func(*http.Request) bool {
+func withRequestLog(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		rec := &statusRecorder{ResponseWriter: w}
+		start := time.Now()
+
+		defer func() {
+			slog.Info("webui: request",
+				"method", r.Method,
+				"path", redactedRequestURI(r.URL),
+				"status", rec.status,
+				"duration", time.Since(start),
+			)
+		}()
+
+		next.ServeHTTP(rec, r)
+	})
+}
+	// Server-Timing trial (fleet review f21): per-segment latency in the
+	// response header, mounted ONLY where the operator already opted
+	// into request logging — the header leaks internal performance
+	// detail (server_timing README), so it never ships on the default
+	// loopback posture. SSE-safe: the wrapper passes Flush through.
+	handler = servertiming.ServerTimingMiddlewareWhen(func(*http.Request) bool {
+		return s.cfg.RequestLog
+	})(handler)
+ok  	github.com/larsartmann/go-taskqueue/internal/webui	0.073s
+module github.com/larsartmann/httputil/server_timing
+
+go 1.27
+server_timing/v0.9.1
+server_timing/v0.10.0
+server_timing/v0.12.0
+server_timing/v1.0.1
+server_timing/v1.0.2
+server_timing/v1.0.3
+MIT License
+
+Copyright (c) 2026 Lars Artmann
+=== httputil.md ===
+./go.mod:126:	github.com/larsartmann/httputil/server_timing v1.0.3
+./internal/webui/handlers.go:18:	servertiming "github.com/larsartmann/httputil/server_timing"
+./internal/webui/webui.go:34:	servertiming "github.com/larsartmann/httputil/server_timing"
+LINE-EMPTY-OK: grep -rn '"github.com/larsartmann/httputil"' --include='*.go' . | grep -v vendor  # → no output (root module unimported)
+405:  (`--alert-url`). **httputil** NOT adopted (MIT v1.5.0+; fleet verdicts
+- **pkg.go.dev license gating — all three modules are MIT** (owner decisions 2026-10-08 for `server_timing`, 2026-10-09 for the root, `endpoints` MIT from creation 2026-11-06; recorded in CHANGELOG [1.5.0]) — pkg.go.dev hides READMEs AND all docs for non-redistributable licenses (empirically verified 2026-10-08: the root page at `v1.4.2`, 18 importers, rendered neither the 782-line root `README.md` nor any documentation), and it re-indexes per tagged release, so visibility arrives only from the first tag cut after a LICENSE change (`v1.5.0` root, `server_timing/v1.0.2` sub-module; the `endpoints` page arrives with its first tag). The old "root stays Proprietary — do NOT mirror the MIT switch without an explicit owner decision" guard is resolved; do not reintroduce a Proprietary LICENSE in this repo without an explicit owner decision.
+
+## Testing Conventions
+
+MIT License
+
+Copyright (c) 2026 Lars Artmann
+29
+func (s *Server) Handler() http.Handler {
+	mux := http.NewServeMux()
+
+	for _, route := range s.routeBindings() {
+		if route.handler == nil {
+			mux.Handle(route.method+" "+route.pattern, http.StripPrefix("/static/", staticHandler()))
+
+			continue
+		}
+
+		mux.HandleFunc(route.method+" "+route.pattern, route.handler)
+	}
+
+	for _, route := range s.healthBindings() {
+		mux.HandleFunc(route.method+" "+route.pattern, route.handler)
+	}
+
+	// The CSRF wrapper is innermost: page GETs issue/refresh the token
+	// cookie and publish it to the render chain; write POSTs verify it.
+	handler := withCSRFIssue(http.Handler(mux))
+
+	if s.cfg.AllowWrites {
+		for _, route := range s.writeBindings() {
+			// Rate limit OUTSIDE CSRF: three failed tokens lock the client
+			// out of the write routes entirely for a minute, so the token
+			// cannot be brute-forced request-by-request.
+			mux.Handle(route.method+" "+route.pattern,
+				s.writes.wrap(withCSRF(http.HandlerFunc(route.handler))))
+		}
+	}
+
+	if s.cfg.AuthToken != "" {
+		handler = withTokenAuth(s.cfg.AuthToken, handler)
+	}
+
+	// Security headers wrap everything — including auth rejections — so
+	// even the 401 page is CSP-covered.
+	handler = withSecurityHeaders(handler)
+
+	// Server-Timing trial (fleet review f21): per-segment latency in the
+	// response header, mounted ONLY where the operator already opted
+	// into request logging — the header leaks internal performance
+	// detail (server_timing README), so it never ships on the default
+	// loopback posture. SSE-safe: the wrapper passes Flush through.
+	handler = servertiming.ServerTimingMiddlewareWhen(func(*http.Request) bool {
+		return s.cfg.RequestLog
+	})(handler)
+
+	// Request logging wraps auth so rejected requests are logged too.
+	if s.cfg.RequestLog {
+		return withRequestLog(handler)
+	}
+
+	return handler
+}
+func (s *Server) guard(next http.Handler) http.Handler {
+	expected := httpauth.HashToken(s.token)
+	policy := httpauth.APIPolicy()
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+
+		key := remoteHost(r)
+		if retry, locked := s.strikes.Locked(key); locked {
+			w.Header().Set("Retry-After", strconv.Itoa(int(retry/time.Second)+1))
+			writeError(
+				w,
+				http.StatusTooManyRequests,
+				"too many failed auth attempts — locked for "+retry.Round(time.Second).String(),
+				"wait out the lockout window before retrying",
+			)
+
+			return
+		}
+
+		presented, _ := policy.Presented(r)
+
+		if !httpauth.TokenMatches(expected, presented) {
+			s.strikes.Add(key)
+
+			w.Header().Set("WWW-Authenticate", `Bearer realm="tq-api"`)
+			writeError(
+				w,
+				http.StatusUnauthorized,
+				"unauthorized",
+				"present a valid bearer token (Authorization: Bearer <token> or ?token=<token>)",
+			)
+
+			return
+		}
+
+		s.strikes.Reset(key)
+
+		w.Header().Set("Cache-Control", "no-store")
+
+		next.ServeHTTP(w, r)
+	})
+}
+=== templ-components.md ===
+     12 display.Badge
+     11 display.BadgeProps
+      8 display.CardProps
+      8 display.Card
+      8 display.BadgeSizeSM
+      5 utils.BaseProps
+      5 display.EmptyStateProps
+      5 display.EmptyState
+      4 display.CardPaddingMD
+      4 display.BadgeInfo
+      3 layout.Base
+      3 display.TableProps
+1
+	componentCallRe = regexp.MustCompile(`(display|layout|feedback|navigation)\.([A-Z][A-Za-z0-9]*)\s*\(`)
+660:	props.HeadContent = layout.MetaRefresh(3600, "")
+153:				StickyHeader: true,
+187:						StickyHeader: true,
+5:// MetaRefresh renders a `<meta http-equiv="refresh">` tag that reloads or
+12://	@layout.MetaRefresh(5, "/login?retry=1")
+188:	// StickyHeader, when true, pins the header row to the top of the table's
+193:	StickyHeader bool
+269:				<thead class={ utils.Ternary(props.StickyHeader, "sticky top-0 z-10 bg-gray-50 dark:bg-gray-800", "bg-gray-50 dark:bg-gray-800") }>
+115:	@copyButtonScriptComponent(props.Nonce)
+33:	// NoScript skips the per-render singleton script emission. Set it when
+39:	NoScript bool
+58:// NoScript on those buttons; page-load buttons keep the default emission.
+charts/echarts/v1.27.0-88-g2ad4cb74
+go: can't compute 'all' using the vendor directory
+	(Use -mod=mod or -mod=readonly to bypass.)
+LINE-EMPTY-OK: go list -m all | grep 'templ-components'              # all v1.27.0 (readonly default — the -mod=mod prefix was a lint-leak writer, dropped 2026-11-12)
+ok  	github.com/larsartmann/go-taskqueue/internal/webui	0.019s
