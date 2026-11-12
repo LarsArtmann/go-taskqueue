@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/larsartmann/go-error-family"
+	errorfamily "github.com/larsartmann/go-error-family"
 )
 
 // TestStoreBusyClassifierRegistered pins the T07 registration: the
@@ -29,6 +29,7 @@ func TestStoreBusyClassifierRegistered(t *testing.T) {
 	if isTransientStoreBusy(errors.New("disk full")) {
 		t.Fatal("non-busy error must not be classified store-busy")
 	}
+
 	if isTransientStoreBusy(nil) {
 		t.Fatal("nil error must not be classified store-busy")
 	}

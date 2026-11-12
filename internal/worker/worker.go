@@ -27,7 +27,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/larsartmann/go-error-family"
+	errorfamily "github.com/larsartmann/go-error-family"
 	"github.com/larsartmann/go-retry"
 	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/queue"

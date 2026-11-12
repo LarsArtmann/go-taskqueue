@@ -202,7 +202,11 @@ func (p *queueProber) evaluate(now time.Time) {
 	dbStart := time.Now()
 	counts, err := p.store.StatusCounts(ctx)
 
-	checks["database"] = mkCheck(statusOr(err == nil, health.StatusPass, health.StatusFail), errText(err), time.Since(dbStart))
+	checks["database"] = mkCheck(
+		statusOr(err == nil, health.StatusPass, health.StatusFail),
+		errText(err),
+		time.Since(dbStart),
+	)
 	if err != nil {
 		// Every check below reads the same store; one verdict beats five
 		// identical failures.
@@ -241,6 +245,7 @@ func (p *queueProber) evaluate(now time.Time) {
 
 	if p.projectionCursor != nil {
 		projStart := time.Now()
+
 		cursor, mounted := p.projectionCursor(ctx)
 		if mounted {
 			projDur := time.Since(projStart)
@@ -254,7 +259,11 @@ func (p *queueProber) evaluate(now time.Time) {
 					"fold %d fact(s) behind the journal head (#%d of #%d) — the fold is wedged or restarting",
 					head-cursor, cursor, head), projDur)
 			default:
-				checks["projection"] = mkCheck(health.StatusPass, fmt.Sprintf("at #%d (head #%d)", cursor, head), projDur)
+				checks["projection"] = mkCheck(
+					health.StatusPass,
+					fmt.Sprintf("at #%d (head #%d)", cursor, head),
+					projDur,
+				)
 			}
 		}
 	}
@@ -271,6 +280,7 @@ func (p *queueProber) evaluate(now time.Time) {
 		sseStart := time.Now()
 		if hub := p.liveSSE(); hub != nil {
 			sseDur := time.Since(sseStart)
+
 			switch {
 			case hub.Closed:
 				checks["live-sse"] = mkCheck(
@@ -389,6 +399,7 @@ func writeHealthJSON(w http.ResponseWriter, code int, resp health.Response) {
 	if err := json.MarshalWrite(w, health.CoerceValidUTF8(resp)); err != nil {
 		slog.Error("webui: health response marshal failed — serving static fallback body",
 			"err", err)
+
 		_, _ = fmt.Fprint(w, `{"status":"fail","error":"health marshal failed"}`)
 	}
 }
