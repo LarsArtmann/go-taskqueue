@@ -5,7 +5,7 @@
 > Finding 1 resolved (commit `33689678` — `Broadcaster.Health()` surfaced on `/health` via
 > `prober.liveSSE`, pinned by `TestHealthLiveSSECheck`) and Finding 3 resolved (commit `70284764`
 > — the v0.6.2 residue in the 11 nested go.mods re-tidied to v0.7.0). Finding 2 improved, not
-> closed (`FilterByType`/`MustReadEvents`/`EventsString` adopted; `Require*` still unused).
+> closed (`FilterByType`/`MustReadEvents`/`EventsString` adopted; the Require* gap closed 2026-11-12 — see the assertions row).
 > **Denominator correction:** the 2026-11-08 edition printed N=16/A=10, but its own capability
 > table has 17 rows (9 FULL + 1 PARTIAL + 1 MISSED + 6 N/A) — A=11. With Finding 1 resolved the
 > honest arithmetic is Σ=10.5 → round(100×10.5/11) = **95 — very high** (the 95 stands, now on
@@ -56,7 +56,7 @@ Two broadcasters: `Hub` fans payload-less `tick` events whose ID is the journal 
 | `OnDisconnect` callbacks | ⚪ N/A | subscriber cleanup rides channel close + request context (handlers.go:308-309, 391-392); no per-disconnect work exists to hook |
 | ssetest collect helpers | 🟢 FULL | `CollectN`/`CollectWithTimeout` across 4 test files (webui_test.go:208,268,321,477; auth_test.go:134-135; board_test.go:225; evidence_stream_test.go:73) |
 | ssetest request options | 🟢 FULL | `WithPath` ×14 + `WithLastEventID` with the v0.5.0 branded-`EventID` breaking change already adopted (webui_test.go:474) |
-| ssetest assertions (`Require*`, `RequireDataJSON[T]`, `FilterByType`) | 🟡 PARTIAL | improved 2026-11-09: `MustReadEvents`/`FilterByType`/`EventsString` now used (webui_test.go:396-409), but tests still hand-roll decode loops (webui_test.go:214-233, 331, 484, 1671: `switch evt.Type` + `json.Unmarshal`) where `RequireDataJSON` would compress; `Collect`/`CollectPost`/`CollectWithRequest` unused |
+| ssetest assertions (`Require*`, `RequireDataJSON[T]`, `FilterByType`) | 🟢 FULL | closed 2026-11-12 (pareto T12): every fragment decode rides the one `fragmentEvents` helper (webui_test.go, `FilterByType` + single decode, malformed payload fails at the decode site) — the four hand-rolled `switch evt.Type`+`json.Unmarshal` loops (214-233/331/484/1671) and the three raw substring scans are gone; `EventsString` now carries the frag-count failure detail; `RequireDataJSON[T]` itself stays unused BY SHAPE — it exact-compares a whole decoded value and tq's fragment payloads carry variable HTML, so decode-and-inspect is the only consumer shape; `Collect`/`CollectPost`/`CollectWithRequest` unused (CollectN + CollectWithTimeout cover every need) |
 | sseparse module (standalone parser/corpus) | ⚪ N/A | tq never parses SSE off-HTTP (verified 0 non-test `sseparse.` sites); the browser parses the wire; tests parse via ssetest's re-export |
 
 ## 3. Findings

@@ -201,48 +201,57 @@ func TestTailNotifiesOnNewFacts(t *testing.T) {
 
 // TestSSEFullSnapshotOnConnect verifies the connect-time snapshot: a client
 // with zero prior knowledge sees every fragment pre-rendered.
+// fragmentEvents decodes the stream's fragment events through the
+// ssetest seam: FilterByType narrows to the fragment stream, each payload
+// decodes once, and a malformed payload fails the test at the decode site
+// (the four hand-rolled switch+Unmarshal loops this replaced — pareto
+// T12, 2026-11-12).
+func fragmentEvents(tb testing.TB, events []ssetest.Event) []fragment {
+	tb.Helper()
+
+	typed := ssetest.FilterByType(events, testFragEvent)
+
+	frags := make([]fragment, 0, len(typed))
+
+	for _, evt := range typed {
+		var frag fragment
+
+		if err := json.Unmarshal([]byte(evt.Data()), &frag); err != nil {
+			tb.Fatalf("decode %s frag %q: %v", evt.Type, evt.ID, err)
+		}
+
+		frags = append(frags, frag)
+	}
+
+	return frags
+}
+
 func TestSSEFullSnapshotOnConnect(t *testing.T) {
 	srv, s := newTestServer(t)
 	tk := enqueue(t, s, "sh", "demo")
 
 	events := ssetest.CollectN(t, srv.Handler(), 7, ssetest.WithPath("/api/events"))
 
-	var (
-		fragIDs  []string
-		sawTitle bool
-	)
-
-	for _, evt := range events {
-		switch evt.Type {
-		case testFragEvent:
-			var frag fragment
-			if err := json.Unmarshal([]byte(evt.Data()), &frag); err != nil {
-				t.Fatalf("decode frag: %v", err)
-			}
-
-			fragIDs = append(fragIDs, frag.ID)
-		case "title":
-			sawTitle = true
-		}
-	}
+	frags := fragmentEvents(t, events)
 
 	want := []string{fragStats, fragFilters, fragTable, fragDLQ, fragQuestions, fragFeed}
-	if len(fragIDs) != len(want) {
-		t.Fatalf("frag ids = %v, want %v", fragIDs, want)
+
+	if len(frags) != len(want) {
+		t.Fatalf("frag count = %d, want %d (events: %s)", len(frags), len(want), ssetest.EventsString(events))
 	}
 
 	for i, id := range want {
-		if fragIDs[i] != id {
-			t.Errorf("frag[%d] = %q, want %q", i, fragIDs[i], id)
+		if frags[i].ID != id {
+			t.Errorf("frag[%d] = %q, want %q", i, frags[i].ID, id)
 		}
 	}
 
-	if !sawTitle {
+	if len(ssetest.FilterByType(events, "title")) == 0 {
 		t.Error("no title event in snapshot")
 	}
 
-	for _, evt := range events {
-		if evt.Type == testFragEvent && strings.Contains(evt.Data(), tk.ID.String()) {
+	for _, f := range frags {
+		if strings.Contains(f.HTML, tk.ID.String()) {
 			return // table fragment carries the enqueued task
 		}
 	}
@@ -276,8 +285,8 @@ func TestSSELiveUpdateAfterEnqueue(t *testing.T) {
 
 	sawProject := false
 
-	for _, evt := range events {
-		if evt.Type == testFragEvent && strings.Contains(evt.Data(), "live-project") {
+	for _, f := range fragmentEvents(t, events) {
+		if strings.Contains(f.HTML, "live-project") {
 			sawProject = true
 		}
 	}
@@ -322,18 +331,9 @@ func TestStreamSnapshotHonorsFilter(t *testing.T) {
 
 	var tableFrag string
 
-	for _, evt := range events {
-		if evt.Type != testFragEvent {
-			continue
-		}
-
-		var frag fragment
-		if err := json.Unmarshal([]byte(evt.Data()), &frag); err != nil {
-			t.Fatalf("decode frag: %v", err)
-		}
-
-		if frag.ID == fragTable {
-			tableFrag = frag.HTML
+	for _, f := range fragmentEvents(t, events) {
+		if f.ID == fragTable {
+			tableFrag = f.HTML
 		}
 	}
 
@@ -478,16 +478,9 @@ func TestResumeAfterFactsBacklog(t *testing.T) {
 
 		var tableFrag string
 
-		for _, evt := range events {
-			if evt.Type == testFragEvent {
-				var frag fragment
-				if err := json.Unmarshal([]byte(evt.Data()), &frag); err != nil {
-					t.Fatalf("decode: %v", err)
-				}
-
-				if frag.ID == fragTable {
-					tableFrag = frag.HTML
-				}
+		for _, f := range fragmentEvents(t, events) {
+			if f.ID == fragTable {
+				tableFrag = f.HTML
 			}
 		}
 
@@ -1658,35 +1651,25 @@ func TestTaskDetailSSESnapshot(t *testing.T) {
 		ssetest.WithPath("/task/"+tk.ID.String()+"/events"),
 	)
 
-	var fragIDs []string
+	frags := fragmentEvents(t, events)
+
+	want := []string{fragDetail, fragTimeline}
+
+	if len(frags) != len(want) {
+		t.Fatalf("frag count = %d, want %d (events: %s)", len(frags), len(want), ssetest.EventsString(events))
+	}
 
 	sawCompleted := false
 
-	for _, evt := range events {
-		if evt.Type != testFragEvent {
-			continue
-		}
-
-		var frag fragment
-		if err := json.Unmarshal([]byte(evt.Data()), &frag); err != nil {
-			t.Fatalf("decode frag: %v", err)
-		}
-
-		fragIDs = append(fragIDs, frag.ID)
-
-		if strings.Contains(frag.HTML, "completed") {
+	for _, f := range frags {
+		if strings.Contains(f.HTML, "completed") {
 			sawCompleted = true
 		}
 	}
 
-	want := []string{fragDetail, fragTimeline}
-	if len(fragIDs) != len(want) {
-		t.Fatalf("frag ids = %v, want %v", fragIDs, want)
-	}
-
 	for i, id := range want {
-		if fragIDs[i] != id {
-			t.Errorf("frag[%d] = %q, want %q", i, fragIDs[i], id)
+		if frags[i].ID != id {
+			t.Errorf("frag[%d] = %q, want %q", i, frags[i].ID, id)
 		}
 	}
 
@@ -1731,8 +1714,8 @@ func TestTaskDetailSSELiveUpdate(t *testing.T) {
 
 	sawCompleted := false
 
-	for _, evt := range <-done {
-		if evt.Type == testFragEvent && strings.Contains(evt.Data(), "completed") {
+	for _, f := range fragmentEvents(t, <-done) {
+		if strings.Contains(f.HTML, "completed") {
 			sawCompleted = true
 		}
 	}
@@ -1847,8 +1830,8 @@ func TestRequestLoggingKeepsSSEStreaming(t *testing.T) {
 
 	sawTask := false
 
-	for _, evt := range events {
-		if evt.Type == testFragEvent && strings.Contains(evt.Data(), tk.ID.String()) {
+	for _, f := range fragmentEvents(t, events) {
+		if strings.Contains(f.HTML, tk.ID.String()) {
 			sawTask = true
 		}
 	}
