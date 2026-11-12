@@ -1,0 +1,7 @@
+=== RUN   TestServerTimingHeaderBehindRequestLog
+=== PAUSE TestServerTimingHeaderBehindRequestLog
+=== CONT  TestServerTimingHeaderBehindRequestLog
+2026/11/12 05:18:20 INFO webui: request method=GET path=/api/stats status=200 duration=285.801µs
+--- PASS: TestServerTimingHeaderBehindRequestLog (0.00s)
+PASS
+ok  	github.com/larsartmann/go-taskqueue/internal/webui	0.009s

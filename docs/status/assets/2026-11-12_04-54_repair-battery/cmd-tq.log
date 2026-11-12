@@ -1,0 +1,68 @@
+tq ask: question d87d04b86f1579cc recorded for task 000001a1cdfa0c21b1ce937380f800000000 (expires 2026-11-12T06:17:58+01:00); end your turn — the task parks until the owner answers
+tq ask: question 5986a861c2da5c61 recorded for task 000001a1cdfa0c273514050a239700000000 (expires 2026-11-15T05:17:58+01:00); end your turn — the task parks until the owner answers
+tq ask: question 5986a861c2da5c61 recorded for task 000001a1cdfa0c273514050a239700000000 (expires 2026-11-15T05:17:58+01:00); end your turn — the task parks until the owner answers
+tq ask: question 92c7087bc5e3e390 recorded for task 000001a1cdfa0c2addd738dfaf7c00000000 (expires 2026-11-15T05:17:58+01:00); end your turn — the task parks until the owner answers
+tq ask: question 92c7087bc5e3e390 was already answered — honor the ruling in the prompt instead of re-asking
+tq: bootstrap: installed
+  unit   /tmp/TestInstallServiceRendersUnitAndConfigWithoutTouchingSystem1808710361/001/.config/systemd/user/tq-agent-pool.service
+  config /tmp/TestInstallServiceRendersUnitAndConfigWithoutTouchingSystem1808710361/001/.config/tq/pool.conf
+  follow: journalctl --user -u tq-agent-pool -f
+  status: tq serve   # read-only dashboard (add --auth-token for LAN)
+
+== demo (/tmp/TestBootstrapDryRunWritesNothing3890613178/001/demo) ==
+  WARN  not a git checkout — agents cannot commit or close the loop
+  todo  1 open item(s) → tasks after harvest
+  WARN  no verify command (tasks complete without proof) — pass --verify demo=<cmd>
+  crush autonomy granted in .crushrc (changed: true)
+  git   dry-run — would commit .tq-verify, .crushrc if changed
+tq: bootstrap: dry-run — nothing written, pool not started
+would run: tq agent-pool --projects-dir /tmp/TestBootstrapDryRunWritesNothing3890613178/001 --repos /tmp/TestBootstrapDryRunWritesNothing3890613178/001/demo --concurrency 1 --max-concurrent-agents 1 --interval 5m0s --daily-budget 20 --max-per-tick 10 --yolo=true --review=true --review-autofix=true --project-exclusive=true --allow-dirty=false --log-dir /home/lars/.local/state/tq/logs --db /tmp/TestBootstrapDryRunWritesNothing3890613178/003/tasks.db
+session sess-wrap closed (repo /tmp/TestCrushWrapperClosesOnExit725780747/002): 1 attributed commit(s), oldest first:
+  587e01afa wrapped work
+review task 000001a1cdfa0c57798841f6003a00000000 enqueued
+status task 000001a1cdfa0c57798841f6003a00000001 enqueued
+session sess-wrap closed (repo /tmp/TestCrushWrapperClosesOnCrash615873747/002)
+no commits carry the Crush-Session: sess-wrap footer — nothing to review or report
+next time, attribute your commits by ending the commit message with this footer line:
+
+Crush-Session: sess-wrap
+--- FAIL: TestDoctorHealthyEmptyDB (0.22s)
+    doctor_test.go:82: worst = warn, want ok; results: [{Name:db Status:ok Detail:integrity ok Items:[]} {Name:wal Status:ok Detail:wal enabled Items:[]} {Name:queue Status:ok Detail:pending=0 running=0 completed=0 dead=0 cancelled=0 Items:[]} {Name:dlq Status:ok Detail:0 dead-lettered task(s) Items:[]} {Name:parked Status:ok Detail:no rate-limit-parked tasks Items:[]} {Name:dlq-repair Status:ok Detail:no dead letters Items:[]} {Name:paid-noops Status:ok Detail:no completed paid tasks with zero attributable output Items:[]} {Name:worker Status:ok Detail:no recent heartbeats, but the queue is empty (idle, not stuck) Items:[]} {Name:review-sweeper Status:ok Detail:no cursor (sweeper never ran here) Items:[]} {Name:status-sweeper Status:ok Detail:no cursor (sweeper never ran here) Items:[]} {Name:dlqfix-sweeper Status:ok Detail:no cursor (sweeper never ran here) Items:[]} {Name:prioritize-sweeper Status:ok Detail:no cursor (sweeper never ran here) Items:[]} {Name:incident-policy Status:ok Detail:no cursor (sweeper never ran here) Items:[]} {Name:projection-cursor Status:ok Detail:no cursor (serve never folded here) Items:[]} {Name:projection-db Status:ok Detail:no projection db yet (created on the first serve) Items:[]} {Name:projection-worker Status:ok Detail:no worker-death marker Items:[]} {Name:open-sessions Status:ok Detail:no open sessions Items:[]} {Name:agent-binary Status:ok Detail:/tmp/go-build3792483564/b001/tq.test found Items:[]} {Name:crush-version Status:ok Detail:crush 0.99.0 (floor 0.94.1, proven pin 0.99.0) Items:[]} {Name:tool:git Status:ok Detail:git found Items:[]} {Name:tool:go Status:ok Detail:go found Items:[]} {Name:verdict-channel Status:ok Detail:/run/current-system/sw/bin/tq found (differs from the running /tmp/go-build3792483564/b001/tq.test — PATH shadowing) Items:[]} {Name:go-env Status:ok Detail:encoding/json/v2 builds in this environment — no env lie Items:[]} {Name:tag-ancestry Status:warn Detail:1 release tag(s) unreachable from HEAD (forked lineage — releases must not cut until healed): v0.4.2 Items:[]}]
+task 000001a1cdfa23bd9a836f42bfb000000000 parked until 2026-11-12T06:18:04+01:00 (by lars)
+task 000001a1cdfa23bd9a836f42bfb000000000 released — claims re-arm now
+session sess-e2e opened (repo /tmp/TestCmdSessionBridgeEndToEnd574939507/002, project demo)
+attribute your commits by ending the commit message with this footer line:
+
+Crush-Session: sess-e2e
+session sess-e2e closed (repo /tmp/TestCmdSessionBridgeEndToEnd574939507/002): 2 attributed commit(s), oldest first:
+  fbfed37f5 work one
+  132774ba7 work two
+review task 000001a1cdfa24b081fde9c22a0200000000 enqueued
+status task 000001a1cdfa24b081fde9c22a0200000001 enqueued
+session sess-e2e closed (repo /tmp/TestCmdSessionBridgeEndToEnd574939507/002): 2 attributed commit(s), oldest first:
+  fbfed37f5 work one
+  132774ba7 work two
+review task 000001a1cdfa24b081fde9c22a0200000000 known (dedup)
+status task 000001a1cdfa24b081fde9c22a0200000001 known (dedup)
+session sess-crash opened (repo /tmp/TestCmdSessionListAndDryRun623153535/002, project demo)
+attribute your commits by ending the commit message with this footer line:
+
+Crush-Session: sess-crash
+1 open session(s), newest first:
+  sess-crash  opened 2026-11-12 05:18:05  repo /tmp/TestCmdSessionListAndDryRun623153535/002  project demo
+dry run: 1 attributed commit(s), oldest first:
+  80322dd6b crashed session work
+close would enqueue one review task and one status task over these commits (dedup-keyed, replay-safe)
+2026/11/12 05:18:05 INFO readmodel: empty projection under a nonzero cursor — replaying from zero checkpoint=1
+2026/11/12 05:18:05 INFO readmodel: empty projection under a nonzero cursor — replaying from zero checkpoint=2
+tq verdict: recorded 36 bytes
+tq verdict: recorded 14 bytes
+tq verdict: recorded 13 bytes
+tq verdict: recorded 19 bytes
+2026/11/12 05:18:05 WARN effort: estimate cache unreadable, starting empty path=/tmp/TestParseAgentPoolOptionsJev2501966590/002/tq.db.effort.json err="open /tmp/TestParseAgentPoolOptionsJev2501966590/002/tq.db.effort.json: no such file or directory"
+2026/11/12 05:18:05 WARN effort: estimate cache unreadable, starting empty path=/tmp/TestParseAgentPoolOptionsJev2501966590/002/tq.db.effort.json err="open /tmp/TestParseAgentPoolOptionsJev2501966590/002/tq.db.effort.json: no such file or directory"
+evidence read skipped: 201 dead tasks exceeds the 200-row cap; rows render without evidence= (narrow with --evidence-stage)
+2026/11/12 05:18:06 INFO readmodel: empty projection under a nonzero cursor — replaying from zero checkpoint=1
+FAIL
+FAIL	github.com/larsartmann/go-taskqueue/cmd/tq	7.519s
+FAIL

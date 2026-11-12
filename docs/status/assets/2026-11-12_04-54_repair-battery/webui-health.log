@@ -1,0 +1,51 @@
+=== RUN   TestHealthDashboardPage
+=== PAUSE TestHealthDashboardPage
+=== RUN   TestHealthTaskDashboardCSPUnchanged
+=== PAUSE TestHealthTaskDashboardCSPUnchanged
+=== RUN   TestHealthProbesHealthyStore
+=== PAUSE TestHealthProbesHealthyStore
+=== RUN   TestHealthVersionStamp
+=== PAUSE TestHealthVersionStamp
+=== RUN   TestHealthProbesStoreFailure
+=== PAUSE TestHealthProbesStoreFailure
+=== RUN   TestHealthRoutesBehindAuth
+=== PAUSE TestHealthRoutesBehindAuth
+=== RUN   TestHealthStaticAssets
+=== PAUSE TestHealthStaticAssets
+=== RUN   TestHealthProjectionCheck
+=== PAUSE TestHealthProjectionCheck
+=== RUN   TestHealthFoldFollowerCheck
+=== PAUSE TestHealthFoldFollowerCheck
+=== RUN   TestHealthEvaluationPanicRecovers
+=== PAUSE TestHealthEvaluationPanicRecovers
+=== RUN   TestHealthStatusSinceAndLatency
+=== PAUSE TestHealthStatusSinceAndLatency
+=== RUN   TestHealthLiveSSECheck
+=== PAUSE TestHealthLiveSSECheck
+=== CONT  TestHealthDashboardPage
+=== CONT  TestHealthEvaluationPanicRecovers
+=== CONT  TestHealthProbesHealthyStore
+=== CONT  TestHealthTaskDashboardCSPUnchanged
+=== CONT  TestHealthStaticAssets
+=== CONT  TestHealthFoldFollowerCheck
+=== CONT  TestHealthProjectionCheck
+=== CONT  TestHealthLiveSSECheck
+=== CONT  TestHealthVersionStamp
+=== CONT  TestHealthRoutesBehindAuth
+=== CONT  TestHealthProbesStoreFailure
+=== CONT  TestHealthStatusSinceAndLatency
+--- PASS: TestHealthProbesStoreFailure (0.00s)
+--- PASS: TestHealthTaskDashboardCSPUnchanged (0.01s)
+2026/11/12 05:18:07 ERROR webui: health evaluation panicked — serving degraded response panic="store driver exploded" stack="goroutine 201 [running]:\nruntime/debug.Stack()\n\t/home/lars/.cache/go-mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/runtime/debug/stack.go:26 +0x5e\ngithub.com/larsartmann/go-taskqueue/internal/webui.(*queueProber).evaluateSafely.func1()\n\t/home/lars/projects/go-taskqueue/internal/webui/health.go:131 +0x67\npanic({0x15e92c8?, 0xe49600?})\n\t/home/lars/.cache/go-mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/runtime/panic.go:859 +0x125\ngithub.com/larsartmann/go-taskqueue/internal/webui.(*panickingStore).StatusCounts(0x169f768?, {0x17534e0?, 0x12a05f200?})\n\t/home/lars/projects/go-taskqueue/internal/webui/health_test.go:359 +0x25\ngithub.com/larsartmann/go-taskqueue/internal/webui.(*queueProber).evaluate(0x15165332e000, {0xd0?, 0x1516531ce000?, 0x17309e0?})\n\t/home/lars/projects/go-taskqueue/internal/webui/health.go:202 +0xe3\ngithub.com/larsartmann/go-taskqueue/internal/webui.(*queueProber).evaluateSafely(0x74ae18400dc8?, {0x74ae181b0220?, 0x74ae000084e8?, 0x17309e0?})\n\t/home/lars/projects/go-taskqueue/internal/webui/health.go:138 +0x56\ngithub.com/larsartmann/go-taskqueue/internal/webui.(*queueProber).CachedResponse(0x15165332e000)\n\t/home/lars/projects/go-taskqueue/internal/webui/health.go:117 +0x10f\ngithub.com/larsartmann/go-taskqueue/internal/webui.(*queueProber).ReadinessHandler.func1({0x169e6b0, 0x1516537881e0}, 0xd9c5b9?)\n\t/home/lars/projects/go-taskqueue/internal/webui/health.go:162 +0x33\nnet/http.HandlerFunc.ServeHTTP(0x151653306480?, {0x169e6b0?, 0x1516537881e0?}, 0x15165320e300?)\n\t/home/lars/.cache/go-mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/net/http/server.go:2358 +0x29\ngithub.com/larsartmann/go-taskqueue/internal/webui.withHealthHeaders.func1({0x169e6b0, 0x1516537881e0}, 0x15165318a280)\n\t/home/lars/projects/go-taskqueue/internal/webui/health.go:438 +0x104\nnet/http.HandlerFunc.ServeHTTP(0x151653480008?, {0x169e6b0?, 0x1516537881e0?}, 0x48bde5?)\n\t/home/lars/.cache/go-mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/net/http/server.go:2358 +0x29\nnet/http.HandlerFunc.ServeHTTP(0x1516533300c0?, {0x169e6b0?, 0x1516537881e0?}, 0x783745?)\n\t/home/lars/.cache/go-mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/net/http/server.go:2358 +0x29\nnet/http.(*ServeMux).ServeHTTP(0x15165318a140?, {0x169e6b0, 0x1516537881e0}, 0x15165318a280)\n\t/home/lars/.cache/go-mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/net/http/server.go:2923 +0x1cf\ngithub.com/larsartmann/go-taskqueue/internal/webui.withCSRFIssue.func1({0x169e6b0, 0x1516537881e0}, 0x15165318a140)\n\t/home/lars/projects/go-taskqueue/internal/webui/auth.go:167 +0x2be\nnet/http.HandlerFunc.ServeHTTP(0x15165311c500?, {0x169e6b0?, 0x1516537881e0?}, 0x17534e0?)\n\t/home/lars/.cache/go-mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/net/http/server.go:2358 +0x29\ngithub.com/larsartmann/go-taskqueue/internal/webui.withSecurityHeaders.func1({0x169e6b0, 0x1516537881e0}, 0x15165311c500)\n\t/home/lars/projects/go-taskqueue/internal/webui/webui.go:493 +0x17b\nnet/http.HandlerFunc.ServeHTTP(0x493b72?, {0x169e6b0?, 0x1516537881e0?}, 0x151652f61a98?)\n\t/home/lars/.cache/go-mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/net/http/server.go:2358 +0x29\ngithub.com/larsartmann/httputil/server_timing.ServerTimingMiddlewareWhen.func1.func1({0x169e6b0?, 0x1516537881e0?}, 0x15165311c500?)\n\t/home/lars/projects/go-taskqueue/vendor/github.com/larsartmann/httputil/server_timing/server_timing.go:422 +0x82\nnet/http.HandlerFunc.ServeHTTP(0x48b179?, {0x169e6b0?, 0x1516537881e0?}, 0x151652f61af0?)\n\t/home/lars/.cache/go-mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/net/http/server.go:2358 +0x29\nnet/http.serverHandler.ServeHTTP({0x1516530b0180?}, {0x169e6b0?, 0x1516537881e0?}, 0x1?)\n\t/home/lars/.cache/go-mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/net/http/server.go:3436 +0x8e\nnet/http.(*conn).serve(0x15165331c480, {0x169f880, 0x151653408f90})\n\t/home/lars/.cache/go-mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/net/http/server.go:2157 +0x6dc\ncreated by net/http.(*Server).Serve in goroutine 326\n\t/home/lars/.cache/go-mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/net/http/server.go:3604 +0x4fd\n"
+--- PASS: TestHealthFoldFollowerCheck (0.01s)
+--- PASS: TestHealthLiveSSECheck (0.01s)
+--- PASS: TestHealthStaticAssets (0.01s)
+--- PASS: TestHealthStatusSinceAndLatency (0.01s)
+--- PASS: TestHealthProjectionCheck (0.01s)
+--- PASS: TestHealthEvaluationPanicRecovers (0.01s)
+--- PASS: TestHealthProbesHealthyStore (0.01s)
+--- PASS: TestHealthDashboardPage (0.01s)
+--- PASS: TestHealthVersionStamp (0.01s)
+--- PASS: TestHealthRoutesBehindAuth (0.01s)
+PASS
+ok  	github.com/larsartmann/go-taskqueue/internal/webui	0.019s

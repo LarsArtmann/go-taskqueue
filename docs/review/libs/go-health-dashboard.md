@@ -112,10 +112,10 @@ sed -n '385,413p' internal/webui/health.go   # the full construction: title, rou
 sed -n '312,328p' internal/webui/webui.go    # healthBindings: all routes wrapped, GET-only, incl. trend + export
 sed -n '377,431p' internal/webui/webui.go    # token gate + security headers wrap the health routes too
 GOCACHE=/tmp/go-build-cache GOEXPERIMENT=jsonv2 GOWORK=off \
-  go test ./internal/webui/ -run TestHealth -count=1 -v | grep -c '^--- PASS'   # blocked 2026-11-11: the in-flight v4→v5 facade migration breaks the vendored root build; re-run after it lands
+  go test ./internal/webui/ -run TestHealth -count=1 -v | grep -c '^--- PASS'   # → 12 PASS / 0 FAIL (executed 2026-11-12 post-repair 5e7fc982, rc=0; suite grew 9→12 since 11-08)
 cd /home/lars/projects/go-health-dashboard && git describe --tags   # → v0.13.2-26-ish, no library-surface change
 git log --oneline v0.13.2..HEAD | wc -l
 grep -n 'WithWebhook\b\|WithTrend(\|WithMetrics(' options.go          # → 172/183/303 = the funcs (293/325 are doc comments)
 ```
 
-All commands above ran clean on 2026-11-08 (9/9 health tests PASS then, per the tee'd log) and were re-run 2026-11-11 except the test line, which is build-blocked by the UNCOMMITTED v4→v5 facade migration in `vendor/` (concurrent session's in-flight work — see go-cqrs-lite.md's refresh note); the landing was verified by grep against committed sources instead.
+All commands above ran clean on 2026-11-08 (9/9 health tests PASS then, per the tee'd log), were re-run 2026-11-11 (the test line was then build-blocked by the since-repaired half-landed v4→v5 facade migration), and the test line executed 2026-11-12 after the facade repair (5e7fc982): 12 PASS / 0 FAIL, rc captured under docs/status/assets/2026-11-12_04-54_repair-battery/.
