@@ -21,7 +21,7 @@ import (
 // of failing the caller. A nonexistent source is tolerated as success
 // (callers that must observe absence stat first).
 func RenameTransient(src, dst string) error {
-	return retry.Do(context.Background(), retry.Config{ //nolint:exhaustruct // optional hooks unset
+	return retry.Do(context.Background(), retry.Config{
 		MaxAttempts:  3,
 		InitialDelay: 50 * time.Millisecond,
 		MaxDelay:     100 * time.Millisecond,

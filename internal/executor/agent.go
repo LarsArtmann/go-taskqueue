@@ -1126,7 +1126,7 @@ DO NOT RESEARCH UNRELATED STUFF. Report based on THIS task's work and what you n
 // the whole failure class instead of failing a task attempt. Every other
 // error passes through untouched.
 func execWithTransientRetry[T any](run func() (T, error)) (T, error) {
-	return retry.DoWithValue[T](context.Background(), retry.Config{ //nolint:exhaustruct // optional hooks unset
+	return retry.DoWithValue[T](context.Background(), retry.Config{
 		MaxAttempts:  3,
 		InitialDelay: 50 * time.Millisecond,
 		MaxDelay:     100 * time.Millisecond,

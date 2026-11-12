@@ -119,6 +119,14 @@ linters:
   settings:
     cyclop:
       max-complexity: 12
+    exhaustruct:
+      # go-retry's Config documents every field as optional with safe
+      # defaults (nil IsRetryable falls back to errorfamily's classifier);
+      # the numeric-only literals at the retry call sites are intentional.
+      # This exclude moved the class here from per-site
+      # //nolint:exhaustruct comments (pareto T06, 2026-11-12).
+      exclude:
+        - '^github\.com/larsartmann/go-retry\.Config$'
     funlen:
       lines: 200
       statements: 100

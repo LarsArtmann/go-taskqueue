@@ -396,7 +396,7 @@ func stampedFailureEvidence(evidence jsontext.Value, execErr error) jsontext.Val
 // Non-busy errors pass through untouched: a lost claim or a moved task
 // belongs to the reclaim/re-own path, not to this loop.
 func (p *Pool) persistOutcome(ctx context.Context, id task.ID, write func(context.Context) error) error {
-	return retry.Do(ctx, retry.Config{ //nolint:exhaustruct // optional hooks unset
+	return retry.Do(ctx, retry.Config{
 		MaxAttempts:  3,
 		InitialDelay: 50 * time.Millisecond,
 		MaxDelay:     400 * time.Millisecond,
