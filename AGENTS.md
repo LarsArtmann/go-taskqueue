@@ -177,7 +177,8 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   `internal/executor/redact.go`; `tq audit --journal` reports SECRET EVIDENCE rows. Growth: ONE `secretPatterns` entry + fake-shape sample in
   `redact_test.go` (gosec); ONE shared table test, windows-gated. Counts =
   distinct secret LOCATIONS; back-to-back zero-separator tokens
-  merge into ONE — distinct counts need a non-token separator.- **Enqueued-fact snapshots are THIN** (`{project,type}`;
+  merge into ONE — distinct counts need a non-token separator.
+- **Enqueued-fact snapshots are THIN** (`{project,type}`;
   `Caps.EnqueuedSnapshot=false` pinned in conform suites).
 - **Unknown keys ≠ a newer contract**: unknown detail/payload KEYS are ignored,
   but a greater payload `V` is REFUSED — a misparsed execution payload runs the
@@ -341,8 +342,7 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 - **GOEXPERIMENT/GOTOOLCHAIN**: ci-local exports jsonv2; CI setup-go + go.mod
   floors + flake tarball PINNED IN LOCKSTEP (1.27.3); NEVER lower a `go`
   directive (`check-go-mods.sh`).
-- **CI-log triage one-liner**: `gh run view <id> --log-failed | grep -i '##\[error\]'`
-  (2026-11-03 task 000001a19fb137e9 §e5/§f10).
+- **CI-log triage one-liner**: `gh run view <id> --log-failed | grep -i '##\[error\]'`.
 - **`fetch` empty ≠ URL dead**: an empty body is a tool mismatch — retry `download`.
 - **Host GOCACHE/GOROOT hazards**: gates run `GOCACHE=/tmp/go-build-cache`
   (host symlink → /nix/store ENOSPCs); "package X is not in std" +
@@ -356,7 +356,7 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   endpoint without it (SECURITY.md).
 - **templ + cmd/tq LSP diagnostics are false positives — never "fix" them;
   cmd/tq `GOWORK=off` build/test fails at HEAD** — trust the CLI gates:
-  go.work workspace or `scripts/test-cmd-tq.sh` (07-28 §d5).
+  go.work workspace or `scripts/test-cmd-tq.sh`.
 - **erraudit**: HARD gate `scripts/check-erraudit.sh` — ruled flags live
   there (`--max` dev-build-only; CI pin v0.7.0 rejects it), run from EACH
   module root (`lint` REJECTS `--modules`/`--violations-only`). `legacy_as`
@@ -372,8 +372,7 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 - **New module + unpushed tag = replace in EVERY graph loader**: a fresh
   module's real-tag unpushed require 404s the proxy wherever a consumer's
   go.mod graph loads without a local replace — add it to root, every
-  facade/internal loader, cmd/tq/go.work, AND examples/embed (embed-tidy
-  gate caught it, 2026-11-03).
+  facade/internal loader, cmd/tq/go.work, AND examples/embed (embed-tidy gate caught it).
 - **readmodel schema drift crash-loops the fold** (planned tables get no
   column migration; `ConvergeProjectionHome` snapshots divergent homes
   aside): remedy = quarantine `<db>.readmodel.db*` + restart.
