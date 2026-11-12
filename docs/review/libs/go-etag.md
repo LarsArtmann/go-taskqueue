@@ -8,7 +8,7 @@
 
 **Latest:** v0.7.0 (local checkout /home/lars/projects/go-etag, checked 2026-11-08; re-verified 2026-11-11 — still the newest of 18 tags; checkout HEAD now 6e53195 2026-11-10, a TODO_LIST-only commit since 226fa97 2026-11-06)
 
-**Prior coverage:** none directly; AGENTS.md:404–408 mentions httputil (which embeds go-etag) as NOT adopted. go-health-dashboard is the adopted HTTP-adjacent lib.
+**Prior coverage:** none directly; AGENTS.md §Relation to other projects mentions httputil (which embeds go-etag) as NOT adopted. go-health-dashboard is the adopted HTTP-adjacent lib.
 
 **Reviewed:** 2026-11-08 by reading /home/lars/projects/go-etag/{README.md,server,client,metrics} plus internal/httpapi/httpapi.go, internal/webui/{handlers,static,health}.go, and greps for etag/If-None-Match (zero hits repo-wide).
 

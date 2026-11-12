@@ -8,7 +8,7 @@
 
 **Latest:** v0.13.2 (local checkout /home/lars/projects/go-health-dashboard, re-checked 2026-11-11; HEAD = v0.13.2-26 — docs, CI permissions, dependency-pin restores, and a NixOS module for the separate health-hub binary; no library API change in [Unreleased]).
 
-**Prior coverage:** none (AGENTS.md:399 records the adoption decision; no prior utilization review).
+**Prior coverage:** none (AGENTS.md §Relation to other projects records the adoption decision; no prior utilization review).
 
 **Reviewed:** 2026-11-08 by reading /home/lars/projects/go-health-dashboard/{README.md,CHANGELOG.md,dashboard.go,routes.go,options.go,handlers.go,csp.go,status.go,pusher.go,evidence.go,view.templ} plus /home/lars/projects/go-taskqueue/internal/webui/{health.go,webui.go,health_test.go} and cmd/tq/main.go:4300-4372; greps and tests in §How to verify.
 

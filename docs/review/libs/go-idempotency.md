@@ -8,7 +8,7 @@
 
 **Latest:** v0.3.2 (local checkout /home/lars/projects/go-idempotency, checked 2026-11-08)
 
-**Prior coverage:** none; AGENTS.md:166–168 documents the domain-level idempotent-enqueue contract this review compares against.
+**Prior coverage:** none; AGENTS.md §Payload contracts documents the domain-level idempotent-enqueue contract this review compares against.
 
 **Reviewed:** 2026-11-08 by reading /home/lars/projects/go-idempotency/{README.md,middleware,contract} plus internal/queue/queue.go, internal/httpapi/httpapi.go, internal/queue/companion/conform/tests.go, and go.mod greps for cqrs dedup.
 
@@ -18,7 +18,7 @@ go-idempotency offers: a three-method `Store` interface (`Seen`/`Record`/`CheckA
 
 tq already has the guarantee this library sells, at the domain layer and **permanent** rather than TTL-windowed:
 
-- **Journal-level dedup**: `DedupKey` re-enqueue returns the stored task; a COMPLETED key's re-dispatch is refused with `ErrTaskDone`; cancelled/dead keys still suppress (AGENTS.md:166–168, re-verified 2026-11-11). Implementation: `Queue.Enqueue` (internal/queue/queue.go:595–605) returns `(stored, ErrTaskDone)` when the stored task is Completed; sentinel at queue.go:49–57. Cross-backend behavior is pinned by the conform suite (internal/queue/companion/conform/tests.go:793–859 — `TestEnqueueDedupKey`, `TestEnqueueWithoutDedupKeyIndependent`, legacy-schema migration).
+- **Journal-level dedup**: `DedupKey` re-enqueue returns the stored task; a COMPLETED key's re-dispatch is refused with `ErrTaskDone`; cancelled/dead keys still suppress (AGENTS.md §Payload contracts, re-verified 2026-11-11). Implementation: `Queue.Enqueue` (internal/queue/queue.go:595–605) returns `(stored, ErrTaskDone)` when the stored task is Completed; sentinel at queue.go:49–57. Cross-backend behavior is pinned by the conform suite (internal/queue/companion/conform/tests.go:793–859 — `TestEnqueueDedupKey`, `TestEnqueueWithoutDedupKeyIndependent`, legacy-schema migration).
 - **HTTP passthrough**: `POST /api/v1/tasks` carries `dedupKey` in the body, passed verbatim into `task.New` (internal/httpapi/httpapi.go:304, 341–348) — the wire idempotency unit is the *domain object*, not the request.
 - **Platform dedup already present**: `github.com/larsartmann/go-cqrs-lite/dedup/v4 v4.3.0` is an **indirect dependency in 12 go.mods** across the repo (root, cmd/tq, examples/embed, internal/{composition,worker,readmodel}, internal/queue/{sqlite,sqlitev4,postgres,postgresv4}, and the queue facades — verified by grep, 2026-11-08; re-verified 2026-11-11, still exactly 12). go-idempotency's own README says the go-cqrs-lite path is the engine capability: "On the go-cqrs-lite stack? You do not need to write a backend" — `metaengine.DedupStore` (its ADR-0142), with that repo's own idempotency stores retired in its favor (README:53–57).
 
@@ -35,7 +35,7 @@ tq already has the guarantee this library sells, at the domain layer and **perma
 ## 3. Findings (buy vs cost)
 
 1. **Buy:** a rigorous, well-documented SDK for exactly-once command handling; the 13-invariant contract suite and the pitfalls section (TOCTOU, store-failure-is-not-permission, TTL sizing) are excellent reference material.
-2. **Cost (dominant) — the double-idempotency question, answered no:** inserting a TTL key store in front of `Queue.Enqueue` would add a *second, weaker* layer: its claims expire (README "Common pitfalls": TTL window, crash-between-claim-and-effect leaves the key claimed until expiry), whereas the journal's keys never expire and the COMPLETED refusal is a *feature* (ErrTaskDone, with the documented escape of editing the item text to re-key — AGENTS.md:166–168). Two layers also split the truth: a TTL layer could reject a retry the journal would have accepted (or vice versa), and every divergence becomes an operator puzzle.
+2. **Cost (dominant) — the double-idempotency question, answered no:** inserting a TTL key store in front of `Queue.Enqueue` would add a *second, weaker* layer: its claims expire (README "Common pitfalls": TTL window, crash-between-claim-and-effect leaves the key claimed until expiry), whereas the journal's keys never expire and the COMPLETED refusal is a *feature* (ErrTaskDone, with the documented escape of editing the item text to re-key — AGENTS.md §Payload contracts). Two layers also split the truth: a TTL layer could reject a retry the journal would have accepted (or vice versa), and every divergence becomes an operator puzzle.
 3. **Cost:** a Store implementation tq would have to build and operate (the lib ships none by design): backed by SQLite? Then it duplicates the dedup table the queue engines already maintain via go-cqrs-lite's `dedup/v4` — the platform path the library itself redirects cqrs users to (README:53–57). MemoryStore is deprecated and single-process — useless for `tq api`, whose whole point is cross-process producers (httpapi.go:3–8).
 4. **What adoption would even look like** (for the record — not recommended):
 

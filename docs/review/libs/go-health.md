@@ -8,7 +8,7 @@
 
 **Latest:** v0.10.0 (local checkout /home/lars/projects/go-health, checked 2026-11-08; HEAD = v0.10.0-1-g7e5d8d1, one docs-only commit past the tag).
 
-**Prior coverage:** none (docs/review/libs/ has only httputil.md; AGENTS.md:399 covers the bundle decision, not this library alone).
+**Prior coverage:** none (docs/review/libs/ has only httputil.md; AGENTS.md §Relation to other projects covers the bundle decision, not this library alone).
 
 **Reviewed:** 2026-11-08 by reading /home/lars/projects/go-health/{README.md,CHANGELOG.md,doc.go,types.go,checks.go,handlers.go,options.go,lifecycle.go,cache.go,accessors.go,checks/checks.go,docs/check-severity-override-design.md} plus /home/lars/projects/go-taskqueue/internal/webui/{health.go,webui.go,health_test.go}; greps and tests listed in §How to verify.
 
