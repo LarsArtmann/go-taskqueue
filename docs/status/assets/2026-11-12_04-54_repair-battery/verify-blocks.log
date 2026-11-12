@@ -1,0 +1,1954 @@
+=== cmdguard.md ===
+0
+	commands := map[string]func([]string) error{
+		"bootstrap":    cmdBootstrap,
+		"enqueue":      cmdEnqueue,
+		"ask":          cmdAsk,
+		"worker":       cmdWorker,
+		"harvest":      cmdHarvest,
+		"reprioritize": cmdReprioritize,
+		"verdict":      cmdVerdict,
+		"agent-pool":   cmdAgentPool,
+		"stats":        cmdStats,
+		"tasks":        cmdTasks,
+		"audit":        cmdAudit,
+		"pool-health":  cmdPoolHealth,
+		"doctor":       cmdDoctor,
+		"top":          cmdTop,
+		"show":         cmdShow,
+		"dlq":          cmdDLQ,
+		"cancel":       cmdCancel,
+		"park":         cmdPark,
+		"facts":        cmdFacts,
+		"tail":         cmdTail,
+		"watermarks":   cmdWatermarks,
+		"session":      cmdSession,
+		"crush":        cmdCrush,
+		"serve":        cmdServe,
+		"version":      cmdVersion,
+		"api":          cmdAPI,
+		"incidents":    cmdIncidents,
+	}
+
+	switch name := os.Args[1]; name {
+	case "-h", "--help", "help":
+		fmt.Print(usage)
+	default:
+		cmd, ok := commands[name]
+		if !ok {
+			fmt.Fprintf(os.Stderr, "tq: unknown command %q\n\n%s", name, usage)
+			os.Exit(2)
+		}
+
+		if err := cmd(os.Args[2:]); err != nil {
+			fmt.Fprintf(os.Stderr, "tq: %v\n", err)
+			os.Exit(1)
+		}
+27
+4397 cmd/tq/main.go
+v4.3.1
+v5.0.0
+v5.1.0
+2026-11-11 671c128
+18
+## [5.1.0] - 2026-11-11
+
+### Added
+
+- **Strict positional-args control.** `WithStrictPositionalArgs()` makes a
+  command reject undeclared positional args (inert when an explicit validator
+  like `WithExactArgs` is already set); `WithArgsPassthrough()` explicitly
+  accepts and ignores extras. Pinned by `cli_args_strict_test.go`.
+
+### Fixed
+
+- **`Builder` is safe for concurrent use.** `Add`/`AddParent`/`Try`/`Check`/
+  `Build` serialize on a mutex, so queueing commands from multiple goroutines
+  followed by one `Build()` no longer races on the internal slices.
+- **`doctor`'s schema-validator doc example** referenced the removed
+  `schema.ValidateFile` shape; it now shows `schema.FromConfig` + `Emit`.
+- Release workflow lint invocation (`args: run ./...` → `./...`) — the action
+  already supplies `run`, so the duplicated subcommand made every `v*` release
+  check exit 7 since v4.1.0 (fixed on master and `release/v4`).
+
+## [4.3.1] - 2026-11-11
+
+Final release of the retired v4 major line, cut on the `release/v4` branch.
+v4.3.0 pinned the root module's sibling requires to published versions (v4 had
+been unresolvable through `go get` since v4.2.1, whose go.mod pointed at
+2026-11-11 c423a30 chore(deps): bump cmdguard/v5 to v5.1.0
+---
+name: cmdguard
+description: Build, extend, or review Go CLIs built with cmdguard v5 (`github.com/larsartmann/cmdguard/v5`) — the LarsArtmann Cobra wrapper with typed struct-tag flags, per-command flag structs, DI, middleware, config files, and exit-code contracts. Use whenever a project imports cmdguard, when adding subcommands or flags (especially per-command or scoped flags), when wiring config/env precedence, output formats, middleware, prompts, spinners, or telemetry, or when any cmdguard API question arises — even when cmdguard is not named ("add a flag only to the X subcommand", "why is --foo accepted on every command", "unknown flag" surprises). Also covers the cmdguard-lint rules and the optional sub-modules. Not for developing cmdguard itself (that repo's AGENTS.md is authoritative for contributors).
+---
+
+# cmdguard — validated Cobra CLIs with type-safe flags and DI
+
+cmdguard v5 wraps spf13/cobra with struct-tag flags, samber/do DI, middleware,
+config-file loading, rich output, and a no-panics API. Everything returns errors.
+Module: `github.com/larsartmann/cmdguard/v5`, package `pkg/cmdguard/v5`.
+Published: v5.0.0 (2026-11-08).
+
+## v5 in one paragraph
+
+v5 ships the paved road: production batteries (strict validation, signal handling
+with graceful DI shutdown, strict config keys, hints, `version`/`doctor` commands)
+are **on by default**; every one has a `Without*` opt-out. The error ladder is
+replaced by the `Builder` (`NewBuilder` + `Add`/`AddParent`/`Try`/`Check`/`Build`).
+Renames: `CommandInfo` → `CommandMetadata`, `TypeHandler` → `TypeCodec`,
+`HuhRunner` → `HuhPrompter` (prompts sub-module). Migration:
+RC[cmdguard.md]=0
+=== cqrs-htmx.md ===
+func (s *Server) routeBindings() []struct {
+	method  string
+	pattern string
+	handler func(http.ResponseWriter, *http.Request)
+} {
+	return []struct {
+		method  string
+		pattern string
+		handler func(http.ResponseWriter, *http.Request)
+	}{
+		{"GET", "/{$}", s.handleIndex},
+		{"GET", "/project/{name}", s.handleProject},
+		{"GET", "/task/{id}", s.handleTaskDetail},
+		{"GET", "/task/{id}/events", s.handleTaskEvents},
+		{"GET", "/api/events", s.handleEvents},
+		{"GET", "/api/stats", s.handleStats},
+		{"GET", "/api/facts", s.handleFacts},
+		{"GET", "/agents/live", s.handleAgentLive},
+		{"GET", "/static/", nil}, // staticHandler, wired in Handler
+		{"POST", "/task/{id}/cancel", s.handleTaskCancelPOST},
+		{"POST", "/task/{id}/rescue", s.handleTaskRescuePOST},
+		{"POST", "/task/{id}/answer", s.handleTaskAnswerPOST},
+	mux.HandleFunc("POST /api/v1/tasks", s.handleEnqueue)
+	mux.HandleFunc("POST /api/v1/errors", s.handleReportError)
+	mux.HandleFunc("GET /api/v1/stats", s.handleStats)
+	mux.HandleFunc("GET /api/v1/healthz", s.handleHealth)
+// dashboardProps builds the shared page shell for both pages. HTMX is
+// suppressed entirely: the dashboard streams over vanilla EventSource.
+// The nonce comes from the security-headers middleware (ctxNonce) and is
+// stamped onto the theme bootstrap + toggle inline scripts so the strict
+// script-src CSP admits them.
+func dashboardProps(title, nonce string) layout.PageProps {
+	props := layout.DefaultPageProps()
+	props.Title = title
+	props.Description = "Live, read-only projection of the tq task-queue journal."
+	props.CSSPath = "/static/app.css"
+	props.Favicon = "/static/favicon.svg"
+	props.HTMXVersion = ""
+	props.HTMXSrc = ""
+	props.HTMXResponseTargets = false
+v4.18.1
+huma/v4.0.0
+loginpage/v4.18.0
+6a8d46a1 2026-11-11
+249
+# ADR 0046: Drop WebSocket Transport in Favor of SSE
+
+## Status: Accepted
+
+## Context
+
+ADR 0004 introduced SSE and WebSocket as first-class transports; ADR 0010 then
+established full transport parity (SSE ↔ WebSocket) for CQRS dispatch feedback,
+ACK, and broadcaster hooks. In the years since, the WS surface grew to include
+fourteen exported symbols (`WSBroadcaster`, `WSMessage`, `WSOOBHTML`,
+`ParseWSMessage`, `ParseWSMessageInto`, `WriteWSMessage`, `WriteWSMessageInto`,
+`DispatchWSCommand`, `DispatchWSQuery`, `DecodeWSJSON`, `DecodeWSJSONQuery`,
+`BroadcastOnSuccessWS`, `BroadcastOnErrorWS`, `BroadcastOnAckWS`), one embedded
+JS asset (`extensions/ws.min.js`), and a constant (`HTMXExtWS`).
+
+SSE covers every use case the WS surface was designed for, with strictly
+better operational properties:
+
+| Property            | SSE                          | WebSocket                                                      |
+| ------------------- | ---------------------------- | -------------------------------------------------------------- |
+| Protocol complexity | HTTP/1.1 streaming           | Separate framing on top of HTTP upgrade                        |
+| Auth/cookies/CSRF   | Native HTTP semantics        | Custom handshake + auth at upgrade                             |
+| Proxy/CDN traversal | Plain HTTP                   | Often blocked, requires sticky sessions                        |
+| Reconnection        | Built-in `Last-Event-ID`     | Manual reconnect + replay                                      |
+| Backpressure        | Standard HTTP flow control   | Manual; buffer bloat on slow consumers                         |
+| Server complexity   | `stream.Send()` per client   | Per-conn goroutine + read/write pumps                          |
+| Browser API         | `EventSource` (auto-retry)   | `WebSocket` (no auto-retry)                                    |
+| HTMX extension      | `hx-ext="sse"` (server push) | `hx-ext="ws"` (bi-directional, rarely used server→client only) |
+| htmx 4 status       | Continued investment         | Sunset (htmx 4 ships sse as core)                              |
+
+RC[cqrs-htmx.md]=0
+=== go-appkit.md ===
+405:  (`--alert-url`). **httputil** NOT adopted (MIT v1.5.0+; fleet verdicts
+8:	github.com/larsartmann/httputil v1.8.0
+9:	github.com/larsartmann/httputil/server_timing v1.0.3
+v0.5.1
+v0.6.0
+v0.7.0
+v0.8.0
+v0.9.0
+v0.10.0
+v0.11.0
+v0.12.0
+13
+72
+httpx/v0.2.0-11-ged79e4f
+ed79e4f chore: auto-commit 1 changed file(s) (heuristic)
+86bd621 chore: auto-commit 1 changed file(s) (heuristic)
+0a39c3b chore: auto-commit 4 changed file(s) (heuristic)
+e1a1b55 chore: auto-commit 37 changed file(s) (heuristic)
+4b7459c chore: auto-commit 2 changed file(s) (heuristic)
+f96c0be docs: finalize wave close-out in TODO_LIST (reworded for docs-gates safety)
+130c5ca chore: auto-commit 3 changed file(s) (heuristic)
+6c6c9e6 fix(httpx): make wrapcheck suppression version-proof across golangci 2.14/2.15
+15b9228 chore: auto-commit 2 changed file(s) (heuristic)
+08f487d fix(integration): adopt canonical proxy hashes for re-cut wave tags
+c6859aa chore: auto-commit 1 changed file(s) (heuristic)
+2cb44aa chore: auto-commit 1 changed file(s) (heuristic)
+b4ff7b7 chore: auto-commit 4 changed file(s) (heuristic)
+c2f527f chore: auto-commit 3 changed file(s) (heuristic)
+425df46 chore: auto-commit 4 changed file(s) (heuristic)
+252910f chore: auto-commit 2 changed file(s) (heuristic)
+8d5eaac chore: auto-commit 2 changed file(s) (heuristic)
+515600f chore: auto-commit 2 changed file(s) (heuristic)
+966f4f0 chore: auto-commit 1 changed file(s) (heuristic)
+40dac7b chore: auto-commit 3 changed file(s) (heuristic)
+aa0def6 chore: auto-commit 2 changed file(s) (heuristic)
+f62ff91 chore: auto-commit 1 changed file(s) (heuristic)
+97ae339 chore: auto-commit 2 changed file(s) (heuristic)
+ceb6e18 chore: auto-commit 7 changed file(s) (heuristic)
+40cdb3c chore: auto-commit 6 changed file(s) (heuristic)
+760bea8 chore: auto-commit 4 changed file(s) (heuristic)
+ceff731 chore: auto-commit 2 changed file(s) (heuristic)
+582a3e1 chore: auto-commit 2 changed file(s) (heuristic)
+365543b chore: auto-commit 5 changed file(s) (heuristic)
+4806416 chore: auto-commit 8 changed file(s) (heuristic)
+c888c64 chore: auto-commit 4 changed file(s) (heuristic)
+7988da2 chore: auto-commit 3 changed file(s) (heuristic)
+a6bf25f chore: auto-commit 5 changed file(s) (heuristic)
+126b543 chore: auto-commit 5 changed file(s) (heuristic)
+709ea0c chore: auto-commit 3 changed file(s) (heuristic)
+360c1bd chore: auto-commit 4 changed file(s) (heuristic)
+55f42a5 chore: auto-commit 2 changed file(s) (heuristic)
+cbf33ae chore: auto-commit 19 changed file(s) (heuristic)
+3bea492 chore: auto-commit 5 changed file(s) (heuristic)
+7b527f7 chore: auto-commit 2 changed file(s) (heuristic)
+662e67f chore: auto-commit 2 changed file(s) (heuristic)
+4a77b08 chore: auto-commit 1 changed file(s) (heuristic)
+04fb375 docs: 11:00 close-out report (continued mandate: C1 + httpx + three tags, a-g with 50 ranked next tasks)
+9899e45 ci: add workflow_dispatch to CI; correct the missing-run gotcha (paths-ignore skips docs-only pushes by design)
+3e850f4 docs: land the tag-push vs tip-CI visibility race gotcha (hit three times today)
+ce6f453 docs: record the httpx tagged-tree LICENSE gap (rides v0.1.1, health precedent)
+37a30b8 chore(deps): bump the minor-and-patch group (#58)
+6cb100d fix: httpx in the pin-drift pattern registry + the module LICENSE (guards caught both on CI)
+f541338 docs: close out the continued-mandate session (C1 composition + httpx battery status report)
+85906e1 chore: auto-commit 2 changed file(s) (heuristic)
+8adec88 chore: add httpx to the gosum-canonical default module list
+5c5597f docs: httpx v0.1.0 release-state sync (AGENTS/FEATURES/TODO + claims-guard httpx pattern)
+44ce8e8 chore: auto-commit 8 changed file(s) (heuristic)
+bb25e60 chore: auto-commit 8 changed file(s) (heuristic)
+03265c5 chore: auto-commit 8 changed file(s) (heuristic)
+fcb0cd2 chore: auto-commit 4 changed file(s) (heuristic)
+49317e7 chore: auto-commit 7 changed file(s) (heuristic)
+7bff1bb chore: auto-commit 1 changed file(s) (heuristic)
+b7c42d7 release: core v0.12.0 + otel v0.4.0 + config v0.1.1 (integration re-pin + release-state sync)
+662715b chore: auto-commit 4 changed file(s) (heuristic)
+2026-11-07 34edcd2
+// dropped for that client; the next change notification triggers a full
+// server-rendered snapshot, so the page self-heals.
+const subscriberBufferSize = 128
+
+// Hub fans out change notifications to all connected SSE clients.
+// Notifications carry no payload — every one triggers a server-side
+// re-render and a fresh full snapshot to each client (projection, not
+// client state). The event ID is the journal watermark so browsers resume
+// with a meaningful Last-Event-ID.
+type Hub struct {
+	bc *sse.Broadcaster[sse.Event]
+}
+
+// NewHub creates a ready-to-use Hub.
+func NewHub() *Hub {
+	return &Hub{
+		bc: sse.NewBroadcaster[sse.Event](sse.WithBufferSize[sse.Event](subscriberBufferSize)),
+	}
+}
+
+// Notify broadcasts a change notification to every subscriber. seq is the
+// journal watermark the notification represents.
+func (h *Hub) Notify(seq int64) {
+	h.bc.Broadcast(sse.Event{
+		Event: "tick",
+		ID:    sse.NewEventID(formatSeq(seq)),
+	})
+}
+
+// Subscribe returns a channel receiving notifications.
+func (h *Hub) Subscribe() <-chan sse.Event {
+	return h.bc.Subscribe()
+}
+
+// Unsubscribe removes a subscriber channel.
+// Package runactor composes long-running components under one signal
+// story: named actors run concurrently, the first exit (or failure) ends
+// the whole group, teardown runs LIFO, and an interrupt actor turns
+// SIGINT/SIGTERM into graceful cancellation — a second signal exits hard.
+//
+// Stdlib + golang.org/x/sync/errgroup only (ADR-0004's framework-free
+// stance). This is the pattern steal from cordis's run.Group, shaped so
+// the drain invariant stays expressible: an actor's context is its
+// shutdown signal, NEVER its task-execution context (see ExecutionScope).
+package runactor
+
+import (
+	"context"
+	"errors"
+RC[go-appkit.md]=0
+=== go-atomic-write.md ===
+./internal/readmodel/workerfailed.go:82:	if err := retryx.RenameTransient(tmp, path); err != nil {
+./internal/readmodel/schema.go:170:		if err := retryx.RenameTransient(path+suffix, snapshot+suffix); err != nil && !os.IsNotExist(err) {
+./internal/executor/depbump.go:588:	if err := retryx.RenameTransient(workFile, workFile+".bak"); err != nil {
+./internal/executor/depbump.go:592:	return func() { _ = retryx.RenameTransient(workFile+".bak", workFile) }, nil
+// Windows sharing violation on a recently closed reader heals instead
+// of failing the caller. A nonexistent source is tolerated as success
+// (callers that must observe absence stat first).
+func RenameTransient(src, dst string) error {
+	return retry.Do(context.Background(), retry.Config{ //nolint:exhaustruct // optional hooks unset
+		MaxAttempts:  3,
+		InitialDelay: 50 * time.Millisecond,
+		MaxDelay:     100 * time.Millisecond,
+		Multiplier:   2.0,
+	}, func(_ context.Context, _ int) error {
+		err := os.Rename(src, dst)
+		if os.IsNotExist(err) {
+			return nil
+		}
+
+		return err
+	})
+}
+	if err := os.WriteFile(tmp, raw, 0o644); err != nil {
+		return fmt.Errorf("readmodel: write worker-death marker: %w", err)
+	}
+
+	if err := retryx.RenameTransient(tmp, path); err != nil {
+		_ = os.Remove(tmp)
+
+		return fmt.Errorf("readmodel: publish worker-death marker: %w", err)
+	}
+func atomicRename(path, tmpPath string) error {
+	const maxRetries = 5
+	const baseBackoff = time.Millisecond
+
+	var lastErr error
+
+	for attempt := range maxRetries {
+		lastErr = os.Rename(tmpPath, path)
+		if lastErr == nil {
+			return nil
+		}
+
+		if !isRetryableRename(lastErr) {
+			break
+		}
+
+		time.Sleep(baseBackoff << uint(attempt))
+	}
+
+	return fmt.Errorf("renaming %s to %s: %w", tmpPath, path, lastErr)
+}
+v0.6.2-40-g6428b85
+12
+RC[go-atomic-write.md]=0
+=== go-codec.md ===
+./cmd/tq/facts_cqrs_test.go
+./internal/executor/payload.go
+./internal/journal/cqrs/journal_test.go
+./internal/journal/cqrs/journal.go
+internal/journal/cqrs/journal.go:164:		event.WithCodec(codec.JSONCodec{}),
+internal/journal/cqrs/journal_test.go:148:	// encoding stamp; codec.ForEncoding refuses an empty stamp.
+internal/journal/cqrs/journal_test.go:150:		if enc := evt.Encoding(); enc != codec.EncodingJSON {
+internal/journal/cqrs/journal_test.go:151:			t.Fatalf("event %d encoding = %q, want %q", i, enc, codec.EncodingJSON)
+cmd/tq/facts_cqrs_test.go:137:		if evt.Encoding() != codec.EncodingJSON {
+cmd/tq/facts_cqrs_test.go:138:			t.Fatalf("store event %d encoding = %q, want %q", i, evt.Encoding(), codec.EncodingJSON)
+10:// payloadCodec is the ONE JSON door executor payload decoding goes through:
+15:var payloadCodec = codec.JSONCodec{}
+28:	if err := payloadCodec.Decode(t.Payload, &payload); err != nil {
+3
+	// DecodePayloadAuto — the decode path every go-cqrs-lite consumer of
+	// this journal uses — refuses unstamped payloads.
+	evt, newErr := event.New(
+		event.Type(fact.Type),
+		streamID,
+		streamType,
+		event.Version(uint64(fact.Seq)),
+		factPayload{
+			TaskID:  fact.TaskID,
+			Type:    fact.Type,
+			Owner:   fact.Owner,
+			Attempt: fact.Attempt,
+			Error:   fact.Error,
+			Detail:  fact.Detail,
+		},
+		event.WithCodec(codec.JSONCodec{}),
+type factPayload struct {
+	//cqrs-lint:ignore(A032) wire mirror of journal.Fact.TaskID (a plain string in the leaf module); branding here buys coupling, not safety
+	TaskID  string           `json:"taskId"`
+	Type    journal.FactType `json:"type"`
+	Owner   string           `json:"owner,omitempty"`
+	Attempt int              `json:"attempt,omitempty"`
+	Error   string           `json:"error,omitempty"`
+	Detail  jsontext.Value   `json:"detail,omitempty"`
+// JSON codec), so DecodePayloadAuto is the matching decode path.
+func (p FoldProjection) Handle(ctx context.Context, evt event.Event) error {
+	payload, err := event.DecodePayloadAuto[foldPayload](evt)
+	if err != nil {
+		return fmt.Errorf("readmodel: decode fact payload seq event %s: %w", evt.ID(), err)
+	}
+
+// migration), DecodePayloadAuto picks the right codec per event. Unlike
+// [DecodePayload], it does NOT require the caller to know or pass the codec.
+//
+// Returns an error if the event's encoding has no built-in codec (e.g. "raw",
+// "encrypted") — in that case, the caller must handle decoding manually.
+func DecodePayloadAuto[T any](evt Event) (T, error) {
+	var zero T
+
+	c, err := codec.ForEncoding(evt.Encoding())
+	if err != nil {
+		return zero, errorfamily.WrapCorruption(
+			err,
+			"event.decode_payload_auto_no_codec",
+			"no built-in codec for encoding "+string(evt.Encoding())+
+				" (decode payload for event "+string(evt.Type())+")",
+		)
+	}
+
+	return DecodePayload[T](evt, c)
+}
+var payloadCodec = codec.JSONCodec{}
+
+// decodePayload parses a task payload under the executor input convention:
+// an empty payload and undecodable JSON are both permanent input-contract
+// misses whose errors name the executor kind and show the wanted shape.
+// Per-type business-rule validation stays with the caller.
+func decodePayload[T any](t task.Task, kind, want string) (T, error) {
+	var payload T
+
+	if len(t.Payload) == 0 {
+		return payload, Permanent(fmt.Errorf("%s: empty payload, want %s", kind, want))
+	}
+
+	if err := payloadCodec.Decode(t.Payload, &payload); err != nil {
+		return payload, Permanent(fmt.Errorf("%s: decode payload: %w", kind, err))
+	}
+
+	return payload, nil
+}
+		if err := json.Unmarshal(fact.Detail, &detail); err != nil {
+	if err := json.Unmarshal(fact.Detail, &detail); err == nil {
+	if err := json.Unmarshal(fact.Detail, &detail); err != nil {
+const CalibrationDataset = "calibration.jsonl"
+	b, err := json.Marshal(row)
+v0.3.3-3-g759d752
+RC[go-codec.md]=0
+=== go-cqrs-lite.md ===
+25
+152
+94:	sys, err := system.New(ctx, system.DomainConfig{}, deployment)
+300:	host, err := projectionhost.New(journal, WatermarkCheckpoints{Src: src}, hostOpts...)
+30:	statusRaw, err := metaengine.ExecuteTyped[statusCountsInput, map[string]int64](
+37:	projectRaw, err := metaengine.ExecuteTyped[projectStatusCountsInput, map[string]int64](
+565:// (metaengine ScanPage + WithCursor, the upstream COOKBOOK §Cursor
+604:	rows, next, err := metaengine.NewReader[TaskRow](m.store, tasksCollection).ScanPage(ctx, opts...)
+152:	engine, err := usqlite.OpenDB[[]byte](db, usqlite.WithCodec(companion.IdentityCodec()))
+408:	return s.engine.WithFacts(ctx, func(sink uqueue.FactSink) error {
+39:type FactType = facts.FactType
+44:type Fact = facts.Fact
+d315904f 2026-11-09 chore: auto-commit 26 changed file(s) (heuristic)
+event/v4.15.2
+id/v4.7.5
+metaengine/v4.23.0
+projection/v4.4.2
+projectionhost/v4.7.1
+queue/v4.0.3
+record/v4.6.2
+system/v4.18.0
+snapshot/v4.7.0
+metaengine/sqliteengine/v4.8.0
+- **gates: the archived-report marker gate accepted fewer banner verbs than the docs-health passes write.** Five honestly-bannered archives (EXECUTED/RULED/ROUTED/POINT-IN-TIME forms) failed the nightly doc-annotations gate; the accepted set is widened and anchored to the blockquote+bold banner position so prose bold can never satisfy it (self-test extended with variant + anchoring mutation legs).
+- **ci: `check-modsums` ripples closed — the sqliteengine v4.8.0 tag's go.sum update had reached only 3 of 11 engine modules.** All 104 modules tidy; the SC2319 `$?`-after-condition warning in `verify-chain.sh` (failing the lint-scripts job) fixed.
+
+- **decider: `StateCache.Get` now returns a codec-cloned state per caller (owner ruling 2026-11-08, brutal-episode7 B1).** The default Otter cache handed out the LIVE cached instance while concurrent incremental loads folded new events onto it (`decider.loadFromCache`) — a data race and shared-state corruption for pointer/slice/map-shaped states. `Get` now deep-clones through a codec round-trip (the `kv.Cache` isolation pattern, CBOR); a state that cannot round-trip is treated as a miss (the full-load path stays correct) and its entry is invalidated. Pinned by `TestStateCache_ConcurrentGetMutateNoRace` under `-race` plus caller-isolation and uncloneable-miss tests; the `StateCache` interface contract now REQUIRES implementations not to alias internal state.
+- **projectionhost: a failed live checkpoint save no longer fails the whole command dispatch (issue #128).** Under concurrent load (24 parallel flows against one sqlite file, Kith CRM) a checkpoint write could hit SQLITE_BUSY and the error climbed out of the live subscriber handler through the in-process bus publish into the dispatch return — a journaled AND applied event answered 500 because its progress marker did not persist, inverting the durability relationship between journal and bookkeeping. The live handler now degrades the failure to a warn; the staging inside the checkpoint flush retries on the next live event and Stop's shutdown flush gives the final retry (the shutdown path already modeled warn-and-continue). At-least-once semantics are unchanged: the reprocessing window widens at most, nothing skips. Pinned by `TestLiveCheckpoint_SaveFailureDoesNotFailHandler`, `TestLiveCheckpoint_SaveFailureFlushesAtShutdown`, and `TestHost_LiveCheckpointFailure_DoesNotStopWorker`.
+- **sqliteengine: the production pragmas now hold on EVERY pooled connection, not only the first (issue #128's busy_timeout anomaly).** `sqliteengine.NewFromDSN`/`sqliteengine.NewSQLiteEngineFromDSNWith` applied `PRAGMA busy_timeout=5000` (and `cache_size`) via one `db.ExecContext` after `sql.Open` — per-connection settings that reached exactly one pooled connection. Under `sqliteengine.WithMaxOpenConns` (read-heavy deployments, issue #112) every additional connection opened with busy_timeout=0, so write contention failed IMMEDIATELY with SQLITE_BUSY — reproduced in isolation (a second held-open pooled connection reads busy_timeout=0) and matching #128's "the BUSY surfaced in well under busy_timeout=5000". The pools now open through a connector wrapper over `sqlite.NewConnector` that applies the pragmas in Connect on each new connection; an eager ping keeps bad pragmas failing at construction. Pinned by `TestNewFromDSN_PragmasHoldOnEveryPooledConnection`.
+- **doc-check: the gate is live again — the 2026-11-10 module-dir move (0e4fbb3d2) had silently broken every layer of it.** The resolver's `importDir` still trimmed the `/v4` suffix, pointing at versionless directories (`event/`) that no longer hold Go files — every one of 1389 skill references failed as "not found" (702 across the corpus) while the string-pure `importDir` test kept passing; `mirrorAliasDirs` rejected the post-move mirror shape (`event/v4` ↔ `core/v5/event`) as UNKNOWN ambiguity; three test files hardcoded `../..` roots and read nonexistent paths; and both flake invocations (#verify inline + `#doc-check`) passed `../../` file arguments that resolve to `cmd/` since the tool moved to `cmd/doc-check/v4`. Fixed all layers (canonical path keeps the version segment, fullDir keeps the legacy-layout fallback, live-tree regression test `TestFullDir_ResolvesLiveTreeLayout` added), repaired the drift the dead gate had accumulated (`docs/METAENGINE_DOMAIN_LANGUAGE.md` stale `metaengine/adttest` import paths, `system/v4/README.md` unscoped `schema.` alias), and AGENTS.md's documented invocations updated. Full corpus: 2794 references valid across 84 packages.
+- **api-stability: `main.go` split under the file-size ratchet — the tool had grown to 430 lines past the 350 ceiling.** The golden-file half (write/verify/diff) moved to `golden.go` in the same package, no signature changes; the newly-live gate chain (file-size is wired into `#verify`, which had been dying earlier at doc-check since the module-dir move) surfaced the committed offender that no completed CI run had caught.
+
+### Changed
+
+- **example: `example/standard-topology` is fully proxy-resolvable — the pre-release `replace` to the local `system` tree died with the `system/v4.18.0` tag (published in the journal-trim wave), and the example now pins the published version directly.** The `check-example-standalone` baseline row is gone (audit back to 0 findings), and the example links the `pgengine` driver alongside sqlite (blank import) so its binary can run the postgres leg of the `cqrs-vm` NixOS test; the layer-gate budget row is 8 → 9 for the second driver.
+- **nixos: auto-provisioned postgres uses peer authentication, not the imagined TCP trust — the module now ships the pg_ident/pg_hba wiring that makes its DSNs actually connect.** nixpkgs' default `pg_hba` is `md5` on 127.0.0.1 (passwords the module never had), so the auto-provisioned DSN switched to the unix socket (`postgres:///cqrs_<name>_<engine>?host=/run/postgresql&user=cqrs_<name>_<engine>`) with a scoped `local` hba line and a `cqrs_peer` ident map (`cqrs-<name>` -> `cqrs_<name>_<engine>`): no password ever lands in the store or the rendered config, and the service-user contract is exactly what `cqrs.lib.hardenedService` already sets. Proven on hardware by the `cqrs-vm` NixOS VM test (rendered config, `SELECT 1` as `cqrs-demo` over the socket, `ensureDBOwnership` owner check, wrong-OS-user rejected; nightly CI leg) — the eval pin covers both linux architectures.
+- **testing: the id/event fuzz harnesses pin the real parser contract again.** `id.ParseStreamID`/`id.ParseStreamType` (and the `id.StreamIDFrom`/`id.AggregateIDFrom` wrappers they feed) reject invalid UTF-8, but four harnesses still asserted the obsolete accept-any-non-empty-string contract, so every Fuzz Nightly since the parser change failed as a stale-contract alarm (`FuzzParseAggregateID`, `FuzzParse_TypeSafety`, `FuzzAggregateIDFrom`, `FuzzParseStreamType`). Assertions corrected and explicit invalid-UTF-8 seeds committed so the rejection contract cannot silently regress.
+- **docs: deleted-transport truth sweep.** `transport/http` + `transport/grpc` were deleted 2026-10-17, but the skill (SKILL.md + the core/advanced/modules/faq references), ADR-0127, and ROADMAP still taught them as "deprecated until v5" — three weeks of fleet agents being taught deleted API. All corrected; go-sse/watermill are named as the live delivery path.
+- **ci: the Benchmarks workflow compares calibration drift against a runner-class baseline** — a cached baseline restore, cold-run establishment, `--baseline` comparison, refresh only on success, and a real uploaded drift log; the absolute shipped constants were being compared on a shared runner, false-failing every engine nightly with an empty artifact.
+- **repo: accidental root junk removed** (a 29-file EventCatalog export under a literal `--help/` directory, plus `awk`/`check` shell transcripts) with exact ignore rules so auto-committed shell output cannot land in the tree root again.
+- **otel: the re-export contract is enforced where it had rotted — three modules were importing `go.opentelemetry.io` directly.** `storage/turso/indexing`, `metaengine/projectionadapter`, and `projectionhost` now go through the `otel/` re-export module for spans and attributes (projectionhost's OTel SDK usage drops back to indirect), and `otel.AttrBool` joins the Attr* helper family (the one constructor the sweep needed that the re-export surface lacked), test-named in the same change. Mechanical adjudication of the 46-import scan: every other direct import lives in otel/-family modules where it belongs.
+- **ci/release: four gates that claimed more than they did, repaired.** The Benchmarks calibration job failed instantly on a bare-value `$GITHUB_OUTPUT` write (`Invalid format '2026-11-08'` — the cold run never ran); the regression-gate bench legs teed empty/partial results into a green compare (no `pipefail`); `tag-release.sh`/`batch-release.sh` swallowed a failed replace-strip commit and would have tagged go.mods still carrying local replaces (both now assert HEAD moved before tagging); `verify-docs.sh`'s "module count check" echoed the actual count and only greped four frozen literals (now any total go.mod-count claim in living docs must equal the repo-derived count — which immediately caught a stale "58" in the shipped v4 wishlist).
+- **docs: three verified lies corrected** — FEATURES' PLANNED table still marked gRPC "✅" under "no production code yet" two months after the transport deletion; AGENTS.md still described the Go directives as minor-form and BuildFlow's auto-configure as skipped (reality: uniform patch-form `go 1.27.2` across all 103 go.mod + go.work, verified by count; `.buildflow.yml` UNSKIPPED since 2026-10-07 with `respect_patch_floor: true`).
+- **repo: audit tails** — decider's load-coalescing key follows the id keying contract (`Get()`, not the display form); dgraph's vector-values marshal error carries the engine label (double-wrap removed); the metaengine-storage audit's sqlite multimap-seq-rewind observation was verified SANCTIONED by contract (per-collection data-derived caches restart with the emptied table per ADR-0143), and the dgraph metadata-encoding split-brain claim was verified FALSE (`encoding/json/v2` already in use).
+- **ci/deps: two drift repairs caught by the push CI** — cmd/cqrs-lint's go-finding/pipeline pin bumped v1.15.0 → v1.15.1 (pin-sweep leg), and the generated region of the error-taxonomy doc regenerated for the new turso codes (both taxonomy gates green; sibling-pins check green).
+
+### Added
+
+- **changelog: eight shipped headline exports finally mentioned (reverse-coverage gate catch).** `check-changelog-coverage --fail-on-new` flagged exports that landed in earlier waves without a CHANGELOG mention: `catalog.ADRID`, `event.PublishRetry`, `metaengine.LastPairCursor`, `metaengine.LastJSONRowCursor`, `system.NewManualClock`, `systemcatalog.WithServiceID`/`WithServiceName`/`WithServiceSummary` — service-identity options for the catalog bridge, the retrying publish helper, the shared pagination cursor constructors, and the injectable manual clock.
+- **gates: three new mechanical truth guards (each mutation-proven).** `scripts/check-echo-gates.sh` flags check variables that are computed but only echoed — gate theater that can never fail (the verify-docs module-count class; tree currently clean, seven informational displays annotated with mandatory `echo-gate:accept` reasons). `scripts/test-calibration-freeze.sh` pins the calibration baseline's three Actions-level contract guards (refresh-only-on-success freeze, cold-run establishment, evidence-class drift-log upload with `if-no-files-found: error`). `check-canonical-facts.sh` fact 6: every go.mod + go.work directive must be one uniform value and AGENTS.md's Quick Reference must cite it (the 1.27 → 1.27.2 patch-form move survived a week of stale prose).
+- **system: the deployment ladder's last two legs — the example binary runs INSIDE the `cqrs-vm` NixOS test, and the CUE `deployment` entry round-trips through `system.LoadConfig` (2026-11-08 tail).** `packages.standard-topology-example` (plain `buildGoModule`, possible since the replace died) boots inside the VM as the service user against the module's rendered config — `note.create` dispatched over the postgres peer socket, projection folded into the sqlite state dir, view read back — and the test also pins config-file readability by the service user plus a deterministic wait for `ensureUsers` provisioning (the old green twice was timing luck: provisioning rides ExecStartPost, so a first-boot query could race role creation). The CUE gate gains `deployment-explicit.golden.json` (the exact artifact `system.LoadConfig` loads, 7th self-test fault) with the Go-side `TestRoundTrip_CueDeploymentExplicitJSON` pinning explicit-passthrough: no filler, no pool expansion. The core/v5 inert art-dupl-directive sweep closed clean: `art-dupl check core/v5 --no-accept-directives` is 0-new (the baseline absorbs every twin shape), so no directive there is load-bearing and none can silently fail.
+
+## [metaengine/v4.23.0, metaengine/sqliteengine/v4.8.0, system/v4.18.0 — 2026-11-08 journal-trim + cap-lock-order wave (3 tags)] — 2026-11-08
+
+### Changed
+
+- **metaengine: `AggregateFn` values are whitelisted before SQL interpolation — the exported named-string type was a SQL-injection surface on three engines (2026-11-08 audit).** `pgengine`, `sqliteengine`, and `duckdbengine` interpolated `string(fn)` raw into aggregate SQL while `mysqlengine` whitelisted; any consumer-controlled value (typo or hostile) became SQL. Now `metaengine.IsValidAggregateFn` + `metaengine.RejectInvalidAggregateFn` (classified `metaengine.invalid_aggregate_fn` Rejection wrapping `metaengine.ErrInvalidAggregateFn`) guard every SQL-building aggregate entry on all four engines, explain paths emit a rejection marker instead of hostile SQL, and mysql's silent `default: SUM` fabrication is gone. The cross-engine `adttest.RunAggregateMatrix` harness gains a `HostileFnRejected` pin (injection payload rejected, code asserted, explain marker required) wired into the sqlite, pg, and duckdb engine matrices; package-surface ratchet re-pinned once for the reviewed +3 exports.
+- `metaengine` Store batch apply now retries a `Transactional` engine's `RunInTx` up to 4× (jittered backoff) when the commit fails as a transient nothing-committed abort — Dgraph conflict-aborts during projection applies (two consecutive CI-flaked runs, 2026-11-06) no longer fail the apply; any other error still surfaces after one attempt.
+- **metaengine: `Store.EnforceCap`/`EnforceCapGrouped` can no longer deadlock against a concurrent fold batch (#123) — the trim now takes the engine transaction BEFORE the query's fold lock.** The pre-fix order (fold lock held across engine scans and deletes) inverted the fold path's fixed order (`dispatchFoldsCoreLocked` opens `RunInTx` — connection first — and takes each fold lock INSIDE it); on a bounded pool (sqlite single-conn setups pin this shape) a fold holding the only connection while wanting the fold lock deadlocked against a trim holding the fold lock while wanting a connection — an order-dependent permanent hang, observed in webphone's projection host as 60-600s stalls (~1-in-2 under a contacts+transcripts battery). The trim now runs inside the engine's `RunInTx` with the fold lock taken inside (`withCapTrimTx`; non-transactional engines keep the plain fold lock, whose holders never wait on a pool), which also makes each trim atomic per engine instead of per-row deletes. Pinned by `sqliteengine.TestSQLiteEnforceCapDoesNotDeadlockAgainstFolds`: pre-fix FAIL (90s watchdog, both goroutines parked in `WaitGroup.Wait`), post-fix green.
+
+### Added
+
+- **system: the ADR-0165 ladder is pinned shut across layers — the Go, CUE, and NixOS standard-topology presets assert ONE shared instance triple.** `system/testdata/standard-instance-triple.json` is asserted by the `system.Standard` suite, the `#check-cue-config` gate (`standard.instances` diff, 6-fault self-test), and the new `cqrs-nixos-eval` flake check (pure `nixosSystem` evaluation on x86_64-linux AND aarch64-linux, wired into CI); cross-layer round-trip tests load the CUE golden and the NixOS-rendered deployment JSON back through `system.LoadConfig` verbatim, so no preset twin can drift from what operators actually boot. The `#check-cue-config` gate is wired into `#verify`/`#verify-fast` and ci.yml. `example/standard-topology` is the runnable demo of the whole ladder (engines-only config → `system.Standard` → sqlite → dispatch → Lookup fold; registered in the example gates incl. the standalone-audit baseline until the system tag wave publishes `Standard`).
+- **system: `FuzzLoadConfigJSON` (117th fuzz target, NixOS-rendered artifact in the seed corpus) and rapid properties pin `system.Standard` idempotence + engine-name-permutation invariance.**
+- **system: the standard deployment topology is one call now — `system.Standard(d)` stamps the canonical three-instance shape (ADR-0165): WAL (`source-of-truth`) + dedicated `queries` audit-log instance on the WAL engine ("primary" when declared, else the sorted-first name), and a `projections` instance pooling every declared engine for the cost-based planner.** A pure data filler, not a builder: configs that already declare instances (or declare no engines) pass through unchanged, and engines/buses/durability/priorities stay operator-owned — the Go-code `stack` presets ADR-0123 killed hid deployment inside bundles; `Standard` inspects and completes operator data. `system.LoadConfig` also reads JSON now (`.json` extension, stdlib decode, zero new deps), which makes `cue export` output loadable verbatim. The format ladder is completed by two non-Go artifacts: `system/config.cue` (the DeploymentConfig schema with the standard topology as CUE defaults — authoring surface only, NO runtime CUE dependency, per the ADR-0163 verdict on CUE tooling) and the first-party `nixosModules.cqrs` NixOS module (`cqrs.deployments.<name>` renders the JSON to `/etc/cqrs/<name>/deployment.json`, fills the standard topology, and auto-provisions postgres DBs+users / sqlite StateDirectory files when an engine has no explicit DSN; `cqrs.lib.hardenedService` supplies the systemd fragment — the service unit stays app-owned). Drift-pinned by `nix run .#check-cue-config` (cue vet + golden preset eval + bidirectional koanf-tag comparison, `--self-test` included).
+- `metaengine.TransientCommitError` + `metaengine.IsTransientCommit`: the retriable-as-a-whole commit-abort marker a transactional engine attaches when a commit conflict-aborted with NOTHING committed; `metaengine/dgraphengine` marks its conflict-aborted `RunInTx` commits with it.
+- **metaengine + sqliteengine + system: journal trimming exists — `TrimStream` (GDPR erasure) and `TrimJournalBefore` (age sweep), issue #118.** Two optional engine capabilities (`metaengine.StreamTrimmer`, `metaengine.JournalSweeper`) plus the `System.TrimStream(ref)` / `System.TrimJournalBefore(cutoff)` maintenance surfaces. `TrimStream` deletes one stream's journal rows AND its snapshot row — co-trimmed in the SAME transaction under the caller's snapshot collection (a surviving snapshot would resurrect trimmed state on replay) — leaving the stream never-written (a fresh append at expected version 0 succeeds). `TrimJournalBefore` deletes every typed `occurred_at` row older than the cutoff plus the snapshots of the streams it swept (legacy NULL-timestamp rows are conservatively kept; the snapshot subquery resolves against the pre-sweep rows inside the one transaction). sqliteengine implements both; the memory engine implements `TrimStream` (in-process maps, no snapshots to co-trim; `TrimJournalBefore` answers `system.ErrTrimUnavailable`). Operator-invoked maintenance, never read/write-path: doctrine stays deletion-as-domain-event (ADR-0114) at the event level; this is the byte-erasure layer below, where webphone's retention gate ("delete actually deletes" — journal + projection + view) needs exactly these two calls. Pinned end-to-end by `system/trim_test.go` (trim → empty load → fresh re-append; sweep boundary; snapshot co-trim through the REAL system surface) and engine-side by `sqliteengine/stream_trim_test.go` (mixed ages, NULL kept, per-stream snapshot fates).
+- **sqliteengine: opt-in expression index for meta_map sort keys — `sqliteengine.WithSortIndex(collection, path, desc)` (issue #122): sorted and keyset-paginated standard scans stop paying a full-collection scan + temp B-tree per page.** Every standard `meta_map` scan orders by `json_extract(value, '$.field')`; with no supporting index each page sorted the whole collection (measured 58.5ms per 61-row page at 100k rows; the same class as nsfw-classifier's `/history` board, linear in collection size). The option emits `CREATE INDEX IF NOT EXISTS idx_map_sort_<collection>_<field> ON meta_map(collection, json_extract(value, path) [DESC], key)` — the trailing `key` mirrors the scans' ORDER BY tiebreak (without it the planner keeps the PK scan plus a temp B-tree), and the index is deliberately NOT partial (a `WHERE json_valid(value)` index is unusable for scans that do not imply the predicate; meta_map values are engine-encoded JSON by construction). Planner adoption pinned by `EXPLAIN QUERY PLAN` (`TestWithSortIndex_PlannerUsesIndex` — SEARCH ... USING INDEX, no temp B-tree), row-identity with and without the index across full keyset pagination (`TestWithSortIndex_ScanResultsIdentical`), construction idempotency, and declaration validation. Consumer-owned cost decision: every row rewrite maintains the index, which is why it is opt-in per collection rather than a default. A collection migrated to a planned table simply ignores the index — the option holds no state that breaks `ApplyLayout`.
+
+## [metaengine/v4.22.0, metaengine/sqliteengine/v4.7.1, system/v4.17.0 — 2026-11-06 MaxOpenConns plumbing wave (3 tags)] — 2026-11-06
+- **system + metaengine + sqliteengine: the pool ceiling is deployment config now — `system.EngineConfig.MaxOpenConns` flows through `metaengine.DriverConfig.MaxOpenConns` to the sqlite driver's `sqliteengine.WithMaxOpenConns` (issue #112 follow-up, the Kith read-storm class).** `system.New`'s `EngineConfig` gains a `max_open_conns` koanf field (YAML/TOML operators raise the ceiling without code); `metaengine.DriverConfig` carries it to every registered driver; the sqlite driver factory applies it only when raised (>0) — the serialized `MaxOpenConns(1)` default stays deliberate, and engines without a pool ignore the field. Pinned by the driver-factory test proving `sqliteengine.DBStats` reports 1 by default and the raised ceiling when set. This closes the plumbing gap that kept `sqliteengine.WithMaxOpenConns` constructor-only (composition-root deployments could not reach it).
+
+
+## [catalog/v4.13.0, kv/v4.4.0, id/v4.7.5, metaengine/v4.21.0, metaengine/sqliteengine/v4.7.0, cmd/cqrs-lint/v4.21.0, systemscenario/v4.3.0 — 2026-11-06 post-sweep issue wave (7 tags)] — 2026-11-06
+
+### Changed
+
+- **metaengine: `Store.Verify`/`Store.Backfill` failures are exported, classified and branchable — "Verify is a structural no-op here" is no longer indistinguishable from real drift (issue #116).** Every way `Verify` can end is now a matchable sentinel carrying an error family: `metaengine.ErrNoEventLog` and `metaengine.ErrNoQueryDecls` (Rejection — retrying cannot help, the deployment has to change) versus `metaengine.ErrCollectionCountMismatch` and `metaengine.ErrVerifyDrift` (Corruption — the projection state no longer follows from its journal; drift stays wrapped with the live/replay row counts). Health and doctor code branches with `errors.Is` instead of hardcoding the knowledge that Verify is a no-op under `system.New`, and the plain-`errors.New` default-Transient classification stops making a structurally impossible Verify look retryable. Sibling fix: `Store.Backfill` returns `metaengine.ErrNoEventLog` when no log is attached instead of reporting success for work it never did (an attached-but-empty log is still a genuine nil), and the new `metaengine.Store.EventLogAttached` lets a caller ask the question without provoking the error. `system.VerifyProjections` documents that the composition root attaches no event log, so with a projection store configured it returns `metaengine.ErrNoEventLog` by construction.
+- **Turso IVM verified range extended to v0.8.3 (pin catch-up).** `metaengine.TursoGoIVMVerifiedThrough` advances v0.8.2 → v0.8.3 and `TursoGoIVMLastVerified` to 2026-11-05: the workspace go.mod pins rode the 11-04 dependency sweep to tursogo v0.8.3 ahead of the constant, and the `-tags ivmrepro` repro suite re-ran GREEN on the new pin — all three grouped-view defects (A/B/C) still reproduce (defect C at the full 27k-row wall, 164s), so the operator caveat range extends one version with no behavior change (scalar views remain exact). `#check-turso-version` green across all live citations and pins after the six-site sweep (FEATURES, gotchas, ADR-0135, bench doc, readmodels, recipes).
+
+### Added
+
+- **metaengine: `metaengine.WithPrefetch(cache)` — the scan option cqrs-lint's F026 has been recommending since it shipped (issue #115), plus the cache key it needed to be correct.** `PrefetchCache` existed with only a reader-level attach point (`NewReader[V](...).WithPrefetch(cache)`), so a reader built per request — the HTTP-handler shape — could not opt into caching, and the F026 finding suggested a `metaengine.WithPrefetch(n)` that no release shipped (points at the wrong shape) while its detection missed the real reader-level `WithPrefetch` method form, so a correctly-configured project was flagged anyway. Now: the per-call option caches for that call (an explicit `WithPrefetch(nil)` turns caching off even when the reader has a default), and `metaengine.PrefetchCache.Len` is the "is this cache actually used" handle. The cache key is **shape-qualified** — collection + filters + sort + cursor — because the old collection+cursor key could serve a page cached for one filter/sort to a scan of another shape (silent wrong rows); the read now resolves after range/IN expansion so the read shape and the write shape are identical. cqrs-lint F026 is fixed alongside: it resolves import aliases (`metaeng "…/metaengine/v4"` is seen), accepts BOTH attach forms, only coaches CURSOR-paginated scans (the old gate fired on ANY `Scan`, and a one-shot scan pays the cache's doubled fetch for no benefit — which is why `example/taskmanager` was falsely flagged), and its suggestion names the reader form (available in every v4 release) and the option with its minimum version (metaengine v4.21.0). Package-surface ratchet re-pinned once for the reviewed shift (metaengine 836 → 841 exports, 168 → 169 production files — `PrefetchCache` moved to its own file to keep `dx.go` inside the line ratchet); `metaengine.ErrNoEventLog` and friends are named by tests, so no new untested-export debt.
+- **metaengine: per-group projection caps — `metaengine.WithCapPerGroup(groupCol, perGroupRows)` (issue #114, ADR-0164): retention rules per KEY GROUP are a declaration now, not a hand-rolled trim loop.** Rides on a `WithCap` declaration: each distinct group value keeps its newest perGroupRows rows (WithCap's orderBy orders survivors within groups) while WithCap's maxRows stays the collection-global ceiling — one owner's flood can no longer evict another owner's rows (the per-owner transcript/quota class). Enforcement composes: `metaengine.Store.EnforceCap` runs the grouped pass then the global pass under one fold lock, `metaengine.Store.EnforceCapGrouped` trims only the grouped bound, `metaengine.Store.EnforceCaps` reaches both. Engines implementing `metaengine.CapGroupTrimmer` trim every group in one window-function DELETE (sqliteengine: `ROW_NUMBER() OVER (PARTITION BY …) … RETURNING key`, real columns on planned tables, `json_extract` on meta_map; turso inherits via delegation) and the returned keys notify SSE subscribers; engines without the capability — and cell-versioned engines, whose history a bulk delete would bypass — return `metaengine.ErrCapGroupPushdownUnsupported` and fall back to the store's portable Go scan (identical observable contract, pinned by `metaengine/adttest.AssertGroupedCapContract` across memory, sqlite meta_map/planned/versioned, and turso; `docs/engine-capabilities.md` gains the capability column). Declaration validation is fail-closed: requires the WithCap base, a group field on the result type (field name or json tag, case-insensitive — the same matching `ExtractFields` applies), and plain-identifier columns (they flow into engine SQL); `metaengine.QueryConfig.CapGroupCol`/`CapGroupRows` expose the declaration. The grouped declaration also resolves type-ambiguous keys: the group column is excluded from key-field candidates, so string-key + string-group result types extract their key unambiguously (a plain cap over such a shape stays rejected — there is nothing to exclude).
+- **sqliteengine: `WithMaxOpenConns` — the pool-ceiling escape hatch is an option now (issue #112 follow-up, owner-ruled 2026-11-05).** `sqliteengine.WithMaxOpenConns(n)` raises the DSN constructors' deliberate `MaxOpenConns(1)` serialized default for read-heavy deployments (the Kith read-storm class): WAL supports concurrent readers, so read-dominated deployments stop paying one-long-scan-blocks-everything per query; writes then queue behind `busy_timeout` retries instead of the pool. Works with `NewSQLiteEngineFromDSNWith`, `NewSQLiteEngine`, and `NewFromDSN` (which gains a backward-compatible `...EngineOption` variadic); `n <= 0` keeps the default (the database/sql meaning of 0 — unlimited — is a footgun behind an option named "max"). `sqliteengine.DBStats(eng)` exposes the owned handle's pool statistics so owning-constructor callers can verify the ceiling took effect.
+- **open-issue sweep (2026-11-04): 13 consumer-filed gaps closed across catalog, kv, cqrs-lint, sqliteengine, docserver, and id (issues #96 #92 #87 #90 #88 #86 #94 #97 #93 #91 #95 #89 #102 #111 #113 #109 #110 #101 #104).** catalog: `catalog.Channels` sets the message-to-channel half of the association (message pages render their channel back-links; both directions feed the AsyncAPI export); `catalog.WithTypedParam` declares integer/boolean/enum parameters (rendered with type+enum in OpenAPI) instead of the untyped string `catalog.WithParam` emits; `catalog.WithResponseHeader` types header contracts such as 429 + Retry-After into `ResponseSpec.Headers`, rendered as OpenAPI headers; `catalog.WithRequestBodyContent` (+ `Message.RequestBodyMediaType`/`RequestBodySchema`) emits multipart/form-data request bodies, previously unrepresentable; `openapi.WithOpenAPIVersion` opts a document into 3.1.0 (default stays 3.0.3); `simple.Builder.AddChannel`/`AddDataStore` complete the facade's resource set; the AsyncAPI exporter honors catalog-declared Channels (address, name, delivery guarantee; synthetic fallback unchanged for channel-less catalogs); nameless messages (e.g. `Query[struct{}]`) get their display name derived from the ID at build; `caseutil.ToPascal` treats dots as word separators so dotted IDs produce codegen-clean operationIds; `camelCaseToHuman` keeps initialism runs whole (External ID Set Payload, not External I D Set Payload); `docserver.Config.SkipIndexRoute` lets consumers own `GET <prefix>`. kv: `kv.NewCacheForViewStore` fronts any `kv.ViewStore` (not only `*kv.TypedStore`) with the TinyLFU cache — shallow-copy isolation by default, `kv.WithCacheCopyFunc` for reference-bearing views, `Has` falls back to Get — deleting the hand-rolled adapters SQL view stores forced. cqrs-lint: `--update-baseline` re-attaches reasons orphaned by line shifts (unambiguous same-(rule,file) rematch) and WARNS on every reason it must drop (the crm 6-of-60 silent wipe); a recorded scorecard waiver now also suppresses its module's adoption finding (otel/F003 through listing/F016) into `--show-suppressed` carrying the waiver reason + trigger; `scorecard.modules` pins in `.cqrs-lint.json` mark composition-root-wired modules used (`analyzer.ApplyModulePins`, project config wins, false pins rejected in favor of waivers) — config-pins-beat-detection closes the invisible-composition-root class (consumers wiring the host through the system root's `ProjectionHost()` accessor). sqliteengine: both DSN constructors set `PRAGMA cache_size=-65536` (64 MiB) before caller pragmas — the 2 MB default page cache thrashed scan-heavy deployments (measured 8.16 GB reads/43 min against a 536 MB journal); `MaxOpenConns(1)` serialization is now documented as deliberate with the raise-it escape hatch. id: the package doc states the bare-value keying contract (persist `Get()`, never `String()` — the 26-day Standup-Killer outage class) with a KEYING note on `StreamID` itself.
+- **cqrs-upgrade: `--to-v5` — the v5 import rewrite is a command now (T08 slice 1, ADR-0152).** `cqrs-upgrade --to-v5 [--dry-run] [--workspace] <dir>` rewrites imports of the folded v4 trains (`event`, `command`, `query`, `id` + `idtest`, `kv` + `viewstoretest`, `record`, `dedup`, `dispatcher`, `metadata`, `commandtest`, `querytest`) to their `core/v5` twins. The rewrite is AST-discovered and byte-exact: only quoted literals inside real import specs change, so v4 paths inside strings, comments, or prose are never touched (alias/blank/underscore imports preserved; unit-pinned, plus idempotency and dry-run-writes-nothing pins). `go.mod` stays report-only in this slice — `core/v5` is untagged, so an applied require could not resolve; the report names the trains that must move. The compiled-in fold table is drift-gated against the actual `core/v5` tree (`TestV5TableMatchesCoreTree`): extending the fold without extending the table fails the suite. `--strict --to-v5` fails on errored modules first (unscanned is unproven), then on any not-yet-folded cqrs v4 import — the fleet can gate the migration exactly like v5-removed API usage. Dry-run receipts on the three flagship consumers: cqrs-htmx 29 modules / 1,413 files / 1,000 planned rewrites (32 trains still to fold), go-appkit 12/308/84 (13), bank-sync 5/459/137 (20) — evidence: `docs/evidence/2026-11-04_t08-tov5-dry-run-receipts.md`.
+- **repo: the README quick-start is compile-verified, and the canonical-facts gate now sees backticked counts (T06).** (a) `cmd/doc-check/readme_compile_test.go` compiles the four README quick-start fences as ONE narrative program (domain + query declared, `system.New` booted, command dispatched, view read) against the workspace — the same machinery that compile-verifies `recipes.md`, applied to the repo's front door; a fence ratchet (`TestReadmeFencesClassified`) fails on any added/removed/renamed fence, so an API drift now breaks the quick-start HERE instead of in a consumer's editor. (b) `check-canonical-facts.sh` strips backticks before the go.mod-count regex — prose like "103 `go.mod` files" was invisible to the gate and could rot freely (the 22-15 session fixed drifted backticked counts BY HAND; two stale meta-sentences claiming the blindness was permanent are corrected in AGENTS.md and the v5 playbook); the self-test gains two mutation legs (wrong backticked count caught, honest backticked count passes). Sweep result: all five DOC_SET files carry honest backticked counts today.
+- **cqrs-lint: T009 `hand-booted-system-in-tests` — consumer-side systemscenario coaching, closing the test-framework coverage map.** `testrules.NewT009Detector` fires when a test file boots a real system via `system.New` but the project never imports `systemscenario` (any import satisfies — `System` for fresh boots, `Adopt` for wrapper facades that own the boot), anchored at the hand-boot call where the migration lands. This is the consumer-side twin of the library's own `check-systemscenario-adoption.sh` gate (ADR-0153): the script + its reasoned allowlist owns self-lint, the rule owns consumers, so the rule registers under consumer-coaching (library self-lint exempt) and consumers with a deliberate lower-level boot suppress with `//cqrs-lint:ignore(T009) <reason>`. Fires ONLY when a test actually boots — projects whose tests never call `system.New` owe no harness. Completes the test-framework coverage map: `scenario` (T001 deciders / T002 projections), `eventtest` (T003), `systemscenario` (T009) are coached; `benchkit` and `testutil` stay deliberately uncoached (benchkit is EXPERIMENTAL with CLI-at-arm's-length as the documented preference; testutil is an internal conformance utility — both excluded from the module catalog with reasons). An attempted `eventtest` scorecard entry was rejected by the catalog's own hint-ambiguity guard and stays out: it is a package inside `event/v4`, not an adoptable module — the scorecard tracks modules (the stale DefaultCatalog count comment was corrected to the real 7 core / 36 scored on sight). F032 interplay is by design: test-framework-only consumers never owe catalog documentation (F032 scans non-test files). Wiring: consumer-coaching registry, rule catalog, RULES.md regenerated (217 rules), detector-count meta-test re-pinned, README counts, api-stability golden (+1 export); `example/taskmanager` already imports systemscenario so both goldens are untouched.
+- **testing: the coverage floor now covers EVERY module and every package, not 11 of 89.** `scripts/coverage-baseline.txt` pins all 89 `testModules` entries and `scripts/coverage-package-baseline.txt` pins all 168 packages; `check-coverage.sh` measures one workspace-wide coverprofile (aggregate statements per module, deepest module dir wins) instead of the first package's coverage line, and fails on a regression beyond tolerance, a module with no baseline row, a dangling row, a package that lost its tests, or coverage data vanishing. `--update` is the only way to move a number, `--report` writes the CI artifacts (`module-coverage.tsv`, `pkg-coverage.tsv`, `coverage-report.md`), and `--self-test` fault-injects nine cases. Measured 2026-10-26: decider 95.8, storage/memory 95.7, record 97.4, commandlifecycle 96.1 down to `queue/postgres` 0.2 (integration-gated) — the aggregate numbers differ from the old per-first-package ones by design.
+- **testing: exported API must be named by a test, or be frozen debt.** `scripts/check-untested-exports.sh` reads `docs/api_surface.txt` (6,334 symbols) and fails when a symbol is named by NO test file and is not on `scripts/untested-exports-baseline.txt` (1,088 rows, 17.2%, shrink-only; `--update` preserves a row's `# reason`). A name-based ratchet, deliberately: it proves a promise is exercised somewhere, not that the assertion is strong — the zero-assertion class is mutation's job (TODO [T10]).
+ok  	github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4	5.317s
+RC[go-cqrs-lite.md]=0
+=== go-credentials-store.md ===
+cmd/tq/main.go:4315:		AuthToken:   *authToken,
+internal/webui/webui.go:81:	// AuthToken, when set, requires every request (pages, API, SSE, static)
+internal/webui/webui.go:84:	AuthToken string
+internal/webui/webui.go:408:	if s.cfg.AuthToken != "" {
+internal/webui/webui.go:409:		handler = withTokenAuth(s.cfg.AuthToken, handler)
+internal/webui/auth.go:19:// the address binds beyond the loopback interface without an AuthToken.
+internal/webui/auth.go:30:// non-loopback interfaces requires AuthToken. The zero Config (loopback
+internal/webui/auth.go:41:	if c.AuthToken != "" || isLoopbackAddr(c.Addr) {
+// Package httpauth carries the token-channel primitives shared by the two
+// HTTP surfaces (`tq serve` dashboard, `tq api`): how a bearer token may be
+// presented, and how a presented value is compared to the configured one.
+// The presentation channels are the Authorization header and the `?token=`
+// query parameter (the fallback for clients that cannot set headers —
+// browsers' EventSource, curl one-liners); the dashboard adds a
+// session-cookie channel on top, which stays in internal/webui because it
+// is a browser-only concern (the API never issues or accepts cookies).
+// Comparison is constant-time over SHA-256 digests, so the secret's length
+// never leaks through timing.
+package httpauth
+
+import (
+	"crypto/sha256"
+func renderPoolConfig(bootOpts bootstrapOptions) string {
+	var b strings.Builder
+
+	fmt.Fprintf(
+		&b,
+		"# generated by `tq bootstrap --install` %s — edit freely, flags on the CLI win\n",
+		time.Now().Format(time.RFC3339),
+	)
+	fmt.Fprintf(&b, "projects-dir = %s\n", bootOpts.projectsDir)
+	fmt.Fprintf(&b, "repos = %s\n", strings.Join(bootOpts.repos, ","))
+	fmt.Fprintf(&b, "concurrency = %d\n", bootOpts.agents)
+	fmt.Fprintf(&b, "max-concurrent-agents = %d\n", bootOpts.agents)
+	fmt.Fprintf(&b, "interval = %s\n", bootOpts.interval)
+	fmt.Fprintf(&b, "daily-budget = %d\n", bootOpts.dailyBudget)
+	fmt.Fprintf(&b, "max-per-tick = %d\n", bootOpts.maxPerTick)
+	fmt.Fprintf(&b, "yolo = %v\n", bootOpts.yolo)
+	fmt.Fprintf(&b, "review = %v\n", bootOpts.review)
+	fmt.Fprintf(&b, "review-autofix = %v\n", bootOpts.reviewAutofix)
+	fmt.Fprintf(&b, "project-exclusive = %v\n", bootOpts.exclusive)
+	fmt.Fprintf(&b, "allow-dirty = %v\n", bootOpts.allowDirty)
+
+54:	MasterKeys: map[encryption.KeyID][]byte{"v1": key},
+v0.4.2-25-gc423a30
+11
+2026-11-11 c423a30 chore(deps): bump cmdguard/v5 to v5.1.0
+8:	github.com/larsartmann/cmdguard/v5 v5.1.0
+32
+RC[go-credentials-store.md]=0
+=== go-daemon.md ===
+// Package runactor composes long-running components under one signal
+// story: named actors run concurrently, the first exit (or failure) ends
+// the whole group, teardown runs LIFO, and an interrupt actor turns
+// SIGINT/SIGTERM into graceful cancellation — a second signal exits hard.
+//
+// Stdlib + golang.org/x/sync/errgroup only (ADR-0004's framework-free
+// stance). This is the pattern steal from cordis's run.Group, shaped so
+// the drain invariant stays expressible: an actor's context is its
+// shutdown signal, NEVER its task-execution context (see ExecutionScope).
+package runactor
+
+import (
+	"context"
+	"errors"
+const systemdUnitTemplate = `[Unit]
+Description=tq agent-pool (self-managing TODO_LIST harvest + headless agents)
+Documentation=https://github.com/LarsArtmann/go-taskqueue
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+# ExecStart is rendered by ` + "`tq bootstrap --install`" + ` with the installed
+# binary path; runtime settings live in the pool config file.
+ExecStart={{BIN}} agent-pool --config %h/.config/tq/pool.conf
+Restart=on-failure
+RestartSec=30s
+
+# Graceful drain: agents may run for a long time; give them a wide stop
+# window. The pool survives the first SIGTERM and finishes in-flight tasks.
+TimeoutStopSec=45min
+KillSignal=SIGINT
+KillMode=process
+
+# Hardening. Deliberately conservative: the pool execs headless agents that
+# write/commit inside ~/projects and talk to the network, so no sandboxing
+# below may break either. NoNewPrivileges and the kernel/cgroup namespaces
+	scanner := bufio.NewScanner(r)
+	scanner.Buffer(make([]byte, 0, 64<<10), watchScanLimit)
+
+	var dataLines []string
+
+	for scanner.Scan() {
+		line := scanner.Text()
+
+		if line == "" {
+			if len(dataLines) > 0 {
+				payload := strings.Join(dataLines, "\n")
+				dataLines = dataLines[:0]
+
+				var event daemonWatchEvent
+				if err := json.Unmarshal([]byte(payload), &event); err == nil {
+					emit(event)
+				}
+			}
+
+			continue
+		}
+
+		if strings.HasPrefix(line, ":") || !strings.HasPrefix(line, "data:") {
+			continue
+		}
+
+		value := line[len("data:"):]
+		if len(value) > 0 && value[0] == ' ' {
+			value = value[1:]
+		}
+
+		dataLines = append(dataLines, value)
+	}
+
+	if err := scanner.Err(); err != nil {
+		return fmt.Errorf("harvest: parse watch stream: %w", err)
+	}
+
+	return nil
+}
+
+// dispatchEvent applies the trigger rules to one daemon event: only project
+// additions and changes fire, the project must be in the configured scope,
+// and the repo must be outside its --repo-interval debounce gap.
+v0.4.0-33-g82bb135
+5
+RC[go-daemon.md]=0
+=== go-datastar.md ===
+# github.com/larsartmann/go-datastar
+github.com/larsartmann/go-taskqueue/internal/webui
+github.com/larsartmann/go-datastar
+grep: vendor/github.com/larsartmann/go-datastar/static/static.go: No such file or directory
+21:const Version = "1.0.4"
+grep: internal/webui: No such file or directory
+grep: SECURITY.md: No such file or directory
+sed: can't read internal/webui/health.go: No such file or directory
+sed: can't read internal/webui/headermatrix_test.go: No such file or directory
+broadcast/v0.7.0-5-g67d99c6
+/tmp/verify-blocks/9.sh: line 11: cd: cmd/tq: No such file or directory
+go: -mod may only be set to readonly or vendor when in workspace mode, but it is set to "mod"
+	Remove the -mod flag to use the default readonly value, 
+	or set GOWORK=off to disable workspace mode.
+# ./internal/webui
+stat /home/lars/projects/go-datastar/internal/webui: directory not found
+FAIL	./internal/webui [setup failed]
+FAIL
+RC[go-datastar.md]=1
+=== go-error-family.md ===
+./internal/executor/executor.go:53:func (e *PermanentError) ErrorFamily() errorfamily.Family { return errorfamily.Rejection }
+./internal/executor/executor.go:94:func (e *PreflightError) ErrorFamily() errorfamily.Family { return errorfamily.Transient }
+./internal/executor/executor_test.go:178:	if fam := errorfamily.Classify(perm); fam != errorfamily.Rejection {
+./internal/executor/executor_test.go:182:	if errorfamily.IsRetryable(perm) {
+./internal/executor/executor_test.go:196:	if fam := errorfamily.Classify(pre); fam != errorfamily.Transient {
+./internal/executor/executor_test.go:200:	if !errorfamily.IsRetryable(pre) {
+./internal/httpapi/httpapi_test.go:854:	return errorfamily.NewCorruption("test.api-poison", "deliberate poison")
+./internal/readmodel/events.go:255:			return nil, false, errorfamily.WrapCorruption(
+./internal/readmodel/events.go:295:		return nil, false, errorfamily.WrapCorruption(
+./internal/readmodel/host.go:58:		return id.EventID{}, errorfamily.NewRejection(
+./internal/readmodel/host.go:132:		return errorfamily.NewRejection(
+./internal/readmodel/host.go:208:		return errorfamily.NewCorruption(
+./internal/readmodel/host_test.go:352:	return errorfamily.NewCorruption("test.poison", "deliberate poison")
+./internal/readmodel/host_test.go:403:		if errorfamily.IsRetryable(err) {
+./cmd/tq/go.mod:77:	github.com/larsartmann/go-error-family v0.12.0 // indirect
+./examples/embed/go.mod:32:	github.com/larsartmann/go-error-family v0.12.0 // indirect
+./executor/go.mod:17:	github.com/larsartmann/go-error-family v0.12.0 // indirect
+./internal/composition/go.mod:54:	github.com/larsartmann/go-error-family v0.12.0 // indirect
+./internal/executor/go.mod:8:	github.com/larsartmann/go-error-family v0.12.0
+./internal/journal/cqrs/go.mod:20:	github.com/larsartmann/go-error-family v0.12.0 // indirect
+./internal/queue/companion/go.mod:12:require github.com/larsartmann/go-error-family v0.12.0 // indirect
+./internal/queue/postgres/go.mod:24:	github.com/larsartmann/go-error-family v0.12.0 // indirect
+./internal/queue/postgresv4/go.mod:27:	github.com/larsartmann/go-error-family v0.12.0 // indirect
+./internal/queue/sqlite/go.mod:24:	github.com/larsartmann/go-error-family v0.12.0 // indirect
+./internal/queue/sqlitev4/go.mod:26:	github.com/larsartmann/go-error-family v0.12.0 // indirect
+./internal/readmodel/go.mod:13:	github.com/larsartmann/go-error-family v0.12.0
+./internal/worker/go.mod:18:	github.com/larsartmann/go-error-family v0.12.0 // indirect
+./internal/retryx/go.mod:7:require github.com/larsartmann/go-error-family v0.12.0 // indirect
+./queue/postgres/go.mod:24:	github.com/larsartmann/go-error-family v0.12.0 // indirect
+./queue/sqlite/go.mod:23:	github.com/larsartmann/go-error-family v0.12.0 // indirect
+./worker/go.mod:14:	github.com/larsartmann/go-error-family v0.12.0 // indirect
+./go.mod:109:	github.com/larsartmann/go-error-family v0.12.0
+v0.12.0-8-g5beae0e
+		if !errorfamily.IsRetryable(err) {
+			// class so the projectionhost dead-letters it instead of
+			// burning the restart budget.
+			return nil, false, errorfamily.WrapCorruption(
+				err, "readmodel.enqueue_detail",
+				fmt.Sprintf("enqueue detail for task %s is malformed", fact.TaskID),
+			)
+func (e *PermanentError) Error() string                   { return "permanent: " + e.Cause.Error() }
+func (e *PermanentError) Unwrap() error                   { return e.Cause }
+func (e *PermanentError) ErrorFamily() errorfamily.Family { return errorfamily.Rejection }
+func (e *PermanentError) ErrorCode() string               { return "executor.permanent" }
+
+// Permanent wraps cause in a *PermanentError; nil passes through unchanged.
+func (e *PreflightError) Error() string                   { return "preflight: " + e.Cause.Error() }
+func (e *PreflightError) Unwrap() error                   { return e.Cause }
+func (e *PreflightError) ErrorFamily() errorfamily.Family { return errorfamily.Transient }
+func (e *PreflightError) ErrorCode() string               { return "executor.preflight" }
+
+
+	perm := Permanent(errors.New("bad payload"))
+	if fam := errorfamily.Classify(perm); fam != errorfamily.Rejection {
+		t.Errorf("Classify(PermanentError) = %v, want Rejection", fam)
+	}
+
+	if errorfamily.IsRetryable(perm) {
+		t.Error("IsRetryable(PermanentError) = true, want false")
+	}
+
+	if code := func() *PermanentError {
+		target := &PermanentError{}
+		target, _ = errors.AsType[*PermanentError](perm)
+
+		return target
+	}().ErrorCode(); code != "executor.permanent" {
+		t.Errorf("ErrorCode = %q, want executor.permanent", code)
+	}
+
+	pre := &PreflightError{Cause: ErrDirtyTree}
+	if fam := errorfamily.Classify(pre); fam != errorfamily.Transient {
+		t.Errorf("Classify(PreflightError) = %v, want Transient", fam)
+	}
+
+	if !errorfamily.IsRetryable(pre) {
+		t.Error("IsRetryable(PreflightError) = false, want true (requeue, no burn)")
+	}
+// isTransientStoreBusy reports whether err is a store lock-contention
+// failure worth retrying in-process. The sqlite driver surfaces the
+// SQLITE_BUSY family (base 5 and extended 517 BUSY_SNAPSHOT et al) with
+// the token in the message, and its English form is "database is
+// locked"; matching strings keeps the worker driver-agnostic. A false
+// positive is harmless — the retried write is guarded by the store's
+// RowsAffected re-checks; a false negative merely falls back to the
+// lease-reclaim backstop.
+func isTransientStoreBusy(err error) bool {
+	if _, ok := errors.AsType[*PermanentError](cause); ok {
+		return cause
+	}
+
+	return &PermanentError{Cause: cause}
+}
+
+// PreflightError signals the executor refused to START a task: the
+// environment is not ready (dirty repo waiting on a human commit, autonomy
+// config missing, verify tool absent) but neither the task nor the payload
+// is wrong. Workers must requeue the task WITHOUT burning an attempt — it
+	ErrNotFound = errors.New("task: not found")
+	// ErrLeaseNotHeld is returned when completing/failing/heartbeating a task
+	// whose lease is owned by someone else or already expired.
+	ErrLeaseNotHeld = errors.New("task: lease not held")
+	// ErrDuplicateID is returned when enqueueing a task whose ID already exists.
+	ErrDuplicateID = errors.New("task: duplicate id")
+	// ErrInvalidTransition is returned by stores that validate transitions.
+	ErrInvalidTransition = errors.New("task: invalid status transition")
+	out="$(cd "$dir" && "$bin" lint ./... --type-aware --no-suppress --disable-extensions --disable generic_return --disable legacy_is --enforce-coded-errors --enforce-deferred-close --enforce-go-error-family --enforce-samber-oops 2>&1)" || rc=$?
+88
+./internal/executor/executor_test.go:160:	) { //nolint:legacyerrors // value identity match: pins double-wrap no-op, no fields to extract
+RC[go-error-family.md]=0
+=== go-etag.md ===
+internal/webui/headermatrix_test.go:320:// static-asset set plus the bundle's content ETag (datastar.ScriptHandler
+internal/webui/headermatrix_test.go:323:	"etag": quotedETag,
+internal/webui/headermatrix_test.go:326:// etagRe pins the shape datastar.ETagFor computes: a quoted, truncated
+internal/webui/headermatrix_test.go:328:var etagRe = regexp.MustCompile(`^"[0-9a-f]{32}"$`)
+internal/webui/headermatrix_test.go:330:func quotedETag(t testing.TB, got string) {
+internal/webui/headermatrix_test.go:333:	if !etagRe.MatchString(got) {
+internal/webui/headermatrix_test.go:334:		t.Errorf("ETag = %q, want a quoted 32-hex digest", got)
+internal/webui/health.go:443:// handler pins Cache-Control max-age=86400, so a browser skips ETag
+internal/webui/health.go:450:// run. datastar.ScriptHandler adds the ETag, conditional-GET, and HEAD
+internal/httpapi/httpapi.go:247:		w.Header().Set("Cache-Control", "no-store")
+internal/webui/health.go:443:// handler pins Cache-Control max-age=86400, so a browser skips ETag
+// handleFacts serves GET /api/facts?after=SEQ&limit=N: a forward cursor
+// over the journal in ascending seq order (the infinite-scroll viewer's
+// data source; the dashboard feed stays the SSE tail). limit is capped.
+// after=-N selects a tail window: the newest N facts — the journal browser
+// opens at the live end and pages older from there.
+func (s *Server) handleFacts(w http.ResponseWriter, r *http.Request) {
+	after, _ := strconv.ParseInt(r.URL.Query().Get("after"), 10, 64)
+
+	if after < 0 {
+		head, err := s.store.HeadSeq(r.Context())
+		if err != nil {
+			http.Error(w, "facts: "+err.Error(), http.StatusInternalServerError)
+
+			return
+		}
+
+		if after = head + after; after < 0 {
+			after = 0
+		}
+	}
+
+	limit := factViewerPageSize
+	if v, err := strconv.Atoi(r.URL.Query().Get("limit")); err == nil && v > 0 &&
+		v <= factViewerPageSize {
+		limit = v
+	}
+
+	stopFacts := servertiming.MeasureServerTiming(r.Context(), "facts")
+
+	facts, err := s.store.Facts(r.Context(), after, limit)
+
+	// Record before the first write: the Server-Timing header is stamped
+	// at first write, so a metric recorded after it is lost
+	// (server_timing contract; mounted under RequestLog only).
+	stopFacts()
+
+	if err != nil {
+		http.Error(w, "facts: "+err.Error(), http.StatusInternalServerError)
+
+v0.7.0
+6e53195 2026-11-10 chore: auto-commit 1 changed file(s) (heuristic)
+MIT License
+
+Copyright (c) 2026 Lars Artmann
+RC[go-etag.md]=0
+=== go-filewatcher.md ===
+// tail is the single journal tailer: it polls Facts(after) every cfg.Poll
+// and notifies the hub once per batch of new facts (burst coalescing).
+// The watermark starts at the journal head so a freshly started server
+// does not replay history — new clients get a full snapshot on connect
+// anyway. Each poll reads at most tailBatchLimit facts: the tailer only
+// signals that something changed, so a burst longer than the cap skips
+// middle facts without losing the notification.
+func (s *Server) tail(ctx context.Context) error {
+	watermark, err := s.journalHead(ctx)
+	if err != nil {
+		return err
+	}
+
+	ticker := time.NewTicker(s.cfg.Poll)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-ticker.C:
+		}
+
+		facts, err := s.store.Facts(ctx, watermark, tailBatchLimit)
+		if err != nil {
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
+
+			continue
+		}
+
+		if len(facts) == 0 {
+			continue
+		}
+
+		watermark = facts[len(facts)-1].Seq
+		s.hub.Notify(watermark)
+	}
+}
+// project events into coalesced harvest-tick triggers. It is purely additive:
+// a dead or missing watch stream never stalls the pool — the interval tick
+// stays the fallback heartbeat, and the trigger channel simply stays silent.
+type Watcher struct {
+	cfg            WatchConfig
+	triggers       chan struct{}
+	initialBackoff time.Duration
+
+	mu          sync.Mutex
+	lastTrigger map[string]time.Time
+}
+
+// NewWatcher creates a Watcher. Signals are delivered on a coalescing channel
+// of capacity one: while a tick runs, further events collapse into at most
+// one pending tick.
+func NewWatcher(cfg WatchConfig) *Watcher {
+	initial := cfg.InitialBackoff
+	if initial <= 0 {
+		initial = defaultWatchInitialBackoff
+	}
+
+	return &Watcher{
+		cfg:            cfg,
+		triggers:       make(chan struct{}, 1),
+		initialBackoff: initial,
+		lastTrigger:    make(map[string]time.Time),
+	}
+}
+
+// Triggers yields harvest-tick signals. The channel is never closed; when the
+// daemon is unreachable it simply stays quiet (the interval tick owns
+// progress). A nil channel (watch off) blocks its select case forever.
+func (w *Watcher) Triggers() <-chan struct{} { return w.triggers }
+	follow := fs.Bool("f", false, "follow (live)")
+
+	db := dbFlag(fs)
+	if err := fs.Parse(args); err != nil {
+v2.5.0-4-g9f44dee
+15
+RC[go-filewatcher.md]=0
+=== go-health-dashboard.md ===
+./internal/webui/health.go:1:// The health dashboard mounts github.com/larsartmann/go-health-dashboard
+./internal/webui/health.go:25:	dashboard "github.com/larsartmann/go-health-dashboard"
+./internal/webui/webui.go:29:	dashboard "github.com/larsartmann/go-health-dashboard"
+./cmd/tq/go.mod:79:	github.com/larsartmann/go-health v0.10.0 // indirect
+./cmd/tq/go.mod:80:	github.com/larsartmann/go-health-dashboard v0.13.2 // indirect
+./go.mod:110:	github.com/larsartmann/go-health v0.10.0
+./go.mod:111:	github.com/larsartmann/go-health-dashboard v0.13.2
+dashboard.
+dashboard.Config
+dashboard.Dashboard
+dashboard.HealthRelay
+dashboard.New
+dashboard.NewHealthRelay
+dashboard.Option
+dashboard.Prober
+dashboard.RecommendedCSP
+dashboard.Routes
+dashboard.WithCSSPath
+dashboard.WithEmbeddedDatastarSDK
+dashboard.WithNonceExtractor
+dashboard.WithRoutes
+dashboard.WithTitle
+dashboard.WithTrend
+dashboard.WithWebhook
+395:			Metrics:    "",
+396:			Trend:      HealthTrendPath,
+397:			Export:     HealthExportPath,
+398:			Introspect: "",
+403:		dashboard.WithTrend(healthTrendSamples),
+408:		opts = append(opts, dashboard.WithWebhook(webhookURL))
+func newHealthDashboard(pro dashboard.Prober, webhookURL string) *dashboard.Dashboard {
+	opts := []dashboard.Option{
+		dashboard.WithTitle("tq queue health"),
+		dashboard.WithRoutes(dashboard.Routes{
+			Dashboard:  HealthDashboardPath,
+			SSE:        HealthSSEPath,
+			Favicon:    HealthFaviconPath,
+			Liveness:   HealthLivenessPath,
+			Readiness:  HealthReadinessPath,
+			Startup:    HealthStartupPath,
+			Metrics:    "",
+			Trend:      HealthTrendPath,
+			Export:     HealthExportPath,
+			Introspect: "",
+			DatastarJS: healthSDKSrc,
+		}),
+		dashboard.WithEmbeddedDatastarSDK(),
+		dashboard.WithCSSPath("/static/app.css"),
+		dashboard.WithTrend(healthTrendSamples),
+		dashboard.WithNonceExtractor(func(r *http.Request) string { return ctxNonce(r.Context()) }),
+	}
+
+	if webhookURL != "" {
+		opts = append(opts, dashboard.WithWebhook(webhookURL))
+	}
+
+	return dashboard.New(pro, opts...)
+}
+
+func (s *Server) healthBindings() []struct {
+	method  string
+	pattern string
+	handler func(http.ResponseWriter, *http.Request)
+} {
+	return []struct {
+		method  string
+		pattern string
+		handler func(http.ResponseWriter, *http.Request)
+	}{
+		{"GET", HealthDashboardPath, withHealthHeaders(s.dash.Handler()).ServeHTTP},
+		{"GET", HealthSSEPath, withHealthHeaders(s.dash.SSEHandler()).ServeHTTP},
+		{"GET", HealthSDKPath, withHealthHeaders(healthSDKScript).ServeHTTP},
+		{"GET", HealthFaviconPath, withHealthHeaders(s.dash.FaviconHandler()).ServeHTTP},
+		{"GET", HealthTrendPath, withHealthHeaders(s.dash.TrendHandler()).ServeHTTP},
+		{"GET", HealthExportPath, withHealthHeaders(s.dash.ExportHandler()).ServeHTTP},
+		{"GET", HealthLivenessPath, withHealthHeaders(s.prober.LivenessHandler()).ServeHTTP},
+func (s *Server) Handler() http.Handler {
+	mux := http.NewServeMux()
+
+	for _, route := range s.routeBindings() {
+		if route.handler == nil {
+			mux.Handle(route.method+" "+route.pattern, http.StripPrefix("/static/", staticHandler()))
+
+			continue
+		}
+
+		mux.HandleFunc(route.method+" "+route.pattern, route.handler)
+	}
+
+	for _, route := range s.healthBindings() {
+		mux.HandleFunc(route.method+" "+route.pattern, route.handler)
+	}
+
+	// The CSRF wrapper is innermost: page GETs issue/refresh the token
+	// cookie and publish it to the render chain; write POSTs verify it.
+	handler := withCSRFIssue(http.Handler(mux))
+
+	if s.cfg.AllowWrites {
+		for _, route := range s.writeBindings() {
+			// Rate limit OUTSIDE CSRF: three failed tokens lock the client
+			// out of the write routes entirely for a minute, so the token
+			// cannot be brute-forced request-by-request.
+			mux.Handle(route.method+" "+route.pattern,
+				s.writes.wrap(withCSRF(http.HandlerFunc(route.handler))))
+		}
+	}
+
+	if s.cfg.AuthToken != "" {
+		handler = withTokenAuth(s.cfg.AuthToken, handler)
+	}
+
+	// Security headers wrap everything — including auth rejections — so
+	// even the 401 page is CSP-covered.
+	handler = withSecurityHeaders(handler)
+
+	// Server-Timing trial (fleet review f21): per-segment latency in the
+	// response header, mounted ONLY where the operator already opted
+	// into request logging — the header leaks internal performance
+	// detail (server_timing README), so it never ships on the default
+	// loopback posture. SSE-safe: the wrapper passes Flush through.
+	handler = servertiming.ServerTimingMiddlewareWhen(func(*http.Request) bool {
+		return s.cfg.RequestLog
+	})(handler)
+
+	// Request logging wraps auth so rejected requests are logged too.
+	if s.cfg.RequestLog {
+		return withRequestLog(handler)
+	}
+
+	return handler
+}
+12
+v0.13.2-28-g77037eb
+28
+172:func WithMetrics(enabled bool) Option {
+183:func WithTrend(samples int) Option {
+293:// WithWebhook pushes a JSON health snapshot to url on every status
+303:func WithWebhook(url string) Option {
+325://	dashboard.WithWebhook(url, WithWebhookHMAC(secret))
+RC[go-health-dashboard.md]=0
+=== go-health.md ===
+./internal/webui/health_test.go:14:	health "github.com/larsartmann/go-health"
+./internal/webui/health.go:24:	health "github.com/larsartmann/go-health"
+./cmd/tq/go.mod:79:	github.com/larsartmann/go-health v0.10.0 // indirect
+./cmd/tq/go.mod:80:	github.com/larsartmann/go-health-dashboard v0.13.2 // indirect
+./go.mod:110:	github.com/larsartmann/go-health v0.10.0
+./go.mod:111:	github.com/larsartmann/go-health-dashboard v0.13.2
+      7 health.Check
+      3 health.go
+      6 health.Response
+      3 health.Status
+     10 health.StatusFail
+     11 health.StatusPass
+     12 health.StatusWarn
+117:		p.evaluateSafely(now)
+123:// evaluateSafely runs one evaluation batch, converting a panicking check
+127:func (p *queueProber) evaluateSafely(now time.Time) {
+305:		// StatusSince stamps the transition time: carried from the previous
+309:		if prev, ok := p.resp.Checks[name]; ok && prev.Status == c.Status && !prev.StatusSince.IsZero() {
+310:			c.StatusSince = prev.StatusSince
+312:			c.StatusSince = now
+323:		TotalLatencyMs: time.Since(batchStart).Milliseconds(),
+v0.10.0-2-gc16cfab
+# ./internal/webui
+stat /home/lars/projects/go-health/internal/webui: directory not found
+0
+sed: can't read internal/webui/health.go: No such file or directory
+sed: can't read internal/webui/health.go: No such file or directory
+sed: can't read internal/webui/health.go: No such file or directory
+func NewChecks(checks map[string]CheckFunc, opts ...Option) *Probe {
+	cfg := buildStandaloneConfig(opts)
+
+	runChecks := runNamedChecks(checks)
+
+	return assemble(func(ctx context.Context) map[string]CheckDetail { return runChecks(ctx) }, cfg)
+}
+analytics sink, a background sync partner. Today their choices are:
+
+- register the check **critical** → a blip pages someone (503) — too loud;
+- register it **non-critical** → every prolonged outage pins the roll-up at
+RC[go-health.md]=0
+=== go-idempotency.md ===
+12
+// ErrTaskDone is the enqueue done-guard: the dedup key matched a stored
+// task that already COMPLETED, so a re-dispatch is refused. Without it a
+// dispatcher that treats the returned row as admission would mint a fresh
+// window for already-finished work (the DONE-on-arrival burn class). The
+// guard lives on the Queue wrapper, not the Store: cancelled/dead keys
+// keep their documented suppress-and-return semantics (rescue and re-arm
+// flows read the stored row), and re-arming a completed item deliberately
+// means a fresh key (edit the item text).
+var ErrTaskDone = errors.New("queue: dedup key already completed; re-dispatch refused (edit the item text to re-arm)")
+// Enqueue normalized-and-enqueues a task. A dedup key whose stored task
+// already completed returns the stored row PLUS ErrTaskDone — the
+// done-guard refusing the re-dispatch.
+func (q *Queue) Enqueue(ctx context.Context, n task.New) (task.Task, error) {
+	t, err := q.Store.Enqueue(ctx, n.Normalize())
+	if err == nil && t.Status == task.Completed {
+		return t, ErrTaskDone
+	}
+
+	return t, err
+}
+func TestEnqueueDedupKey(t *testing.T) {
+	ctx, s := freshStore(t)
+
+	first, err := s.Enqueue(ctx, task.New{Project: "demo", Type: "agent", DedupKey: "todo:demo:abc"})
+	if err != nil {
+		t.Fatalf("first Enqueue: %v", err)
+	}
+
+	second, err := s.Enqueue(ctx, task.New{Project: "demo", Type: "agent", DedupKey: "todo:demo:abc"})
+	if err != nil {
+		t.Fatalf("second Enqueue: %v", err)
+	}
+
+	if first.ID != second.ID {
+		t.Fatalf("dedup enqueue returned new task: %s vs %s", first.ID, second.ID)
+	}
+
+	tasks, err := s.List(ctx, queue.Filter{})
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+
+	if len(tasks) != 1 {
+		t.Fatalf("stored %d tasks, want 1", len(tasks))
+	}
+
+	facts, err := s.Facts(ctx, 0, 0)
+	if err != nil {
+		t.Fatalf("Facts: %v", err)
+	}
+
+	enqueued := 0
+
+	for _, f := range facts {
+		if f.Type == journal.Enqueued {
+			enqueued++
+		}
+	}
+
+	if enqueued != 1 {
+		t.Fatalf("journal has %d task.enqueued facts, want 1 (no duplicate on suppressed enqueue)", enqueued)
+	}
+
+	// Store-level layering pin for the enqueue done-guard: a COMPLETED
+	// key still suppresses at the STORE (row returned unchanged, no new
+	// fact) — the re-dispatch REFUSAL (ErrTaskDone) lives in the Queue
+	// wrapper, so rescue/inspection flows reading the store keep working.
+	claimed, claim := claimDue(t, ctx, s, "doneguard")
+
+	if err := s.Complete(ctx, claimed.ID, claim, jsontext.Value(`{}`)); err != nil {
+		t.Fatalf("Complete: %v", err)
+	}
+
+	third, err := s.Enqueue(ctx, task.New{Project: "demo", Type: "agent", DedupKey: "todo:demo:abc"})
+	if err != nil {
+		t.Fatalf("Enqueue over completed key: %v", err)
+	}
+
+	if third.ID != second.ID || third.Status != task.Completed {
+		t.Fatalf(
+			"completed-key suppress returned %s/%s, want the stored completed row %s",
+			third.ID,
+			third.Status,
+			second.ID,
+		)
+	}
+}
+304:	DedupKey    string         `json:"dedupKey,omitempty"`
+347:		DedupKey:    req.DedupKey,
+v0.3.2
+MIT License
+
+Copyright (c) 2026 Lars Artmann
+RC[go-idempotency.md]=0
+=== go-output.md ===
+cmd/tq/top.go:221:			fmt.Print("\x1b[2J\x1b[H")
+10
+func printTaskListTo(
+	w io.Writer,
+	tasks []task.Task,
+	limit int,
+	total func() (int, error),
+	requeueEvidence map[string]queue.RequeueEvidence,
+	evidence map[string]string,
+) {
+	if len(tasks) == 0 {
+		fmt.Fprintln(w, "no matching tasks")
+
+		return
+	}
+
+	fmt.Fprintf(
+		w,
+		"%-36s %-14s %-16s %-7s %5s %-9s  %s\n",
+		"ID",
+		"STATUS",
+		"PROJECT",
+		"TYPE",
+		"ATT",
+		"NOTBEFORE",
+		"LAST ERROR",
+	)
+
+	now := time.Now()
+	for _, t := range tasks {
+		row := fmt.Sprintf("%-36s %-14s %-16s %-7s %5d %-9s  %s",
+			t.ID.String(), statusCell(t, now), t.Project, t.Type, t.Attempts,
+			notBeforeCell(t, now),
+			truncate(parkedCell(t, requeueEvidence), 60),
+		)
+		// The evidence= suffix keeps tq dlq's self-describing row shape on
+		// parked rows too (verify-stage/class of the death that parked it,
+		// alias-only deaths included) — TODO row 1414.
+		if summary := evidence[t.ID.String()]; summary != "" {
+			row += "  evidence=" + summary
+		}
+
+		fmt.Fprintln(w, row)
+
+		// Dirty-tree parks are foreign dirt waiting, not task sickness —
+		// the hint keeps the no-attempt-burn contract visible on the text
+		// surface (JSON consumers read requeue_class=preflight + the
+		// refusal's [dirty tree] marker).
+		if requeueEvidence != nil && requeueEvidence[t.ID.String()].Class == queue.RequeueClassPreflight &&
+			strings.Contains(oneLine(t.LastError), "dirty tree") {
+			fmt.Fprintln(w, "       ↳ parked by a dirty tree — waits for the tree to clean; no attempt burn")
+		}
+	}
+
+	if limit > 0 && len(tasks) == limit {
+		if n, err := total(); err == nil {
+			fmt.Fprintf(
+				w,
+				"showing %d of %d matching task(s) (capped by --limit %d; --limit 0 lists all, --count prints just the total)\n",
+				len(tasks),
+				n,
+				limit,
+			)
+
+			return
+		}
+	}
+
+	fmt.Fprintf(w, "%d task(s)\n", len(tasks))
+}
+	DefaultPoll      = 500 * time.Millisecond
+	DefaultHeartbeat = 15 * time.Second
+
+	// BannerPrefix and BannerReadOnlySuffix define the serve startup
+	// banner's exact shape — shared by the CLI print and the e2e/smoke
+	// parsers, which nearly broke twice over string drift (00:21 e3).
+	BannerPrefix         = "tq: dashboard on http://"
+	BannerReadOnlySuffix = " (read-only)"
+	BannerWritesSuffix   = " (writes ENABLED: cancel/rescue from the UI)"
+	// BannerFoldFollowerSuffix marks the demoted serve: the projection
+v0.38.7
+MIT License
+
+Copyright (c) 2026 Lars Artmann
+RC[go-output.md]=0
+=== go-retry.md ===
+./internal/executor/agent.go
+./internal/worker/worker.go
+./internal/worker/worker_test.go
+./internal/retryx/rename.go
+internal/executor/agent.go:1129:	return retry.DoWithValue[T](context.Background(), retry.Config{ //nolint:exhaustruct // optional hooks unset
+internal/worker/worker.go:399:	return retry.Do(ctx, retry.Config{ //nolint:exhaustruct // optional hooks unset
+internal/retryx/rename.go:24:	return retry.Do(context.Background(), retry.Config{ //nolint:exhaustruct // optional hooks unset
+internal/executor/agent.go:1129:	return retry.DoWithValue[T](context.Background(), retry.Config{ //nolint:exhaustruct // optional hooks unset
+internal/worker/worker_test.go:1785:// retry.ErrExhausted-wrapped error AND an ERROR-level label naming the
+internal/worker/worker_test.go:1806:	if !errors.Is(err, retry.ErrExhausted) {
+internal/worker/worker_test.go:1807:		t.Fatalf("err = %v, want retry.ErrExhausted wrapping", err)
+internal/executor/go.mod:9:	github.com/larsartmann/go-retry v0.9.0
+internal/worker/go.mod:48:	github.com/larsartmann/go-retry v0.9.0
+internal/retryx/go.mod:5:require github.com/larsartmann/go-retry v0.9.0
+  (`errors.AsType[E]`, `SplitSeq`, `for range n`) — don't undo.
+413:		OnExhausted: func(attempts int, err error) {
+// lease-reclaim backstop — a lost outcome write must read as a known
+// handoff, never as a silently stuck task.
+func TestPersistOutcomeExhaustionIsLabeled(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+
+	pool := New(nil, Config{}, slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelWarn})))
+
+	attempts := 0
+
+	err := pool.persistOutcome(context.Background(), task.ID("t1"), func(context.Context) error {
+		attempts++
+
+		return errors.New("database is locked (5) (SQLITE_BUSY)")
+	})
+	if err == nil {
+		t.Fatal("persistOutcome: want the exhaustion error")
+	}
+
+	if !errors.Is(err, retry.ErrExhausted) {
+func (p *Pool) persistOutcome(ctx context.Context, id task.ID, write func(context.Context) error) error {
+	return retry.Do(ctx, retry.Config{ //nolint:exhaustruct // optional hooks unset
+		MaxAttempts:  3,
+		InitialDelay: 50 * time.Millisecond,
+		MaxDelay:     400 * time.Millisecond,
+		Multiplier:   2.0,
+		IsRetryable:  isTransientStoreBusy,
+		OnRetry: func(attempt int, delay time.Duration, err error) {
+			p.log.Warn("outcome write hit a transient store busy; retrying",
+				"task", id, "attempt", attempt, "retry after", delay, "err", err)
+		},
+		// Exhaustion is loud by contract: the write then rides the
+		// lease-reclaim backstop, and a silent fallthrough would read
+		// as a stuck task instead of a known-lost write (fleet
+		// review f10).
+		OnExhausted: func(attempts int, err error) {
+			p.log.Error("outcome write exhausted store-busy retries; the lease-reclaim backstop owns the task now",
+				"task", id, "attempts", attempts, "err", err)
+		},
+	}, func(ctx context.Context, _ int) error {
+		return write(ctx)
+	})
+}
+
+// isTransientStoreBusy reports whether err is a store lock-contention
+// failure worth retrying in-process. The sqlite driver surfaces the
+// SQLITE_BUSY family (base 5 and extended 517 BUSY_SNAPSHOT et al) with
+// the token in the message, and its English form is "database is
+// locked"; matching strings keeps the worker driver-agnostic. A false
+// positive is harmless — the retried write is guarded by the store's
+// RowsAffected re-checks; a false negative merely falls back to the
+// lease-reclaim backstop.
+func isTransientStoreBusy(err error) bool {
+	Backoff     func(attempt int) time.Duration // retry backoff (default exp)
+// window the way percentage jitter would.
+func rateLimitDelay(d time.Duration) time.Duration {
+	spread := min(d/20, time.Minute)
+
+	return d - spread + time.Duration(rand.Int64N(2*int64(spread)+1))
+	jitter := 0.8 + 0.4*rand.Float64()
+v0.9.0-5-ga3ed997
+RC[go-retry.md]=0
+=== go-sse.md ===
+grep: internal: No such file or directory
+grep: internal/webui/*_test.go: No such file or directory
+github.com/larsartmann/go-sse v0.7.0
+github.com/larsartmann/go-sse/sseparse v0.2.1
+github.com/larsartmann/go-sse/ssetest v0.5.0
+/tmp/verify-blocks/18.sh: line 5: cd: cmd/tq: No such file or directory
+v0.7.0-2-gd79edb5
+79:type BroadcasterHealth struct {
+sed: can't read internal/webui/webui.go: No such file or directory
+sed: can't read internal/webui/health.go: No such file or directory
+# ./internal/webui
+stat /home/lars/projects/go-sse/internal/webui: directory not found
+FAIL	./internal/webui [setup failed]
+FAIL
+# ./internal/webui
+stat /home/lars/projects/go-sse/internal/webui: directory not found
+FAIL	./internal/webui [setup failed]
+FAIL
+RC[go-sse.md]=1
+=== httputil-endpoints.md ===
+func (s *Server) Handler() http.Handler {
+	mux := http.NewServeMux()
+	mux.HandleFunc("POST /api/v1/tasks", s.handleEnqueue)
+	mux.HandleFunc("POST /api/v1/errors", s.handleReportError)
+	mux.HandleFunc("GET /api/v1/stats", s.handleStats)
+	mux.HandleFunc("GET /api/v1/healthz", s.handleHealth)
+
+	return s.guard(mux)
+}
+// routeBindings is the complete route table as data, so the read-only
+// guardrail test can prove the dashboard registers no mutating handler
+// (ADR-0003: the worst failure is a stale dashboard, never journal
+// corruption). Adding a POST route fails TestRoutesAreReadOnly. The nil
+// handler is the static file tree, wired in Handler.
+func (s *Server) routeBindings() []struct {
+	method  string
+	pattern string
+	handler func(http.ResponseWriter, *http.Request)
+} {
+	return []struct {
+		method  string
+		pattern string
+		handler func(http.ResponseWriter, *http.Request)
+	}{
+		{"GET", "/{$}", s.handleIndex},
+		{"GET", "/project/{name}", s.handleProject},
+		{"GET", "/task/{id}", s.handleTaskDetail},
+		{"GET", "/task/{id}/events", s.handleTaskEvents},
+		{"GET", "/api/events", s.handleEvents},
+		{"GET", "/api/stats", s.handleStats},
+		{"GET", "/api/facts", s.handleFacts},
+		{"GET", "/agents/live", s.handleAgentLive},
+		{"GET", "/static/", nil}, // staticHandler, wired in Handler
+	}
+}
+endpoints/v0.1.0
+02e6591 2026-11-06 docs: mark the endpoints first-release items resolved by endpoints/v0.1.0
+MIT License
+
+Copyright (c) 2026 Lars Artmann
+RC[httputil-endpoints.md]=0
+=== httputil-server-timing.md ===
+./go.mod:126:	github.com/larsartmann/httputil/server_timing v1.0.3
+internal/webui/handlers.go:18:	servertiming "github.com/larsartmann/httputil/server_timing"
+internal/webui/handlers.go:166:	stopFacts := servertiming.MeasureServerTiming(r.Context(), "facts")
+internal/webui/handlers.go:170:	// Record before the first write: the Server-Timing header is stamped
+internal/webui/handlers.go:204:	stopStats := servertiming.MeasureServerTiming(r.Context(), "stats")
+internal/webui/handlers.go:208:	// Record before the first write (Server-Timing stamps at first write).
+internal/webui/requestlog_test.go:11:// TestServerTimingHeaderBehindRequestLog pins the server_timing trial's
+internal/webui/requestlog_test.go:12:// mount contract (fleet review f21): the Server-Timing header (per-segment
+internal/webui/requestlog_test.go:16:func TestServerTimingHeaderBehindRequestLog(t *testing.T) {
+internal/webui/requestlog_test.go:28:	if st := header.Get("Server-Timing"); !strings.Contains(st, "stats") || !strings.Contains(st, "total") {
+internal/webui/requestlog_test.go:29:		t.Errorf("Server-Timing = %q, want stats + total segments under RequestLog", st)
+internal/webui/requestlog_test.go:37:	if st := header.Get("Server-Timing"); st != "" {
+internal/webui/requestlog_test.go:38:		t.Errorf("Server-Timing shipped without RequestLog: %q", st)
+internal/webui/webui.go:34:	servertiming "github.com/larsartmann/httputil/server_timing"
+internal/webui/webui.go:416:	// Server-Timing trial (fleet review f21): per-segment latency in the
+internal/webui/webui.go:421:	handler = servertiming.ServerTimingMiddlewareWhen(func(*http.Request) bool {
+func withRequestLog(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		rec := &statusRecorder{ResponseWriter: w}
+		start := time.Now()
+
+		defer func() {
+			slog.Info("webui: request",
+				"method", r.Method,
+				"path", redactedRequestURI(r.URL),
+				"status", rec.status,
+				"duration", time.Since(start),
+			)
+		}()
+
+		next.ServeHTTP(rec, r)
+	})
+}
+	// Server-Timing trial (fleet review f21): per-segment latency in the
+	// response header, mounted ONLY where the operator already opted
+	// into request logging — the header leaks internal performance
+	// detail (server_timing README), so it never ships on the default
+	// loopback posture. SSE-safe: the wrapper passes Flush through.
+	handler = servertiming.ServerTimingMiddlewareWhen(func(*http.Request) bool {
+		return s.cfg.RequestLog
+	})(handler)
+# github.com/ThreeDotsLabs/watermill/internal
+open vendor/github.com/ThreeDotsLabs/watermill/internal/channel.go: no such file or directory
+# github.com/Oudwins/tailwind-merge-go/pkg/twmerge
+open vendor/github.com/Oudwins/tailwind-merge-go/pkg/twmerge/class-utils.go: no such file or directory
+# github.com/fsnotify/fsnotify
+open vendor/github.com/fsnotify/fsnotify/backend_inotify.go: no such file or directory
+# github.com/a-h/templ
+open vendor/github.com/a-h/templ/flush.go: no such file or directory
+# github.com/ThreeDotsLabs/watermill
+open vendor/github.com/ThreeDotsLabs/watermill/doc.go: no such file or directory
+# github.com/larsartmann/go-cqrs-lite/command/v4
+open vendor/github.com/larsartmann/go-cqrs-lite/command/v4/aggregate_ref.go: no such file or directory
+# github.com/larsartmann/go-cqrs-lite/metaengine/projectionadapter/v4
+open vendor/github.com/larsartmann/go-cqrs-lite/metaengine/projectionadapter/v4/adapter.go: no such file or directory
+# github.com/larsartmann/go-cqrs-lite/metaengine/sqliteengine/v4
+open vendor/github.com/larsartmann/go-cqrs-lite/metaengine/sqliteengine/v4/aggregations.go: no such file or directory
+# github.com/larsartmann/go-cqrs-lite/decider/v4
+open vendor/github.com/larsartmann/go-cqrs-lite/decider/v4/cache.go: no such file or directory
+# github.com/LarsArtmann/go-crush-data
+open vendor/github.com/LarsArtmann/go-crush-data/agents.go: no such file or directory
+# github.com/larsartmann/go-cqrs-lite/queue/sqlite/v4
+open vendor/github.com/larsartmann/go-cqrs-lite/queue/sqlite/v4/cancel.go: no such file or directory
+# github.com/larsartmann/go-cqrs-lite/projectionhost/v4
+open vendor/github.com/larsartmann/go-cqrs-lite/projectionhost/v4/dlq.go: no such file or directory
+FAIL	github.com/larsartmann/go-taskqueue/internal/webui [build failed]
+FAIL
+module github.com/larsartmann/httputil/server_timing
+
+go 1.27
+server_timing/v0.9.1
+server_timing/v0.10.0
+server_timing/v0.12.0
+server_timing/v1.0.1
+server_timing/v1.0.2
+server_timing/v1.0.3
+MIT License
+
+Copyright (c) 2026 Lars Artmann
+RC[httputil-server-timing.md]=0
+=== httputil.md ===
+./go.mod:126:	github.com/larsartmann/httputil/server_timing v1.0.3
+grep: ./vendor/modernc.org/libc/netdb/netdb_linux_loong64.go: No such file or directory
+grep: ./vendor/modernc.org/libc/netdb/netdb_linux_mips64le.go: No such file or directory
+grep: ./vendor/modernc.org/libc/netdb/netdb_linux_ppc64le.go: No such file or directory
+grep: ./vendor/modernc.org/libc/netdb/netdb_linux_riscv64.go: No such file or directory
+grep: ./vendor/modernc.org/libc/netdb/netdb_linux_s390x.go: No such file or directory
+grep: ./vendor/modernc.org/libc/netdb/netdb_netbsd_amd64.go: No such file or directory
+grep: ./vendor/modernc.org/libc/netdb/netdb_netbsd_arm.go: No such file or directory
+grep: ./vendor/modernc.org/libc/netdb/netdb_openbsd_386.go: No such file or directory
+grep: ./vendor/modernc.org/libc/netdb/netdb_openbsd_amd64.go: No such file or directory
+grep: ./vendor/modernc.org/libc/netdb/netdb_openbsd_arm64.go: No such file or directory
+grep: ./vendor/modernc.org/libc/netinet/in/in_linux_arm.go: No such file or directory
+grep: ./vendor/modernc.org/libc/netinet/in/in_linux_loong64.go: No such file or directory
+grep: ./vendor/modernc.org/libc/netinet/in/in_linux_mips64le.go: No such file or directory
+grep: ./vendor/modernc.org/libc/netinet/in/in_linux_ppc64le.go: No such file or directory
+grep: ./vendor/modernc.org/libc/netinet/in/in_linux_riscv64.go: No such file or directory
+grep: ./vendor/modernc.org/libc/netinet/in/in_linux_s390x.go: No such file or directory
+grep: ./vendor/modernc.org/libc/netinet/in/in_netbsd_arm.go: No such file or directory
+grep: ./vendor/modernc.org/libc/netinet/in/in_openbsd_386.go: No such file or directory
+grep: ./vendor/modernc.org/libc/netinet/in/in_openbsd_amd64.go: No such file or directory
+grep: ./vendor/modernc.org/libc/netinet/in/in_openbsd_arm64.go: No such file or directory
+grep: ./vendor/modernc.org/libc/poll/capi_linux_386.go: No such file or directory
+grep: ./vendor/modernc.org/libc/poll/capi_linux_amd64.go: No such file or directory
+grep: ./vendor/modernc.org/libc/poll/capi_linux_arm.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_freebsd_arm.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_freebsd_arm64.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000000007.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000000000b.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000000000c.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000000000f.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000000012.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000000014.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000000017.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000000028.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000000002b.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000000002c.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000000030.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000000038.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000000003a.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000000003b.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000000003c.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000000003f.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000000043.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000000044.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_00000000000000c0.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000000110.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000000140.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000000150.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000000154.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000000202.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000000280.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000000300.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000000330.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000000332.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000000033c.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000000403.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000000480.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000000488.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_00000000000004c0.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000000500.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000000b00.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000000c00.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000001200.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000001280.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000001600.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_00000000000016c0.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000001800.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000001a00.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000001b00.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000001c00.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000001e80.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000001fc0.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000002100.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000002112.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_00000000000023c0.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000002800.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000002802.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000002880.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_00000000000028bc.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_00000000000028c0.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_00000000000034c0.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_00000000000037c0.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000003a00.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000003a20.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000003b00.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000003e00.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000003e80.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000003e83.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000003ea8.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000003eab.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000003ec0.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000003ec3.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000003eec.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000003f80.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000003fc0.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000003fc3.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000003fd7.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000003ffc.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000003fff.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000004003.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000004007.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000004014.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000004017.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000000402c.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000000403c.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000000403f.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000004080.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000004140.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000005ffc.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000007cc0.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000007f80.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000007fc0.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000007ffc.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000007fff.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000008008.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000000800d.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000000880c.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000000a11f.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000000c000.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000000c089.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000000c08d.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000000c488.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000000c48b.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000000c4cf.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000010022.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000010030.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000010032.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000010222.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000010232.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000010332.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000011620.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000011a20.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000011b10.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000011b30.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000012a23.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000013a00.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000013a20.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000013b10.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000013b30.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000013e02.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000013e22.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000013e3e.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000018000.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000018002.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000018003.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000018014.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000018017.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000018028.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000001802b.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000018038.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000001803b.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000001803c.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000001803d.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000001803e.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000001803f.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000001843f.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000001883f.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_00000000000192bb.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000019600.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000001be80.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000001beab.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000001bfc0.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000001bfe8.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000001bff8.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000001bffc.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000001bfff.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000001c000.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000001c003.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000001c007.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000001c014.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000001c017.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000001c028.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000001c02b.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000001c03c.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000001c03f.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000001c154.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000001c157.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000001c83f.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000001d740.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000001d77f.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000001dea8.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000001deab.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000001dfff.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000001f7ff.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000001fc8f.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000001fccf.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000001fe80.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000001feab.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000001feec.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000001feef.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000001ffbb.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000001ffc0.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000001ffc3.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000001ffcf.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000001ffdf.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000001fffc.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000001ffff.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000002000b.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000020028.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000002002b.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000023eab.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000024080.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000002c088.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000002c089.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000002c488.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000002c48b.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000002c4cf.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000038000.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000003c003.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000003c028.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000003c02b.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000003dea8.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000003deab.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000003fe8b.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000003fea8.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000003feab.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000040154.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000005feff.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000005ffff.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000060003.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000060004.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000006000f.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000060030.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000006003c.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000006003f.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000060040.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_00000000000600c0.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000060100.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000060154.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000060168.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_00000000000602c0.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000060300.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_00000000000623c0.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_00000000000628c0.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000063fc0.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000063fc3.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000063fff.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000064003.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000006403f.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_00000000000640c0.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_00000000000648c0.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000065ec0.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000065fc0.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000066fc0.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000067fc0.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000067fc3.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000067fff.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000006c0cd.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000006c4cf.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000006c8cc.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000006e9df.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_0000000000078003.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000007803f.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_00000000000781fd.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_00000000000783ff.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000007bfc0.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000007bfff.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000007c03c.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000007c03f.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000007c17f.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000007c3ef.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000007c83f.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000007deed.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000007dfd7.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000007dfff.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000007fbff.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000007feec.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000007feff.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000007ffbb.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000007ffc0.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000007ffc3.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000007ffd7.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000007ffdf.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_g_000000000007fffc.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_linux_386.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_linux_amd64.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_linux_arm.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_linux_arm64.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_linux_loong64.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_linux_ppc64le.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_linux_riscv64.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_linux_s390x.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_netbsd_amd64.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_openbsd_amd64.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_openbsd_arm64.go: No such file or directory
+grep: ./vendor/modernc.org/sqlite/lib/sqlite_windows.go: No such file or directory
+./internal/webui/handlers.go:18:	servertiming "github.com/larsartmann/httputil/server_timing"
+./internal/webui/webui.go:34:	servertiming "github.com/larsartmann/httputil/server_timing"
+405:  (`--alert-url`). **httputil** NOT adopted (MIT v1.5.0+; fleet verdicts
+- **pkg.go.dev license gating — all three modules are MIT** (owner decisions 2026-10-08 for `server_timing`, 2026-10-09 for the root, `endpoints` MIT from creation 2026-11-06; recorded in CHANGELOG [1.5.0]) — pkg.go.dev hides READMEs AND all docs for non-redistributable licenses (empirically verified 2026-10-08: the root page at `v1.4.2`, 18 importers, rendered neither the 782-line root `README.md` nor any documentation), and it re-indexes per tagged release, so visibility arrives only from the first tag cut after a LICENSE change (`v1.5.0` root, `server_timing/v1.0.2` sub-module; the `endpoints` page arrives with its first tag). The old "root stays Proprietary — do NOT mirror the MIT switch without an explicit owner decision" guard is resolved; do not reintroduce a Proprietary LICENSE in this repo without an explicit owner decision.
+
+## Testing Conventions
+
+MIT License
+
+Copyright (c) 2026 Lars Artmann
+29
+func (s *Server) Handler() http.Handler {
+	mux := http.NewServeMux()
+
+	for _, route := range s.routeBindings() {
+		if route.handler == nil {
+			mux.Handle(route.method+" "+route.pattern, http.StripPrefix("/static/", staticHandler()))
+
+			continue
+		}
+
+		mux.HandleFunc(route.method+" "+route.pattern, route.handler)
+	}
+
+	for _, route := range s.healthBindings() {
+		mux.HandleFunc(route.method+" "+route.pattern, route.handler)
+	}
+
+	// The CSRF wrapper is innermost: page GETs issue/refresh the token
+	// cookie and publish it to the render chain; write POSTs verify it.
+	handler := withCSRFIssue(http.Handler(mux))
+
+	if s.cfg.AllowWrites {
+		for _, route := range s.writeBindings() {
+			// Rate limit OUTSIDE CSRF: three failed tokens lock the client
+			// out of the write routes entirely for a minute, so the token
+			// cannot be brute-forced request-by-request.
+			mux.Handle(route.method+" "+route.pattern,
+				s.writes.wrap(withCSRF(http.HandlerFunc(route.handler))))
+		}
+	}
+
+	if s.cfg.AuthToken != "" {
+		handler = withTokenAuth(s.cfg.AuthToken, handler)
+	}
+
+	// Security headers wrap everything — including auth rejections — so
+	// even the 401 page is CSP-covered.
+	handler = withSecurityHeaders(handler)
+
+	// Server-Timing trial (fleet review f21): per-segment latency in the
+	// response header, mounted ONLY where the operator already opted
+	// into request logging — the header leaks internal performance
+	// detail (server_timing README), so it never ships on the default
+	// loopback posture. SSE-safe: the wrapper passes Flush through.
+	handler = servertiming.ServerTimingMiddlewareWhen(func(*http.Request) bool {
+		return s.cfg.RequestLog
+	})(handler)
+
+	// Request logging wraps auth so rejected requests are logged too.
+	if s.cfg.RequestLog {
+		return withRequestLog(handler)
+	}
+
+	return handler
+}
+func (s *Server) guard(next http.Handler) http.Handler {
+	expected := httpauth.HashToken(s.token)
+	policy := httpauth.APIPolicy()
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+
+		key := remoteHost(r)
+		if retry, locked := s.strikes.Locked(key); locked {
+			w.Header().Set("Retry-After", strconv.Itoa(int(retry/time.Second)+1))
+			writeError(
+				w,
+				http.StatusTooManyRequests,
+				"too many failed auth attempts — locked for "+retry.Round(time.Second).String(),
+				"wait out the lockout window before retrying",
+			)
+
+			return
+		}
+
+		presented, _ := policy.Presented(r)
+
+		if !httpauth.TokenMatches(expected, presented) {
+			s.strikes.Add(key)
+
+			w.Header().Set("WWW-Authenticate", `Bearer realm="tq-api"`)
+			writeError(
+				w,
+				http.StatusUnauthorized,
+				"unauthorized",
+				"present a valid bearer token (Authorization: Bearer <token> or ?token=<token>)",
+			)
+
+			return
+		}
+
+		s.strikes.Reset(key)
+
+		w.Header().Set("Cache-Control", "no-store")
+
+		next.ServeHTTP(w, r)
+	})
+}
+RC[httputil.md]=0
+=== templ-components.md ===
+grep: internal/webui: No such file or directory
+grep: internal/webui/ADOPTION.md: No such file or directory
+sed: can't read internal/webui/adoption_test.go: No such file or directory
+grep: internal/webui/components.go: No such file or directory
+grep: internal/webui/fragments.templ: No such file or directory
+grep: vendor/github.com/larsartmann/templ-components/layout/meta_refresh.templ: No such file or directory
+grep: vendor/github.com/larsartmann/templ-components/display/table.templ: No such file or directory
+grep: vendor/github.com/larsartmann/templ-components/display/copy_button.templ: No such file or directory
+33:	// NoScript skips the per-render singleton script emission. Set it when
+39:	NoScript bool
+58:// NoScript on those buttons; page-load buttons keep the default emission.
+charts/echarts/v1.27.0-88-g2ad4cb74
+go: -mod may only be set to readonly or vendor when in workspace mode, but it is set to "mod"
+	Remove the -mod flag to use the default readonly value, 
+	or set GOWORK=off to disable workspace mode.
+# ./internal/webui
+stat /home/lars/projects/templ-components/internal/webui: directory not found
+FAIL	./internal/webui [setup failed]
+FAIL
+RC[templ-components.md]=1

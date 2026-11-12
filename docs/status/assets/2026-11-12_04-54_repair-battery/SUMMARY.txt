@@ -1,0 +1,7 @@
+# repair battery 2026-11-12 (HEAD 5e7fc982 facade repair)
+root-race: ROOT-RACE-RC=0
+modules: MODULES-RC=0
+cmd-tq: CMD-TQ-RC=1 — 1 FAIL TestDoctorHealthyEmptyDB = documented owner-gated tag-ancestry class (v0.4.2 unreachable, forked lineage; TODO row pending owner shape call)
+webui TestHealth: 12 PASS / 0 FAIL rc=0
+server-timing pin: PASS rc=0
+ok-count: root=20 modules=24
