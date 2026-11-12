@@ -71,7 +71,7 @@ grep -rn 'httputil/server_timing' --include=go.mod . | grep -v vendor      # →
 grep -rni 'server-timing\|servertiming' --include='*.go' internal cmd      # → webui.go mount + handlers.go facts/stats segments + requestlog_test pin
 sed -n '13,29p' internal/webui/requestlog.go                               # the pre-trial latency surface (slog only)
 sed -n '416,423p' internal/webui/webui.go                                  # the mount, RequestLog-gated
-go test ./internal/webui -run TestServerTimingHeaderBehindRequestLog -count=1  # → ok once the in-flight sqlite/postgres migration compiles (vendored copy breaks the build 2026-11-11)
+go test ./internal/webui -run TestServerTimingHeaderBehindRequestLog -count=1  # → ok  github.com/larsartmann/go-taskqueue/internal/webui 0.009s (executed 2026-11-12 post-repair 5e7fc982, rc=0)
 cat /home/lars/projects/httputil/server_timing/go.mod                      # zero requires
 git -C /home/lars/projects/httputil tag -l 'server_timing/*' | sort -V     # 6 tags, latest v1.0.3
 head -3 /home/lars/projects/httputil/server_timing/LICENSE                 # MIT
