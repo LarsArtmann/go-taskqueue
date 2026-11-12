@@ -27,6 +27,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/larsartmann/go-error-family"
 	"github.com/larsartmann/go-retry"
 	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
@@ -455,6 +456,23 @@ func isTransientStoreBusy(err error) bool {
 	msg := err.Error()
 
 	return strings.Contains(msg, "SQLITE_BUSY") || strings.Contains(msg, "database is locked")
+}
+
+// store-busy classification: the init registers the SQLITE_BUSY family
+// (base 5, extended 517 BUSY_SNAPSHOT et al) with errorfamily so ANY
+// consumer classifies a store-busy error as Transient at the source
+// (pareto T07, 2026-11-12) instead of each call site copying a string
+// sniff. isTransientStoreBusy stays the worker's narrow busy-only
+// predicate — Classify's fail-open default must never widen the retry
+// class here.
+func init() {
+	errorfamily.RegisterClassifier(func(err error) (errorfamily.Family, bool) {
+		if isTransientStoreBusy(err) {
+			return errorfamily.Transient, true
+		}
+
+		return errorfamily.Transient, false
+	})
 }
 
 // New creates a worker pool. Call Start to run it.
