@@ -1,0 +1,12 @@
+# templ-components upstream tag check — 2026-11-12 (T11 audit, repair-verify-deepen window)
+
+git ls-remote --tags (root module families, max per family):
+root: v1.27.0
+htmx: htmx/v1.27.0
+datastar: datastar/v1.27.0
+icons: icons/v1.27.0
+utils: utils/v1.27.0
+
+tq pins (go.mod grep): root v1.27.0, datastar v1.27.0, htmx v1.27.0, icons v1.27.0, utils v1.27.0, cmd/tq indirect v1.27.0 — ALL at family max.
+NoScript/CopyButtonScript: ABSENT from vendored v1.27.0 (grep zero hits); present only in local checkout main (88 unreleased commits, upstream #63). Adoption blocked on next tag.
+charts/echarts: charts/echarts/v1.27.0
