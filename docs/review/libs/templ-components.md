@@ -90,7 +90,7 @@ grep -n 'StickyHeader' vendor/github.com/larsartmann/templ-components/display/ta
 grep -n 'copyButtonScriptComponent' vendor/github.com/larsartmann/templ-components/display/copy_button.templ   # 115 — still per-render at v1.27.0
 grep -n 'NoScript' /home/lars/projects/templ-components/display/copy_button.templ | head -3                     # unreleased fix
 cd /home/lars/projects/templ-components && git describe --tags         # charts/echarts/v1.27.0-88-g2ad4cb74
-GOFLAGS=-mod=mod go list -m all | grep 'templ-components'              # all v1.27.0
-go test ./internal/webui -run 'TestAdoptionTable' -count=1             # guard green — run at HEAD (worktree): the working tree does not build while the in-flight sqlite v4→v5 migration is open
+go list -m all | grep 'templ-components'              # all v1.27.0 (readonly default — the -mod=mod prefix was a lint-leak writer, dropped 2026-11-12)
+go test ./internal/webui -run 'TestAdoptionTable' -count=1             # guard green — executed in-tree 2026-11-12 post-repair 5e7fc982: ok
 ```
-All commands above were run literally — the greps on 2026-11-11 against the working tree, the guard test on 2026-11-11 at HEAD `60c19070` via a throwaway `git worktree` (working tree unbuildable, see refresh note; run: ok 0.007s). The upstream catalog guard `TestDocsCountDrift` (utils submodule of the checkout) was also rerun 2026-11-11: PASS.
+All commands above were run literally — the greps on 2026-11-11 against the working tree, the guard test on 2026-11-11 at HEAD `60c19070` via a throwaway `git worktree` (working tree unbuildable, see refresh note; run: ok 0.007s). The upstream catalog guard `TestDocsCountDrift` (utils submodule of the checkout) was also rerun 2026-11-11: PASS. Re-executed in-tree 2026-11-12 after the facade repair (5e7fc982): guard test ok, rc under docs/status/assets/2026-11-12_04-54_repair-battery/; the block's `-mod=mod` prefix was dropped — it materialized the module graph into go.sum (the lint-leak writer class).

@@ -99,7 +99,7 @@ sed -n '442,452p' internal/webui/health.go                          # healthSDKS
 sed -n '319,324p' internal/webui/headermatrix_test.go               # serveSDKRow pins the ETag header
 cd /home/lars/projects/go-datastar && git describe --tags           # broadcast/v0.7.0-5-g67d99c6
 cd cmd/tq && GOWORK=off go mod tidy -diff 2>/dev/null | grep 'go-datastar'   # empty — no drift
-GOFLAGS=-mod=mod go list -m all | grep 'go-datastar'                # root 0.7.0 + static 0.7.0, no broadcast
-go test ./internal/webui -run 'TestServeHeaderMatrixSDKBundle' -count=1   # SDK route/header contract — run at HEAD (worktree): the working tree does not build while the in-flight sqlite v4→v5 migration is open
+go list -m all | grep 'go-datastar'                # root 0.7.0 + static 0.7.0, no broadcast (readonly default — the -mod=mod prefix was a lint-leak writer, dropped 2026-11-12)
+go test ./internal/webui -run 'TestServeHeaderMatrixSDKBundle' -count=1   # SDK route/header contract — executed in-tree 2026-11-12 post-repair 5e7fc982: ok
 ```
-All commands above were run literally on 2026-11-11 and produced the cited outputs (greps against the working tree; guard test at HEAD `60c19070` via a throwaway `git worktree`: ok 0.006s).
+All commands above were run literally on 2026-11-11 and produced the cited outputs (greps against the working tree; guard test at HEAD `60c19070` via a throwaway `git worktree`: ok 0.006s). Re-executed in-tree 2026-11-12 after the facade repair (5e7fc982): guard test ok, rc under docs/status/assets/2026-11-12_04-54_repair-battery/; the block's `-mod=mod` prefix was dropped — it materialized the module graph into go.sum (the lint-leak writer class).

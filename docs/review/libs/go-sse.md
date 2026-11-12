@@ -86,7 +86,7 @@ go-sse is the load-bearing transport of the webui and is used well: the broadcas
 grep -rn 'go-sse' --include=go.mod . | grep -v vendor   # all pins v0.7.0 / ssetest v0.5.0 / sseparse v0.2.1 — no v0.6.2 residue
 grep -rhoE 'sse\.[A-Z][a-zA-Z]*' --include='*.go' internal | grep -v '^vendor' | sort | uniq -c | sort -rn
 grep -rhoE 'ssetest\.[A-Z][a-zA-Z]*' internal/webui/*_test.go | sort | uniq -c | sort -rn
-GOFLAGS=-mod=mod go list -m all | grep 'go-sse'          # effective: v0.7.0 / v0.2.1 / v0.5.0
+go list -m all | grep 'go-sse'          # effective: v0.7.0 / v0.2.1 / v0.5.0 (readonly default — the -mod=mod prefix was a lint-leak writer, dropped 2026-11-12)
 cd cmd/tq && GOWORK=off go mod tidy -diff 2>/dev/null | grep 'go-sse'   # empty — no drift
 cd /home/lars/projects/go-sse && git describe --tags     # v0.7.0-2-gd79edb5
 grep -n 'type BroadcasterHealth' /home/lars/projects/go-sse/fanout.go    # :79
@@ -95,4 +95,4 @@ sed -n '264,277p' internal/webui/health.go               # liveSSE rendered into
 go test ./internal/webui -run 'TestSSEFullSnapshotOnConnect|TestResumeAfterFactsBacklog' -count=1
 go test ./internal/webui -run 'TestHealthLiveSSECheck' -count=1
 ```
-All commands above were run literally on 2026-11-11 and produced the cited outputs (greps against the working tree; tests at HEAD `60c19070` via a throwaway `git worktree` — the working tree does not build while the in-flight sqlite v4→v5 migration is open — runs: ok 0.154s and ok 0.007s).
+All commands above were run literally on 2026-11-11 and produced the cited outputs (greps against the working tree; tests at HEAD `60c19070` via a throwaway `git worktree` while the in-flight sqlite v4→v5 migration had the working tree unbuildable — runs: ok 0.154s and ok 0.007s). Re-executed in-tree 2026-11-12 after the facade repair (5e7fc982): both tests ok, rc under docs/status/assets/2026-11-12_04-54_repair-battery/; the block's `-mod=mod` prefix was dropped — it materialized the module graph into go.sum (the lint-leak writer class).
