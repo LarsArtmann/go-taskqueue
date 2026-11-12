@@ -74,12 +74,30 @@ var healthEvalTimeout = 5 * time.Second
 // an abandoned probe's late result can never block.
 func boundedCheck(ctx context.Context, run func(context.Context) error) error {
 	done := make(chan error, 1)
+	panicked := make(chan any, 1)
 
-	go func() { done <- run(ctx) }()
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				panicked <- r
+			}
+		}()
+
+		done <- run(ctx)
+	}()
 
 	select {
 	case err := <-done:
 		return err
+	case r := <-panicked:
+		// A probe that ignores its deadline may panic after abandonment;
+		// only a panic from a probe the batch still waits on re-panics —
+		// evaluateSafely's recover owns the degraded-response contract.
+		if ctx.Err() != nil {
+			return fmt.Errorf("health: probe panicked after the batch deadline: %v", r)
+		}
+
+		panic(r)
 	case <-ctx.Done():
 		return fmt.Errorf("health: probe did not finish before the batch deadline: %w", ctx.Err())
 	}
