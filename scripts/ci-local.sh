@@ -355,7 +355,7 @@ step "toolchain pin alignment (go.mod floors == setup-go pins == flake)"
 # cost a multi-hour red window. Self-test first (drift-detection pin), then
 # the real gate; VENDOR_SYNC_OFF=1 is the network-tolerant escape.
 step "dep-bump drift self-test (vendor/tidy sync detection pin)"
-VENDOR_SYNC_SELF_TEST=1 ./scripts/check-gomod-vendor-sync.sh
+./scripts/check-gomod-vendor-sync.sh --self-test
 
 step "dep-bump drift (go mod vendor + per-module tidy vs committed tree)"
 ./scripts/check-gomod-vendor-sync.sh

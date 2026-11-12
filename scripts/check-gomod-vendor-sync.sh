@@ -115,26 +115,68 @@ cmdtq_cqrs_parity() {
 	return "$rc"
 }
 
-# Lint-leak scanner (CI run 41877954180 class): foreign lint-toolchain
-# entries leaked into module go.sums (bare golangci-lint runs with
-# -mod=mod add its dep graph to the surrounding module). The tidy probe
-# already heals these, but the FAIL message would blame generic drift —
-# this scan names the lint-leak class explicitly so the next occurrence
-# is attributed at gate time, not archaeology. Domains are the shapes
-# observed in the 41877954180 leak (4d63.com, codeberg.org, golangci);
-# a module that legitimately requires one of these must extend this
-# table, not suppress it away.
-lint_leak_domains='^(4d63\.com/|codeberg\.org/|github\.com/golangci/)'
+# Lint-leak scanner (CI run 41877954180 class; writers identified and
+# fixed 2026-11-12: build-webui-css.sh's root-level `go list -m
+# -mod=mod` — now isolated to /tmp — and bare golangci-lint runs under
+# an ambient -mod=mod — now pinned readonly in lint-annotations.sh).
+# Foreign lint-toolchain entries leaked into module go.sums AND
+# go.work.sums: `go work sync` pruned cmd/tq/go.work.sum to zero
+# (2026-11-12 experiment), proving work-sum foreign entries are the
+# same leak class, not replace-graph-legit — work sums are scanned
+# too, and the heal there is `go work sync`. The tidy probe already
+# heals go.sums, but the FAIL message would blame generic drift —
+# this scan names the lint-leak class explicitly so the next
+# occurrence is attributed at gate time, not archaeology. Domains are
+# the shapes observed in the 41877954180 leak (4d63.com, codeberg.org,
+# golangci); a module that legitimately requires one of these must add
+# an allowlist row, not suppress it away.
+lint_leak_domains='^(4d63\.com/|codeberg\.org/|github\.com/golangci/|dev\.gaijin\.team/)'
+# Allowlist: "module-dir domain-regex" rows for go.sums that
+# legitimately require a leak-domain dep (module-dir = the go.sum's
+# dirname; "." = root). The first legit adoption is a table row here
+# with a go.mod-require cite — never a gate suppression. go.work.sum
+# files are NOT allowlistable: go work sync owns them entirely.
+lint_leak_allowlist=()
+lint_leak_allowed() {
+	local f="$1" hit="$2" dir row mod re
+	case "$f" in
+		*.go.work.sum) return 1 ;;
+	esac
+	dir="$(dirname "$f")"
+	for row in ${lint_leak_allowlist[@]+"${lint_leak_allowlist[@]}"}; do
+		[ -z "$row" ] && continue
+		mod="${row%% *}"
+		re="${row#* }"
+		# Suffix match on the path's last component: the main gate passes
+		# repo-relative paths (executor/go.sum -> dir=executor), the
+		# self-test passes absolute fixture paths — "/$mod" ending keeps
+		# the component boundary exact for both.
+		if { [ "$dir" = "$mod" ] || [[ "$dir" == */"$mod" ]]; } && printf '%s' "$hit" | grep -Eq "$re"; then
+			return 0
+		fi
+	done
+	return 1
+}
 lint_leak_scan() {
 	local rc=0 f hit
 	for f in "$@"; do
 		[ -f "$f" ] || continue
 		while IFS= read -r hit; do
+			if lint_leak_allowed "$f" "$hit"; then
+				continue
+			fi
 			echo "FAIL: lint-leak in $f — $hit" >&2
-			echo "  Foreign lint-toolchain entry in a module go.sum (CI 41877954180 class:" >&2
-			echo "  a bare golangci-lint run with -mod=mod wrote its dep graph here). Heal:" >&2
-			echo "    (cd \"$(dirname "$f")\" && GOWORK=off go mod tidy)  then stage the pruned go.sum" >&2
-			echo "  and find the WRITER before it re-leaks." >&2
+			echo "  Foreign lint-toolchain entry (CI 41877954180 class: a -mod=mod" >&2
+			echo "  go/golangci invocation wrote its dep graph here). Heal:" >&2
+			case "$f" in
+				*.go.work.sum)
+					echo "    (cd \"$(dirname "$f")\" && go work sync)  then stage the pruned go.work.sum" >&2
+					;;
+				*)
+					echo "    (cd \"$(dirname "$f")\" && GOWORK=off go mod tidy)  then stage the pruned go.sum" >&2
+					;;
+			esac
+			echo "  and find the WRITER before it re-leaks (2026-11-12: build-webui-css.sh was one)." >&2
 			rc=1
 		done < <(grep -E "$lint_leak_domains" "$f" || true)
 	done
@@ -278,7 +320,53 @@ self_test() {
 		return 1
 	fi
 
-	echo "self-test ok: sync/drift detection pinned (tracked scopes + ignored-vendor hash anchor + absent-start + cqrs parity + lint-leak class)"
+	# Case 9: allowlist — an allowlisted module+domain row passes the scan;
+	# the same entry under a NON-allowlisted module, and a non-matching
+	# domain under the allowlisted module, still fail.
+	local saved_allow=("${lint_leak_allowlist[@]+"${lint_leak_allowlist[@]}"}")
+	lint_leak_allowlist+=("sub ^codeberg\.org/x/y v1\.0\.0")
+	printf 'codeberg.org/x/y v1.0.0 h1:yyy=\n' >"$tmp/repo/sub/go.sum"
+	if ! lint_leak_scan "$tmp/repo/sub/go.sum" >/dev/null 2>&1; then
+		echo "SELF-TEST FAIL: allowlisted entry flagged anyway" >&2
+		return 1
+	fi
+	printf 'codeberg.org/x/y v1.0.0 h1:yyy=\n' >"$tmp/repo/root.go.sum"
+	if lint_leak_scan "$tmp/repo/root.go.sum" >/dev/null 2>&1; then
+		echo "SELF-TEST FAIL: allowlist row exempted a different module" >&2
+		return 1
+	fi
+	printf 'github.com/golangci/other v9.9.9 h1:zzz=\n' >"$tmp/repo/sub/go.sum"
+	if lint_leak_scan "$tmp/repo/sub/go.sum" >/dev/null 2>&1; then
+		echo "SELF-TEST FAIL: allowlist row exempted a non-matching domain" >&2
+		return 1
+	fi
+	lint_leak_allowlist=("${saved_allow[@]+"${saved_allow[@]}"}")
+
+	# Case 10: go.work.sum coverage — foreign entries there are the same
+	# leak class (go work sync pruned cmd/tq/go.work.sum to zero on
+	# 2026-11-12); the heal message must name `go work sync`, not tidy.
+	printf 'dev.gaijin.team/go/exhaustruct/v5 v5.0.3/go.mod h1:leak=\n' >"$tmp/repo/work.go.work.sum"
+	ws_out="$(lint_leak_scan "$tmp/repo/work.go.work.sum" 2>&1)" && ws_rc=0 || ws_rc=$?
+	if [ "$ws_rc" -eq 0 ] || [[ "$ws_out" != *"go work sync"* ]]; then
+		echo "SELF-TEST FAIL: foreign go.work.sum entry NOT detected with work-sync heal (rc=$ws_rc, out: $ws_out)" >&2
+		return 1
+	fi
+
+	# Case 11: end-to-end — the injected leak fixture flows through the
+	# REAL gate path (TQ_VENDOR_SYNC_EXTRA_SUMS -> the main lint-leak
+	# scan line; the TQ_GOMODS_EXTRA_MODS pattern), rc=1 with the
+	# fixture path named.
+	fx_sum="$tmp/repo/leak-fixture.go.sum"
+	printf '4d63.com/gochecknoglobals v0.2.2 h1:e2e=\n' >"$fx_sum"
+	local self_abs e2e_out e2e_rc=0
+	self_abs="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
+	e2e_out="$(TQ_VENDOR_SYNC_EXTRA_SUMS="$fx_sum" "$self_abs" 2>&1)" || e2e_rc=$?
+	if [ "$e2e_rc" -ne 1 ] || [[ "$e2e_out" != *"lint-leak in $fx_sum"* ]]; then
+		echo "SELF-TEST FAIL: e2e leak fixture NOT detected through the gate path (rc=$e2e_rc, out tail: $(printf '%s' "$e2e_out" | tail -3))" >&2
+		return 1
+	fi
+
+	echo "self-test ok: sync/drift detection pinned (tracked scopes + ignored-vendor hash anchor + absent-start + cqrs parity + lint-leak class + allowlist + work-sum + e2e hook)"
 	return 0
 }
 
@@ -355,7 +443,14 @@ for m in $mods; do
 	fi
 done
 
-lint_leak_scan go.sum cmd/tq/go.sum "$(for m in $mods; do echo "$m/go.sum"; done)" || fail=1
+# go.work.sum coverage (2026-11-12): go work sync owns these and pruned
+# cmd/tq/go.work.sum to zero — foreign entries there are the leak class,
+# scanned like go.sums (heal = go work sync, never an allowlist row).
+# TQ_VENDOR_SYNC_EXTRA_SUMS: self-test hook appending fixture go.sum
+# paths to this scan (the check-go-mods TQ_GOMODS_EXTRA_MODS pattern).
+lint_leak_scan go.sum cmd/tq/go.sum cmd/tq/go.work.sum \
+	${TQ_VENDOR_SYNC_EXTRA_SUMS:-} \
+	"$(for m in $mods; do echo "$m/go.sum"; done)" || fail=1
 cmdtq_cqrs_parity || fail=1
 
 if [ "$fail" -eq 0 ]; then

@@ -38,7 +38,6 @@ require (
 	github.com/larsartmann/go-cqrs-lite/otel/v4 v4.5.3 // indirect
 	github.com/larsartmann/go-cqrs-lite/queue/sqlite/v4 v4.0.3 // indirect
 	github.com/larsartmann/go-cqrs-lite/queue/v4 v4.0.3 // indirect
-	github.com/larsartmann/go-cqrs-lite/schema/v4 v4.7.1 // indirect
 	github.com/larsartmann/go-flightrecorder v0.2.1 // indirect
 	github.com/larsartmann/go-retry v0.9.0 // indirect
 	github.com/larsartmann/go-sse v0.7.0 // indirect
