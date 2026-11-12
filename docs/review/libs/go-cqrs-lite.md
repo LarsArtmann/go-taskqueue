@@ -52,7 +52,7 @@ Status legend: 🟢 FULL, 🟡 PARTIAL, 🔴 MISSED, ⚠️ MISUSED, ⚪ N/A (re
 | 12 | Watcher + ServeSSE live fragments | 🟢 | replay ring + heartbeat + timeout (model.go:278,640-644) |
 | 13 | engine health/stats snapshot | 🟢 | HealthSnapshot + GetEngineStats in /health + doctor (projectionhealth.go:59-72) — prior F3, landed |
 | 14 | Store.Verify/Backfill drift machinery | ⚪ | no event log attached by construction (upstream: system roots return ErrNoEventLog) |
-| 15 | WithPrefetch scan cache (metaengine v4.21.0) | 🔴 | not pinned; TasksPage is exactly the coached cursor-scan shape (finding 3) |
+| 15 | WithPrefetch scan cache (metaengine v4.21.0) | 🔴 | attempted + REVERTED 2026-11-12 — upstream cursor under prefetch is tie-lossy, breaks pinned pagination (finding 3) |
 | 16 | WithCap / WithCapPerGroup retention caps | ⚪ | the ledger keeps full history; journal compaction owns retention (ADR-0010) |
 | 17 | TrimStream / TrimJournalBefore (metaengine v4.23.0) | ⚪ | tq's journal is the QUEUE engine's facts table, not a metaengine journal |
 | 18 | memory engine (fast tests) | 🔴 | readmodel tests deliberately boot real sqlite (fold locks, WAL); only the memory DLQ store is used (host_test.go:275) |
@@ -102,10 +102,9 @@ Status legend: 🟢 FULL, 🟡 PARTIAL, 🔴 MISSED, ⚠️ MISUSED, ⚪ N/A (re
    What it carried (upstream CHANGELOG.md:43-110, verified 2026-11-08/11-09): `AggregateFn` SQL-injection whitelisting (security class — sqliteengine interpolated consumer-controlled strings raw; tq never calls AggregateFn directly, verified by `grep -rn 'AggregateFn' internal cmd` → zero hits, re-verified 2026-11-11, but the engine family tq ships is hardened); the EnforceCap-vs-fold deadlock fix (#123 — tq uses no caps, zero hits, not triggered); `metaengine.WithPrefetch` (see finding 3); classified `Verify`/`Backfill` errors; journal trimming (`TrimStream`/`TrimJournalBefore`, N/A for tq today); `system.Standard` topology + MaxOpenConns plumbing (tq pins MaxOpenConns(1) deliberately — store invariant — so the pool escape hatch is N/A).
    Impact: §5 version-currency risk is CLOSED — every consumed module now sits on its newest tag (verified 2026-11-11). Standing guidance for the NEXT upstream wave: ride `internal/depsweep` (`--dep-sweep`, cmd/tq/main.go:1422-1429), then per-module `go mod tidy`, root `go mod vendor`, and the nix vendorHash update (AGENTS.md gates) — never a hand-edit.
 
-3. **WithPrefetch on the row-rich dashboard scans (needs the v4.21.0+ bump first).**
+3. **WithPrefetch on the row-rich dashboard scans — attempted 2026-11-12, REVERTED: blocked upstream (tie-lossy cursor).**
    Offer: /home/lars/projects/go-cqrs-lite/metaengine — `WithPrefetch(cache)` per-call scan option (CHANGELOG.md:72; the cqrs-lint F026 coached shape, shape-qualified cache key).
-   Current: internal/readmodel/model.go:604 — `NewReader[TaskRow](…).ScanPage(ctx, opts…)` with no cache; every dashboard page render and webui fragment read re-fetches its window.
-   Impact: cursor-paginated board/table views are exactly the coached consumer; a shared `metaengine.PrefetchCache` on the Model would serve repeat windows without doubling fetches on one-shot reads (an explicit `WithPrefetch(nil)` preserves export paths).
+   Attempted + reverted (commit d52c8b50; receipt docs/status/assets/2026-11-12_t10-prefetch-repro/prefetch-wired-roundtrip-FAIL.log): with a PrefetchCache attached, upstream ScanPage abandons the engine's compound sort-key cursor for the legacy bare-value cursor — typed_reader_cursor.go:26-28 comment says the 2× fetch makes the engine's boundary cursor "unrepresentative" — and derives the next cursor from the sort column alone (extractCursorValue, typed_reader_cursor.go:61/91). On tie-heavy ledgers (tq's documented unix-milli normal: "8 created_at tie(s)" in the captured run) every page mints the same timestamp cursor, cache Put/Get keys collide, and the pinned TestTasksPageCursorRoundTrip walks an infinite alternating loop instead of 4+4+1. NO partial adoption is safe at metaengine v4.23.0: the poisoned derivation happens on the first page. Re-arm condition: upstream feeds the compound cursor through trimAndCache (TODO_LIST row filed); then the original offer stands verbatim.
    ```go
    // Model field + TasksPage read path (after the version bump)
    m.prefetch = &metaengine.PrefetchCache{}
