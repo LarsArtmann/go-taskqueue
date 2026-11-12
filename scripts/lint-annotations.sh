@@ -50,7 +50,7 @@ run_module() {
 	local mod="$1" dir="." rc=0
 	[ "$mod" != "root" ] && dir="$mod"
 	(
-		cd "$dir" && GOWORK=off "$lintbin" run --new-from-rev="$base" \
+		cd "$dir" && GOWORK=off GOFLAGS=-mod=readonly "$lintbin" run --new-from-rev="$base" \
 			--output.json.path="$tmpdir/run.json" ./...
 	) || rc=$?
 	if [ "$rc" -ne 0 ] && [ "$rc" -ne 1 ]; then

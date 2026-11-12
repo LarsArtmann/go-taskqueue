@@ -28,11 +28,32 @@ export GOTOOLCHAIN="${GOTOOLCHAIN:-auto}"
 # vendor mode — hence -mod=mod throughout, plus a download warm-up for the
 # two out-of-repo sources before the list, and a vendored-source fallback
 # when the network is unavailable (offline sandbox).
+#
+# The resolution runs in a THROWAWAY module under /tmp, never in the repo:
+# -mod=mod makes `go list -m` materialize the whole module graph into the
+# CURRENT directory's go.sum, which is exactly how 202 stale graph entries
+# leaked into the root go.sum (purged 2026-11-12, taskqueue pareto T15).
+# Same GOMODCACHE, same Dir results, zero writes into the repo.
+resolve_module_dir() {
+	local mod="$1" dir ver
+	ver="$(go list -m -f '{{.Version}}' "$mod" 2>/dev/null || true)"
+	[ -z "$ver" ] && return 0
+	local work
+	work="$(mktemp -d /tmp/tq-css-resolve.XXXXXX)"
+	trap 'rm -rf "$work"' RETURN
+	(
+		cd "$work" &&
+		go mod init cssresolve >/dev/null 2>&1 &&
+		go mod edit -require="$mod@$ver" &&
+		GOFLAGS=-mod=mod go mod download "$mod" >/dev/null 2>&1 || true
+		dir="$(GOFLAGS=-mod=mod go list -m -f '{{.Dir}}' "$mod" 2>/dev/null || true)"
+		printf '%s' "$dir"
+	)
+}
+
 module_dir() {
 	local dir
-	GOFLAGS=-mod=mod go mod download "$1" >/dev/null 2>&1 || true
-
-	dir="$(go list -m -mod=mod -f '{{.Dir}}' "$1" 2>/dev/null || true)"
+	dir="$(resolve_module_dir "$1")"
 
 	if [ -z "$dir" ] && [ -d "vendor/$1" ]; then
 		dir="$(pwd)/vendor/$1"
@@ -45,7 +66,6 @@ module_dir() {
 
 	printf '%s' "$dir"
 }
-
 TC_DIR="$(module_dir github.com/larsartmann/templ-components)"
 GHD_DIR="$(module_dir github.com/larsartmann/go-health-dashboard)"
 REPO="$(pwd)"
