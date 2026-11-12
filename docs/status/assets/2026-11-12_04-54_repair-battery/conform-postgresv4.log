@@ -1,0 +1,303 @@
+=== RUN   TestStoreConformance
+=== RUN   TestStoreConformance/TestEnqueueAndClaim
+    tests.go:79: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== RUN   TestStoreConformance/TestCompleteVerifiesLease
+    tests.go:108: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== RUN   TestStoreConformance/TestCompleteResetsLastError
+    tests.go:132: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== RUN   TestStoreConformance/TestFailRetriesThenDeadLetters
+    tests.go:166: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== RUN   TestStoreConformance/TestFailureEvidenceDetailRoundTrips
+    tests.go:3751: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== RUN   TestStoreConformance/TestDismissDead
+    tests.go:226: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== RUN   TestStoreConformance/TestLeaseExpiryAllowsReclaim
+    tests.go:303: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== RUN   TestStoreConformance/TestReclaimRecordsUnknownEffectDisposition
+    tests.go:332: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== RUN   TestStoreConformance/TestDepsBlockUntilCompleted
+    tests.go:376: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== RUN   TestStoreConformance/TestPriorityOrdersClaims
+=== PAUSE TestStoreConformance/TestPriorityOrdersClaims
+=== RUN   TestStoreConformance/TestClaimAgingFlipsOrder
+=== PAUSE TestStoreConformance/TestClaimAgingFlipsOrder
+=== RUN   TestStoreConformance/TestClaimAgingBonusCapped
+=== PAUSE TestStoreConformance/TestClaimAgingBonusCapped
+=== RUN   TestStoreConformance/TestClaimAgingRespectsNotBefore
+=== PAUSE TestStoreConformance/TestClaimAgingRespectsNotBefore
+=== RUN   TestStoreConformance/TestClaimAgingKeyedOnCreatedAtAcrossRequeue
+=== PAUSE TestStoreConformance/TestClaimAgingKeyedOnCreatedAtAcrossRequeue
+=== RUN   TestStoreConformance/TestClaimAgingAccruesPerWindow
+=== PAUSE TestStoreConformance/TestClaimAgingAccruesPerWindow
+=== RUN   TestStoreConformance/TestUpdatePendingPriority
+=== PAUSE TestStoreConformance/TestUpdatePendingPriority
+=== RUN   TestStoreConformance/TestUpdatePendingPriorityIdempotent
+=== PAUSE TestStoreConformance/TestUpdatePendingPriorityIdempotent
+=== RUN   TestStoreConformance/TestUpdatePendingPriorityRefusesNonPending
+=== PAUSE TestStoreConformance/TestUpdatePendingPriorityRefusesNonPending
+=== RUN   TestStoreConformance/TestUpdatePendingPriorityFlipsClaimOrder
+=== PAUSE TestStoreConformance/TestUpdatePendingPriorityFlipsClaimOrder
+=== RUN   TestStoreConformance/TestNotBeforeDelays
+    tests.go:688: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== RUN   TestStoreConformance/TestHeartbeatExtendsLease
+    tests.go:702: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== RUN   TestStoreConformance/TestCancelPendingOnly
+    tests.go:727: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== RUN   TestStoreConformance/TestListFilters
+    tests.go:745: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== RUN   TestStoreConformance/TestGetNotFound
+    tests.go:778: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== RUN   TestStoreConformance/TestEmptyTypeRejected
+    tests.go:785: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== RUN   TestStoreConformance/TestEnqueueDedupKey
+    tests.go:794: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== RUN   TestStoreConformance/TestEnqueueWithoutDedupKeyIndependent
+    tests.go:862: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== RUN   TestStoreConformance/TestMigrateAddsDedupKeyToOldDatabase
+    tests.go:930: postgres spike: legacy-file migration is an upstream-engine/replay-tool concern, not adapter surface (ADR-0019 S1 migration story)
+=== RUN   TestStoreConformance/TestWatermarkAbsentReturnsZero
+    tests.go:959: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== RUN   TestStoreConformance/TestWatermarkSaveAndReadRoundtrip
+    tests.go:992: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== RUN   TestStoreConformance/TestWatermarkMonotonicGuard
+    tests.go:1009: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== RUN   TestStoreConformance/TestMigrateAddsWatermarksTable
+    tests.go:1024: postgres spike: legacy-file migration is an upstream-engine/replay-tool concern, not adapter surface (ADR-0019 S1 migration story)
+=== RUN   TestStoreConformance/TestFailPermanentDeadLettersImmediately
+    tests.go:1039: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== RUN   TestStoreConformance/TestProjectExclusivitySerializesPerProject
+    tests.go:1115: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== RUN   TestStoreConformance/TestProjectExclusivityAcrossStoreHandles
+    tests.go:1213: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== RUN   TestStoreConformance/TestParkedRequeueNotResurrectableByStaleLease
+    tests.go:1254: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== RUN   TestStoreConformance/TestParkedFilter
+    tests.go:1359: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== RUN   TestStoreConformance/TestParkSuppressesClaimsUntilRelease
+    tests.go:3790: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== RUN   TestStoreConformance/TestParkRefusesNonPendingAndUnknown
+    tests.go:3831: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== RUN   TestStoreConformance/TestClaimDueTypesFiltersExecutorTypes
+    tests.go:3855: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== RUN   TestStoreConformance/TestClaimCountsGroupsPerTask
+    tests.go:3902: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== RUN   TestStoreConformance/TestRequeueFactCarriesClass
+    tests.go:1578: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== RUN   TestStoreConformance/TestRequeueDoesNotBurnAttempts
+    tests.go:1402: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== RUN   TestStoreConformance/TestRequeueFactCarriesResumeCloseout
+    tests.go:1495: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== RUN   TestStoreConformance/TestRequeueFactCarriesProvider
+    tests.go:1632: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== RUN   TestStoreConformance/TestFactsCursorBounded
+=== PAUSE TestStoreConformance/TestFactsCursorBounded
+=== RUN   TestStoreConformance/TestLastFactsReturnsTailInAscendingOrder
+=== PAUSE TestStoreConformance/TestLastFactsReturnsTailInAscendingOrder
+=== RUN   TestStoreConformance/TestHeadSeq
+=== PAUSE TestStoreConformance/TestHeadSeq
+=== RUN   TestStoreConformance/TestFactsForTaskFiltersAndBounds
+=== PAUSE TestStoreConformance/TestFactsForTaskFiltersAndBounds
+=== RUN   TestStoreConformance/TestCountFactsByTypeSince
+=== PAUSE TestStoreConformance/TestCountFactsByTypeSince
+=== RUN   TestStoreConformance/TestFactsSinceByType
+=== PAUSE TestStoreConformance/TestFactsSinceByType
+=== RUN   TestStoreConformance/TestListQueryPushdown
+=== PAUSE TestStoreConformance/TestListQueryPushdown
+=== RUN   TestStoreConformance/TestListQueryLikeEscaping
+=== PAUSE TestStoreConformance/TestListQueryLikeEscaping
+=== RUN   TestStoreConformance/TestListPayloadContains
+=== PAUSE TestStoreConformance/TestListPayloadContains
+=== RUN   TestStoreConformance/TestListOffsetPagination
+=== PAUSE TestStoreConformance/TestListOffsetPagination
+=== RUN   TestStoreConformance/TestStatusCountsAndProjectCounts
+=== PAUSE TestStoreConformance/TestStatusCountsAndProjectCounts
+=== RUN   TestStoreConformance/TestListSeverityOrder
+=== PAUSE TestStoreConformance/TestListSeverityOrder
+=== RUN   TestStoreConformance/TestCountTasksMatchesList
+=== PAUSE TestStoreConformance/TestCountTasksMatchesList
+=== RUN   TestStoreConformance/TestLoadSnapshotScaleAt100k
+    tests.go:2377: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== RUN   TestStoreConformance/TestCancelRunningRequestAndHonour
+    tests.go:2494: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== RUN   TestStoreConformance/TestReclaimFinalizesCancelRequest
+    tests.go:2546: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== RUN   TestStoreConformance/TestCancelReasonStoredInFactDetail
+    tests.go:2595: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== RUN   TestStoreConformance/TestMarkOrphanedRecordsStrandedTasks
+    tests.go:2699: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== RUN   TestStoreConformance/TestEnqueueClaimBaseline10k
+    tests.go:2790: on-demand baseline: run with TQ_BASELINE=1 (10k writes are too slow for the default suite, especially under -race)
+=== RUN   TestStoreConformance/TestArchiveFactsBeforeKeepsProjections
+    tests.go:2842: DIVERGENCE (S1 spike): the fact archive (facts_archive/journal_meta) has no upstream counterpart — hot-journal-only for now; see docs/status S1 report
+=== RUN   TestStoreConformance/TestListSortAllowlist
+    tests.go:2936: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== RUN   TestStoreConformance/TestListSinceFilter
+    tests.go:2980: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== RUN   TestStoreConformance/TestPriorityScoreRoundtrip
+    tests.go:3027: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== RUN   TestStoreConformance/TestPriorityScoresListAndDelete
+    tests.go:3065: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== RUN   TestStoreConformance/TestBandFilter
+=== PAUSE TestStoreConformance/TestBandFilter
+=== RUN   TestStoreConformance/TestEnqueueFactDetailCarriesIdentity
+    tests.go:3171: DIVERGENCE (S1 spike): upstream task.enqueued detail carries only {project, type} — the priority/dedup_key projection fields the journal-drift audit needs are not written; see docs/status S1 report
+=== RUN   TestStoreConformance/TestRescueDeadEmitsRescueEnqueue
+    tests.go:3218: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== RUN   TestStoreConformance/TestRecordAnswerUnblocksParkedTask
+    tests.go:3379: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== RUN   TestStoreConformance/TestRecordAnswerReplayIsNoop
+    tests.go:3418: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== RUN   TestStoreConformance/TestRecordAnswerSecondQuestionAppends
+    tests.go:3465: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== RUN   TestStoreConformance/TestRecordAnswerOnTerminalTaskNeverUnblocks
+=== RUN   TestStoreConformance/TestRecordAnswerOnTerminalTaskNeverUnblocks/cancelled_task_fact-only
+    tests.go:3598: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== RUN   TestStoreConformance/TestRecordAnswerOnTerminalTaskNeverUnblocks/dead_task_fact-only
+    tests.go:3598: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== RUN   TestStoreConformance/TestRecordAnswerOnRunningTaskFactOnly
+    tests.go:3645: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== RUN   TestStoreConformance/TestRecordAnswerRawPayloadFactOnly
+    tests.go:3679: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== RUN   TestStoreConformance/TestRecordAnswerValidation
+    tests.go:3707: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== RUN   TestStoreConformance/TestAppendFactRecordsNonTaskFact
+    sessionfact.go:17: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== RUN   TestStoreConformance/TestAppendFactDoesNotMaterializeTaskRows
+    sessionfact.go:67: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== CONT  TestStoreConformance/TestPriorityOrdersClaims
+=== CONT  TestStoreConformance/TestCountTasksMatchesList
+=== CONT  TestStoreConformance/TestFactsCursorBounded
+    tests.go:1694: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== CONT  TestStoreConformance/TestUpdatePendingPriorityFlipsClaimOrder
+    tests.go:671: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== CONT  TestStoreConformance/TestUpdatePendingPriorityRefusesNonPending
+=== NAME  TestStoreConformance/TestCountTasksMatchesList
+    tests.go:2263: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== NAME  TestStoreConformance/TestUpdatePendingPriorityRefusesNonPending
+    tests.go:638: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== NAME  TestStoreConformance/TestPriorityOrdersClaims
+    tests.go:408: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== CONT  TestStoreConformance/TestListSeverityOrder
+    tests.go:2178: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== CONT  TestStoreConformance/TestUpdatePendingPriorityIdempotent
+    tests.go:618: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== CONT  TestStoreConformance/TestUpdatePendingPriority
+    tests.go:566: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== CONT  TestStoreConformance/TestClaimAgingAccruesPerWindow
+    tests.go:527: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== CONT  TestStoreConformance/TestClaimAgingKeyedOnCreatedAtAcrossRequeue
+    tests.go:495: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== CONT  TestStoreConformance/TestClaimAgingRespectsNotBefore
+    tests.go:466: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== CONT  TestStoreConformance/TestClaimAgingBonusCapped
+    tests.go:446: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== CONT  TestStoreConformance/TestBandFilter
+    tests.go:3118: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== CONT  TestStoreConformance/TestLastFactsReturnsTailInAscendingOrder
+    tests.go:1728: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== CONT  TestStoreConformance/TestListQueryPushdown
+    tests.go:2004: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== CONT  TestStoreConformance/TestStatusCountsAndProjectCounts
+    tests.go:2125: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== CONT  TestStoreConformance/TestListOffsetPagination
+    tests.go:2091: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== CONT  TestStoreConformance/TestListPayloadContains
+    tests.go:2050: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== CONT  TestStoreConformance/TestClaimAgingFlipsOrder
+    tests.go:424: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== CONT  TestStoreConformance/TestCountFactsByTypeSince
+    tests.go:1825: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== CONT  TestStoreConformance/TestListQueryLikeEscaping
+    tests.go:2029: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== CONT  TestStoreConformance/TestFactsSinceByType
+    tests.go:1859: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== CONT  TestStoreConformance/TestFactsForTaskFiltersAndBounds
+    tests.go:1779: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+=== CONT  TestStoreConformance/TestHeadSeq
+    tests.go:1753: TQ_TEST_POSTGRES unset — postgresv4 spike suite needs a database
+--- PASS: TestStoreConformance (0.00s)
+    --- SKIP: TestStoreConformance/TestEnqueueAndClaim (0.00s)
+    --- SKIP: TestStoreConformance/TestCompleteVerifiesLease (0.00s)
+    --- SKIP: TestStoreConformance/TestCompleteResetsLastError (0.00s)
+    --- SKIP: TestStoreConformance/TestFailRetriesThenDeadLetters (0.00s)
+    --- SKIP: TestStoreConformance/TestFailureEvidenceDetailRoundTrips (0.00s)
+    --- SKIP: TestStoreConformance/TestDismissDead (0.00s)
+    --- SKIP: TestStoreConformance/TestLeaseExpiryAllowsReclaim (0.00s)
+    --- SKIP: TestStoreConformance/TestReclaimRecordsUnknownEffectDisposition (0.00s)
+    --- SKIP: TestStoreConformance/TestDepsBlockUntilCompleted (0.00s)
+    --- SKIP: TestStoreConformance/TestNotBeforeDelays (0.00s)
+    --- SKIP: TestStoreConformance/TestHeartbeatExtendsLease (0.00s)
+    --- SKIP: TestStoreConformance/TestCancelPendingOnly (0.00s)
+    --- SKIP: TestStoreConformance/TestListFilters (0.00s)
+    --- SKIP: TestStoreConformance/TestGetNotFound (0.00s)
+    --- SKIP: TestStoreConformance/TestEmptyTypeRejected (0.00s)
+    --- SKIP: TestStoreConformance/TestEnqueueDedupKey (0.00s)
+    --- SKIP: TestStoreConformance/TestEnqueueWithoutDedupKeyIndependent (0.00s)
+    --- SKIP: TestStoreConformance/TestMigrateAddsDedupKeyToOldDatabase (0.00s)
+    --- SKIP: TestStoreConformance/TestWatermarkAbsentReturnsZero (0.00s)
+    --- SKIP: TestStoreConformance/TestWatermarkSaveAndReadRoundtrip (0.00s)
+    --- SKIP: TestStoreConformance/TestWatermarkMonotonicGuard (0.00s)
+    --- SKIP: TestStoreConformance/TestMigrateAddsWatermarksTable (0.00s)
+    --- SKIP: TestStoreConformance/TestFailPermanentDeadLettersImmediately (0.00s)
+    --- SKIP: TestStoreConformance/TestProjectExclusivitySerializesPerProject (0.00s)
+    --- SKIP: TestStoreConformance/TestProjectExclusivityAcrossStoreHandles (0.00s)
+    --- SKIP: TestStoreConformance/TestParkedRequeueNotResurrectableByStaleLease (0.00s)
+    --- SKIP: TestStoreConformance/TestParkedFilter (0.00s)
+    --- SKIP: TestStoreConformance/TestParkSuppressesClaimsUntilRelease (0.00s)
+    --- SKIP: TestStoreConformance/TestParkRefusesNonPendingAndUnknown (0.00s)
+    --- SKIP: TestStoreConformance/TestClaimDueTypesFiltersExecutorTypes (0.00s)
+    --- SKIP: TestStoreConformance/TestClaimCountsGroupsPerTask (0.00s)
+    --- SKIP: TestStoreConformance/TestRequeueFactCarriesClass (0.00s)
+    --- SKIP: TestStoreConformance/TestRequeueDoesNotBurnAttempts (0.00s)
+    --- SKIP: TestStoreConformance/TestRequeueFactCarriesResumeCloseout (0.00s)
+    --- SKIP: TestStoreConformance/TestRequeueFactCarriesProvider (0.00s)
+    --- SKIP: TestStoreConformance/TestLoadSnapshotScaleAt100k (0.00s)
+    --- SKIP: TestStoreConformance/TestCancelRunningRequestAndHonour (0.00s)
+    --- SKIP: TestStoreConformance/TestReclaimFinalizesCancelRequest (0.00s)
+    --- SKIP: TestStoreConformance/TestCancelReasonStoredInFactDetail (0.00s)
+    --- SKIP: TestStoreConformance/TestMarkOrphanedRecordsStrandedTasks (0.00s)
+    --- SKIP: TestStoreConformance/TestEnqueueClaimBaseline10k (0.00s)
+    --- SKIP: TestStoreConformance/TestArchiveFactsBeforeKeepsProjections (0.00s)
+    --- SKIP: TestStoreConformance/TestListSortAllowlist (0.00s)
+    --- SKIP: TestStoreConformance/TestListSinceFilter (0.00s)
+    --- SKIP: TestStoreConformance/TestPriorityScoreRoundtrip (0.00s)
+    --- SKIP: TestStoreConformance/TestPriorityScoresListAndDelete (0.00s)
+    --- SKIP: TestStoreConformance/TestEnqueueFactDetailCarriesIdentity (0.00s)
+    --- SKIP: TestStoreConformance/TestRescueDeadEmitsRescueEnqueue (0.00s)
+    --- SKIP: TestStoreConformance/TestRecordAnswerUnblocksParkedTask (0.00s)
+    --- SKIP: TestStoreConformance/TestRecordAnswerReplayIsNoop (0.00s)
+    --- SKIP: TestStoreConformance/TestRecordAnswerSecondQuestionAppends (0.00s)
+    --- PASS: TestStoreConformance/TestRecordAnswerOnTerminalTaskNeverUnblocks (0.00s)
+        --- SKIP: TestStoreConformance/TestRecordAnswerOnTerminalTaskNeverUnblocks/cancelled_task_fact-only (0.00s)
+        --- SKIP: TestStoreConformance/TestRecordAnswerOnTerminalTaskNeverUnblocks/dead_task_fact-only (0.00s)
+    --- SKIP: TestStoreConformance/TestRecordAnswerOnRunningTaskFactOnly (0.00s)
+    --- SKIP: TestStoreConformance/TestRecordAnswerRawPayloadFactOnly (0.00s)
+    --- SKIP: TestStoreConformance/TestRecordAnswerValidation (0.00s)
+    --- SKIP: TestStoreConformance/TestAppendFactRecordsNonTaskFact (0.00s)
+    --- SKIP: TestStoreConformance/TestAppendFactDoesNotMaterializeTaskRows (0.00s)
+    --- SKIP: TestStoreConformance/TestFactsCursorBounded (0.00s)
+    --- SKIP: TestStoreConformance/TestUpdatePendingPriorityFlipsClaimOrder (0.00s)
+    --- SKIP: TestStoreConformance/TestCountTasksMatchesList (0.00s)
+    --- SKIP: TestStoreConformance/TestPriorityOrdersClaims (0.00s)
+    --- SKIP: TestStoreConformance/TestUpdatePendingPriorityRefusesNonPending (0.00s)
+    --- SKIP: TestStoreConformance/TestListSeverityOrder (0.00s)
+    --- SKIP: TestStoreConformance/TestUpdatePendingPriorityIdempotent (0.00s)
+    --- SKIP: TestStoreConformance/TestUpdatePendingPriority (0.00s)
+    --- SKIP: TestStoreConformance/TestClaimAgingAccruesPerWindow (0.00s)
+    --- SKIP: TestStoreConformance/TestClaimAgingKeyedOnCreatedAtAcrossRequeue (0.00s)
+    --- SKIP: TestStoreConformance/TestClaimAgingRespectsNotBefore (0.00s)
+    --- SKIP: TestStoreConformance/TestClaimAgingBonusCapped (0.00s)
+    --- SKIP: TestStoreConformance/TestBandFilter (0.00s)
+    --- SKIP: TestStoreConformance/TestLastFactsReturnsTailInAscendingOrder (0.00s)
+    --- SKIP: TestStoreConformance/TestListQueryPushdown (0.00s)
+    --- SKIP: TestStoreConformance/TestStatusCountsAndProjectCounts (0.00s)
+    --- SKIP: TestStoreConformance/TestListOffsetPagination (0.00s)
+    --- SKIP: TestStoreConformance/TestListPayloadContains (0.00s)
+    --- SKIP: TestStoreConformance/TestClaimAgingFlipsOrder (0.00s)
+    --- SKIP: TestStoreConformance/TestCountFactsByTypeSince (0.00s)
+    --- SKIP: TestStoreConformance/TestListQueryLikeEscaping (0.00s)
+    --- SKIP: TestStoreConformance/TestFactsSinceByType (0.00s)
+    --- SKIP: TestStoreConformance/TestFactsForTaskFiltersAndBounds (0.00s)
+    --- SKIP: TestStoreConformance/TestHeadSeq (0.00s)
+PASS
+ok  	github.com/larsartmann/go-taskqueue/internal/queue/postgresv4	0.005s

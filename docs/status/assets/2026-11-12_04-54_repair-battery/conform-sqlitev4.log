@@ -1,0 +1,232 @@
+=== RUN   TestStoreConformance
+=== RUN   TestStoreConformance/TestEnqueueAndClaim
+=== RUN   TestStoreConformance/TestCompleteVerifiesLease
+=== RUN   TestStoreConformance/TestCompleteResetsLastError
+=== RUN   TestStoreConformance/TestFailRetriesThenDeadLetters
+=== RUN   TestStoreConformance/TestFailureEvidenceDetailRoundTrips
+=== RUN   TestStoreConformance/TestDismissDead
+=== RUN   TestStoreConformance/TestLeaseExpiryAllowsReclaim
+=== RUN   TestStoreConformance/TestReclaimRecordsUnknownEffectDisposition
+=== RUN   TestStoreConformance/TestDepsBlockUntilCompleted
+=== RUN   TestStoreConformance/TestPriorityOrdersClaims
+=== PAUSE TestStoreConformance/TestPriorityOrdersClaims
+=== RUN   TestStoreConformance/TestClaimAgingFlipsOrder
+=== PAUSE TestStoreConformance/TestClaimAgingFlipsOrder
+=== RUN   TestStoreConformance/TestClaimAgingBonusCapped
+=== PAUSE TestStoreConformance/TestClaimAgingBonusCapped
+=== RUN   TestStoreConformance/TestClaimAgingRespectsNotBefore
+=== PAUSE TestStoreConformance/TestClaimAgingRespectsNotBefore
+=== RUN   TestStoreConformance/TestClaimAgingKeyedOnCreatedAtAcrossRequeue
+=== PAUSE TestStoreConformance/TestClaimAgingKeyedOnCreatedAtAcrossRequeue
+=== RUN   TestStoreConformance/TestClaimAgingAccruesPerWindow
+=== PAUSE TestStoreConformance/TestClaimAgingAccruesPerWindow
+=== RUN   TestStoreConformance/TestUpdatePendingPriority
+=== PAUSE TestStoreConformance/TestUpdatePendingPriority
+=== RUN   TestStoreConformance/TestUpdatePendingPriorityIdempotent
+=== PAUSE TestStoreConformance/TestUpdatePendingPriorityIdempotent
+=== RUN   TestStoreConformance/TestUpdatePendingPriorityRefusesNonPending
+=== PAUSE TestStoreConformance/TestUpdatePendingPriorityRefusesNonPending
+=== RUN   TestStoreConformance/TestUpdatePendingPriorityFlipsClaimOrder
+=== PAUSE TestStoreConformance/TestUpdatePendingPriorityFlipsClaimOrder
+=== RUN   TestStoreConformance/TestNotBeforeDelays
+=== RUN   TestStoreConformance/TestHeartbeatExtendsLease
+=== RUN   TestStoreConformance/TestCancelPendingOnly
+=== RUN   TestStoreConformance/TestListFilters
+=== RUN   TestStoreConformance/TestGetNotFound
+=== RUN   TestStoreConformance/TestEmptyTypeRejected
+=== RUN   TestStoreConformance/TestEnqueueDedupKey
+=== RUN   TestStoreConformance/TestEnqueueWithoutDedupKeyIndependent
+=== RUN   TestStoreConformance/TestMigrateAddsDedupKeyToOldDatabase
+=== RUN   TestStoreConformance/TestWatermarkAbsentReturnsZero
+=== RUN   TestStoreConformance/TestWatermarkSaveAndReadRoundtrip
+=== RUN   TestStoreConformance/TestWatermarkMonotonicGuard
+=== RUN   TestStoreConformance/TestMigrateAddsWatermarksTable
+=== RUN   TestStoreConformance/TestFailPermanentDeadLettersImmediately
+=== RUN   TestStoreConformance/TestProjectExclusivitySerializesPerProject
+=== RUN   TestStoreConformance/TestProjectExclusivityAcrossStoreHandles
+=== RUN   TestStoreConformance/TestParkedRequeueNotResurrectableByStaleLease
+=== RUN   TestStoreConformance/TestParkedFilter
+=== RUN   TestStoreConformance/TestParkSuppressesClaimsUntilRelease
+=== RUN   TestStoreConformance/TestParkRefusesNonPendingAndUnknown
+=== RUN   TestStoreConformance/TestClaimDueTypesFiltersExecutorTypes
+=== RUN   TestStoreConformance/TestClaimCountsGroupsPerTask
+=== RUN   TestStoreConformance/TestRequeueFactCarriesClass
+=== RUN   TestStoreConformance/TestRequeueDoesNotBurnAttempts
+=== RUN   TestStoreConformance/TestRequeueFactCarriesResumeCloseout
+=== RUN   TestStoreConformance/TestRequeueFactCarriesResumeCloseout/closeout_resume_stamps_the_flag
+=== RUN   TestStoreConformance/TestRequeueFactCarriesResumeCloseout/plain_requeue_omits_the_flag
+=== RUN   TestStoreConformance/TestRequeueFactCarriesProvider
+=== RUN   TestStoreConformance/TestFactsCursorBounded
+=== PAUSE TestStoreConformance/TestFactsCursorBounded
+=== RUN   TestStoreConformance/TestLastFactsReturnsTailInAscendingOrder
+=== PAUSE TestStoreConformance/TestLastFactsReturnsTailInAscendingOrder
+=== RUN   TestStoreConformance/TestHeadSeq
+=== PAUSE TestStoreConformance/TestHeadSeq
+=== RUN   TestStoreConformance/TestFactsForTaskFiltersAndBounds
+=== PAUSE TestStoreConformance/TestFactsForTaskFiltersAndBounds
+=== RUN   TestStoreConformance/TestCountFactsByTypeSince
+=== PAUSE TestStoreConformance/TestCountFactsByTypeSince
+=== RUN   TestStoreConformance/TestFactsSinceByType
+=== PAUSE TestStoreConformance/TestFactsSinceByType
+=== RUN   TestStoreConformance/TestListQueryPushdown
+=== PAUSE TestStoreConformance/TestListQueryPushdown
+=== RUN   TestStoreConformance/TestListQueryLikeEscaping
+=== PAUSE TestStoreConformance/TestListQueryLikeEscaping
+=== RUN   TestStoreConformance/TestListPayloadContains
+=== PAUSE TestStoreConformance/TestListPayloadContains
+=== RUN   TestStoreConformance/TestListOffsetPagination
+=== PAUSE TestStoreConformance/TestListOffsetPagination
+=== RUN   TestStoreConformance/TestStatusCountsAndProjectCounts
+=== PAUSE TestStoreConformance/TestStatusCountsAndProjectCounts
+=== RUN   TestStoreConformance/TestListSeverityOrder
+=== PAUSE TestStoreConformance/TestListSeverityOrder
+=== RUN   TestStoreConformance/TestCountTasksMatchesList
+=== PAUSE TestStoreConformance/TestCountTasksMatchesList
+=== RUN   TestStoreConformance/TestLoadSnapshotScaleAt100k
+    tests.go:2475: SCALE 100k: page1=32.822112ms count=1.777111ms query-count=106.470571ms last-50-facts=293.06µs task-trail=51.708µs
+=== RUN   TestStoreConformance/TestCancelRunningRequestAndHonour
+=== RUN   TestStoreConformance/TestReclaimFinalizesCancelRequest
+=== RUN   TestStoreConformance/TestCancelReasonStoredInFactDetail
+=== RUN   TestStoreConformance/TestMarkOrphanedRecordsStrandedTasks
+=== RUN   TestStoreConformance/TestEnqueueClaimBaseline10k
+    tests.go:2790: on-demand baseline: run with TQ_BASELINE=1 (10k writes are too slow for the default suite, especially under -race)
+=== RUN   TestStoreConformance/TestArchiveFactsBeforeKeepsProjections
+    tests.go:2842: DIVERGENCE (S1 spike): the fact archive (facts_archive/journal_meta) has no upstream counterpart — hot-journal-only for now; see docs/status S1 report
+=== RUN   TestStoreConformance/TestListSortAllowlist
+=== RUN   TestStoreConformance/TestListSinceFilter
+=== RUN   TestStoreConformance/TestPriorityScoreRoundtrip
+=== RUN   TestStoreConformance/TestPriorityScoresListAndDelete
+=== RUN   TestStoreConformance/TestBandFilter
+=== PAUSE TestStoreConformance/TestBandFilter
+=== RUN   TestStoreConformance/TestEnqueueFactDetailCarriesIdentity
+    tests.go:3171: DIVERGENCE (S1 spike): upstream task.enqueued detail carries only {project, type} — the priority/dedup_key projection fields the journal-drift audit needs are not written; see docs/status S1 report
+=== RUN   TestStoreConformance/TestRescueDeadEmitsRescueEnqueue
+=== RUN   TestStoreConformance/TestRecordAnswerUnblocksParkedTask
+=== RUN   TestStoreConformance/TestRecordAnswerReplayIsNoop
+=== RUN   TestStoreConformance/TestRecordAnswerSecondQuestionAppends
+=== RUN   TestStoreConformance/TestRecordAnswerOnTerminalTaskNeverUnblocks
+=== RUN   TestStoreConformance/TestRecordAnswerOnTerminalTaskNeverUnblocks/cancelled_task_fact-only
+=== RUN   TestStoreConformance/TestRecordAnswerOnTerminalTaskNeverUnblocks/dead_task_fact-only
+=== RUN   TestStoreConformance/TestRecordAnswerOnRunningTaskFactOnly
+=== RUN   TestStoreConformance/TestRecordAnswerRawPayloadFactOnly
+=== RUN   TestStoreConformance/TestRecordAnswerValidation
+=== RUN   TestStoreConformance/TestRecordAnswerValidation/missing_ref
+=== RUN   TestStoreConformance/TestRecordAnswerValidation/blank_answer
+=== RUN   TestStoreConformance/TestRecordAnswerValidation/unknown_task
+=== RUN   TestStoreConformance/TestAppendFactRecordsNonTaskFact
+=== RUN   TestStoreConformance/TestAppendFactDoesNotMaterializeTaskRows
+=== CONT  TestStoreConformance/TestPriorityOrdersClaims
+=== CONT  TestStoreConformance/TestListSeverityOrder
+=== CONT  TestStoreConformance/TestStatusCountsAndProjectCounts
+=== CONT  TestStoreConformance/TestCountTasksMatchesList
+=== CONT  TestStoreConformance/TestBandFilter
+=== CONT  TestStoreConformance/TestListOffsetPagination
+=== CONT  TestStoreConformance/TestFactsCursorBounded
+=== CONT  TestStoreConformance/TestListPayloadContains
+=== CONT  TestStoreConformance/TestListQueryLikeEscaping
+=== CONT  TestStoreConformance/TestCountFactsByTypeSince
+=== CONT  TestStoreConformance/TestFactsForTaskFiltersAndBounds
+=== CONT  TestStoreConformance/TestHeadSeq
+=== CONT  TestStoreConformance/TestListQueryPushdown
+=== CONT  TestStoreConformance/TestClaimAgingAccruesPerWindow
+=== CONT  TestStoreConformance/TestUpdatePendingPriorityFlipsClaimOrder
+=== CONT  TestStoreConformance/TestLastFactsReturnsTailInAscendingOrder
+=== CONT  TestStoreConformance/TestUpdatePendingPriorityRefusesNonPending
+=== CONT  TestStoreConformance/TestUpdatePendingPriorityIdempotent
+=== CONT  TestStoreConformance/TestClaimAgingBonusCapped
+=== CONT  TestStoreConformance/TestUpdatePendingPriority
+=== CONT  TestStoreConformance/TestClaimAgingFlipsOrder
+=== CONT  TestStoreConformance/TestClaimAgingKeyedOnCreatedAtAcrossRequeue
+=== CONT  TestStoreConformance/TestClaimAgingRespectsNotBefore
+=== CONT  TestStoreConformance/TestFactsSinceByType
+--- PASS: TestStoreConformance (4.13s)
+    --- PASS: TestStoreConformance/TestEnqueueAndClaim (0.00s)
+    --- PASS: TestStoreConformance/TestCompleteVerifiesLease (0.00s)
+    --- PASS: TestStoreConformance/TestCompleteResetsLastError (0.30s)
+    --- PASS: TestStoreConformance/TestFailRetriesThenDeadLetters (0.30s)
+    --- PASS: TestStoreConformance/TestFailureEvidenceDetailRoundTrips (0.00s)
+    --- PASS: TestStoreConformance/TestDismissDead (0.00s)
+    --- PASS: TestStoreConformance/TestLeaseExpiryAllowsReclaim (0.05s)
+    --- PASS: TestStoreConformance/TestReclaimRecordsUnknownEffectDisposition (0.05s)
+    --- PASS: TestStoreConformance/TestDepsBlockUntilCompleted (0.00s)
+    --- PASS: TestStoreConformance/TestNotBeforeDelays (0.00s)
+    --- PASS: TestStoreConformance/TestHeartbeatExtendsLease (0.60s)
+    --- PASS: TestStoreConformance/TestCancelPendingOnly (0.00s)
+    --- PASS: TestStoreConformance/TestListFilters (0.00s)
+    --- PASS: TestStoreConformance/TestGetNotFound (0.00s)
+    --- PASS: TestStoreConformance/TestEmptyTypeRejected (0.00s)
+    --- PASS: TestStoreConformance/TestEnqueueDedupKey (0.00s)
+    --- PASS: TestStoreConformance/TestEnqueueWithoutDedupKeyIndependent (0.00s)
+    --- PASS: TestStoreConformance/TestMigrateAddsDedupKeyToOldDatabase (0.00s)
+    --- PASS: TestStoreConformance/TestWatermarkAbsentReturnsZero (0.00s)
+    --- PASS: TestStoreConformance/TestWatermarkSaveAndReadRoundtrip (0.00s)
+    --- PASS: TestStoreConformance/TestWatermarkMonotonicGuard (0.00s)
+    --- PASS: TestStoreConformance/TestMigrateAddsWatermarksTable (0.00s)
+    --- PASS: TestStoreConformance/TestFailPermanentDeadLettersImmediately (0.00s)
+    --- PASS: TestStoreConformance/TestProjectExclusivitySerializesPerProject (0.00s)
+    --- PASS: TestStoreConformance/TestProjectExclusivityAcrossStoreHandles (0.00s)
+    --- PASS: TestStoreConformance/TestParkedRequeueNotResurrectableByStaleLease (0.00s)
+    --- PASS: TestStoreConformance/TestParkedFilter (0.00s)
+    --- PASS: TestStoreConformance/TestParkSuppressesClaimsUntilRelease (0.00s)
+    --- PASS: TestStoreConformance/TestParkRefusesNonPendingAndUnknown (0.00s)
+    --- PASS: TestStoreConformance/TestClaimDueTypesFiltersExecutorTypes (0.00s)
+    --- PASS: TestStoreConformance/TestClaimCountsGroupsPerTask (0.00s)
+    --- PASS: TestStoreConformance/TestRequeueFactCarriesClass (0.00s)
+    --- PASS: TestStoreConformance/TestRequeueDoesNotBurnAttempts (0.20s)
+    --- PASS: TestStoreConformance/TestRequeueFactCarriesResumeCloseout (0.00s)
+        --- PASS: TestStoreConformance/TestRequeueFactCarriesResumeCloseout/closeout_resume_stamps_the_flag (0.00s)
+        --- PASS: TestStoreConformance/TestRequeueFactCarriesResumeCloseout/plain_requeue_omits_the_flag (0.00s)
+    --- PASS: TestStoreConformance/TestRequeueFactCarriesProvider (0.00s)
+    --- PASS: TestStoreConformance/TestLoadSnapshotScaleAt100k (1.02s)
+    --- PASS: TestStoreConformance/TestCancelRunningRequestAndHonour (0.00s)
+    --- PASS: TestStoreConformance/TestReclaimFinalizesCancelRequest (0.05s)
+    --- PASS: TestStoreConformance/TestCancelReasonStoredInFactDetail (0.00s)
+    --- PASS: TestStoreConformance/TestMarkOrphanedRecordsStrandedTasks (1.31s)
+    --- SKIP: TestStoreConformance/TestEnqueueClaimBaseline10k (0.00s)
+    --- SKIP: TestStoreConformance/TestArchiveFactsBeforeKeepsProjections (0.00s)
+    --- PASS: TestStoreConformance/TestListSortAllowlist (0.00s)
+    --- PASS: TestStoreConformance/TestListSinceFilter (0.00s)
+    --- PASS: TestStoreConformance/TestPriorityScoreRoundtrip (0.00s)
+    --- PASS: TestStoreConformance/TestPriorityScoresListAndDelete (0.00s)
+    --- SKIP: TestStoreConformance/TestEnqueueFactDetailCarriesIdentity (0.00s)
+    --- PASS: TestStoreConformance/TestRescueDeadEmitsRescueEnqueue (0.00s)
+    --- PASS: TestStoreConformance/TestRecordAnswerUnblocksParkedTask (0.00s)
+    --- PASS: TestStoreConformance/TestRecordAnswerReplayIsNoop (0.00s)
+    --- PASS: TestStoreConformance/TestRecordAnswerSecondQuestionAppends (0.00s)
+    --- PASS: TestStoreConformance/TestRecordAnswerOnTerminalTaskNeverUnblocks (0.00s)
+        --- PASS: TestStoreConformance/TestRecordAnswerOnTerminalTaskNeverUnblocks/cancelled_task_fact-only (0.00s)
+        --- PASS: TestStoreConformance/TestRecordAnswerOnTerminalTaskNeverUnblocks/dead_task_fact-only (0.00s)
+    --- PASS: TestStoreConformance/TestRecordAnswerOnRunningTaskFactOnly (0.15s)
+    --- PASS: TestStoreConformance/TestRecordAnswerRawPayloadFactOnly (0.00s)
+    --- PASS: TestStoreConformance/TestRecordAnswerValidation (0.00s)
+        --- PASS: TestStoreConformance/TestRecordAnswerValidation/missing_ref (0.00s)
+        --- PASS: TestStoreConformance/TestRecordAnswerValidation/blank_answer (0.00s)
+        --- PASS: TestStoreConformance/TestRecordAnswerValidation/unknown_task (0.00s)
+    --- PASS: TestStoreConformance/TestAppendFactRecordsNonTaskFact (0.00s)
+    --- PASS: TestStoreConformance/TestAppendFactDoesNotMaterializeTaskRows (0.00s)
+    --- PASS: TestStoreConformance/TestStatusCountsAndProjectCounts (0.03s)
+    --- PASS: TestStoreConformance/TestUpdatePendingPriorityIdempotent (0.03s)
+    --- PASS: TestStoreConformance/TestCountFactsByTypeSince (0.03s)
+    --- PASS: TestStoreConformance/TestPriorityOrdersClaims (0.03s)
+    --- PASS: TestStoreConformance/TestClaimAgingRespectsNotBefore (0.03s)
+    --- PASS: TestStoreConformance/TestUpdatePendingPriority (0.03s)
+    --- PASS: TestStoreConformance/TestClaimAgingBonusCapped (0.03s)
+    --- PASS: TestStoreConformance/TestBandFilter (0.03s)
+    --- PASS: TestStoreConformance/TestUpdatePendingPriorityFlipsClaimOrder (0.03s)
+    --- PASS: TestStoreConformance/TestFactsSinceByType (0.03s)
+    --- PASS: TestStoreConformance/TestClaimAgingKeyedOnCreatedAtAcrossRequeue (0.03s)
+    --- PASS: TestStoreConformance/TestHeadSeq (0.04s)
+    --- PASS: TestStoreConformance/TestClaimAgingFlipsOrder (0.04s)
+    --- PASS: TestStoreConformance/TestFactsForTaskFiltersAndBounds (0.04s)
+    --- PASS: TestStoreConformance/TestClaimAgingAccruesPerWindow (0.04s)
+    --- PASS: TestStoreConformance/TestUpdatePendingPriorityRefusesNonPending (0.04s)
+    --- PASS: TestStoreConformance/TestListOffsetPagination (0.04s)
+    --- PASS: TestStoreConformance/TestFactsCursorBounded (0.04s)
+    --- PASS: TestStoreConformance/TestListPayloadContains (0.04s)
+    --- PASS: TestStoreConformance/TestListSeverityOrder (0.04s)
+    --- PASS: TestStoreConformance/TestLastFactsReturnsTailInAscendingOrder (0.04s)
+    --- PASS: TestStoreConformance/TestListQueryLikeEscaping (0.04s)
+    --- PASS: TestStoreConformance/TestListQueryPushdown (0.04s)
+    --- PASS: TestStoreConformance/TestCountTasksMatchesList (0.04s)
+PASS
+ok  	github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4	4.183s
