@@ -121,13 +121,6 @@ type Model struct {
 	// double-count.
 	readOnly bool
 	watcher  *metaengine.Watcher[TaskRow]
-	// pageCache is the repeat-window scan cache TasksPage rides (the
-	// upstream PrefetchCache shape): each page fetch pulls twice the
-	// limit and the overflow waits under the next-page cursor key, so a
-	// dashboard walk's following page is one cache hit. Cleared at every
-	// fold batch (catchUpOnce) — cached pages may never outlive the
-	// ledger state they were fetched under.
-	pageCache *metaengine.PrefetchCache
 }
 
 // Option configures the Model.
@@ -213,12 +206,11 @@ func Open(ctx context.Context, path string, src queue.Store, opts ...Option) (*M
 	}
 
 	m := &Model{
-		src:       src,
-		path:      path,
-		rows:      StoreRows{Store: src},
-		poll:      DefaultPoll,
-		batch:     DefaultBatch,
-		pageCache: metaengine.NewPrefetchCache(),
+		src:   src,
+		path:  path,
+		rows:  StoreRows{Store: src},
+		poll:  DefaultPoll,
+		batch: DefaultBatch,
 	}
 
 	for _, opt := range opts {
@@ -450,11 +442,6 @@ func (m *Model) catchUpOnce(ctx context.Context) (int, error) {
 		last := facts[len(facts)-1].Seq
 		m.cursor.Store(last)
 
-		// The ledger just changed: overflow rows cached for a pagination
-		// walk in flight are stale now, so the next page re-reads instead
-		// of serving a page that misses the new facts.
-		m.pageCache.Clear()
-
 		// Checkpoint after the batch's last applied fact. Unlike the
 		// sweeper watermarks (where a missed fact is a missed dispatch),
 		// a failed checkpoint here only costs replay on the next restart:
@@ -475,15 +462,6 @@ func (m *Model) catchUpOnce(ctx context.Context) (int, error) {
 // carries the same journal watermark the hand tailer used to report.
 func (m *Model) JournalCursor() int64 {
 	return m.cursor.Load()
-}
-
-// PageCacheLen reports how many next-page overflows the TasksPage scan
-// cache currently holds — the observability handle for "is the
-// repeat-window cache actually being used" (the upstream PrefetchCache
-// has no other eviction signal; it only grows until the next fold batch
-// clears it). Zero after every fold, one-or-more during a dashboard walk.
-func (m *Model) PageCacheLen() int {
-	return m.pageCache.Len()
 }
 
 // apply maps one fact to its fold input and feeds it through the store.
@@ -574,8 +552,7 @@ func (m *Model) Tasks(ctx context.Context, filter TaskFilter) ([]TaskRow, error)
 		opts = append(opts, metaengine.WithFilter("project", metaengine.FilterEq, *filter.Project))
 	}
 
-	rows, err := metaengine.NewReader[TaskRow](m.store, tasksCollection).
-		Scan(ctx, append(opts, metaengine.WithPrefetch(nil))...)
+	rows, err := metaengine.NewReader[TaskRow](m.store, tasksCollection).Scan(ctx, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("readmodel: task scan: %w", err)
 	}
@@ -601,7 +578,6 @@ func (m *Model) TasksPage(ctx context.Context, filter TaskFilter, page TaskPage)
 	opts := []metaengine.ScanOption{
 		metaengine.WithSort("created_at", true),
 		metaengine.WithLimit(limit),
-		metaengine.WithPrefetch(m.pageCache),
 	}
 
 	if filter.Status != nil {
