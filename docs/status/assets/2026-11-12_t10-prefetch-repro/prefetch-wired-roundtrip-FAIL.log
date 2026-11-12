@@ -1,0 +1,19 @@
+=== RUN   TestTasksPageCursorRoundTrip
+=== PAUSE TestTasksPageCursorRoundTrip
+=== CONT  TestTasksPageCursorRoundTrip
+    taskspage_test.go:62: 7 created_at tie(s) exercised through the compound cursor
+    taskspage_test.go:90: page 1: 4 rows, has-next=true
+    taskspage_test.go:90: page 2: 4 rows, has-next=true
+    taskspage_test.go:90: page 3: 4 rows, has-next=true
+    taskspage_test.go:90: page 4: 4 rows, has-next=true
+    taskspage_test.go:90: page 5: 4 rows, has-next=true
+    taskspage_test.go:90: page 6: 4 rows, has-next=true
+    taskspage_test.go:90: page 7: 4 rows, has-next=true
+    taskspage_test.go:90: page 8: 4 rows, has-next=true
+    taskspage_test.go:90: page 9: 4 rows, has-next=true
+    taskspage_test.go:90: page 10: 4 rows, has-next=true
+    taskspage_test.go:100: cursor never terminated — pagination walked past the ledger
+--- FAIL: TestTasksPageCursorRoundTrip (0.01s)
+FAIL
+FAIL	github.com/larsartmann/go-taskqueue/internal/readmodel	0.017s
+FAIL
