@@ -1,10 +1,12 @@
 # go-codec — Library Utilization Review
 
-**Verdict:** ADOPTED — moderate (2.5/4 capability rows leveraged) — deep and test-pinned at exactly one seam (the cqrs fact→event JSON boundary); the library's wider surface is legitimately N/A for a JSON-wire facts journal, and the repo's other JSON sites bypass it with semantics-identical `encoding/json` calls.
+**Verdict:** ADOPTED — high (2.5/3 applicable capability rows leveraged; published as 63 before two corrections) — deep and test-pinned at exactly one seam (the cqrs fact→event JSON boundary); the library's wider surface is legitimately N/A for a JSON-wire facts journal, and the remaining bare `encoding/json` sites are deliberate (F3).
 
-**Pinned:** v0.3.3 — direct requires: `internal/journal/cqrs/go.mod:6`, `cmd/tq/go.mod:7`; `// indirect` in 11 more modules (via go-cqrs-lite `event/v4`). Verified 2026-11-08 by `grep -rn 'go-codec' --include=go.mod . | grep -v vendor`.
+**2026-11-11 refresh:** (1) F2 LANDED — "fleet review f7": `decodePayload[T]` now routes through `payloadCodec = codec.JSONCodec{}` (internal/executor/payload.go:15-35), exactly the recommended shape, with `DecodeEnvelopeOrLegacy` named as the forward path; go-codec is now a DIRECT require of the executor module (internal/executor/go.mod:7, from the M6 facade promotion). (2) DENOMINATOR CORRECTION — the §2 inventory has N=16 rows with 13 N/A, so A=3 (not 4 as published); the corrected pre-landing score is round(100×2.5/3) = 83, not 63. Row 3 stays PARTIAL (the readmodel detail reads remain deliberately outside the codec per F3), so the current score is **83 — high**. §1 cites re-verified against HEAD 2026-11-11 by grep; checkout now `v0.3.3-3-g759d752`, still pinned v0.3.3 = latest tag.
 
-**Latest:** v0.3.3 (local checkout /home/lars/projects/go-codec, checked 2026-11-08 by `git -C … describe --tags` → `v0.3.3-2-g7d02310`; Unreleased empty).
+**Pinned:** v0.3.3 — direct requires: `internal/journal/cqrs/go.mod:6`, `cmd/tq/go.mod:7`, `internal/executor/go.mod:7` (new direct require since the M6 facade promotion); `// indirect` in 13 more module graphs (via go-cqrs-lite `event/v4` and the worker facade). Verified 2026-11-11 by `grep -rn 'go-codec' --include=go.mod . | grep -v vendor` (16 require rows, 3 direct).
+
+**Latest:** v0.3.3 (local checkout /home/lars/projects/go-codec, re-checked 2026-11-11 by `git -C … describe --tags` → `v0.3.3-3-g759d752`; Unreleased empty).
 
 **Prior coverage:** none (first libs-review report).
 
@@ -14,7 +16,9 @@
 
 | File | Line | Use |
 | --- | --- | --- |
-| internal/journal/cqrs/journal.go | 164 | `event.WithCodec(codec.JSONCodec{})` — the ONLY production call: `factEvent` marshals each journal fact's payload through the codec and stamps the encoding (comment at 149-153: unstamped payloads are refused by `DecodePayloadAuto`) |
+| internal/journal/cqrs/journal.go | 164 | `event.WithCodec(codec.JSONCodec{})` — the production call: `factEvent` marshals each journal fact's payload through the codec and stamps the encoding (comment at 149-153: unstamped payloads are refused by `DecodePayloadAuto`) |
+| internal/executor/payload.go | 15-24 | `payloadCodec = codec.JSONCodec{}` — "the ONE JSON door" for executor payload decoding (2026-11-09/10 landing, fleet review f7) |
+| internal/executor/payload.go | 34 | `payloadCodec.Decode(t.Payload, &payload)` — `decodePayload[T]` routes through the codec |
 | internal/journal/cqrs/journal_test.go | 148-151 | pins every mapped event carries `codec.EncodingJSON` ("codec.ForEncoding refuses an empty stamp") |
 | cmd/tq/facts_cqrs_test.go | 131-139 | `assertEventsEncodingStamped` — same contract pinned through the real store (the CLI-level gate) |
 
@@ -26,7 +30,7 @@ Decode side (cqrs-lite's, on our live path): internal/readmodel/host.go:201 `eve
 | --- | --- | --- |
 | `Codec` interface via `JSONCodec` at the event boundary | 🟢 FULL | journal.go:164; round-tripped through the platform on every fold |
 | Encoding stamp + `ForEncoding` resolution | 🟢 FULL | stamped at journal.go:164, resolved at vendor codec.go:45, pinned by both test files (§1) |
-| Repo-side JSON routed through the codec | 🟡 PARTIAL | `decodePayload[T]` uses bare `encoding/json.Unmarshal` (internal/executor/payload.go:21); readmodel detail unmarshals too (events.go:251,277,291); `JSONCodec.Decode` is the identical call (checkout json.go:21-23) |
+| Repo-side JSON routed through the codec | 🟡 PARTIAL | the shared executor seam now routes through `codec.JSONCodec` (payload.go:15-34 — F2 landed); the readmodel detail reads stay deliberately outside (events.go:251,277,291 — F3: shape-tolerant, explicit classification) |
 | `CBORCodec` (canonical, smaller/faster) | ⚪ N/A | journal wire contract is JSON for operator inspectability — `fact.Detail` is `jsontext.Value` (journal.go:181-188) rendered by `tq audit`/`tq show`; a CBOR flip is a journal format break with no consumer demand |
 | `CBORCompactCodec` (unknown-field rejection) | ⚪ N/A | would REFUSE unknown detail keys — the opposite of the OKF v0.2 §11 additive-growth contract (AGENTS.md: unknown detail keys are ignored, legacy fallback reads) |
 | `RawCodec` passthrough | ⚪ N/A | every payload is typed at construction (`factPayload`); no pre-encoded byte path exists |
@@ -45,14 +49,7 @@ Decode side (cqrs-lite's, on our live path): internal/readmodel/host.go:201 `eve
 
 **F1 — The seam is the right one and is double-pinned.** lib: `event.New`-style constructors marshal "the payload through the codec and stamp the encoding" — the contract go-cqrs-lite builds on (checkout README "Architecture"; codec.go `ForEncoding`). repo: journal.go:149-164 does exactly this, with the unstamped-payload failure mode documented at the call site, and the stamp contract pinned at BOTH the adapter unit level (journal_test.go:148-151) and through the real store at the CLI level (facts_cqrs_test.go:131-139 — "the bug the 2026-09-13 lint pass fixed"). This is max-depth usage of the applicable surface.
 
-**F2 — `decodePayload[T]` bypasses the codec, deliberately or not.** lib: `JSONCodec` implements `Codec` by delegating to `encoding/json` (checkout json.go:8-23 — `jsonMarshal`/`jsonUnmarshal`), dual-build so it rides `encoding/json` v2 under `GOEXPERIMENT=jsonv2`. repo: internal/executor/payload.go:21 calls `json.Unmarshal` directly inside the shared executor seam (AGENTS.md "Executor shared seams — never hand-roll" names `decodePayload[T]` itself). Impact: zero behavioral difference today (same stdlib call, and ci-local already exports `GOEXPERIMENT=jsonv2`); routing through `codec.JSONCodec{}.Decode` would buy only seam uniformity at the cost of a new direct dep in the executor module. Recommendation: adopt only if the executor module ever needs stamped/auto-detected payloads; otherwise the bypass is fine and this row stays PARTIAL.
-
-```go
-// payload.go — semantics-identical codec routing (optional):
-if err := (codec.JSONCodec{}).Decode(t.Payload, &payload); err != nil {
-	return payload, Permanent(fmt.Errorf("%s: decode payload: %w", kind, err))
-}
-```
+**F2 — ~~`decodePayload[T]` bypasses the codec~~ RESOLVED (landed 2026-11-09/10, "fleet review f7").** lib: `JSONCodec` implements `Codec` by delegating to `encoding/json` (checkout json.go:8-23 — `jsonMarshal`/`jsonUnmarshal`), dual-build so it rides `encoding/json` v2 under `GOEXPERIMENT=jsonv2`. repo: internal/executor/payload.go:15-24 declares `payloadCodec = codec.JSONCodec{}` — commented as "the ONE JSON door executor payload decoding goes through… so a future switch to stamped/enveloped payloads (codec.DecodeEnvelopeOrLegacy) is a seam change, not a hunt across executors" — and `decodePayload` calls `payloadCodec.Decode` (payload.go:34). go-codec became a DIRECT require of the executor module (go.mod:7). Recommendation satisfied in full; the readmodel bypass remains deliberate (F3).
 
 **F3 — Readmodel detail unmarshals are shape-tolerant by design; the codec adds nothing.** lib: strict decode variants exist (`CBORCompactCodec` rejects unknown fields — N/A above). repo: events.go:277 (`requeuedEvent`) deliberately IGNORES malformed detail — "legacy requeue facts predate the detail entirely… never fails on detail noise" — while :251/:291 turn malformed enqueue/repri details into error-family Corruption (see the go-error-family report). Both behaviors are contract-level choices (AGENTS.md additive-growth + legacy fallback); a codec swap cannot express them better than `json.Unmarshal` + explicit error classification already does.
 
@@ -62,34 +59,35 @@ if err := (codec.JSONCodec{}).Decode(t.Payload, &payload); err != nil {
 
 ## 4. Score + top opportunities
 
-Inputs: N=16 rows, N/A=12, A=4. FULL=2, PARTIAL=1 (0.5), MISSED=0, MISUSED=0 → Σ=2.5.
-Score = round(100 × 2.5/4) = **63 — moderate**.
+Inputs (re-derived 2026-11-11, denominator corrected): N=16 rows, ⚪ N/A=13, A=3. FULL=2, PARTIAL=1 (0.5), MISSED=0, MISUSED=0 → Σ=2.5.
+Score = round(100 × 2.5/3) = **83 — high**. (The originally published 63 divided by A=4 — a 12-vs-13 N/A miscount; the corrected inputs above are the published numbers' replacement.)
 
-Top opportunities: (1) F2 — optionally route `decodePayload[T]` through `codec.JSONCodec{}.Decode` for one JSON door (low value: zero behavior change; do it with the next executor-module dep change, not alone); (2) F5 — if journal payload versioning is ever proposed, spec it as envelope + `DecodeEnvelopeOrLegacy` from day one. Everything else is genuinely N/A for a JSON-wire, operator-inspectable journal.
+Top opportunities: (1) F5 — if journal payload versioning is ever proposed, spec it as envelope + `DecodeEnvelopeOrLegacy` from day one (the lib lever is now one seam away, per the landed payload.go comment); (2) if the readmodel detail reads ever need stamped payloads, route them through a shared codec door too — today their bare `json.Unmarshal` is F3-documented design, not debt. Everything else is genuinely N/A for a JSON-wire, operator-inspectable journal.
 
 ## 5. Version currency + risk
 
-Pinned v0.3.3 == latest tag (checkout 2 commits past tag; Unreleased empty) — no action. v0.3.3 (2026-10-29, CHANGELOG) is a decode-only additive fix: CBOR decode accepts text strings for `encoding.TextUnmarshaler` types (branded-ID replay fix) — irrelevant to the JSON seam but signals the maintainer's compat posture: "encode output is byte-identical; the only behavioral change is on DECODE, and it is purely additive". Risk: module declares `go 1.27` (checkout go.mod:3), tq floor is 1.27.3 — compatible. The dual-build v1/v2 JSON contract (FEATURES "Dual-build infrastructure") means the pinned codec keeps working under ci-local's `GOEXPERIMENT=jsonv2` exactly as the repo's direct `encoding/json` sites do.
+Pinned v0.3.3 == latest tag (checkout 3 commits past tag, `v0.3.3-3-g759d752` re-checked 2026-11-11; Unreleased empty) — no action. v0.3.3 (2026-10-29, CHANGELOG) is a decode-only additive fix: CBOR decode accepts text strings for `encoding.TextUnmarshaler` types (branded-ID replay fix) — irrelevant to the JSON seam but signals the maintainer's compat posture: "encode output is byte-identical; the only behavioral change is on DECODE, and it is purely additive". Risk: module declares `go 1.27` (checkout go.mod:3), tq floor is 1.27.3 — compatible. The dual-build v1/v2 JSON contract (FEATURES "Dual-build infrastructure") means the pinned codec keeps working under ci-local's `GOEXPERIMENT=jsonv2` exactly as the repo's direct `encoding/json` sites do.
 
 ## 6. Conclusion
 
-go-codec is adopted as the serialization contract at precisely the boundary it was built for: the cqrs fact→event adapter stamps JSON via `JSONCodec`, cqrs-lite resolves it back via `ForEncoding` on every fold, and two test layers pin the stamp. The wide CBOR/COSE/streaming surface is honestly N/A — this repo's journal is a human-inspectable JSON wire with an additive-growth detail contract that the strict codecs would violate. The only genuine gap is cosmetic seam uniformity (`decodePayload`), and the only forward-looking lever is the envelope/legacy decoder if payload versioning ever lands.
+go-codec is adopted as the serialization contract at precisely the boundary it was built for: the cqrs fact→event adapter stamps JSON via `JSONCodec`, cqrs-lite resolves it back via `ForEncoding` on every fold, two test layers pin the stamp, and — since the f7 landing — the executor's shared payload seam decodes through the same codec door. The wide CBOR/COSE/streaming surface is honestly N/A — this repo's journal is a human-inspectable JSON wire with an additive-growth detail contract that the strict codecs would violate. The remaining bare `encoding/json` sites are documented design (F3), and the forward-looking lever is the envelope/legacy decoder if payload versioning ever lands.
 
 ## How to verify
 
 ```bash
 cd /home/lars/projects/go-taskqueue
 grep -rl --include='*.go' 'larsartmann/go-codec' . | grep -v '^./vendor/'
-# → cmd/tq/facts_cqrs_test.go, internal/journal/cqrs/journal.go, internal/journal/cqrs/journal_test.go
+# → cmd/tq/facts_cqrs_test.go, internal/executor/payload.go, internal/journal/cqrs/journal.go, internal/journal/cqrs/journal_test.go
 grep -n 'codec\.' internal/journal/cqrs/journal.go internal/journal/cqrs/journal_test.go cmd/tq/facts_cqrs_test.go
 # → journal.go:164 WithCodec(JSONCodec{}); journal_test.go:150-151 + facts_cqrs_test.go:137-138 EncodingJSON
-grep -rn 'go-codec' --include=go.mod . | grep -v vendor   # → v0.3.3; direct only in cqrs + cmd/tq
+grep -n 'payloadCodec' internal/executor/payload.go    # → 15, 24, 34 (the f7 landing)
+grep -rn 'go-codec' --include=go.mod . | grep -v vendor | grep -cv indirect   # → 3 (cqrs, cmd/tq, executor)
 sed -n '149,164p;181,188p' internal/journal/cqrs/journal.go      # stamp rationale + factPayload (jsontext detail)
 sed -n '199,205p' internal/readmodel/host.go              # DecodePayloadAuto consumer
 sed -n '37,56p' vendor/github.com/larsartmann/go-cqrs-lite/event/v4/codec.go  # ForEncoding on the fold path
-sed -n '14,26p' internal/executor/payload.go              # hand-rolled json.Unmarshal seam (F2)
+sed -n '15,35p' internal/executor/payload.go              # codec-routed decodePayload (F2, landed)
 sed -n '251p;277p;291p' internal/readmodel/events.go      # detail unmarshal sites (F3)
 grep -n 'json' internal/executor/redact.go                # → no matches (F4)
 sed -n '84p;121p' internal/executor/calibration.go        # JSONL write-append only (streaming N/A)
-git -C /home/lars/projects/go-codec describe --tags       # → v0.3.3-2-g7d02310
+git -C /home/lars/projects/go-codec describe --tags       # → v0.3.3-3-g759d752
 ```

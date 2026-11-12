@@ -2,9 +2,11 @@
 
 **Verdict:** NOT ADOPTED — KEEP OUT — it is a CQRS command/query HTTP framework with event-sourced user management; tq's HTTP surfaces are a read-only templ dashboard and a 4-route machine API over store calls — the library's premise (dispatch-boundary handlers, users/tenants) is a problem tq deliberately does not have.
 
+**2026-11-11 refresh:** verdict unchanged; cites re-verified against HEAD — the webui route table went data-driven (routeBindings/healthBindings, internal/webui/webui.go:286-312) and the 3 CSRF-guarded POST admin routes moved to webui.go:347-349; the mounted go-health-dashboard surface now also carries the trend ring + export routes (the 2026-11-09 health-relay landing). Upstream gained loginpage/v4.18.0 (newest module tag) while the root stays v4.18.1 — nothing that moves the fit assessment.
+
 **Pinned:** none (not a dependency; verified 2026-11-08 by `grep -rn 'larsartmann/cqrs-htmx' --include='*.go' --include=go.mod . | grep -v vendor` → no output, including docs).
 
-**Latest:** root v4.18.1 (2026-11-07); modules: huma/v4.0.0 (newest, 2026-11-07), usermgmt/v4.20.0, usermgmt/webauthn/v4.13.0, usermgmt/oauth2/v4.13.0, usermgmt/totp/v4.12.1, adminui/v4.17.0, dashboardui/v4.17.0, loginpage/v4.17.0, setup/v4.17.0, datastar/v4.12.2, health/v4.14.0, auditlog/v4.12.2, systemadapter/v4.13.0 (local checkout /home/lars/projects/cqrs-htmx, checked 2026-11-08 by `git tag -l '<mod>/*' | sort -V | tail -1`; 248 tags, last commit 2026-11-08).
+**Latest:** root v4.18.1 (2026-11-07, still newest root tag); modules: huma/v4.0.0 (2026-11-07), usermgmt/v4.20.0, usermgmt/webauthn/v4.13.0, usermgmt/oauth2/v4.13.0, usermgmt/totp/v4.12.1, adminui/v4.17.0, dashboardui/v4.17.0, loginpage/v4.18.0 (new, 2026-11-11), setup/v4.17.0, datastar/v4.12.2, health/v4.14.0, auditlog/v4.12.2, systemadapter/v4.13.0 (local checkout /home/lars/projects/cqrs-htmx, re-checked 2026-11-11 by `git tag -l '<mod>/*' | sort -V | tail -1`; 249 tags, last commit 2026-11-11).
 
 **Prior coverage:** none for cqrs-htmx (sibling reports cover go-etag/go-health/etc.). Capability summary cross-checked against Lars's own adoption doc /home/lars/.config/crush/skills/cqrs-htmx/SKILL.md (read 2026-11-08; SSE-only per upstream ADR-0046 — WebSocket transport dropped).
 
@@ -14,7 +16,7 @@
 
 tq's three HTTP surfaces and what they hand-roll:
 
-- **`tq serve` dashboard** (internal/webui, ADR-0003): 8 GET routes (webui.go:249-257) + 3 opt-in CSRF-guarded POST admin routes (webui.go:298-304) rendered with templ + templ-components (ADR-0018); live updates via ONE journal tailer → hub → SSE (tailer.go, hub.go), with `Last-Event-ID` resume; go-health-dashboard (ADOPTED) mounts `/health*` on top (webui.go:317-321). HTMX is deliberately DISABLED — the layout props blank it, the board streams over vanilla EventSource, and only the health page rides Datastar, same-origin, CSP-pinned (components.go:633-646, health.go:20-32).
+- **`tq serve` dashboard** (internal/webui, ADR-0003): 8 GET routes registered as data (routeBindings, webui.go:286-304) + 3 opt-in CSRF-guarded POST admin routes (webui.go:347-349) rendered with templ + templ-components (ADR-0018); live updates via ONE journal tailer → hub → SSE (tailer.go, hub.go), with `Last-Event-ID` resume; go-health-dashboard (ADOPTED) mounts `/health*` on top — now including the trend ring + export routes from the 2026-11-09 health-relay landing (healthBindings, webui.go:312). HTMX is deliberately DISABLED — the layout props blank it, the board streams over vanilla EventSource, and only the health page rides Datastar, same-origin, CSP-pinned (components.go:633-646, health.go:20-32).
 - **`tq api` machine API** (internal/httpapi, ADR-0008): exactly 4 routes — `POST /api/v1/tasks`, `POST /api/v1/errors`, `GET /api/v1/stats`, `GET /api/v1/healthz` (httpapi.go:195-198) — token-mandatory, lockout-guarded, `{error, fix}` JSON failure shape pinned by test, `Cache-Control: no-store` on every authed response (httpapi.go:247). Handlers are direct store/readmodel calls; there is no command/query dispatcher on this path.
 - **Admin surfaces**: the webui POST routes above (cancel/rescue/answer) — domain actions, not user administration. tq has no users, tenants, roles, sessions, or login page anywhere.
 
@@ -60,12 +62,15 @@ Keep out. tq is a queue, not a web app: no users, no dispatch-over-HTTP, and a d
 ```bash
 cd /home/lars/projects/go-taskqueue
 grep -rn 'larsartmann/cqrs-htmx' --include='*.go' --include=go.mod --include='*.md' . | grep -v vendor   # → no output
-sed -n '249,257p' internal/webui/webui.go        # the 8 read-only dashboard routes
+sed -n '286,304p' internal/webui/webui.go        # the 8 read-only dashboard routes (data-driven routeBindings)
+sed -n '347,349p' internal/webui/webui.go        # the 3 CSRF-guarded POST admin routes
 sed -n '195,198p' internal/httpapi/httpapi.go    # the 4 machine-API routes
 sed -n '633,646p' internal/webui/components.go   # HTMX deliberately blanked (vanilla EventSource board)
 cd /home/lars/projects/cqrs-htmx
 git tag -l | sort -V | tail -1                   # → v4.18.1
 git tag -l 'huma/*' | sort -V | tail -1          # → huma/v4.0.0
-git log -1 --format='%h %ad' --date=short        # → 2026-11-08
+git tag -l 'loginpage/*' | sort -V | tail -1     # → loginpage/v4.18.0
+git log -1 --format='%h %ad' --date=short        # → 2026-11-11
+git tag -l | wc -l                               # → 249
 head -30 docs/adr/0046-drop-websocket-sse-only.md  # SSE-only ruling
 ```

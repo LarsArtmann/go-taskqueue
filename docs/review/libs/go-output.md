@@ -2,13 +2,15 @@
 
 **Verdict:** NOT ADOPTED — KEEP OUT — the CLI needs exactly the two output modes it has (human table, JSON), both pinned by parser contracts and guard tests; a 16-format render kit would be dead weight in a vendored, stdlib-flag CLI.
 
-**Pinned:** none (not a dependency; verified 2026-11-08 by `grep -rn 'larsartmann/go-output' --include=go.mod . | grep -v vendor` → no output, same for import greps)
+**Pinned:** none (not a dependency; verified 2026-11-08 by `grep -rn 'larsartmann/go-output' --include=go.mod . | grep -v vendor` → no output, same for import greps; re-verified 2026-11-11 by the same greps — still 0 hits in go.mod and *.go, vendor excluded)
 
 **Latest:** v0.38.7 (local checkout /home/lars/projects/go-output, checked 2026-11-08; root series — the repo carries 666 total tags across its format sub-modules)
 
+**2026-11-11 refresh:** versions unchanged (still v0.38.7, 666 tags, HEAD ba50334 2026-11-02); output surface re-verified unchanged (10 `--json` flags across the same 7 files, still no tabwriter, still exactly one ANSI escape at top.go:221); fixed one stale cite — the `tq tasks` json bool is at cmd/tq/tasks.go:51, previously cited as :3.
+
 **Prior coverage:** none; cmd/tq output rendering has never been reviewed against a library.
 
-**Reviewed:** 2026-11-08 by reading /home/lars/projects/go-output/{README.md,go.mod,format.go} plus a survey of cmd/tq rendering (tasks.go, main.go, top.go, doctor.go) and greps for tabwriter/ANSI/humanize.
+**Reviewed:** 2026-11-08 by reading /home/lars/projects/go-output/{README.md,go.mod,format.go} plus a survey of cmd/tq rendering (tasks.go, main.go, top.go, doctor.go) and greps for tabwriter/ANSI/humanize; re-verified 2026-11-11 (all greps and line cites below re-run; one stale cite fixed, see the refresh note).
 
 ## 1. Where the need exists today
 
@@ -17,7 +19,7 @@ go-output is a render-anywhere kit: define a `Table`/`Tree`/`Graph` once, render
 What cmd/tq hand-rolls today (all stdlib):
 
 - **Fixed-width tables**: `printTaskListTo` renders the task-list header+rows with `fmt.Sprintf("%-36s %-14s …")` (cmd/tq/tasks.go:284–351, header at 298–308); `tq stats` status counts (cmd/tq/main.go:2547–2551); per-project grid (main.go:2560–2571); DLQ rows (main.go:3497); facts tail (main.go:3825). No `text/tabwriter` anywhere (grep → zero hits).
-- **JSON modes**: 10 `fs.Bool("json", …)` flags across 7 files (audit.go, doctor.go, main.go×4, poolhealth.go, reprioritize.go, tasks.go, top.go — grep, 2026-11-08), each with its own `json.NewEncoder(os.Stdout)` block (e.g. main.go:918, 2230, 3688).
+- **JSON modes**: 10 `fs.Bool("json", …)` flags across 7 files (audit.go, doctor.go, main.go×4, poolhealth.go, reprioritize.go, tasks.go, top.go — grep, re-verified 2026-11-11), each with its own `json.NewEncoder(os.Stdout)` block (e.g. main.go:918, 2230, 3688).
 - **Terminal control**: exactly ONE ANSI escape in the tree — the screen clear in `tq top` (`fmt.Print("\x1b[2J\x1b[H")`, cmd/tq/top.go:221), guarded by `isTerminal(os.Stdout)`; no colors, no spinners, no progress bars (grep `\x1b` → that single line).
 - **Sizing**: `dustin/go-humanize` for byte/time formatting in doctor.go:22 and poolhealth.go:22 (a direct dep of cmd/tq/go.mod:6).
 
@@ -27,7 +29,7 @@ What cmd/tq hand-rolls today (all stdlib):
 | --- | --- | --- |
 | Multi-format table render (CSV/Markdown/HTML/…) | 🔴 MISSING-BUT-RELEVANT (low: no consumer has asked; JSON covers scripts) | 10 hand-rolled `--json` flags, zero `--format` flags |
 | Zero-config color + NO_COLOR/CI detection | 🔴 MISSING-BUT-RELEVANT (low: monochrome output is a deliberate lean style) | top.go:221 is the only ANSI in cmd/tq |
-| `Format` enum for CLI flag parsing | ⚪ N/A (tq's dual mode is a boolean, pinned by tests) | tasks.go:3 etc. |
+| `Format` enum for CLI flag parsing | ⚪ N/A (tq's dual mode is a boolean, pinned by tests) | tasks.go:51 etc. |
 | JSON serialization of tables | 🟡 partial overlap (per-command encoders, shape-stable wire contracts) | main.go statsPayload:2295, dlqJSONRow:3423, factJSONView:3605 |
 | NOM-style live progress | ⚪ N/A (tq top's interval redraw + screen clear is sufficient; serve has SSE) | top.go:195–240 |
 | Trees/graphs/D2/Mermaid | ⚪ N/A (no graph output exists or is requested) | — |
@@ -57,7 +59,7 @@ The kit is impressive and would fit a CLI that owes nobody a stable output shape
 
 ## 5. Maturity + version currency
 
-Latest root-series tag v0.38.7 (checked 2026-11-08: `git -C /home/lars/projects/go-output tag -l 'v0.*' | sort -V | tail -1`); 666 total tags (root + sub-modules; includes retracted v0.33.0/v0.34.0 — go.mod retract block); last commit ba50334 2026-11-02. MIT (LICENSE). Root deps: go-branded-id v0.7.0, x/term, plus a testhelpers pin. Heavy same-author maintenance cadence — an API-stability ADR exists ("ADR 006 locks core interfaces") but the 0.x versioning says expect movement.
+Latest root-series tag v0.38.7 (checked 2026-11-08: `git -C /home/lars/projects/go-output tag -l 'v0.*' | sort -V | tail -1`; re-verified 2026-11-11 — unchanged); 666 total tags (root + sub-modules; includes retracted v0.33.0/v0.34.0 — go.mod retract block); last commit ba50334 2026-11-02 (still HEAD on 2026-11-11). MIT (LICENSE). Root deps: go-branded-id v0.7.0, x/term, plus a testhelpers pin. Heavy same-author maintenance cadence — an API-stability ADR exists ("ADR 006 locks core interfaces") but the 0.x versioning says expect movement.
 
 ## 6. Conclusion
 

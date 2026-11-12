@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>go-taskqueue — Library Utilization Review (2026-11-08)</title>
+    <title>go-taskqueue — Library Utilization Review (2026-11-08, refreshed 2026-11-11)</title>
     <style>
       /* =========================================================================
          BAUHAUS DARK — Dashboard template
@@ -829,7 +829,7 @@
     <!-- Full-bleed top bar (optional — remove for quieter reports) -->
     <div class="top-bar">
       <span>LIBRARY UTILIZATION REVIEW</span>
-      <span>2026-11-08</span>
+      <span>2026-11-08 &middot; REFRESHED 2026-11-11</span>
       <span>GO-TASKQUEUE</span>
     </div>
 
@@ -839,8 +839,9 @@
         <nav>
           <div class="label">Contents</div>
           <a href="#summary">Summary</a>
-          <a href="#adopted">Adopted (9)</a>
-          <a href="#not-adopted">Not adopted (13)</a>
+          <a href="#adopted">Adopted (9) + trial (1)</a>
+          <a href="#not-adopted">Not adopted (12)</a>
+          <a href="#refresh">2026-11-11 refresh</a>
           <a href="#cross">Cross-cutting</a>
           <a href="#verify">How to verify</a>
         </nav>
@@ -857,10 +858,12 @@
           <div class="hero-badge">Library Utilization Review</div>
           <h1>The LarsArtmann fleet &times; go-taskqueue</h1>
           <p class="hero-subtitle">
-            22 first-party libraries audited on 2026-11-08: 9 adopted and scored
-            for leverage, 13 evaluated for adoption. One Markdown report per
-            library in this directory; every claim carries a citation and every
-            report ends with commands that re-derive it.
+            22 first-party libraries audited 2026-11-08, every report re-verified
+            and re-scored against HEAD on 2026-11-11: 9 adopted and scored for
+            leverage, 1 trial mounted (httputil/server_timing), 12 evaluated for
+            adoption and kept out. One Markdown report per library in this
+            directory; every claim carries a citation and every report ends with
+            commands that re-derive it.
           </p>
         </div>
 
@@ -869,8 +872,9 @@
           <h3>Contents</h3>
           <ul>
             <li><a href="#summary">Summary</a></li>
-            <li><a href="#adopted">Adopted (9)</a></li>
-            <li><a href="#not-adopted">Not adopted (13)</a></li>
+            <li><a href="#adopted">Adopted (9) + trial (1)</a></li>
+            <li><a href="#not-adopted">Not adopted (12)</a></li>
+            <li><a href="#refresh">2026-11-11 refresh</a></li>
             <li><a href="#cross">Cross-cutting</a></li>
             <li><a href="#verify">How to verify</a></li>
           </ul>
@@ -884,12 +888,12 @@
             <div class="stat-label">Libraries reviewed</div>
           </div>
           <div class="stat-card stat-good">
-            <div class="stat-value">9</div>
-            <div class="stat-label">Adopted (avg score 55)</div>
+            <div class="stat-value">10</div>
+            <div class="stat-label">Adopted + 1 trial (avg score 72)</div>
           </div>
           <div class="stat-card stat-warn">
-            <div class="stat-value">1</div>
-            <div class="stat-label">Worth a trial</div>
+            <div class="stat-value">7</div>
+            <div class="stat-label">Findings landed since 11-08</div>
           </div>
           <div class="stat-card stat-bad">
             <div class="stat-value">12</div>
@@ -925,60 +929,67 @@
               <td>Surface <code>Broadcaster.Health()</code> (subscriber/buffer state) on <code>/health</code></td>
             </tr>
             <tr>
-              <td><a href="go-cqrs-lite.md">go-cqrs-lite</a></td>
-              <td><span class="badge badge-fixed">high &middot; 82</span></td>
-              <td>27/33</td>
-              <td>v0.4.18.0-wave LANDED 2026-11-09 (all 4 modules latest)</td>
-              <td>Score holds at 82 (the wave closed currency, not capability rows); cheapest next: <code>WithPrefetch</code> on TasksPage, now unlocked at pinned v4.23.0</td>
-            </tr>
-            <tr>
               <td><a href="templ-components.md">templ-components</a></td>
-              <td><span class="badge badge-fixed">high &middot; 78</span></td>
-              <td>7/9</td>
+              <td><span class="badge badge-fixed">very high &middot; 94</span></td>
+              <td>8.5/9</td>
               <td>v1.27.0 = latest</td>
-              <td>Document adopted <code>navigation.Pagination</code> in ADOPTION.md; swap in <code>layout.MetaRefresh</code> + <code>Table.StickyHeader</code></td>
-            </tr>
-            <tr>
-              <td><a href="go-health-dashboard.md">go-health-dashboard</a></td>
-              <td><span class="badge badge-medium">moderate &middot; 68</span></td>
-              <td>13/19</td>
-              <td>v0.13.2 = latest</td>
-              <td><code>WithWebhook</code> &rarr; PapDashboard <strong>landed 2026-11-09</strong> (loopback HealthRelay + <code>tq serve --alert-url</code>; trend/export ring also ON, /metrics deferred &mdash; re-score pending)</td>
+              <td>Was 78: pagination-in-ADOPTION.md, <code>MetaRefresh</code>, <code>StickyHeader</code> all landed 11-09/10; no material row left</td>
             </tr>
             <tr>
               <td><a href="go-codec.md">go-codec</a></td>
-              <td><span class="badge badge-medium">moderate &middot; 63</span></td>
-              <td>2.5/4</td>
+              <td><span class="badge badge-fixed">high &middot; 83</span></td>
+              <td>2.5/3</td>
               <td>v0.3.3 = latest</td>
-              <td>Route <code>decodePayload[T]</code> through <code>codec.JSONCodec</code> &mdash; one JSON door, zero behavior change</td>
-            </tr>
-            <tr>
-              <td><a href="go-retry.md">go-retry</a></td>
-              <td><span class="badge badge-high">low &middot; 44</span></td>
-              <td>4/9</td>
-              <td>v0.9.0 = latest</td>
-              <td><code>DoWithValue</code> for <code>execWithTransientRetry</code>; <code>OnExhausted</code> labeling for 3&times;-exhausted store-busy writes</td>
-            </tr>
-            <tr>
-              <td><a href="go-health.md">go-health</a></td>
-              <td><span class="badge badge-high">low &middot; 32</span></td>
-              <td>5.5/17</td>
-              <td>v0.10.0 = latest</td>
-              <td>Populate <code>StatusSince</code>/<code>TotalLatencyMs</code> + <code>recover</code> around <code>evaluate</code> &mdash; <strong>landed 2026-11-09</strong> (re-score pending)</td>
+              <td>Was 63 (denominator corrected 12&rarr;13 N/A); <code>decodePayload</code> now rides <code>codec.JSONCodec</code>; readmodel detail reads stay bare by design</td>
             </tr>
             <tr>
               <td><a href="go-datastar.md">go-datastar</a></td>
               <td><span class="badge badge-high">mod-high &middot; 83</span></td>
               <td>2.5/3</td>
-              <td>v0.7.0 everywhere (lockstep landed 2026-11-09)</td>
-              <td>Re-scored 17&rarr;83: <code>ScriptHandler</code> + versioned URL adopted; protocol rows stay N/A by ADR-0003 design</td>
+              <td>v0.7.0 everywhere</td>
+              <td>Protocol rows stay N/A by ADR-0003 design; SDK/ScriptHandler adopted (the /health ETag producer)</td>
+            </tr>
+            <tr>
+              <td><a href="go-cqrs-lite.md">go-cqrs-lite</a></td>
+              <td><span class="badge badge-fixed">high &middot; 82</span></td>
+              <td>27/33</td>
+              <td>v0.4-wave LANDED 2026-11-09 (all consumed modules latest)</td>
+              <td><code>WithPrefetch</code> on TasksPage — UNLOCKED at the pinned metaengine v4.23.0 (uncommitted local v4&rarr;v5 facade supersession observed, not landed)</td>
+            </tr>
+            <tr>
+              <td><a href="go-health-dashboard.md">go-health-dashboard</a></td>
+              <td><span class="badge badge-fixed">high &middot; 79</span></td>
+              <td>15/19</td>
+              <td>v0.13.2 = latest</td>
+              <td>Was 68: <code>WithWebhook</code>&rarr;PapDashboard relay + trend/export ring landed 11-09; left: optional <code>WithMetrics</code>, <code>DurationNanos</code></td>
+            </tr>
+            <tr>
+              <td><a href="go-retry.md">go-retry</a></td>
+              <td><span class="badge badge-fixed">high &middot; 78</span></td>
+              <td>7/9</td>
+              <td>v0.9.0 = latest</td>
+              <td>Was 44: <code>DoWithValue</code> + <code>OnExhausted</code> + <code>ErrExhausted</code> pin landed; left: options tail (last MISSED row)</td>
+            </tr>
+            <tr>
+              <td><a href="go-health.md">go-health</a></td>
+              <td><span class="badge badge-medium">low &middot; 41</span></td>
+              <td>7/17</td>
+              <td>v0.10.0 = latest</td>
+              <td>Was 32: StatusSince/TotalLatencyMs + evaluate-recover landed; left: UTF-8/no-cache hardening, per-check abandonment</td>
             </tr>
             <tr>
               <td><a href="go-error-family.md">go-error-family</a></td>
-              <td><span class="badge badge-critical">low &middot; 13</span></td>
-              <td>1.5/12</td>
+              <td><span class="badge badge-critical">low &middot; 21</span></td>
+              <td>2.5/12</td>
               <td>v0.12.0 = latest</td>
-              <td>Give <code>PermanentError</code> a family; collapse <code>Permanent</code> onto <code>WrapOnce</code> (kills a parallel hand-rolled taxonomy)</td>
+              <td>Was 13: Permanent/Preflight now carry families (cqrs gate + go-retry classify them); left: store-busy classifier, <code>WrapOnce</code> collapse</td>
+            </tr>
+            <tr>
+              <td><a href="httputil-server-timing.md">httputil/server_timing</a></td>
+              <td><span class="badge badge-fixed">TRIAL &middot; KEEP</span></td>
+              <td>unscored</td>
+              <td>v1.0.3 = latest</td>
+              <td>Was WORTH A TRIAL: mounted 2026-11-09 behind <code>RequestLog</code> (webui.go:416-423), segments test-pinned; gate: never unconditional on the token API</td>
             </tr>
           </tbody>
         </table>
@@ -994,11 +1005,6 @@
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <td><a href="httputil-server-timing.md">httputil/server_timing</a></td>
-              <td><span class="badge badge-high">WORTH A TRIAL</span></td>
-              <td>The one family module adding something tq lacks: per-handler Server-Timing with zero deps, SSE-safe passthrough; trial it behind the existing <code>RequestLog</code> flag</td>
-            </tr>
             <tr>
               <td><a href="httputil.md">httputil</a></td>
               <td><span class="badge badge-low">KEEP OUT</span></td>
@@ -1047,7 +1053,7 @@
             <tr>
               <td><a href="cmdguard.md">cmdguard</a></td>
               <td><span class="badge badge-low">KEEP OUT</span></td>
-              <td>27 working stdlib-flag subcommands with ADR-0017 installability and ADR-0004's framework-free stance; typed flags do not justify a dispatch rewrite</td>
+              <td>27 working stdlib-flag subcommands with ADR-0017 installability and ADR-0004's framework-free stance; typed flags do not justify a dispatch rewrite (v5.1.0 released 2026-11-11 adds strict positional args — nothing that moves the verdict)</td>
             </tr>
             <tr>
               <td><a href="go-appkit.md">go-appkit</a></td>
@@ -1062,41 +1068,109 @@
           </tbody>
         </table>
 
+        <!-- 2026-11-11 refresh -->
+        <h2 id="refresh"><span class="num">02</span>What moved on 2026-11-11</h2>
+        <p>
+          Every report was re-verified against HEAD and the sibling checkouts;
+          seven audit findings had already landed in the two days between. Each
+          report carries a dated refresh note with the exact evidence.
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>Library</th>
+              <th>Movement</th>
+              <th>Evidence</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><a href="templ-components.md">templ-components</a></td>
+              <td><strong>78 &rarr; 94</strong> (very high)</td>
+              <td>ADOPTION.md pagination row, <code>MetaRefresh</code>, <code>StickyHeader</code> adopted</td>
+            </tr>
+            <tr>
+              <td><a href="go-retry.md">go-retry</a></td>
+              <td><strong>44 &rarr; 78</strong> (high)</td>
+              <td><code>DoWithValue</code> (agent.go:1129), <code>OnExhausted</code> + <code>ErrExhausted</code> pin (worker.go:413, worker_test.go:1806)</td>
+            </tr>
+            <tr>
+              <td><a href="go-health-dashboard.md">go-health-dashboard</a></td>
+              <td><strong>68 &rarr; 79</strong> (high)</td>
+              <td><code>WithWebhook</code> &rarr; loopback HealthRelay &rarr; PapDashboard (health.go:408, webui.go:218); <code>WithTrend</code> + export routes mounted (webui.go:326-327)</td>
+            </tr>
+            <tr>
+              <td><a href="httputil-server-timing.md">httputil/server_timing</a></td>
+              <td><strong>WORTH A TRIAL &rarr; TRIAL MOUNTED, KEEP</strong></td>
+              <td>Pin go.mod:126; mount webui.go:416-423 behind <code>RequestLog</code>; <code>TestServerTimingHeaderBehindRequestLog</code></td>
+            </tr>
+            <tr>
+              <td><a href="go-codec.md">go-codec</a></td>
+              <td><strong>63 &rarr; 83</strong> (denominator corrected)</td>
+              <td><code>decodePayload</code> routes through <code>codec.JSONCodec</code> (payload.go:15-34); inventory N/A recount 13 (not 12)</td>
+            </tr>
+            <tr>
+              <td><a href="go-health.md">go-health</a></td>
+              <td><strong>32 &rarr; 41</strong> (low)</td>
+              <td><code>StatusSince</code>/<code>TotalLatencyMs</code> (health.go:305-312, 323) + <code>evaluateSafely</code> recover (health.go:124-142)</td>
+            </tr>
+            <tr>
+              <td><a href="go-error-family.md">go-error-family</a></td>
+              <td><strong>13 &rarr; 21</strong> (low)</td>
+              <td><code>PermanentError</code>/&gt;<code>PreflightError</code> families (executor.go:53-54, 94-95) + Classify/IsRetryable pins (executor_test.go:178-200)</td>
+            </tr>
+            <tr>
+              <td><a href="go-cqrs-lite.md">go-cqrs-lite</a></td>
+              <td>score unchanged &middot; 82; version currency CLOSED</td>
+              <td>The 4-module wave landed in commit d315904f (2026-11-09); newest observation: uncommitted local v4&rarr;v5 facade supersession (upstream <code>queue/v5</code> untagged)</td>
+            </tr>
+          </tbody>
+        </table>
+
         <!-- Cross-cutting -->
         <h2 id="cross"><span class="num">03</span>Cross-cutting findings</h2>
 
-        <div class="card card-warning">
-          <h4>Version currency: one wave pending, one lib behind</h4>
+        <div class="card card-solution">
+          <h4>Version currency: fully closed</h4>
           <p>
-            9 of 9 adopted libraries sit on the latest tag (the 2026-11-09
-            execution session landed the cqrs-lite four-module wave &mdash;
-            metaengine v4.23.0, sqliteengine v4.8.0, system v4.18.0 with the
-            AggregateFn SQL-injection hardening, id v4.7.5 &mdash; and the
-            go-datastar v0.7.0 lockstep including static).
+            All 9 adopted libraries (plus the server_timing trial) sit on their
+            newest tag as of 2026-11-11. The go-cqrs-lite four-module wave
+            landed 2026-11-09 (commit d315904f) — metaengine v4.23.0,
+            sqliteengine v4.8.0, system v4.18.0 with the AggregateFn
+            SQL-injection hardening, id v4.7.5. Newest upstream movement not yet
+            consumed: cqrs-htmx loginpage/v4.18.0 and cmdguard v5.1.0 (2026-11-11)
+            — neither touches a keep-out verdict. One observation, NOT landed: an
+            uncommitted local edit renames the queue facade shims to v5 while
+            upstream has no queue/v5 tag (see the go-cqrs-lite report's refresh
+            note).
           </p>
         </div>
 
         <div class="card card-solution">
-          <h4>Low scores are mostly deliberate seams, not neglect</h4>
+          <h4>The remaining distance is deliberate, not neglect</h4>
           <p>
-            go-error-family (13), go-datastar (was 17, re-scored 83 after the
-            ScriptHandler adoption) and go-health (32) each hold
-            a small, deliberate seam: one dead-letter gate, one static-JS
-            submodule, one wire schema next to a hand-rolled prober (upstream's
-            classifier cannot express tq's per-check warns &mdash; a
-            severity-override design doc names go-taskqueue). Their
-            recommendations are surgical swaps, not migrations.
+            go-error-family (21), go-retry (78) and go-health (41) each hold a
+            small, named seam: the hand-rolled prober exists because upstream's
+            classifier cannot express tq's per-check warns (the PROPOSED
+            severity-override design doc names go-taskqueue), and the options
+            tail / WrapOnce leftovers are polish rows, not adoption gaps. Their
+            recommendations stay surgical: store-busy classifier, UTF-8/no-cache
+            in writeHealthJSON, DurationNanos, options tail.
           </p>
         </div>
 
         <div class="card card-solution">
-          <h4>The not-invented-here boundaries held</h4>
+          <h4>The not-invented-here boundaries held &mdash; with one sanctioned exception</h4>
           <p>
             Every KEEP OUT cites an ADR or a test-pinned existing seam:
             internal/retryx, runactor, the stdlib-flag CLI, journal DedupKey,
-            the no-store API posture. No rejected library was found to already
-            have a hand-rolled duplicate in the repo that should have been the
-            library all along.
+            the no-store API posture. The one boundary that moved did so through
+            the sanctioned door: server_timing, graded WORTH A TRIAL on 11-08,
+            was mounted behind the existing RequestLog flag on 11-09 with a
+            pinned gate test &mdash; and its own report now carries the never-unconditional
+            gate note (Server-Timing on a token API is a performance oracle).
+            No rejected library was found to already have a hand-rolled
+            duplicate that should have been the library all along.
           </p>
         </div>
 
@@ -1120,13 +1194,16 @@ git -C /home/lars/projects/&lt;lib-checkout&gt; tag -l | sort -V | tail -1  # la
 grep -rn 'larsartmann/&lt;lib&gt;' --include=go.mod . | grep -v vendor    # pinned versions</code></pre>
         <p>
           Each report's own "How to verify" section was executed literally on
-          2026-11-08 before shipping. Render proof:
-          <a href="index.png">index.png</a> (headless-browser screenshot of
-          this file).
+          2026-11-08 and re-executed against HEAD on 2026-11-11 (one exception,
+          documented in-repo: the webui health-test line is build-blocked by the
+          uncommitted v4&rarr;v5 facade migration in vendor/ &mdash; a concurrent
+          session's in-flight work; those landings were verified by grep
+          instead). Render proof: <a href="index.png">index.png</a>
+          (headless-browser screenshot of this file).
         </p>
 
         <footer class="footer">
-          Generated 2026-11-08 &middot; All claims verified against source
+          Generated 2026-11-08 &middot; Refreshed 2026-11-11 &middot; All claims verified against source
           code where noted &middot; Series: docs/review/libs/
         </footer>
       </main>

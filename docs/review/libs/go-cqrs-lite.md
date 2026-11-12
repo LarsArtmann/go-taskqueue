@@ -1,12 +1,14 @@
 # go-cqrs-lite — Library Utilization Review
 
-**Verdict:** ADOPTED — high (27/33) — the platform ADR-0019 named (queue engines, metaengine read side, system root) is ridden deep: every high-impact gap of the 2026-10-05 deep-dive has since landed (projectionhost M08, Delta counters, health/doctor); the version wave LANDED 2026-11-09 (post-wave delta at the bottom); what remains is scan caching and optional OTel.
+**Verdict:** ADOPTED — high (27/33) — the platform ADR-0019 named (queue engines, metaengine read side, system root) is ridden deep: every high-impact gap of the 2026-10-05 deep-dive has since landed (projectionhost M08, Delta counters, health/doctor); the version wave LANDED 2026-11-09 (post-wave delta below); what remains is scan caching and optional OTel.
+
+**2026-11-11 refresh:** re-ran the How-to-verify block — all counts and line cites hold (25 import files, 152 require rows, conform suite green 4.3s); upstream tag table re-checked (no new wave on any consumed module since the landed one; newest upstream tag is `catalog/v4/v4.15.0`, a module tq does not consume — row 52); the wave-landing commit identified (d315904f, 2026-11-09); the §2 **Pinned**/§5 tables below now reflect the landed wave (they had briefly described the pre-wave state). NEW OBSERVATION, not landed: an UNCOMMITTED local edit renames usage sites in internal/queue/{sqlite,postgres} facade shims to `v5.*` while their imports still alias the `sqlitev4`/`postgresv4` modules as `v4` — a concurrent session's in-flight v4→v5 supersession; upstream has NO `queue/v5` module or tag as of 2026-11-11 (`git -C /home/lars/projects/go-cqrs-lite tag -l 'queue/*'` → v4.0.3 max). Score unaffected: §2 unchanged. Verified 2026-11-11 by the greps in How-to-verify + `git diff` observation.
 
 **Post-wave delta (2026-11-09):** the 4-module wave is pinned everywhere — id/v4 v4.7.5, metaengine/v4 v4.23.0, sqliteengine/v4 v4.8.0, system/v4 v4.18.0 (AggregateFn SQL-injection hardening now SHIPPING, verified by `grep -rn 'cqrs-lite' --include=go.mod . | grep -v vendor` + the 20-module loop). Score UNCHANGED at 82: the wave closed §5's version-currency risk, not a §2 capability row — row 7 (system.Standard topology) stays MISSED by deliberate single-home shape, row 15 (WithPrefetch) stays MISSED as a capability but is now UNLOCKED at the pinned v4.23.0 (the cheapest next adoption); rows 4/18/43 unchanged.
 
-**Pinned:** (direct requires, per consumer module) event/v4 v4.15.2, id/v4 v4.7.4, metaengine/v4 v4.20.0, metaengine/sqliteengine/v4 v4.6.0, projection/v4 v4.4.2, projectionhost/v4 v4.7.1, queue/v4 v4.0.3, queue/sqlite/v4 v4.0.3, queue/postgres/v4 v4.0.3, record/v4 v4.6.2, system/v4 v4.16.0 (+ indirect: command v4.14.1, commandlifecycle v4.3.1 + projections v4.2.3, claiming v4.0.2, decider v4.8.0, dedup v4.3.0, dispatcher v4.5.2, metadata v4.7.3, otel v4.5.3, query v4.10.1, schema v4.7.1, snapshot v4.7.0, watermill v4.7.0, metaengine/projectionadapter v4.6.2). Verified 2026-11-08 by `grep -rn 'larsartmann/go-cqrs-lite' --include=go.mod . | grep -v vendor`.
+**Pinned:** (direct requires, per consumer module) event/v4 v4.15.2, id/v4 v4.7.5, metaengine/v4 v4.23.0, metaengine/sqliteengine/v4 v4.8.0, projection/v4 v4.4.2, projectionhost/v4 v4.7.1, queue/v4 v4.0.3, queue/sqlite/v4 v4.0.3, queue/postgres/v4 v4.0.3, record/v4 v4.6.2, system/v4 v4.18.0 (+ indirect: command v4.14.1, commandlifecycle v4.3.1 + projections v4.2.3, claiming v4.0.2, decider v4.8.0, dedup v4.3.0, dispatcher v4.5.2, metadata v4.7.3, otel v4.5.3, query v4.10.1, schema v4.7.1, snapshot v4.7.0, watermill v4.7.0, metaengine/projectionadapter v4.6.2). Verified 2026-11-11 by `grep -rn 'larsartmann/go-cqrs-lite' --include=go.mod . | grep -v vendor` (152 require rows across modules).
 
-**Latest:** event/v4.15.2 (=), id/v4.7.5 (+1), metaengine/v4.23.0 (+3), metaengine/sqliteengine/v4.8.0 (+3 tags), projection/v4.4.2 (=), projectionhost/v4.7.1 (=), queue family v4.0.3 (=), record/v4.6.2 (=), system/v4.18.0 (+2) (local checkout /home/lars/projects/go-cqrs-lite, checked 2026-11-08 by `git tag -l '<module>/v*' | sort -V | tail -1` per module).
+**Latest:** every consumed module at its newest tag — event/v4.15.2 (=), id/v4.7.5 (=), metaengine/v4.23.0 (=), metaengine/sqliteengine/v4.8.0 (=), projection/v4.4.2 (=), projectionhost/v4.7.1 (=), queue family v4.0.3 (=), record/v4.6.2 (=), system/v4.18.0 (=) (local checkout /home/lars/projects/go-cqrs-lite, re-checked 2026-11-11 by `git tag -l '<module>/v*' | sort -V | tail -1` per module). The only newer upstream tag, `catalog/v4/v4.15.0`, belongs to a module tq does not consume (row 52).
 
 **Prior coverage:** docs/research/2026-10-05_go-cqrs-lite-metaengine-system-deep-dive.html (58/100, 6/15 capabilities full, 0 versions behind). **Superseded by this report for go-cqrs-lite**: its findings F1 (projectionhost + durable checkpoints + DLQ), F2 (Delta counters), F3 (health/doctor), F5 (cursor pagination), F6 (metrics hooks) have all landed in the tree since (cited below); its version table rotted (three upstream waves since). None for cqrs-htmx (sibling report).
 
@@ -96,18 +98,9 @@ Status legend: 🟢 FULL, 🟡 PARTIAL, 🔴 MISSED, ⚠️ MISUSED, ⚪ N/A (re
    Current: managed host with restart budget, checkpoint batching, DLQ threshold, metrics hook (internal/readmodel/host.go:280-300); Delta counters (internal/readmodel/queries.go:139-205, stats.go:30-40); ScanPage cursor pagination (internal/readmodel/model.go:572-604); engine health in /healthz + stats (internal/readmodel/projectionhealth.go:59-72; internal/httpapi/httpapi.go:479; cmd/tq/main.go:2152); durable cursor via watermarks (host.go:91-135).
    Impact: the 2026-10-05 score of 58/100 no longer describes the tree — the projection's delivery machinery, the O(1) tallies, and the health surface are all platform-owned now. Recorded as verification, not new work.
 
-2. **Version wave behind: metaengine v4.20.0→v4.23.0, sqliteengine v4.6.0→v4.8.0, system v4.16.0→v4.18.0, id v4.7.4→v4.7.5 (three upstream waves: 2026-11-06 ×2, 2026-11-08).**
-   What the waves add (upstream CHANGELOG.md:43-110, verified 2026-11-08): `AggregateFn` SQL-injection whitelisting (security class — sqliteengine interpolated consumer-controlled strings raw; tq never calls AggregateFn directly, verified by `grep -rn 'AggregateFn' internal cmd` → zero hits, but the engine family tq ships is hardened); the EnforceCap-vs-fold deadlock fix (#123 — tq uses no caps, verified grep → zero hits, not triggered); `metaengine.WithPrefetch` (see finding 3); classified `Verify`/`Backfill` errors; journal trimming (`TrimStream`/`TrimJournalBefore`, N/A for tq today); `system.Standard` topology + MaxOpenConns plumbing (tq pins MaxOpenConns(1) deliberately — store invariant — so the pool escape hatch is N/A).
-   Impact: no breakage risk (all additive per changelog; queue family + event + record + projectionhost unchanged at tags). Vehicle: `internal/depsweep` (`--dep-sweep`, cmd/tq/main.go:1422-1429) mints the depbump task wave over the release-overview plan; then per-module `go mod tidy`, root `go mod vendor`, and the nix vendorHash update (AGENTS.md gates).
-   Example (one consumer module, then sweep the rest):
-   ```go
-   // internal/composition/go.mod + internal/readmodel/go.mod (tidy picks the rest)
-   require (
-       github.com/larsartmann/go-cqrs-lite/metaengine/v4 v4.23.0
-       github.com/larsartmann/go-cqrs-lite/metaengine/sqliteengine/v4 v4.8.0
-       github.com/larsartmann/go-cqrs-lite/system/v4 v4.18.0
-   )
-   ```
+2. **~~Version wave behind~~ RESOLVED: the wave LANDED 2026-11-09 (commit d315904f, 26-file go.mod sweep).**
+   What it carried (upstream CHANGELOG.md:43-110, verified 2026-11-08/11-09): `AggregateFn` SQL-injection whitelisting (security class — sqliteengine interpolated consumer-controlled strings raw; tq never calls AggregateFn directly, verified by `grep -rn 'AggregateFn' internal cmd` → zero hits, re-verified 2026-11-11, but the engine family tq ships is hardened); the EnforceCap-vs-fold deadlock fix (#123 — tq uses no caps, zero hits, not triggered); `metaengine.WithPrefetch` (see finding 3); classified `Verify`/`Backfill` errors; journal trimming (`TrimStream`/`TrimJournalBefore`, N/A for tq today); `system.Standard` topology + MaxOpenConns plumbing (tq pins MaxOpenConns(1) deliberately — store invariant — so the pool escape hatch is N/A).
+   Impact: §5 version-currency risk is CLOSED — every consumed module now sits on its newest tag (verified 2026-11-11). Standing guidance for the NEXT upstream wave: ride `internal/depsweep` (`--dep-sweep`, cmd/tq/main.go:1422-1429), then per-module `go mod tidy`, root `go mod vendor`, and the nix vendorHash update (AGENTS.md gates) — never a hand-edit.
 
 3. **WithPrefetch on the row-rich dashboard scans (needs the v4.21.0+ bump first).**
    Offer: /home/lars/projects/go-cqrs-lite/metaengine — `WithPrefetch(cache)` per-call scan option (CHANGELOG.md:72; the cqrs-lint F026 coached shape, shape-qualified cache key).
@@ -145,27 +138,27 @@ Status legend: 🟢 FULL, 🟡 PARTIAL, 🔴 MISSED, ⚠️ MISUSED, ⚪ N/A (re
 Inputs (from §2): N=52 rows; ⚪ N/A=19 (rows 5,6,14,16,17,19,25,39,40,42,44,45,46,47,48,49,50,51,52); FULL=26 (rows 1,2,8,9,10,11,12,13,20,21,22,23,26,27,28,29,30,31,32,33,34,35,36,37,38,41); PARTIAL=2 × 0.5 (rows 3,24); MISSED=5 (rows 4,7,15,18,43); MISUSED=0.
 A = 52 − 19 = **33** (26 + 2 + 5 = 33 ✓). Σ = 26 + 2×0.5 = **27 of 33**. Score = round(100 × 27/33) = **82 → high** (70-84; very high ≥85).
 
-Top opportunities, cheapest first: (1) the version wave via depsweep (finding 2 — security-class engine hardening rides along); (2) WithPrefetch on TasksPage after the bump (finding 3); (3) token-gated /metrics if the fleet wants tq series (finding 4); (4) HealthCheckDetailed fold-in (finding 5, opportunistic); (5) upstream adapter-seam conversation (finding 6, no code).
+Top opportunities, cheapest first: (1) WithPrefetch on TasksPage — now UNLOCKED at the pinned v4.23.0 (finding 3); (2) token-gated /metrics if the fleet wants tq series (finding 4); (3) HealthCheckDetailed fold-in (finding 5, opportunistic); (4) upstream adapter-seam conversation (finding 6, no code). (The former #1, the version wave, landed 2026-11-09.)
 
 ## 5. Version currency + risk
 
-| Module | Pinned | Latest (2026-11-08) | State |
+| Module | Pinned | Latest (2026-11-11) | State |
 | --- | --- | --- | --- |
-| metaengine/v4 | v4.20.0 (2026-10-24 wave) | v4.23.0 (2026-11-08) | 3 waves behind |
-| metaengine/sqliteengine/v4 | v4.6.0 | v4.8.0 (v4.7.0, v4.7.1, v4.8.0) | 3 tags behind |
-| system/v4 | v4.16.0 | v4.18.0 (2026-11-08) | 2 behind |
-| id/v4 | v4.7.4 | v4.7.5 (2026-11-06) | 1 patch behind |
+| metaengine/v4 | v4.23.0 | v4.23.0 (2026-11-08) | current |
+| metaengine/sqliteengine/v4 | v4.8.0 | v4.8.0 | current |
+| system/v4 | v4.18.0 | v4.18.0 | current |
+| id/v4 | v4.7.5 | v4.7.5 | current |
 | event/v4 | v4.15.2 | v4.15.2 | current |
 | projection/v4, projectionhost/v4 | v4.4.2 / v4.7.1 | same | current |
 | queue/v4, queue/sqlite/v4, queue/postgres/v4 | v4.0.3 | v4.0.3 | current |
 | record/v4 | v4.6.2 | v4.6.2 | current |
 | all indirects (command, commandlifecycle×2, claiming, decider, dedup, dispatcher, metadata, otel, query, schema, snapshot, watermill, projectionadapter) | — | same tags | current |
 
-Risk notes: (a) the pinned wave (2026-10-24) is the last FULLY tagged state of the disk-truth tail; the three newer waves are additive per changelog, with no rename breaking tq's import surface — but the upstream FEATURES.md still marks `system` experimental and the v5 push renames some constructors, so a bump belongs on the depsweep rail (gates: conform suites + facade parity + vendorHash), not a hand-edit. (b) ADR-0014 boundary holds: internal/journal/cqrs is never extended (read-only adapter, writes stay in the engine transactions) and its in-repo importers are exactly root surfaces — cmd/tq/main.go + readmodel/host.go (+ their tests); verified 2026-11-08 by `grep -rln 'go-taskqueue/internal/journal/cqrs' --include='*.go' . | grep -v vendor` → 5 files. (c) The 2026-11-08 wave landed in the upstream checkout TODAY — expect one more re-audit of this table at the next depsweep tick.
+Risk notes: (a) every consumed module is current (2026-11-11); the wave landed via the daemon sweep d315904f riding the depsweep rail — the NEXT upstream wave repeats that path (gates: conform suites + facade parity + vendorHash), never a hand-edit; the upstream FEATURES.md still marks `system` experimental and the v5 push renames some constructors. (b) ADR-0014 boundary holds: internal/journal/cqrs is never extended (read-only adapter, writes stay in the engine transactions) and its in-repo importers are exactly root surfaces — cmd/tq/main.go + readmodel/host.go (+ their tests); verified 2026-11-08 by `grep -rln 'go-taskqueue/internal/journal/cqrs' --include='*.go' . | grep -v vendor` → 5 files. (c) An UNCOMMITTED local supersession (facade usage → `v5.*`, imports still v4-alias; no upstream `queue/v5` tag) was observed 2026-11-11 — see the refresh note; when that wave lands it mints the next re-audit of this table, plus row-20/21 cite refreshes.
 
 ## 6. Conclusion
 
-go-cqrs-lite is not a dependency here — it is the substrate (ADR-0019): the queue engines hold the state, the metaengine planned tables + Delta counters serve every read, projectionhost owns delivery durability, and system owns the serve-runtime lifetime. Utilization moved from the prior report's 58/100 (concentrated hand-rolled gaps) to 82/33-applicable, with zero misuse rows. The remaining distance to very-high is a routine version wave, one scan-cache option, and an optional metrics surface — none structural. The one deliberately-unfinished seam (empty DomainConfig) is upstream-blocked and correctly parked.
+go-cqrs-lite is not a dependency here — it is the substrate (ADR-0019): the queue engines hold the state, the metaengine planned tables + Delta counters serve every read, projectionhost owns delivery durability, and system owns the serve-runtime lifetime. Utilization moved from the prior report's 58/100 (concentrated hand-rolled gaps) to 82/33-applicable, with zero misuse rows, and the version currency is fully closed (2026-11-11). The remaining distance to very-high is one scan-cache option and an optional metrics surface — none structural. The one deliberately-unfinished seam (empty DomainConfig) is upstream-blocked and correctly parked.
 
 ## How to verify
 
@@ -182,6 +175,7 @@ grep -n 'WithFacts' internal/queue/sqlitev4/adapter.go                          
 grep -n 'facts.FactType$\|facts.Fact$' internal/journal/journal.go                      # → 39, 44
 grep -rn 'AggregateFn\|EnforceCap\|WithPrefetch' internal cmd --include='*.go'          # → no output (rows 15/16 untriggered)
 grep -rn 'go-cqrs-lite/otel\|go-cqrs-lite/prometheus' --include='*.go' . | grep -v vendor # → no output (row 43)
+git log --format='%h %cs %s' -S 'go-cqrs-lite/metaengine/v4 v4.23.0' --all -- 'go.mod'  # → d315904f 2026-11-09 (wave landing)
 cd /home/lars/projects/go-cqrs-lite
 for m in event id metaengine projection projectionhost queue record system snapshot; do git tag -l "$m/v4.*" | sort -V | tail -1; done
 # → event/v4.15.2 id/v4.7.5 metaengine/v4.23.0 projection/v4.4.2 projectionhost/v4.7.1 queue/v4.0.3 record/v4.6.2 system/v4.18.0 snapshot/v4.7.0

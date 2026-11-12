@@ -15,22 +15,22 @@ import (
 
 // Store is the concrete PostgreSQL store; it satisfies the sibling
 // queue facade's Store interface through shared type aliases (ADR-0016).
-type Store = v4.Store
+type Store = v5.Store
 
 // StoreOption configures optional Store behavior.
-type StoreOption = v4.StoreOption
+type StoreOption = v5.StoreOption
 
 // Open connects to dsn (e.g. "postgres://user:pass@host:5432/db") and
 // returns a ready store. The maxConns parameter is retained for call-site
 // compatibility and ignored: the v4-backed store manages its own two
 // handles (one engine write lane, one bounded companion pool).
 func Open(ctx context.Context, dsn string, _ int32) (*Store, error) {
-	return v4.Open(ctx, dsn)
+	return v5.Open(ctx, dsn)
 }
 
 // OpenWithPool wraps a caller-owned pool into a ready store, applying
 // the schema on it. The caller keeps pool ownership; consumers with an
 // existing pool pass THEIR pool in instead of opening a second one.
 func OpenWithPool(ctx context.Context, pool *pgxpool.Pool, opts ...StoreOption) (*Store, error) {
-	return v4.OpenWithPool(ctx, pool, opts...)
+	return v5.OpenWithPool(ctx, pool, opts...)
 }

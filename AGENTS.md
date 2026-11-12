@@ -403,10 +403,9 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   path; pool detectors add worker-death, frozen-sweepers, budget-all-day.
 - **go-health-dashboard** (MIT): ADOPTED — `/health` inside the token
   gate, tq CSS, same-origin Datastar, trend/export + alert relay
-  (`--alert-url`). **httputil** NOT adopted (MIT v1.5.0+; fleet verdicts:
-  `docs/review/libs/`, 2026-11-09 — datastar+sse v0.7.0 current, cqrs
-  wave landed, server_timing trial KEEP); **go-nix-helpers** flake-input
-  only, never local.
+  (`--alert-url`). **httputil** NOT adopted (MIT v1.5.0+; fleet verdicts
+  `docs/review/libs/` 11-11: latest, cqrs wave landed, server_timing
+  trial MOUNTED); **go-nix-helpers** flake-input.
 - **docs-gates (ADOPTED 2026-11-06)**: `.docs-gates.json` + ci-local gate
   `scripts/check-docs-gates.sh` (battery `run --json`; absent binary →
   SKIP rc=0). Doctrine: audit-all + annotate SKIPPED — history-locked

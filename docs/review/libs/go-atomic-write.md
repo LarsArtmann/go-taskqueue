@@ -2,9 +2,11 @@
 
 **Verdict:** NOT ADOPTED — KEEP OUT — tq's one atomic-replace file write already rides the deliberate `internal/retryx` seam for the Windows-sharing-violation class; go-atomic-write's real strengths (TOCTOU fingerprints, multi-writer flock) solve concurrent-writer problems tq's single-serialized-writer doctrine says do not exist here.
 
-**Pinned:** none (not a dependency; verified 2026-11-08 by `rg -i 'go-atomic-write' -g 'go.mod' -g 'go.sum' -g '!vendor/**' .` → no output, rc=1; same for `--glob '*.go'` import greps)
+**2026-11-11 refresh:** version-currency re-check only — still no tag newer than v0.6.2 (2026-11-04); the checkout's HEAD advanced 5688158 → 6428b85 (2026-11-10, auto-commit housekeeping). Every tq-side cite re-verified unchanged (retryx seam at workerfailed.go:82, schema.go:170, depbump.go:588/:592).
 
-**Latest:** v0.6.2 (local checkout /home/lars/projects/go-atomic-write, checked 2026-11-08; HEAD = v0.6.2-39-g5688158)
+**Pinned:** none (not a dependency; verified 2026-11-08 by `rg -i 'go-atomic-write' -g 'go.mod' -g 'go.sum' -g '!vendor/**' .` → no output, rc=1; same for `--glob '*.go'` import greps; re-verified 2026-11-11 by the same greps — still 0 hits in go.mod and *.go, vendor excluded)
+
+**Latest:** v0.6.2 (local checkout /home/lars/projects/go-atomic-write, checked 2026-11-11; HEAD = v0.6.2-40-g6428b85)
 
 **Prior coverage:** none (docs/review/libs/ predates this report without an atomic-write entry; AGENTS.md's package table names `internal/retryx` as the shared seam).
 
@@ -57,7 +59,7 @@ go-atomic-write is a good library aimed at config files and shared state exposed
 
 ## 5. Maturity + version currency
 
-Latest tag v0.6.2 (2026-11-04); 12 root tags since v0.1.0 (2026-06-03); last commit 5688158 2026-11-06; checkout is v0.6.2-39-g5688158 (39 commits past the tag — active, same-owner ecosystem as go-retry/go-cqrs-lite, already an indirect dep of go-credentials-store). MIT. Go floor 1.27 — below tq's 1.27.3, no toolchain conflict.
+Latest tag v0.6.2 (2026-11-04); 12 root tags since v0.1.0 (2026-06-03); last commit 6428b85 2026-11-10 (auto-commit housekeeping; re-verified 2026-11-11); checkout is v0.6.2-40-g6428b85 (40 commits past the tag — active, same-owner ecosystem as go-retry/go-cqrs-lite, already an indirect dep of go-credentials-store). MIT. Go floor 1.27 — below tq's 1.27.3, no toolchain conflict.
 
 ## 6. Conclusion
 
@@ -74,6 +76,6 @@ rg -n 'retryx\.' --glob '*.go' --glob '!vendor/**' --glob '!internal/retryx/**' 
 sed -n '20,37p' internal/retryx/rename.go          # RenameTransient: 3 attempts, 50ms→100ms
 sed -n '78,86p' internal/readmodel/workerfailed.go # the ONE tmp+rename site
 sed -n '13,33p' /home/lars/projects/go-atomic-write/rename_windows.go  # retry is UNEXPORTED path
-git -C /home/lars/projects/go-atomic-write describe --tags  # → v0.6.2-39-g5688158
+git -C /home/lars/projects/go-atomic-write describe --tags  # → v0.6.2-40-g6428b85
 git -C /home/lars/projects/go-atomic-write tag -l | grep -v / | wc -l      # → 12
 ```
