@@ -8,6 +8,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- **Prometheus metrics for the health dashboard** (`tq serve` with the
+  metrics flag): the exposition at `/health/metrics` rides the same
+  token gate + security headers as every other health route. Default
+  OFF (the deliberate min-surface posture); the config seam is wired,
+  the cmd/tq flag lands when a pool opts in.
+
 - **Receipt verdict as an evidence-stage filter term** (`tq dlq
   --evidence-stage verify-ok` / `verify-mismatch`, webui evidence filter
   inherits): dead tasks can now be swept by the write-time attestation on
@@ -32,6 +38,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   exports the history as JSON/CSV/NDJSON — "has this check been warning
   since Tuesday?" is answerable from the surface instead of process
   memory.
+
+- **Visible off-row for the unmounted read model** (`GET /readyz` and
+  the dashboard): a store-backed serve now reports the projection check
+  as `off` with the enable recipe (restart with `--read-model`) instead
+  of omitting the row — off grades with pass, so readiness never flips.
+  (BEHAVIOR CHANGE for /readyz JSON consumers: a `projection` key now
+  always exists; previously present only when a fold was mounted.)
+
+- **Per-check health-probe abandonment + durations**: a store probe that
+  ignores its context (wedged driver, lock storm) is abandoned at the
+  5s batch deadline with a fail-closed error while the batch completes
+  with every check present, and each check now reports its measured
+  duration (DurationNanos) — the dashboard's duration column renders
+  probe-observed truth instead of empty cells.
 
 - **Server-Timing trial on `tq serve`**: with `--verbose` (request
   logging) the dashboard's JSON endpoints carry a `Server-Timing` header
