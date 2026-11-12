@@ -143,7 +143,7 @@ lint_leak_allowlist=()
 lint_leak_allowed() {
 	local f="$1" hit="$2" dir row mod re
 	case "$f" in
-		*.go.work.sum) return 1 ;;
+	*.go.work.sum) return 1 ;;
 	esac
 	dir="$(dirname "$f")"
 	for row in ${lint_leak_allowlist[@]+"${lint_leak_allowlist[@]}"}; do
@@ -172,13 +172,13 @@ lint_leak_scan() {
 			echo "  Foreign lint-toolchain entry (CI 41877954180 class: a -mod=mod" >&2
 			echo "  go/golangci invocation wrote its dep graph here). Heal:" >&2
 			case "$f" in
-				*.go.work.sum)
-					echo "    delete the go.work.sum (git rm / trash) and re-run a workspace go" >&2
-					echo "    command — it regenerates only the sums the graph actually needs" >&2
-					;;
-				*)
-					echo "    (cd \"$(dirname "$f")\" && GOWORK=off go mod tidy)  then stage the pruned go.sum" >&2
-					;;
+			*.go.work.sum)
+				echo "    delete the go.work.sum (git rm / trash) and re-run a workspace go" >&2
+				echo "    command — it regenerates only the sums the graph actually needs" >&2
+				;;
+			*)
+				echo "    (cd \"$(dirname "$f")\" && GOWORK=off go mod tidy)  then stage the pruned go.sum" >&2
+				;;
 			esac
 			echo "  and find the WRITER before it re-leaks (2026-11-12: build-webui-css.sh was one)." >&2
 			rc=1

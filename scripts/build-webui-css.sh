@@ -43,9 +43,9 @@ resolve_module_dir() {
 	trap 'rm -rf "$work"' RETURN
 	(
 		cd "$work" &&
-		go mod init cssresolve >/dev/null 2>&1 &&
-		go mod edit -require="$mod@$ver" &&
-		GOFLAGS=-mod=mod go mod download "$mod" >/dev/null 2>&1 || true
+			go mod init cssresolve >/dev/null 2>&1 &&
+			go mod edit -require="$mod@$ver" &&
+			GOFLAGS=-mod=mod go mod download "$mod" >/dev/null 2>&1 || true
 		dir="$(GOFLAGS=-mod=mod go list -m -f '{{.Dir}}' "$mod" 2>/dev/null || true)"
 		printf '%s' "$dir"
 	)
