@@ -373,12 +373,24 @@ func TestHealthProjectionCheck(t *testing.T) {
 
 	store := newTestStore(t)
 
-	// Not mounted: the check is absent, the prober's other checks run.
+	// Not mounted: the visible off-row with the enable recipe (pareto
+	// T17, 2026-11-12) — never a verdict (off grades with pass), so the
+	// prober's other checks run and readiness stays green.
 	s := New(store, Config{})
 
 	resp := s.prober.CachedResponse()
-	if _, mounted := resp.Checks["projection"]; mounted {
-		t.Fatalf("unmounted projection check emitted: %+v", resp.Checks["projection"])
+
+	proj, mounted := resp.Checks["projection"]
+	if !mounted {
+		t.Fatal("unmounted serve emits no projection row — the surface is invisible")
+	}
+
+	if proj.Status != health.StatusOff {
+		t.Fatalf("unmounted projection = %+v, want off", proj)
+	}
+
+	if !strings.Contains(proj.Error, "--read-model") {
+		t.Errorf("off row lacks the enable recipe: %q", proj.Error)
 	}
 
 	// Mounted at head: pass.
@@ -387,7 +399,7 @@ func TestHealthProjectionCheck(t *testing.T) {
 
 	resp = p.CachedResponse()
 
-	proj := resp.Checks["projection"]
+	proj = resp.Checks["projection"]
 	if proj.Status != health.StatusPass {
 		t.Errorf("at-head projection = %+v, want pass", proj)
 	}

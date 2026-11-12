@@ -357,6 +357,17 @@ func (p *queueProber) evaluate(now time.Time) {
 				)
 			}
 		}
+	} else {
+		// Unmounted: the visible off-row (pareto T17, 2026-11-12) — off
+		// beats absence because an operator reading the dashboard should
+		// not have to know which read mode this serve started in, and the
+		// message carries the enable recipe. Upstream grades StatusOff
+		// with pass, so the row never flips readiness.
+		checks["projection"] = mkCheck(
+			health.StatusOff,
+			"read model not mounted — store-backed reads; restart with --read-model to fold the projection",
+			0,
+		)
 	}
 
 	if p.foldFollower != nil && p.foldFollower.Load() {
