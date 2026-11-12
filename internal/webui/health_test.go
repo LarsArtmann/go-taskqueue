@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	health "github.com/larsartmann/go-health"
 	"github.com/larsartmann/go-sse"
@@ -204,6 +205,93 @@ func TestHealthProbesStoreFailure(t *testing.T) {
 
 	if code, _, _ := getBody(t, server.URL+HealthLivenessPath); code != http.StatusOK {
 		t.Fatalf("liveness = %d, want 200 always", code)
+	}
+}
+
+// utf8PoisonStore carries a store error string with raw invalid UTF-8
+// bytes: the truncated-body class T08 pins (pareto plan, 2026-11-12).
+type utf8PoisonStore struct {
+	failingStore
+}
+
+func (p *utf8PoisonStore) StatusCounts(_ context.Context) (map[task.Status]int, error) {
+	return nil, errors.New("store busy: \xff\xfe corrupted")
+}
+
+func TestHealthReadinessPoisonedUTF8StoreError(t *testing.T) {
+	t.Parallel()
+
+	s := New(&utf8PoisonStore{}, Config{})
+	server := httptest.NewServer(s.Handler())
+	t.Cleanup(server.Close)
+
+	code, header, body := getBody(t, server.URL+HealthReadinessPath)
+
+	if code != http.StatusServiceUnavailable {
+		t.Fatalf("readiness = %d, want 503", code)
+	}
+
+	if got := header.Get("Cache-Control"); got != "no-cache" {
+		t.Errorf("Cache-Control = %q, want no-cache", got)
+	}
+
+	if !json.Valid([]byte(body)) {
+		t.Errorf("readiness body is not valid JSON: %q", body)
+	}
+
+	if !utf8.ValidString(body) {
+		t.Errorf("readiness body is not valid UTF-8: %q", body)
+	}
+
+	if strings.Contains(body, "\xff") {
+		t.Errorf("readiness body carries the raw invalid byte 0xff: %q", body)
+	}
+
+	if !strings.Contains(body, "store busy") {
+		t.Errorf("coercion dropped the error text, got %q", body)
+	}
+}
+
+// recordingWriter records every Write chunk even when the write fails,
+// so the marshal-fallback path can be pinned directly (pareto T08).
+type recordingWriter struct {
+	header http.Header
+	chunks []string
+}
+
+func (w *recordingWriter) Header() http.Header {
+	if w.header == nil {
+		w.header = make(http.Header)
+	}
+
+	return w.header
+}
+
+func (w *recordingWriter) WriteHeader(int) {}
+
+func (w *recordingWriter) Write(p []byte) (int, error) {
+	w.chunks = append(w.chunks, string(p))
+
+	return 0, errors.New("write failed")
+}
+
+func TestHealthWriteJSONMarshalFallback(t *testing.T) {
+	t.Parallel()
+
+	w := &recordingWriter{}
+	writeHealthJSON(w, http.StatusServiceUnavailable, health.Response{
+		Status: health.StatusFail,
+		Checks: map[string]health.Check{},
+	})
+
+	if len(w.chunks) == 0 {
+		t.Fatal("writeHealthJSON wrote nothing")
+	}
+
+	fallback := w.chunks[len(w.chunks)-1]
+
+	if fallback != `{"status":"fail","error":"health marshal failed"}` {
+		t.Errorf("fallback body = %q, want the static fail body", fallback)
 	}
 }
 
