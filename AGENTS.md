@@ -342,7 +342,7 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 - **Root builds auto-use `vendor/`** — internal/ changes need `go mod vendor`
   first; dep bumps also per-module tidy (`check-gomod-vendor-sync.sh`).
 - **GOEXPERIMENT/GOTOOLCHAIN**: ci-local exports jsonv2; CI setup-go + go.mod
-  floors + flake tarball PINNED IN LOCKSTEP (1.27.3); NEVER lower a `go`
+  floors + flake tarball PINNED IN LOCKSTEP (1.27.4); NEVER lower a `go`
   directive (`check-go-mods.sh`).
 - **`fetch` empty ≠ URL dead**: an empty body is a tool mismatch — retry `download`.
 - **Host GOCACHE/GOROOT hazards**: gates run `GOCACHE=/tmp/go-build-cache`
