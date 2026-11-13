@@ -1,2 +1,0 @@
-go test fuzz v1
-string("TQ_RESULT:{\"files_changed\":[\"0\",\".go\"],\"commit_sha\":\"ao\"00} ")

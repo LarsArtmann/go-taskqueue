@@ -7,7 +7,8 @@
 #
 # Campaigns (pkg|target), rotated nightly so each target gets full fuzztime:
 #   internal/harvest|FuzzParseRepo           — TODO_LIST.md parsing
-#   internal/executor|FuzzExtractResultPayload — agent TQ_RESULT output parsing
+# (FuzzExtractResultPayload retired 2026-11-02 with its target function —
+# the TQ_RESULT verdict channel it parsed is gone; CHANGELOG Internal row)
 #
 # The nightly CI job (.github/workflows/fuzz.yml) runs this and commits any
 # new seeds back to master; locally, the auto-commit daemon picks the files
@@ -45,8 +46,7 @@ only="${2:-}"
 max_seeds="${MAX_SEEDS:-1000}"
 
 campaigns=(
-	"internal/harvest|FuzzParseRepo"
-	"internal/executor|FuzzExtractResultPayload"
+"internal/harvest|FuzzParseRepo"
 )
 
 cache="$(mktemp -d)"

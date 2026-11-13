@@ -89,6 +89,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+### Internal
+
+- retire the dead `FuzzExtractResultPayload` fuzz target (2026-11-02
+  daemon sweep removed `internal/executor/result_fuzz_test.go` with the
+  TQ_RESULT verdict channel its target function parsed; the committed
+  seed corpus parsed TQ_RESULT-line strings and was orphaned): drop
+  the target from `scripts/fuzz/nightly.sh` rotation and the
+  `.github/workflows/fuzz.yml` corpus sync, delete the orphaned corpus,
+  and allow-list the two historical CHANGELOG cites
+  (`scripts/check-doc-refs.sh`). The surviving output parser
+  (`parseStatusResult`, `internal/executor/status.go`) keeps table-test
+  coverage; a replacement fuzz target is rowed in TODO_LIST.
+
 ## [v0.4.2] - 2026-11-07
 
 ### Added
