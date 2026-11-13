@@ -684,6 +684,9 @@ step "api lockout smoke (live socket: 3x401 -> 429+Retry-After -> expiry 200)"
 step "redaction smoke (stub agent leaks fake tokens; sidecar + evidence + audit)"
 ./scripts/smoke/redaction.sh
 
+step "calibration smoke (stub agent completes a turn; CalibrationRow join keys pinned)"
+./scripts/smoke/calibration.sh
+
 step "review-loop e2e smoke (stub reviewer; approve + request_changes + autofix)"
 ./scripts/smoke/reviews.sh
 

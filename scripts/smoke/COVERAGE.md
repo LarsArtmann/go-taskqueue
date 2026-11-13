@@ -31,6 +31,7 @@ signal (`exec.ExitError`, code −1).
 | `api.sh`                  | machine API: token gate, lockout, POST /tasks |
 | `archive-evidence.sh`     | evidence-archive helper rails                 |
 | `bootstrap-install.sh`    | `tq bootstrap` install path                   |
+| `calibration.sh`          | calibration dataset write path: stub agent completes a turn; ONE `CalibrationRow` in `$TQ_LOG_DIR/calibration.jsonl` with kind/task_id/RAW verdict/derived commit+file counts/verify receipt+attestation joins and NO failure half |
 | `consumer-install.sh`      | journal consumer wiring                       |
 | `crush-pool-supervisor.sh` | routed 429 fast-refuse + pool keeper/supervisor (table below) |
 | `crush-server-route.sh`    | crush client/server route wire legs (table below) |
