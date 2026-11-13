@@ -75,7 +75,11 @@ func completeHarvestedTask(t *testing.T, h *Harvester, repoName, itemText string
 }
 
 func TestAuditDetectsDrift(t *testing.T) {
-	h, _ := runOverRepos(t, "drifty", "# H\n- [ ] finished but unticked\n- [ ] still open work\n- [x] hand-done early\n")
+	h, _ := runOverRepos(
+		t,
+		"drifty",
+		"# H\n- [ ] finished but unticked\n- [ ] still open work\n- [x] hand-done early\n",
+	)
 	ctx := context.Background()
 
 	// The agent finished the first item; the checkbox stayed open.

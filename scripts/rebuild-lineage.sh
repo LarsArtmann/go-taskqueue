@@ -169,11 +169,11 @@ main() {
 			msg=$(printf '%s\n\n%s' "${msg%%$'\n'}" "$footer")
 		fi
 		new=$(GIT_AUTHOR_NAME="$(git log -1 --format='%an' "$c")" \
-			GIT_AUTHOR_EMAIL="$(git log -1 --format='%ae' "$c")" \
-			GIT_AUTHOR_DATE="$(git log -1 --format='%aD' "$c")" \
-			GIT_COMMITTER_NAME="$(git log -1 --format='%cn' "$c")" \
-			GIT_COMMITTER_EMAIL="$(git log -1 --format='%ce' "$c")" \
-			GIT_COMMITTER_DATE="$(git log -1 --format='%cD' "$c")" \
+		GIT_AUTHOR_EMAIL="$(git log -1 --format='%ae' "$c")" \
+		GIT_AUTHOR_DATE="$(git log -1 --format='%aD' "$c")" \
+		GIT_COMMITTER_NAME="$(git log -1 --format='%cn' "$c")" \
+		GIT_COMMITTER_EMAIL="$(git log -1 --format='%ce' "$c")" \
+		GIT_COMMITTER_DATE="$(git log -1 --format='%cD' "$c")" \
 			git commit-tree "$tree" -p "$parent" -m "$msg") || die "commit-tree failed at $c"
 		parent="$new"
 		newtip="$new"

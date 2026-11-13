@@ -304,7 +304,13 @@ func TestDiscoverReposForPrefersDaemonResult(t *testing.T) {
 
 	srv, _ := newDaemonStub(t, []daemonProject{{Path: fx.withTodoA}, {Path: "gamma"}})
 
-	repos, err := DiscoverReposFor(context.Background(), srv.URL, fx.dir, DefaultTodoFile, slog.New(&slogcapture.Handler{}))
+	repos, err := DiscoverReposFor(
+		context.Background(),
+		srv.URL,
+		fx.dir,
+		DefaultTodoFile,
+		slog.New(&slogcapture.Handler{}),
+	)
 	if err != nil {
 		t.Fatalf("DiscoverReposFor: %v", err)
 	}
