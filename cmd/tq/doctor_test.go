@@ -300,14 +300,17 @@ func TestDoctorRepoAutonomy(t *testing.T) {
 	}
 }
 
-// doctorIgnoreTools drops the tool:<name> and verdict-channel checks: they
-// reflect the host PATH (tq/git/go reachability), which a hermetic test
-// cannot assume — the nix sandbox and CI runners ship none of them.
+// doctorIgnoreTools drops the tool:<name>, verdict-channel and
+// tag-ancestry checks: tool checks reflect the host PATH (tq/git/go
+// reachability) and tag-ancestry reflects the host checkout's release-tag
+// lineage — neither is hermetic (the nix sandbox and CI runners ship none
+// of the tools, and CI checkouts legitimately carry tags HEAD cannot
+// reach while a lineage fork heals).
 func doctorIgnoreTools(results []checkResult) []checkResult {
 	var kept []checkResult
 
 	for _, r := range results {
-		if strings.HasPrefix(r.Name, "tool:") || r.Name == "verdict-channel" {
+		if strings.HasPrefix(r.Name, "tool:") || r.Name == "verdict-channel" || r.Name == "tag-ancestry" {
 			continue
 		}
 
@@ -315,6 +318,65 @@ func doctorIgnoreTools(results []checkResult) []checkResult {
 	}
 
 	return kept
+}
+
+// TestDoctorTagAncestry pins the release-hygiene check against a real
+// fixture repo (the host checkout's lineage is not hermetic, so the
+// aggregate tests exclude the check): a reachable tag is ok, an
+// orphaned-lineage tag warns naming it.
+func TestDoctorTagAncestry(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not on PATH")
+	}
+
+	dir := t.TempDir()
+
+	git := func(t *testing.T, args ...string) {
+		t.Helper()
+
+		cmd := exec.Command("git", args...)
+		cmd.Dir = dir
+		cmd.Env = append(os.Environ(),
+			"GIT_AUTHOR_NAME=test", "GIT_AUTHOR_EMAIL=test@example.com",
+			"GIT_COMMITTER_NAME=test", "GIT_COMMITTER_EMAIL=test@example.com",
+			"GIT_EDITOR=true",
+		)
+
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %s: %v: %s", strings.Join(args, " "), err, out)
+		}
+	}
+
+	git(t, "init", "-b", "main")
+	git(t, "commit", "--allow-empty", "-m", "base")
+	git(t, "tag", "-m", "v0.1.0", "v0.1.0")
+
+	t.Chdir(dir)
+
+	if r := doctorTagAncestry(); r.Status != checkOK {
+		t.Errorf("reachable lineage: %s = %s (%s), want ok", r.Name, r.Status, r.Detail)
+	}
+
+	// An orphan branch carrying a release tag: the forked-lineage shape.
+	git(t, "checkout", "--orphan", "side")
+	git(t, "commit", "--allow-empty", "-m", "fork")
+	git(t, "tag", "-m", "v0.2.0", "v0.2.0")
+	git(t, "checkout", "main")
+
+	r := doctorTagAncestry()
+	if r.Status != checkWarn {
+		t.Errorf("forked lineage: %s = %s (%s), want warn", r.Name, r.Status, r.Detail)
+	}
+
+	if !strings.Contains(r.Detail, "v0.2.0") {
+		t.Errorf("warn detail %q must name the unreachable tag", r.Detail)
+	}
+
+	git(t, "tag", "-d", "v0.2.0")
+
+	if r := doctorTagAncestry(); r.Status != checkOK {
+		t.Errorf("healed lineage: %s = %s (%s), want ok", r.Name, r.Status, r.Detail)
+	}
 }
 
 func TestDoctorToolPathChecks(t *testing.T) {
