@@ -46,7 +46,7 @@ only="${2:-}"
 max_seeds="${MAX_SEEDS:-1000}"
 
 campaigns=(
-"internal/harvest|FuzzParseRepo"
+	"internal/harvest|FuzzParseRepo"
 )
 
 cache="$(mktemp -d)"
