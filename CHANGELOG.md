@@ -110,7 +110,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 - Dedup sweep to zero harmful clones (2026-11-13 `-t 1` scan, canonical
   `scripts/art-dupl.json` verdict): 9 extraction seams landed — shared
-  `internal/slogcapture.Handler` replacing four byte-identical sweeper
+  slogcapture.Handler (new `internal/slogcapture` package) replacing four
+  byte-identical sweeper
   test doubles, harvest `runOverRepos` fixture, `openDoctorStore` test
   prolog (9 sites), executor `bufferedProcessGroup` probe convention,
   conform `requeueEvidenceOf`/`trailOf` fetch helpers,
