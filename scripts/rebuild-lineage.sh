@@ -238,7 +238,6 @@ self_test() {
 	/*) ;;
 	*) self="$PWD/${self#./}" ;;
 	esac
-	local tmp
 	tmp=$(mktemp -d) || die "mktemp failed"
 	trap 'rm -rf "$tmp"' EXIT
 	local repo="$tmp/repo"
@@ -246,6 +245,7 @@ self_test() {
 	git -C "$repo" config user.email t@t
 	git -C "$repo" config user.name t
 	git -C "$repo" config core.editor true
+	git -C "$repo" config tag.gpgSign false
 
 	local ok=0 fail=0
 

@@ -155,7 +155,7 @@ check_rails() {
 		local hits
 		hits=$(comm -12 <(git rev-list "$r" | sort) <(git rev-list "$base..HEAD" | sort))
 		pushed="$pushed$hits"
-	done < <(git for-each-ref --format='%(refname)' 'refs/remotes/*')
+	done < <(git for-each-ref --format='%(refname)' 'refs/remotes/')
 	[ -z "$pushed" ] || die "refusing: pushed commits are inside the heal range (history policy)"
 
 	# Tag rail: the pushed-commit rail does not catch tags — a tag on an
@@ -711,8 +711,11 @@ EOF
 
 	# Rail: pushed commit inside the heal range.
 	git -C "$repo" update-ref refs/remotes/origin/master HEAD
-	(cd "$repo" && "$self" --from refs/remotes/origin/master~1 deadbeef00000000000000000000000000000004) >/dev/null 2>&1
-	expect_refusal "pushed commit in range" $?
+	(cd "$repo" && "$self" --from refs/remotes/origin/master~1 deadbeef00000000000000000000000000000004) >/dev/null 2>"$tmp/err_pushed"
+	# Reason-pinned (2026-11-13): git 2.56's for-each-ref no longer matches
+	# the old 'refs/remotes/*' glob (prefix 'refs/remotes/' does), so a
+	# silently-empty remote scan let the rail pass for the WRONG reason.
+	expect_refusal "pushed commit in range" $? "pushed commits are inside the heal range" "$tmp/err_pushed"
 
 	# Rail: empty heal range.
 	(cd "$repo" && "$self" --from origin/master deadbeef00000000000000000000000000000005) >/dev/null 2>&1
