@@ -263,6 +263,10 @@ func statusPrompt(p StatusPayload) string {
 	b.WriteString(`
 Inspect what these tasks actually changed (git log, git show, the repository's docs and TODO_LIST.md). When a task above lists a closeout report, read that file FIRST — it is the task's own full self-review; never re-derive it from the task id. Base the report on what you can verify — no invented history.
 
+## Dispatch-time window dedup (run before the full derivation)
+
+This window may already be reported. Before deriving anything, grep the docs/status/README.md index rows and the docs/status/*.md window reports they name for this window's span (the earliest and latest Completed dates above) and for the window's task IDs. A done-prompt/window report covering the same task set is a SAME-WINDOW report. On a hit, run a verification-only pass (re-greps plus a journal read, no re-derivation) instead of a full pass: read that earlier report first, re-grep its headline landings at HEAD, re-read the journal for band drift, and write a short re-verification report (same docs/status/<YYYY-MM-DD_HH-MM_WELL-NAMED>.md contract, same a)-h) shape) naming the earlier report, marking each landing green/red at HEAD, and recording any contradiction found. Sections a)-d) are satisfied by citation to the earlier report; band drift (h) is always read fresh from the journal; record the double dispatch itself as an improvement finding (e). Two same-day dispatches once covered the identical 17-task window because this check did not exist.
+
 ## Write a full status report
 
 Write a comprehensive, detailed status report (filename timestamp from the clock, never guessed) to:

@@ -415,3 +415,30 @@ func TestStatusPromptCarriesCheckpointEarly(t *testing.T) {
 		}
 	}
 }
+
+// TestStatusPromptCarriesWindowDedup pins the dispatch-time window-report
+// dedup (2026-11-02 twenty-seventh dispatch §e6/§f1: the twenty-sixth and
+// twenty-seventh dispatches covered the identical 17-task window hours
+// apart): the done-prompt contract must order a cheap same-window index
+// check before the full derivation, and a hit must downgrade the pass to
+// verification-only (re-greps plus a journal read, no re-derivation).
+func TestStatusPromptCarriesWindowDedup(t *testing.T) {
+	t.Parallel()
+
+	prompt := statusPrompt(StatusPayload{Repo: "demo", Completed: []StatusCompletion{
+		{TaskID: "000test", Item: "ship the thing"},
+	}})
+
+	for _, want := range []string{
+		"Dispatch-time window dedup",
+		"docs/status/README.md",
+		"SAME-WINDOW report",
+		"verification-only pass",
+		"no re-derivation",
+		"band drift",
+	} {
+		if !strings.Contains(prompt, want) {
+			t.Fatalf("prompt lacks %q (window-dedup section missing)", want)
+		}
+	}
+}

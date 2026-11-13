@@ -91,6 +91,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Internal
 
+- Done-prompt dispatch-time window dedup (2026-11-02 twenty-seventh
+  dispatch §e6): the done-prompt contract now orders a cheap same-window
+  check before the full derivation — grep the docs/status/README.md index
+  rows and the window reports they name for the window's span and task
+  IDs; a SAME-WINDOW hit downgrades the pass to verification-only
+  (re-greps + journal read, no re-derivation) instead of a full
+  re-derivation, with band drift still read fresh from the journal and the
+  double dispatch recorded as a finding. The twenty-sixth/twenty-seventh
+  double dispatch burned a full second pass over the identical 17-task
+  window. Pinned by `TestStatusPromptCarriesWindowDedup`.
+
 - retire the dead `FuzzExtractResultPayload` fuzz target (2026-11-02
   daemon sweep removed `internal/executor/result_fuzz_test.go` with the
   TQ_RESULT verdict channel its target function parsed; the committed
