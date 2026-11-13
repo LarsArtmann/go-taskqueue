@@ -297,11 +297,12 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   mirror clones gated STRICT by `check-mirror-clones.sh` (shared surface
   `internal/queue/companion`); art-dupl residuals accepted ONLY where named
   here. Templ markup cannot carry Go-comment accepts — the HTML-comment
-  directive suppresses but SHIPS IN PAGE OUTPUT (upstream
-  LarsArtmann/art-dupl#9, open); the sole templ twin (layout.templ
-  mobile/desktop pair) is intentional. `art-dupl:accept` suppresses only a
-  few lines ABOVE the clone's first line. Extraction triggers (extract
-  when an accepted clone hits): a third doctor pending-listing check →
+  directive ships in page output (art-dupl#9, open); templ twins (layout
+  mobile/desktop, fragments card-badge rows) intentional. `art-dupl:accept`
+  suppresses only a few lines ABOVE the clone's first line. 11-13 `-t 1`
+  sweep verdicts: docs/status report (canonical 9 groups accepted,
+  micro-idiom tail accepted by class). Extraction triggers: a third
+  doctor pending-listing check →
   shared helper; a third executor payload-validation site (review/status)
   → shared validator; a fifth QueryContext rows-scan site in
   `internal/queue/companion/reads.go` → `scanInto` helper (2026-09-30_09-15 §f11-13).
