@@ -63,9 +63,11 @@ func cmdCalibration(args []string) error {
 	}
 
 	fmt.Printf("dataset: %s\nrows: %d", summary.Path, summary.Rows)
+
 	if summary.Malformed > 0 {
 		fmt.Printf(" (malformed lines skipped: %d)", summary.Malformed)
 	}
+
 	fmt.Println()
 
 	if summary.Rows == 0 {
@@ -81,7 +83,9 @@ func cmdCalibration(args []string) error {
 		for v := range st.VerdictValues {
 			values = append(values, v)
 		}
+
 		sort.Strings(values)
+
 		for _, v := range values {
 			fmt.Printf("  verdict %-18s %d\n", v+":", st.VerdictValues[v])
 		}
@@ -93,14 +97,18 @@ func cmdCalibration(args []string) error {
 		}
 
 		fmt.Printf("  attested ok: %d", st.AttestedOK)
+
 		refusals := make([]string, 0, len(st.AttestationRefusals))
 		for r := range st.AttestationRefusals {
 			refusals = append(refusals, r)
 		}
+
 		sort.Strings(refusals)
+
 		for _, r := range refusals {
 			fmt.Printf("; %s: %d", r, st.AttestationRefusals[r])
 		}
+
 		fmt.Println()
 	}
 

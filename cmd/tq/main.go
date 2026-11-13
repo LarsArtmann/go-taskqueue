@@ -1614,7 +1614,10 @@ func cmdAgentPool(args []string) error {
 		// long-lived pool cannot grow it forever (oldest rows drop first;
 		// the tuning surface reads the freshest evidence).
 		if poolOpts.logDir != "" {
-			if trimmed, err := executor.TrimCalibrationDataset(poolOpts.logDir, executor.CalibrationMaxBytes); err != nil {
+			if trimmed, err := executor.TrimCalibrationDataset(
+				poolOpts.logDir,
+				executor.CalibrationMaxBytes,
+			); err != nil {
 				log.Warn("calibration trim failed", "err", err)
 			} else if trimmed {
 				log.Info("calibration trim", "dir", poolOpts.logDir, "cap_bytes", executor.CalibrationMaxBytes)

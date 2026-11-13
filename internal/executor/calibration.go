@@ -225,6 +225,7 @@ func TrimCalibrationDataset(dir string, maxBytes int64) (bool, error) {
 			cut = len(data) // one monster row: nothing complete survives
 		}
 	}
+
 	trimmed := data[cut:]
 
 	tmp := path + ".tmp"

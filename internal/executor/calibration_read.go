@@ -70,6 +70,7 @@ func SummarizeCalibration(path string) (CalibrationSummary, error) {
 
 	scan := bufio.NewScanner(f)
 	scan.Buffer(make([]byte, 0, 1<<20), 16<<20)
+
 	for scan.Scan() {
 		line := scan.Bytes()
 		if len(line) == 0 {
@@ -82,6 +83,7 @@ func SummarizeCalibration(path string) (CalibrationSummary, error) {
 
 			continue
 		}
+
 		summary.Rows++
 
 		st := kinds[row.Kind]
@@ -98,9 +100,11 @@ func SummarizeCalibration(path string) (CalibrationSummary, error) {
 			if class == "" {
 				class = "(unclassified)"
 			}
+
 			if st.Failures == nil {
 				st.Failures = map[string]int{}
 			}
+
 			st.Failures[class]++
 		}
 
@@ -110,15 +114,18 @@ func SummarizeCalibration(path string) (CalibrationSummary, error) {
 			var parsed struct {
 				Verdict string `json:"verdict"`
 			}
+
 			_ = json.Unmarshal(row.Verdict, &parsed)
 			if parsed.Verdict == "" {
 				// The row body is JSON but carries no verdict field
 				// (status reports, prioritize tables, agent free-form).
 				parsed.Verdict = "(none)"
 			}
+
 			if st.VerdictValues == nil {
 				st.VerdictValues = map[string]int{}
 			}
+
 			st.VerdictValues[parsed.Verdict]++
 
 			if parsed.Verdict == string(VerdictApprove) {
@@ -138,9 +145,11 @@ func SummarizeCalibration(path string) (CalibrationSummary, error) {
 				if refusal == "" {
 					refusal = "(unattested)"
 				}
+
 				if st.AttestationRefusals == nil {
 					st.AttestationRefusals = map[string]int{}
 				}
+
 				st.AttestationRefusals[refusal]++
 			}
 		case row.Verify != nil:
@@ -149,9 +158,11 @@ func SummarizeCalibration(path string) (CalibrationSummary, error) {
 			if st.AttestationRefusals == nil {
 				st.AttestationRefusals = map[string]int{}
 			}
+
 			st.AttestationRefusals[AttestationNoReceipt]++
 		}
 	}
+
 	if err := scan.Err(); err != nil {
 		return CalibrationSummary{}, fmt.Errorf("read calibration dataset: %w", err)
 	}
@@ -159,6 +170,7 @@ func SummarizeCalibration(path string) (CalibrationSummary, error) {
 	for _, st := range kinds {
 		summary.ByKind = append(summary.ByKind, *st)
 	}
+
 	sort.Slice(summary.ByKind, func(i, j int) bool {
 		return summary.ByKind[i].Kind < summary.ByKind[j].Kind
 	})

@@ -185,6 +185,7 @@ func TestFinishParsedRunCalibrates(t *testing.T) {
 
 func TestRecordCalibrationFailure(t *testing.T) {
 	t.Setenv("TQ_LOG_DIR", t.TempDir())
+
 	dir := os.Getenv("TQ_LOG_DIR")
 
 	RecordCalibrationFailure("agent", task.NewID(), &FailureEvidence{

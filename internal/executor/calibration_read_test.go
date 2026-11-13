@@ -73,7 +73,8 @@ func TestSummarizeCalibration(t *testing.T) {
 					t.Fatalf("agent stats=%+v, want AttestedOK=1", agent)
 				}
 
-				if agent.AttestationRefusals["count-mismatch"] != 1 || agent.AttestationRefusals[AttestationNoReceipt] != 1 {
+				if agent.AttestationRefusals["count-mismatch"] != 1 ||
+					agent.AttestationRefusals[AttestationNoReceipt] != 1 {
 					t.Fatalf("refusals=%+v, want one count-mismatch and one no-receipt", agent.AttestationRefusals)
 				}
 
@@ -117,10 +118,12 @@ func TestTrimCalibrationDataset(t *testing.T) {
 	path := filepath.Join(dir, CalibrationDataset)
 
 	row := `{"task_id":"t1","kind":"agent","at":1}` + "\n"
+
 	var seed strings.Builder
 	for range 100 {
 		seed.WriteString(row)
 	}
+
 	if err := os.WriteFile(path, []byte(seed.String()), 0o600); err != nil {
 		t.Fatalf("seed dataset: %v", err)
 	}
@@ -129,6 +132,7 @@ func TestTrimCalibrationDataset(t *testing.T) {
 	if err != nil {
 		t.Fatalf("TrimCalibrationDataset: %v", err)
 	}
+
 	if !trimmed {
 		t.Fatal("oversized dataset must report a trim")
 	}
@@ -137,12 +141,15 @@ func TestTrimCalibrationDataset(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reread: %v", err)
 	}
+
 	if int64(len(data)) > 2048+int64(len(row)) {
 		t.Fatalf("trimmed size %d exceeds cap+row", len(data))
 	}
+
 	if !bytes.HasPrefix(data, []byte(`{"task_id"`)) {
 		t.Fatal("trim must land on a line boundary, never a torn row")
 	}
+
 	if !bytes.HasSuffix(data, []byte(row)) {
 		t.Fatal("trim must keep the newest rows")
 	}
@@ -150,6 +157,7 @@ func TestTrimCalibrationDataset(t *testing.T) {
 	if trimmed, err := TrimCalibrationDataset(dir, 1<<30); err != nil || trimmed {
 		t.Fatalf("under-cap trim=%v err=%v, want false/nil", trimmed, err)
 	}
+
 	if trimmed, err := TrimCalibrationDataset(t.TempDir(), 1024); err != nil || trimmed {
 		t.Fatalf("absent-file trim=%v err=%v, want false/nil", trimmed, err)
 	}

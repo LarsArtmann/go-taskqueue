@@ -376,6 +376,7 @@ func judgedFailureEvidence(t task.Task, sink *executor.Sink, execErr error) json
 	if raw := sink.Failure(); len(raw) > 0 {
 		_ = json.Unmarshal(raw, &ev)
 	}
+
 	ev.Class = string(executor.ClassifyFailure(execErr))
 	executor.RecordCalibrationFailure(t.Type, t.ID, &ev)
 
