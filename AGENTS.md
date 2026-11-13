@@ -144,7 +144,9 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   (raw verdict-channel body + `Verify`/`Attestation` join keys + derived
   outcome counts + session usage) to `$TQ_LOG_DIR/calibration.jsonl`
   (`internal/executor/calibration.go`); best-effort — no TQ_LOG_DIR, no
-  dataset. Auto-dismiss/review rules tune FROM this data, not by feel.
+  dataset. Rules tune FROM this data, not by feel. Reader `tq calibration`;
+  failed attempts append verdict-less rows with the stamped class; the
+  pool tick trims keep-the-tail at 64 MiB.
 - **Batched harvest** (`--batch-items` 5, section-scoped; `--jev`:
   effort-sized runs, RAISE-only timeouts): items chunk to N or effort
   budget → one task (`batch:` sorted-key dedup; denied don't fork; one
@@ -342,7 +344,6 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 - **GOEXPERIMENT/GOTOOLCHAIN**: ci-local exports jsonv2; CI setup-go + go.mod
   floors + flake tarball PINNED IN LOCKSTEP (1.27.3); NEVER lower a `go`
   directive (`check-go-mods.sh`).
-- **CI-log triage one-liner**: `gh run view <id> --log-failed | grep -i '##\[error\]'`.
 - **`fetch` empty ≠ URL dead**: an empty body is a tool mismatch — retry `download`.
 - **Host GOCACHE/GOROOT hazards**: gates run `GOCACHE=/tmp/go-build-cache`
   (host symlink → /nix/store ENOSPCs); "package X is not in std" +
@@ -353,7 +354,7 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   a NEW finding is a new class needing fresh triage.
 - **`tq serve`/`tq api` security**: loopback + read-only default; writes
   CSRF+lockout-guarded; non-loopback needs `--auth-token`; no new write
-  endpoint without it (SECURITY.md).
+  endpoint without it.
 - **templ + cmd/tq LSP diagnostics are false positives — never "fix" them;
   cmd/tq `GOWORK=off` build/test fails at HEAD** — trust the CLI gates:
   go.work workspace or `scripts/test-cmd-tq.sh`.
