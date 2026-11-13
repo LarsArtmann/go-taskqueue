@@ -64,6 +64,36 @@ func mustEnqueue(t *testing.T, ctx context.Context, s Store, n task.New) task.Ta
 	return tk
 }
 
+// requeueEvidenceOf returns the first task.requeued fact's evidence plus
+// its raw detail from the task's trail, failing the test when the fact is
+// missing or its detail does not decode — the fetch half every
+// requeue-detail pin shares.
+func requeueEvidenceOf(t *testing.T, ctx context.Context, s Store, id task.ID) (queue.RequeueEvidence, string) {
+	t.Helper()
+
+	trail, err := s.FactsForTask(ctx, id.String(), 0)
+	if err != nil {
+		t.Fatalf("facts: %v", err)
+	}
+
+	for _, f := range trail {
+		if f.Type != journal.Requeued {
+			continue
+		}
+
+		var ev queue.RequeueEvidence
+		if err := json.Unmarshal(f.Detail, &ev); err != nil {
+			t.Fatalf("detail not RequeueEvidence: %v (%s)", err, f.Detail)
+		}
+
+		return ev, string(f.Detail)
+	}
+
+	t.Fatal("no task.requeued fact in the trail")
+
+	return queue.RequeueEvidence{}, ""
+}
+
 // backdateCreatedAt rewinds a task's created_at (the aging key, ADR-0015)
 // by direct SQL — the suite's only seeding seam for age.
 func backdateCreatedAt(t *testing.T, ctx context.Context, s Store, id task.ID, age time.Duration) {
@@ -1528,33 +1558,15 @@ func TestRequeueFactCarriesResumeCloseout(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			tk := claimAndRequeue(tc.resume)
 
-			trail, err := s.FactsForTask(ctx, tk.ID.String(), 0)
-			if err != nil {
-				t.Fatalf("facts: %v", err)
+			ev, detail := requeueEvidenceOf(t, ctx, s, tk.ID)
+
+			if ev.ResumeCloseout != tc.want {
+				t.Errorf("resume_closeout = %v, want %v (%s)", ev.ResumeCloseout, tc.want, detail)
 			}
 
-			for _, f := range trail {
-				if f.Type != journal.Requeued {
-					continue
-				}
-
-				var ev queue.RequeueEvidence
-				if err := json.Unmarshal(f.Detail, &ev); err != nil {
-					t.Fatalf("detail not RequeueEvidence: %v (%s)", err, f.Detail)
-				}
-
-				if ev.ResumeCloseout != tc.want {
-					t.Errorf("resume_closeout = %v, want %v (%s)", ev.ResumeCloseout, tc.want, f.Detail)
-				}
-
-				if tc.want != ev.ResumeCloseout && strings.Contains(string(f.Detail), "resume_closeout") {
-					t.Errorf("omitted flag leaked into detail: %s", f.Detail)
-				}
-
-				return
+			if tc.want != ev.ResumeCloseout && strings.Contains(detail, "resume_closeout") {
+				t.Errorf("omitted flag leaked into detail: %s", detail)
 			}
-
-			t.Fatal("no task.requeued fact in the trail")
 		})
 	}
 }
@@ -1595,29 +1607,11 @@ func TestRequeueFactCarriesClass(t *testing.T) {
 		t.Fatalf("Requeue: %v", err)
 	}
 
-	trail, err := s.FactsForTask(ctx, tk.ID.String(), 0)
-	if err != nil {
-		t.Fatalf("facts: %v", err)
+	ev, detail := requeueEvidenceOf(t, ctx, s, tk.ID)
+
+	if ev.Class != queue.RequeueClassPreflight {
+		t.Errorf("class = %q, want %q (%s)", ev.Class, queue.RequeueClassPreflight, detail)
 	}
-
-	for _, f := range trail {
-		if f.Type != journal.Requeued {
-			continue
-		}
-
-		var ev queue.RequeueEvidence
-		if err := json.Unmarshal(f.Detail, &ev); err != nil {
-			t.Fatalf("detail not RequeueEvidence: %v (%s)", err, f.Detail)
-		}
-
-		if ev.Class != queue.RequeueClassPreflight {
-			t.Errorf("class = %q, want %q (%s)", ev.Class, queue.RequeueClassPreflight, f.Detail)
-		}
-
-		return
-	}
-
-	t.Fatal("no task.requeued fact in the trail")
 }
 
 // TestRequeueFactCarriesProvider pins the provider-tag contract (04-03
@@ -1649,29 +1643,11 @@ func TestRequeueFactCarriesProvider(t *testing.T) {
 		t.Fatalf("Requeue: %v", err)
 	}
 
-	trail, err := s.FactsForTask(ctx, tk.ID.String(), 0)
-	if err != nil {
-		t.Fatalf("facts: %v", err)
+	ev, detail := requeueEvidenceOf(t, ctx, s, tk.ID)
+
+	if ev.Provider != "zai" {
+		t.Errorf("provider = %q, want %q (%s)", ev.Provider, "zai", detail)
 	}
-
-	for _, f := range trail {
-		if f.Type != journal.Requeued {
-			continue
-		}
-
-		var ev queue.RequeueEvidence
-		if err := json.Unmarshal(f.Detail, &ev); err != nil {
-			t.Fatalf("detail not RequeueEvidence: %v (%s)", err, f.Detail)
-		}
-
-		if ev.Provider != "zai" {
-			t.Errorf("provider = %q, want %q (%s)", ev.Provider, "zai", f.Detail)
-		}
-
-		return
-	}
-
-	t.Fatal("no task.requeued fact in the trail")
 }
 
 // seedFacts appends n enqueued facts (unique task ids) to the journal.

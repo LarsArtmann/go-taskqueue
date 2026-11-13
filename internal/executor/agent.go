@@ -1188,13 +1188,7 @@ func runVerify(
 	cmd := exec.CommandContext(ctx, "sh", "-c", verify)
 	cmd.Dir = repoDir
 
-	var buf bytes.Buffer
-
-	cmd.Stdout = &buf
-	cmd.Stderr = &buf
-	prepareProcessGroup(cmd)
-
-	cmd.WaitDelay = 10 * time.Second
+	buf := bufferedProcessGroup(cmd)
 
 	// outcome assembles the result of the run that just finished: the tail at
 	// the caller's bound, the death class, the receipt, and the declarations
