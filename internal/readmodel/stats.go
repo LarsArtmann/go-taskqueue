@@ -77,11 +77,7 @@ func statusCounts(statusRaw, projectRaw map[string]int64, filter TaskFilter) map
 	if filter.Project != nil {
 		for key, count := range projectRaw {
 			project, status, ok := strings.Cut(key, projectStatusKeySep)
-			if !ok || count == 0 || project != *filter.Project {
-				continue
-			}
-
-			if filter.Status != nil && status != *filter.Status {
+			if !ok || count == 0 || !matchesFilter(filter, project, status) {
 				continue
 			}
 
@@ -92,7 +88,7 @@ func statusCounts(statusRaw, projectRaw map[string]int64, filter TaskFilter) map
 	}
 
 	for status, count := range statusRaw {
-		if count == 0 || filter.Status != nil && status != *filter.Status {
+		if count == 0 || !matchesFilter(filter, "", status) {
 			continue
 		}
 

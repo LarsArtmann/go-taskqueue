@@ -284,6 +284,21 @@ func (s *Server) handleTaskDetail(w http.ResponseWriter, r *http.Request) {
 // handleAgentLive is the L2 pane's SSE endpoint: an append-only stream of
 // distilled agent events (no snapshot — replay is impossible by design,
 // a reconnect just continues from the live edge). Serves 503 when the
+// openSSEStream gates a handler on flushing support and returns its opened
+// stream with proxy buffering off — the prolog both SSE endpoints share.
+// ok=false when the client cannot stream; the response is already written.
+func openSSEStream(w http.ResponseWriter, r *http.Request) (*sse.Stream, bool) {
+	if _, ok := w.(http.Flusher); !ok {
+		http.Error(w, "streaming not supported", http.StatusInternalServerError)
+
+		return nil, false
+	}
+
+	w.Header().Set("X-Accel-Buffering", "no")
+
+	return sse.NewStream(w, r), true
+}
+
 // feed is off (serve without --crush-server).
 func (s *Server) handleAgentLive(w http.ResponseWriter, r *http.Request) {
 	if s.cfg.CrushServer == "" {
@@ -292,15 +307,10 @@ func (s *Server) handleAgentLive(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if _, ok := w.(http.Flusher); !ok {
-		http.Error(w, "streaming not supported", http.StatusInternalServerError)
-
+	stream, ok := openSSEStream(w, r)
+	if !ok {
 		return
 	}
-
-	w.Header().Set("X-Accel-Buffering", "no")
-
-	stream := sse.NewStream(w, r)
 	defer func() { _ = stream.Close() }()
 
 	ctx := r.Context()
@@ -375,15 +385,10 @@ func (s *Server) runEventStream(
 	r *http.Request,
 	snapshot func(ctx context.Context, stream *sse.Stream, seq int64) error,
 ) {
-	if _, ok := w.(http.Flusher); !ok {
-		http.Error(w, "streaming not supported", http.StatusInternalServerError)
-
+	stream, ok := openSSEStream(w, r)
+	if !ok {
 		return
 	}
-
-	w.Header().Set("X-Accel-Buffering", "no")
-
-	stream := sse.NewStream(w, r)
 	defer func() { _ = stream.Close() }()
 
 	ctx := r.Context()

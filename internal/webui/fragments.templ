@@ -822,9 +822,17 @@ templ reviewFindings(res executor.ReviewResult) {
 		if !sessionUsageEmpty(res.SessionCostUSD, res.SessionPromptTokens, res.SessionCompletionTokens, res.SessionMessageCount) {
 			<p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{ sessionUsageText(res.SessionCostUSD, res.SessionPromptTokens, res.SessionCompletionTokens, res.SessionMessageCount) }</p>
 		}
-		if res.LogPath != "" {
-			<p class="mt-2 text-xs text-gray-500 dark:text-gray-400">full agent output: <code class="break-all font-mono text-xs">{ res.LogPath }</code></p>
-		}
+		@fullOutputLine(res.LogPath)
+	}
+}
+
+// fullOutputLine renders the run's full-output pointer once for every
+// result card: the path is copyable code, not a
+// link — `tq serve` is a read-only queue projection and never serves repo
+// files (ADR-0003).
+templ fullOutputLine(logPath string) {
+	if logPath != "" {
+		<p class="mt-2 text-xs text-gray-500 dark:text-gray-400">full agent output: <code class="break-all font-mono text-xs">{ logPath }</code></p>
 	}
 }
 
@@ -840,9 +848,7 @@ templ agentResultCard(res executor.AgentResult) {
 		if !sessionUsageEmpty(res.SessionCostUSD, res.SessionPromptTokens, res.SessionCompletionTokens, res.SessionMessageCount) {
 			@sessionUsageLine(res.SessionCostUSD, res.SessionPromptTokens, res.SessionCompletionTokens, res.SessionMessageCount)
 		}
-		if res.LogPath != "" {
-			<p class="mt-2 text-xs text-gray-500 dark:text-gray-400">full agent output: <code class="break-all font-mono text-xs">{ res.LogPath }</code></p>
-		}
+		@fullOutputLine(res.LogPath)
 		if res.Branch != "" {
 			<p class="mt-2 text-xs text-gray-500 dark:text-gray-400">worktree delivery: <code class="break-all font-mono text-xs">{ res.Branch }</code> at <code class="break-all font-mono text-xs">{ res.WorktreeDir }</code></p>
 		}
@@ -859,9 +865,7 @@ templ sessionUsageLine(costUSD float64, promptTokens, completionTokens int64, me
 
 // statusReportCard renders the status loop's outcome: where the report
 // landed, how much fresh work it minted, and the run's derived session
-// usage. The path is copyable code, not a
-// link — `tq serve` is a read-only queue projection and never serves repo
-// files (ADR-0003).
+// usage.
 templ statusReportCard(res executor.StatusResult) {
 	@display.Card(display.CardProps{Title: "status report", Padding: display.CardPaddingMD}) {
 		<div class="flex flex-wrap items-center gap-x-3 gap-y-2">
@@ -878,9 +882,7 @@ templ statusReportCard(res executor.StatusResult) {
 		if !sessionUsageEmpty(res.SessionCostUSD, res.SessionPromptTokens, res.SessionCompletionTokens, res.SessionMessageCount) {
 			@sessionUsageLine(res.SessionCostUSD, res.SessionPromptTokens, res.SessionCompletionTokens, res.SessionMessageCount)
 		}
-		if res.LogPath != "" {
-			<p class="mt-2 text-xs text-gray-500 dark:text-gray-400">full agent output: <code class="break-all font-mono text-xs">{ res.LogPath }</code></p>
-		}
+		@fullOutputLine(res.LogPath)
 	}
 }
 
@@ -895,9 +897,7 @@ templ prioritizeResultCard(res executor.PrioritizeResult) {
 		if !sessionUsageEmpty(res.SessionCostUSD, res.SessionPromptTokens, res.SessionCompletionTokens, res.SessionMessageCount) {
 			@sessionUsageLine(res.SessionCostUSD, res.SessionPromptTokens, res.SessionCompletionTokens, res.SessionMessageCount)
 		}
-		if res.LogPath != "" {
-			<p class="mt-2 text-xs text-gray-500 dark:text-gray-400">full agent output: <code class="break-all font-mono text-xs">{ res.LogPath }</code></p>
-		}
+		@fullOutputLine(res.LogPath)
 	}
 }
 
