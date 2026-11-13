@@ -58,6 +58,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   (`stats`, `facts`, auto `total`) — browser DevTools visibility into
   per-segment latency, never shipped on the default loopback posture.
 
+- **Calibration dataset reader** (`tq calibration [--log-dir DIR]
+  [--json]`): per-kind row counts, verdict-value distribution, review
+  approve→commits-shipped cross-tab, attestation refusal rates, and
+  failed-attempt counts per class over the local `calibration.jsonl`
+  dataset — the tuning loop's one-command intake
+  (`internal/executor/calibration_read.go`, facade re-export).
+
 ### Changed
 
 - **go-cqrs-lite version wave** (security + currency): `system/v4`
@@ -86,6 +93,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   exhausts its 3 store-busy attempts, the worker logs at ERROR that the
   lease-reclaim backstop owns the task — a known handoff, not a silently
   stuck task.
+
+- **Calibration dataset retention + failure-path rows**: the pool tick
+  trims `calibration.jsonl` keep-the-tail at 64 MiB (atomic,
+  line-boundary-safe — long-lived pools no longer grow the dataset
+  unbounded), and every judged failure (verify deaths, permanent fails,
+  env-streak burns, 429 requeues) appends one verdict-less row stamped
+  with its failure class, so the per-kind denominators count attempts,
+  not just completions. (BEHAVIOR CHANGE for calibration consumers: rows
+  now carry the OPTIONAL `Failure` half; absence still means completion,
+  per the additive-growth contract.)
 
 ### Fixed
 
