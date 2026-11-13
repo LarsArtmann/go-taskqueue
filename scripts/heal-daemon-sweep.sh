@@ -43,7 +43,7 @@
 #     `git commit --amend` territory per the AGENTS.md Known Issues
 #     fallback), or the sanctioned soft-reset fold.
 #
-# Usage: scripts/heal-daemon-sweep.sh [--repo <path>] [--from <ref>] [--retitle <subject>] <Task-Queue-ID>
+# Usage: scripts/heal-daemon-sweep.sh [--repo <path>] [--from <ref>] [--retitle <subject>] [--tip-only] [--dry-run] <Task-Queue-ID>
 #        scripts/heal-daemon-sweep.sh --self-test
 #   --from <ref>  EXCLUSIVE base bound of the heal range (default:
 #                 origin/master, then @{upstream}, then the root commit).
@@ -58,6 +58,14 @@
 #                 `chore: auto-commit` subject even when they carry real
 #                 work (2026-10-17 batch: 8ee9930a, aadfed9d); footer-
 #                 carrying commits in the range keep their subjects.
+#   --tip-only    with --retitle: retitle ONLY the range's tip commit;
+#                 the rest of the span keeps its own subjects (a bare
+#                 --retitle stamps the WHOLE span, destroying foreign
+#                 subjects — the 2026-11-09 wave-completion closeout §d2
+#                 destruction class).
+#   --dry-run     print the heal span + per-commit proposed subjects and
+#                 exit 0 WITHOUT rewriting anything (history-rewriting
+#                 tools obey dry-run-first hardest, closeout §d1).
 #   <Task-Queue-ID> may be a hex task id OR a session-scope slug
 #                 (e.g. 20261011-b10-alert-routing-pack): a session's own
 #                 footered commits interleave with daemon sweeps, so the
@@ -73,7 +81,7 @@ die() {
 }
 
 usage() {
-	echo "usage: $0 [--repo <path>] [--from <ref>] [--retitle <subject>] <Task-Queue-ID>" >&2
+	echo "usage: $0 [--repo <path>] [--from <ref>] [--retitle <subject>] [--tip-only] [--dry-run] <Task-Queue-ID>" >&2
 	echo "       $0 --self-test" >&2
 	echo "  --repo <path> heal a DIFFERENT repository (cross-repo mode): all git" >&2
 	echo "  operations run with <path> as cwd, so sweeps outside go-taskqueue" >&2
@@ -82,6 +90,8 @@ usage() {
 	echo "  the commit AT <ref> itself is never rewritten (it may stay footer-less)." >&2
 	echo "  --retitle renames ONLY footer-less sweeps; commits already carrying a" >&2
 	echo "  Task-Queue-ID footer keep their subject and message byte-identical." >&2
+	echo "  --tip-only narrows --retitle to the range's tip commit only." >&2
+	echo "  --dry-run prints the span + per-commit proposed subjects, rewrites nothing." >&2
 	exit 2
 }
 
@@ -150,14 +160,16 @@ check_rails() {
 
 	# Tag rail: the pushed-commit rail does not catch tags — a tag on an
 	# unpushed range commit would dangle off-branch after the rewrite. Refuse
-	# before run_filter instead of relying on post-rewrite detection.
-	local tagged=""
-	while IFS= read -r t; do
-		local hits
-		hits=$(comm -12 <(git rev-list "$t" | sort) <(git rev-list "$base..HEAD" | sort))
-		tagged="$tagged$hits"
-	done < <(git tag --format='%(refname)')
-	[ -z "$tagged" ] || die "refusing: tag(s) reference commits inside the heal range ($tagged); re-tag after healing"
+	# before run_filter instead of relying on post-rewrite detection, and
+	# NAME the blocking tags (2026-11-09 closeout §e3: shas alone force the
+	# caller to map them back to tag names by hand).
+	local -a tag_names=()
+	local tsha tname thits
+	while IFS=$'\t' read -r tsha tname; do
+		thits=$(comm -12 <(git rev-list "$tsha" | sort) <(git rev-list "$base..HEAD" | sort))
+		[ -z "$thits" ] || tag_names+=("$tname")
+	done < <(git for-each-ref refs/tags --format='%(objectname)%09%(refname:short)')
+	[ "${#tag_names[@]}" -eq 0 ] || die "refusing: tag(s) reference commits inside the heal range: ${tag_names[*]}; re-tag after healing"
 
 	# NOTE: footer-carrying commits inside the range are legitimate (a task
 	# commit can sit on top of daemon sweeps) — run_filter preserves their
@@ -206,17 +218,18 @@ check_rails() {
 # snapshot_subjects base id retitle: the EXPECTED subjects of base..HEAD
 # oldest-first, one per line (subjects cannot contain newlines). Footer-
 # carrying commits are preserved verbatim -> their subject stands; healed
-# sweeps get <retitle> when given, else their own subject. verify_heal
-# compares the rewrite against this list, so --retitle turns the
-# subjects-must-not-move rail into subjects-match-intent.
+# sweeps get <retitle> when given (tip-only: ONLY the tip commit), else
+# their own subject. verify_heal compares the rewrite against this list,
+# so --retitle turns the subjects-must-not-move rail into
+# subjects-match-intent.
 snapshot_subjects() {
-	local base=$1 id=$2 retitle=$3
+	local base=$1 id=$2 retitle=$3 tip=$4
 	local c msg
 	while IFS= read -r c; do
 		msg=$(git log -1 --format='%B' "$c")
 		if has_footer "$msg"; then
 			git log -1 --format='%s' "$c"
-		elif [ -n "$retitle" ]; then
+		elif [ -n "$retitle" ] && { [ -z "$tip" ] || [ "$c" = "$tip" ]; }; then
 			printf '%s\n' "$retitle"
 		else
 			git log -1 --format='%s' "$c"
@@ -224,13 +237,15 @@ snapshot_subjects() {
 	done < <(git rev-list --reverse "$base..HEAD")
 }
 
-# run_filter footer base subject: the actual msg-filter rewrite. On failure the
-# filter's stderr is printed (a bare rc=1 hid the cause once — 08-06 report
-# §e2 polish row).
+# run_filter footer base subject tip: the actual msg-filter rewrite. tip is
+# the PRE-rewrite tip sha — set only in tip-only mode, where the filter
+# matches it against filter-branch's GIT_COMMIT so the subject lands on the
+# tip alone. On failure the filter's stderr is printed (a bare rc=1 hid the
+# cause once — 08-06 report §e2 polish row).
 run_filter() {
-	local footer=$1 base=$2 subject=$3
+	local footer=$1 base=$2 subject=$3 tip=$4
 	local err
-	err=$(FILTER_BRANCH_SQUELCH_WARNING=1 TQ_HEAL_FOOTER="$footer" TQ_HEAL_SUBJECT="$subject" git filter-branch -f --msg-filter '
+	err=$(FILTER_BRANCH_SQUELCH_WARNING=1 TQ_HEAL_FOOTER="$footer" TQ_HEAL_SUBJECT="$subject" TQ_HEAL_TIP="$tip" git filter-branch -f --msg-filter '
 		msg=$(cat)
 		# Same line-anchored criterion as snapshot_subjects.has_footer: only a
 		# LINE-INITIAL footer marks an already-attributed commit, so its
@@ -242,7 +257,7 @@ run_filter() {
 			printf "%s\n" "$msg"
 			exit 0
 		fi
-		if [ -n "$TQ_HEAL_SUBJECT" ]; then
+		if [ -n "$TQ_HEAL_SUBJECT" ] && { [ -z "$TQ_HEAL_TIP" ] || [ "$GIT_COMMIT" = "$TQ_HEAL_TIP" ]; }; then
 			printf "%s\n\n" "$TQ_HEAL_SUBJECT"
 		else
 			printf "%s\n" "$msg"
@@ -389,7 +404,7 @@ check_citations() {
 }
 
 main() {
-	local base_arg="" footer="" retitle="" repo_arg="" base id
+	local base_arg="" footer="" retitle="" repo_arg="" tip_only="" dry_run="" base id
 	while [ $# -gt 0 ]; do
 		case $1 in
 		--repo)
@@ -410,6 +425,14 @@ main() {
 			retitle=$2
 			shift 2
 			;;
+		--tip-only)
+			tip_only=1
+			shift
+			;;
+		--dry-run)
+			dry_run=1
+			shift
+			;;
 		-*) usage ;;
 		*)
 			[ -z "$footer" ] || usage
@@ -429,6 +452,7 @@ main() {
 		cd "$repo_arg" || die "cannot cd into --repo '$repo_arg'"
 	fi
 	git rev-parse --is-inside-work-tree >/dev/null 2>&1 || die "not inside a git work tree"
+	[ -z "$tip_only" ] || [ -n "$retitle" ] || die "--tip-only requires --retitle"
 	base=$(resolve_base "$base_arg")
 
 	git update-ref -d "$BACKUP_REF" 2>/dev/null
@@ -444,10 +468,30 @@ main() {
 		echo "nothing to heal: every commit in $base..HEAD already carries the footer"
 		return 0
 	fi
-	echo "healing $(git rev-list --count "$base..HEAD") commit(s) in $base..HEAD with: $footer${retitle:+ (retitle: $retitle)}"
+	local tip=""
+	if [ -n "$tip_only" ]; then
+		tip=$(git rev-parse HEAD)
+	fi
+	if [ -n "$dry_run" ]; then
+		echo "DRY-RUN: would heal $(git rev-list --count "$base..HEAD") commit(s) in $base..HEAD with: $footer${retitle:+ (retitle: $retitle${tip_only:+, tip-only})}"
+		local c msg proposed
+		while IFS= read -r c; do
+			msg=$(git log -1 --format='%B' "$c")
+			if has_footer "$msg"; then
+				echo "  $(git log -1 --oneline "$c") -> unchanged (footer kept)"
+			else
+				proposed=$(git log -1 --format='%s' "$c")
+				[ -z "$retitle" ] || { [ -n "$tip_only" ] && [ "$c" != "$tip" ]; } || proposed=$retitle
+				echo "  $(git log -1 --oneline "$c") -> $proposed (footer added)"
+			fi
+		done < <(git rev-list --reverse "$base..HEAD")
+		echo "DRY-RUN: no commits were rewritten"
+		return 0
+	fi
+	echo "healing $(git rev-list --count "$base..HEAD") commit(s) in $base..HEAD with: $footer${retitle:+ (retitle: $retitle${tip_only:+, tip-only})}"
 
 	local subj_old stat_old shas_old
-	subj_old=$(snapshot_subjects "$base" "$id" "$retitle")
+	subj_old=$(snapshot_subjects "$base" "$id" "$retitle" "$tip")
 	stat_old=$(git rev-list --reverse "$base..HEAD" | while IFS= read -r c; do git diff-tree --no-commit-id --name-only -r "$c" | sort | md5sum; done)
 	shas_old=$(git rev-list --reverse "$base..HEAD")
 
@@ -464,7 +508,7 @@ main() {
 			die "worktree is dirty and the autostash failed; commit or stash first"
 		fi
 	fi
-	if ! run_filter "$footer" "$base" "$retitle"; then
+	if ! run_filter "$footer" "$base" "$retitle" "$tip"; then
 		[ -n "$stashed" ] && git stash pop >/dev/null 2>&1
 		die "filter-branch failed (backup kept at $BACKUP_REF if it existed)"
 	fi
@@ -682,6 +726,11 @@ EOF
 	git -C "$repo" tag sweep-tag HEAD
 	(cd "$repo" && "$self" --from origin/master deadbeef00000000000000000000000000000006) >/dev/null 2>"$tmp/err_tag"
 	expect_refusal "tag in heal range" $? "tag(s) reference commits inside the heal range" "$tmp/err_tag"
+	grep -qF "sweep-tag" "$tmp/err_tag" && ok=$((ok + 1)) || {
+		fail=$((fail + 1))
+		echo "SELF-TEST FAIL: tag refusal must NAME the blocking tag(s)" >&2
+		cat "$tmp/err_tag" >&2
+	}
 	git -C "$repo" tag -d sweep-tag
 
 	# A tag on the BASE commit is outside the heal range — heal succeeds.
@@ -957,6 +1006,61 @@ EOF
 		echo "SELF-TEST FAIL: --from base must stay unhealed (exclusive bound)" >&2
 		cat "$tmp/out_bound" "$tmp/err_bound" >&2
 	fi
+
+	# Dry-run (2026-11-09 closeout §d1): prints the span + per-commit
+	# proposed subjects and rewrites NOTHING — history-rewriting tools obey
+	# dry-run-first hardest.
+	local repo7="$tmp/repo7"
+	git init -q "$repo7"
+	git -C "$repo7" config user.email t@t
+	git -C "$repo7" config user.name t
+	echo a >"$repo7/a.txt"
+	git -C "$repo7" add a.txt
+	git -C "$repo7" commit -qm "base"
+	git -C "$repo7" update-ref refs/remotes/origin/master HEAD
+	echo b >"$repo7/b.txt"
+	git -C "$repo7" add b.txt
+	git -C "$repo7" commit -qm "chore: sweep one"
+	echo c >"$repo7/c.txt"
+	git -C "$repo7" add c.txt
+	git -C "$repo7" commit -qm "chore: sweep two"
+	local dry1 dry2
+	dry1=$(git -C "$repo7" rev-parse HEAD~1)
+	dry2=$(git -C "$repo7" rev-parse HEAD)
+	(cd "$repo7" && "$self" --from origin/master --retitle "feat: proposed" --dry-run deadbeef0000000000000000000000000000000c) >"$tmp/out_dry" 2>"$tmp/err_dry"
+	if [ "$?" = "0" ] &&
+		grep -qF "DRY-RUN: would heal 2 commit(s)" "$tmp/out_dry" &&
+		grep -qF "${dry1:0:7}" "$tmp/out_dry" && grep -qF "${dry2:0:7}" "$tmp/out_dry" &&
+		grep -qF -- "-> feat: proposed (footer added)" "$tmp/out_dry" &&
+		grep -qF "DRY-RUN: no commits were rewritten" "$tmp/out_dry" &&
+		[ "$(git -C "$repo7" rev-parse HEAD~1)" = "$dry1" ] &&
+		[ "$(git -C "$repo7" rev-parse HEAD)" = "$dry2" ] &&
+		! git -C "$repo7" log --format='%B' "$dry1..HEAD" | grep -q '^Task-Queue-ID: '; then
+		ok=$((ok + 1))
+	else
+		fail=$((fail + 1))
+		echo "SELF-TEST FAIL: --dry-run must print the plan and rewrite nothing" >&2
+		cat "$tmp/out_dry" "$tmp/err_dry" >&2
+	fi
+
+	# --tip-only (2026-11-09 closeout §d2): --retitle stamps ONLY the tip;
+	# the rest of the span keeps its own subjects (still gets footers).
+	(cd "$repo7" && "$self" --from origin/master --retitle "feat: only the tip" --tip-only deadbeef0000000000000000000000000000000c) >"$tmp/out_tip" 2>"$tmp/err_tip"
+	if [ "$?" = "0" ] &&
+		[ "$(git -C "$repo7" log --reverse --format='%s' "origin/master..HEAD" | sed -n 1p)" = "chore: sweep one" ] &&
+		[ "$(git -C "$repo7" log --reverse --format='%s' "origin/master..HEAD" | sed -n 2p)" = "feat: only the tip" ] &&
+		footer_well_formed "$(git -C "$repo7" log -1 --format='%B' HEAD~1)" "deadbeef0000000000000000000000000000000c" &&
+		footer_well_formed "$(git -C "$repo7" log -1 --format='%B' HEAD)" "deadbeef0000000000000000000000000000000c"; then
+		ok=$((ok + 1))
+	else
+		fail=$((fail + 1))
+		echo "SELF-TEST FAIL: --tip-only must retitle the tip alone" >&2
+		cat "$tmp/out_tip" "$tmp/err_tip" >&2
+	fi
+
+	# --tip-only without --retitle refuses (nothing to narrow).
+	(cd "$repo7" && "$self" --from origin/master --tip-only deadbeef0000000000000000000000000000000c) >/dev/null 2>"$tmp/err_tip2"
+	expect_refusal "--tip-only without --retitle" $? "--tip-only requires --retitle" "$tmp/err_tip2"
 
 	if [ "$fail" = "0" ]; then
 		echo "SELF-TEST OK ($ok checks)"
