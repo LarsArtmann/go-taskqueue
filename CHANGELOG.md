@@ -108,6 +108,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Internal
 
+- Dedup sweep to zero harmful clones (2026-11-13 `-t 1` scan, canonical
+  `scripts/art-dupl.json` verdict): 9 extraction seams landed — shared
+  `internal/slogcapture.Handler` replacing four byte-identical sweeper
+  test doubles, harvest `runOverRepos` fixture, `openDoctorStore` test
+  prolog (9 sites), executor `bufferedProcessGroup` probe convention,
+  conform `requeueEvidenceOf`/`trailOf` fetch helpers,
+  `fullOutputLine` templ component (the four `full agent output` blocks),
+  webui `openSSEStream` gate, and readmodel `statusCounts` now delegating
+  to `matchesFilter` instead of hand-rolling the filter twice. Canonical
+  scan 14→9 groups; every survivor is a verdicted accept class (sweeper
+  mirror twins, seq-codec parity mirror, templ view twins, idiom tail).
+  No operator-visible behavior change.
+
 - Done-prompt dispatch-time window dedup (2026-11-02 twenty-seventh
   dispatch §e6): the done-prompt contract now orders a cheap same-window
   check before the full derivation — grep the docs/status/README.md index

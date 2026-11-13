@@ -302,8 +302,8 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   suppresses only a few lines ABOVE the clone's first line. 11-13 `-t 1`
   sweep verdicts: docs/status report (canonical 9 groups accepted,
   micro-idiom tail accepted by class). Extraction triggers: a third
-  doctor pending-listing check →
-  shared helper; a third executor payload-validation site (review/status)
+  doctor pending-listing check → shared helper; a third executor
+  payload-validation site (review/status)
   → shared validator; a fifth QueryContext rows-scan site in
   `internal/queue/companion/reads.go` → `scanInto` helper (2026-09-30_09-15 §f11-13).
 - POSIX-only suites carry `//go:build unix`; tests hermetic (nix checkPhase
