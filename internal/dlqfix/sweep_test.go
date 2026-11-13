@@ -9,7 +9,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -19,6 +18,7 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
+	"github.com/larsartmann/go-taskqueue/internal/slogcapture"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
@@ -145,28 +145,6 @@ func (f *flakyEnqueueStore) Enqueue(ctx context.Context, n task.New) (task.Task,
 
 	return f.Store.Enqueue(ctx, n)
 }
-
-// captureHandler records slog records so tests can pin the warn that
-// accompanies a mint refusal.
-type captureHandler struct {
-	mu      sync.Mutex
-	records []slog.Record
-}
-
-func (h *captureHandler) Enabled(context.Context, slog.Level) bool { return true }
-
-func (h *captureHandler) Handle(_ context.Context, r slog.Record) error {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-
-	h.records = append(h.records, r)
-
-	return nil
-}
-
-func (h *captureHandler) WithAttrs([]slog.Attr) slog.Handler { return h }
-
-func (h *captureHandler) WithGroup(string) slog.Handler { return h }
 
 // deadLetterSeq returns the journal seq of the task's dead-lettered fact.
 func deadLetterSeq(t *testing.T, s *sqlite.Store, id task.ID) int64 {
@@ -1006,7 +984,7 @@ func TestSweeperMintRefusalHoldsCheckpoint(t *testing.T) {
 	flaky := &flakyEnqueueStore{Store: s}
 	flaky.failures.Store(1)
 
-	capture := &captureHandler{}
+	capture := &slogcapture.Handler{}
 
 	sw, err := NewSweeper(ctx, flaky, SweeperConfig{Log: slog.New(capture)})
 	if err != nil {
@@ -1037,14 +1015,14 @@ func TestSweeperMintRefusalHoldsCheckpoint(t *testing.T) {
 
 	warned := false
 
-	for _, r := range capture.records {
+	for _, r := range capture.Records() {
 		if r.Level == slog.LevelWarn && strings.Contains(r.Message, "mint refused") {
 			warned = true
 		}
 	}
 
 	if !warned {
-		t.Fatalf("mint-refusal warn missing from %+v", capture.records)
+		t.Fatalf("mint-refusal warn missing from %+v", capture.Records())
 	}
 
 	flaky.failures.Store(0)
@@ -1209,7 +1187,7 @@ func disposeRefusalSweep(
 func pinRefusalHoldsCheckpoint(
 	t *testing.T,
 	s *sqlite.Store,
-	capture *captureHandler,
+	capture *slogcapture.Handler,
 	autopsy task.ID,
 	stats SweepStats,
 	err error,
@@ -1237,14 +1215,14 @@ func pinRefusalHoldsCheckpoint(
 
 	warned := false
 
-	for _, r := range capture.records {
+	for _, r := range capture.Records() {
 		if r.Level == slog.LevelWarn && strings.Contains(r.Message, "disposition refused") {
 			warned = true
 		}
 	}
 
 	if !warned {
-		t.Fatalf("disposition-refusal warn missing from %+v", capture.records)
+		t.Fatalf("disposition-refusal warn missing from %+v", capture.Records())
 	}
 }
 
@@ -1261,7 +1239,7 @@ func TestSweeperDisposeRefusalHoldsCheckpoint(t *testing.T) {
 	ctx := context.Background()
 
 	flaky := &flakyDisposeStore{Store: s}
-	capture := &captureHandler{}
+	capture := &slogcapture.Handler{}
 
 	sw, err := NewSweeper(ctx, flaky, SweeperConfig{Log: slog.New(capture)})
 	if err != nil {
@@ -1298,7 +1276,7 @@ func TestSweeperRescueReadRefusalHoldsCheckpoint(t *testing.T) {
 	ctx := context.Background()
 
 	flaky := &flakyDisposeStore{Store: s}
-	capture := &captureHandler{}
+	capture := &slogcapture.Handler{}
 
 	sw, err := NewSweeper(ctx, flaky, SweeperConfig{Log: slog.New(capture)})
 	if err != nil {
@@ -1335,7 +1313,7 @@ func TestSweeperDismissRefusalHoldsCheckpoint(t *testing.T) {
 	ctx := context.Background()
 
 	flaky := &flakyDisposeStore{Store: s}
-	capture := &captureHandler{}
+	capture := &slogcapture.Handler{}
 
 	sw, err := NewSweeper(ctx, flaky, SweeperConfig{Log: slog.New(capture)})
 	if err != nil {
