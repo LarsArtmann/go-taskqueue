@@ -5,9 +5,9 @@
 package io_surface
 
 audit: {
-	commit: "eed50683-dirty"
-	date:   "2026-11-08"
-	claims: 357
+	commit: "a5cd73d0"
+	date:   "2026-11-13"
+	claims: 361
 	method: "io-surface extract (AST, stdlib-only)"
 }
 
@@ -176,6 +176,8 @@ sites: {
 			"cmd/tq/main.go:4250",
 			"cmd/tq/main.go:4255",
 			"cmd/tq/main.go:4269",
+			"cmd/tq/main.go:4279",
+			"cmd/tq/main.go:4284",
 		]
 		family: "env"
 		facts: {
@@ -639,10 +641,29 @@ sites: {
 			call: [".Do", "http.NewRequestWithContext", "io.LimitReader", "io.ReadAll"]
 		}
 	}
-	"internal/bridge/papdashboard.Bridge.post": {
+	"internal/bridge/papdashboard.HealthRelay.handle": {
 		location: [
-			"internal/bridge/papdashboard/papdashboard.go:538",
-			"internal/bridge/papdashboard/papdashboard.go:548",
+			"internal/bridge/papdashboard/healthrelay.go:185",
+		]
+		family: "stream-copy"
+		facts: {
+			call: ["io.LimitReader"]
+		}
+	}
+	"internal/bridge/papdashboard.NewHealthRelay": {
+		location: [
+			"internal/bridge/papdashboard/healthrelay.go:152",
+			"internal/bridge/papdashboard/healthrelay.go:172",
+		]
+		family: "listener"
+		facts: {
+			call: [".Serve", "net.Listen"]
+		}
+	}
+	"internal/bridge/papdashboard.ingester.post": {
+		location: [
+			"internal/bridge/papdashboard/healthrelay.go:60",
+			"internal/bridge/papdashboard/healthrelay.go:70",
 		]
 		family: "outbound"
 		facts: {
@@ -687,7 +708,7 @@ sites: {
 	}
 	"internal/docsgates.binaryRunner": {
 		location: [
-			"internal/docsgates/bridge.go:139",
+			"internal/docsgates/bridge.go:140",
 		]
 		family: "ipc-subprocess"
 		facts: {
@@ -719,8 +740,8 @@ sites: {
 			"internal/executor/agent.go:696",
 			"internal/executor/agent.go:703",
 			"internal/executor/agent.go:708",
-			"internal/executor/agent.go:803",
 			"internal/executor/agent.go:810",
+			"internal/executor/agent.go:817",
 		]
 		family: "file-write"
 		facts: {
@@ -729,8 +750,8 @@ sites: {
 	}
 	"internal/executor.AgentExecutor.runCloseoutTurn": {
 		location: [
-			"internal/executor/agent.go:1028",
-			"internal/executor/agent.go:1031",
+			"internal/executor/agent.go:1037",
+			"internal/executor/agent.go:1040",
 		]
 		family: "ipc-subprocess"
 		facts: {
@@ -2110,7 +2131,7 @@ sites: {
 	}
 	"internal/webui.Server.Run": {
 		location: [
-			"internal/webui/webui.go:493",
+			"internal/webui/webui.go:579",
 		]
 		family: "listener"
 		facts: {
@@ -2160,7 +2181,7 @@ sites: {
 	}
 	"internal/webui.newNonce": {
 		location: [
-			"internal/webui/webui.go:402",
+			"internal/webui/webui.go:481",
 		]
 		family: "entropy"
 		facts: {

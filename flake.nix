@@ -26,8 +26,8 @@
     # makes Nix 2.34's flake loader treat outputs as a thunk ("expected a
     # function but got a thunk").
     let
-      goToolchainVersion = "1.27.3";
-      goToolchainHash = "sha256-bndJA1zzYPBrJXXRYup535/ajvZxiJ5cN1+OUHd/Jrs=";
+      goToolchainVersion = "1.27.4";
+      goToolchainHash = "sha256-c8+4VxrsDAEXdofbhxY9Rqog6XeWcncokaoXZU2aYJk=";
       # Commit rev threaded into tq binaries via ldflags (`tq version` prints
       # it): the nix build filters .git out of the source, so the binary
       # cannot discover the rev itself. `self` rides the outputs argset.
