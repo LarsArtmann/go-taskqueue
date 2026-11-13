@@ -64,6 +64,19 @@ func mustEnqueue(t *testing.T, ctx context.Context, s Store, n task.New) task.Ta
 	return tk
 }
 
+// trailOf returns the task's full fact trail or fails the test — the fetch
+// every trail pin shares.
+func trailOf(t *testing.T, ctx context.Context, s Store, id task.ID) []journal.Fact {
+	t.Helper()
+
+	trail, err := s.FactsForTask(ctx, id.String(), 0)
+	if err != nil {
+		t.Fatalf("facts: %v", err)
+	}
+
+	return trail
+}
+
 // requeueEvidenceOf returns the first task.requeued fact's evidence plus
 // its raw detail from the task's trail, failing the test when the fact is
 // missing or its detail does not decode — the fetch half every
@@ -71,10 +84,7 @@ func mustEnqueue(t *testing.T, ctx context.Context, s Store, n task.New) task.Ta
 func requeueEvidenceOf(t *testing.T, ctx context.Context, s Store, id task.ID) (queue.RequeueEvidence, string) {
 	t.Helper()
 
-	trail, err := s.FactsForTask(ctx, id.String(), 0)
-	if err != nil {
-		t.Fatalf("facts: %v", err)
-	}
+	trail := trailOf(t, ctx, s, id)
 
 	for _, f := range trail {
 		if f.Type != journal.Requeued {
@@ -3312,10 +3322,7 @@ func assertAnswerInjected(t *testing.T, got task.Task) {
 func assertAnsweredFact(t *testing.T, ctx context.Context, s Store, id task.ID) {
 	t.Helper()
 
-	trail, err := s.FactsForTask(ctx, id.String(), 0)
-	if err != nil {
-		t.Fatalf("facts: %v", err)
-	}
+	trail := trailOf(t, ctx, s, id)
 
 	var answered queue.QuestionAnsweredDetail
 
