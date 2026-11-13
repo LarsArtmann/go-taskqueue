@@ -187,6 +187,7 @@ func isDeadline(err error) bool {
 //   - ("", false, nil): the baseline passes — the failure is introduced.
 //   - ("", false, err): the probe could not run (worktree creation failed);
 //     the caller falls back to the plain verify failure.
+//
 // bufferedProcessGroup wires cmd to capture combined output into a fresh
 // buffer, run in its own process group, and die 10s after its context —
 // the probing convention shared by the agent verify run and the gate probe
@@ -201,7 +202,6 @@ func bufferedProcessGroup(cmd *exec.Cmd) *bytes.Buffer {
 
 	return &buf
 }
-
 
 func baselineVerify(verify, repoDir, baseRev string) (VerifyGateClass, bool, error) {
 	worktree := filepath.Join(os.TempDir(), fmt.Sprintf("tq-verify-baseline-%d", time.Now().UnixNano()))
