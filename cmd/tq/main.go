@@ -117,6 +117,7 @@ tq cancel TASK_ID [--force] [--reason WHY] [--db PATH]   (--force: cooperative c
         [--expires 72h] [--options a,b,c] 'question'
                   (agent-facing: ask the owner; records the question, parks
                   the task via $TQ_QUESTION_FILE until the answer arrives)
+  tq calibration [--log-dir DIR] [--json]   (verdict→outcome dataset summary)
   tq version
 
 Default database: $TQ_DB or ./tasks.db (--store on worker/serve/api/agent-pool also takes postgres:// DSNs; postgres is wired but not yet gate-verified)
@@ -130,6 +131,7 @@ func main() {
 
 	commands := map[string]func([]string) error{
 		"bootstrap":    cmdBootstrap,
+		"calibration":  cmdCalibration,
 		"enqueue":      cmdEnqueue,
 		"ask":          cmdAsk,
 		"worker":       cmdWorker,

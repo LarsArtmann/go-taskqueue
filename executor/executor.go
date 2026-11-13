@@ -61,6 +61,16 @@ type FactTrailReader = internalexecutor.FactTrailReader
 // value to the run's verify receipt/attestation facts.
 type CalibrationRow = internalexecutor.CalibrationRow
 
+// Calibration dataset reader (calibration_read.go): the per-kind rollup
+// behind `tq calibration` — rows per verdict value, approve→commits
+// cross-tab, attestation refusal rates.
+type (
+	CalibrationKindStats = internalexecutor.CalibrationKindStats
+	CalibrationSummary   = internalexecutor.CalibrationSummary
+)
+
+var SummarizeCalibration = internalexecutor.SummarizeCalibration
+
 // CalibrationDataset is the JSONL file name of the dataset under the
 // pool's log dir (one row per line; absent without a log dir).
 const CalibrationDataset = internalexecutor.CalibrationDataset
