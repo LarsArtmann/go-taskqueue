@@ -2,8 +2,8 @@ package executor
 
 import (
 	"context"
-	"encoding/json"
 	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"errors"
 	"os"
 	"path/filepath"
@@ -181,4 +181,43 @@ func TestFinishParsedRunCalibrates(t *testing.T) {
 			t.Fatalf("dataset exists after a parse miss: %v", statErr)
 		}
 	})
+}
+
+func TestRecordCalibrationFailure(t *testing.T) {
+	t.Setenv("TQ_LOG_DIR", t.TempDir())
+	dir := os.Getenv("TQ_LOG_DIR")
+
+	RecordCalibrationFailure("agent", task.NewID(), &FailureEvidence{
+		Stage:    "verify",
+		Class:    string(FailureClassEnvironment),
+		ExitCode: 1,
+		Verify:   &VerifyReceipt{Command: "make", RC: 1},
+	})
+
+	raw, err := os.ReadFile(filepath.Join(dir, CalibrationDataset))
+	if err != nil {
+		t.Fatalf("read dataset: %v", err)
+	}
+
+	lines := strings.Split(strings.TrimSpace(string(raw)), "\n")
+	if len(lines) != 1 {
+		t.Fatalf("want one row, got %d", len(lines))
+	}
+
+	var row CalibrationRow
+	if err := json.Unmarshal(jsontext.Value(lines[0]), &row); err != nil {
+		t.Fatalf("decode row: %v", err)
+	}
+
+	if row.Failure == nil || row.Failure.Stage != "verify" || row.Failure.Class != string(FailureClassEnvironment) {
+		t.Fatalf("failure half missing or wrong: %+v", row.Failure)
+	}
+
+	if len(row.Verdict) != 0 {
+		t.Fatalf("failure rows are verdict-less, got %s", row.Verdict)
+	}
+
+	// No log dir: the row is dropped, never an error.
+	t.Setenv("TQ_LOG_DIR", "")
+	RecordCalibrationFailure("agent", task.NewID(), nil)
 }
