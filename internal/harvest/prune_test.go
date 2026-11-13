@@ -391,15 +391,8 @@ func TestPruneStaleNeverTouchesSessionMintedTasks(t *testing.T) {
 // by the harvester), so the task minted from the OLD text is absent and gets
 // withdrawn — the pool never executes work the owner deliberately blocked.
 func TestPruneStaleRewordedToBlockedIsWithdrawn(t *testing.T) {
-	dir := t.TempDir()
-	writeRepo(t, dir, "blocked", "# H\n- [ ] fix the flaky test\n")
-	q := openQueue(t)
-	h := New(q, Config{ProjectsDir: dir})
+	h, dir := runOverRepos(t, "blocked", "# H\n- [ ] fix the flaky test\n")
 	ctx := context.Background()
-
-	if _, err := h.Run(ctx); err != nil {
-		t.Fatal(err)
-	}
 
 	mustWrite(
 		t,

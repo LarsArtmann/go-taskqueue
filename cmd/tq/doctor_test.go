@@ -40,6 +40,25 @@ func doctorTestStore(t *testing.T) string {
 	return path
 }
 
+// openDoctorStore opens the doctor's scratch store for a test and registers
+// its close with the test — the shared prolog of the doctor tests. The path
+// comes back too: runDoctor re-opens the same file by deployment
+// description.
+func openDoctorStore(t *testing.T) (*sqlite.Store, string, context.Context) {
+	t.Helper()
+
+	path := doctorTestStore(t)
+
+	s, err := sqlite.Open(path)
+	if err != nil {
+		t.Fatalf("OpenSQLite: %v", err)
+	}
+
+	t.Cleanup(func() { _ = s.Close() })
+
+	return s, path, context.Background()
+}
+
 func resultByName(results []checkResult, name string) checkResult {
 	for _, r := range results {
 		if r.Name == name {
@@ -90,15 +109,7 @@ func TestDoctorHealthyEmptyDB(t *testing.T) {
 }
 
 func TestDoctorFlagsDeadWorker(t *testing.T) {
-	path := doctorTestStore(t)
-
-	s, err := sqlite.Open(path)
-	if err != nil {
-		t.Fatalf("OpenSQLite: %v", err)
-	}
-	defer func() { _ = s.Close() }()
-
-	ctx := context.Background()
+	s, path, ctx := openDoctorStore(t)
 
 	// A pending task nobody claims, plus a running task whose lease died
 	// with its worker: the classic "pool is down" signature.
@@ -140,15 +151,7 @@ func TestDoctorFlagsDeadWorker(t *testing.T) {
 // check names the earliest not_before ("earliest release 19:40") so the
 // operator knows when to look again.
 func TestDoctorParkedNamesEarliestRelease(t *testing.T) {
-	path := doctorTestStore(t)
-
-	s, err := sqlite.Open(path)
-	if err != nil {
-		t.Fatalf("OpenSQLite: %v", err)
-	}
-	defer func() { _ = s.Close() }()
-
-	ctx := context.Background()
+	s, _, ctx := openDoctorStore(t)
 
 	park := func(delay time.Duration) {
 		t.Helper()
@@ -209,15 +212,7 @@ func TestDoctorParkedNamesEarliestRelease(t *testing.T) {
 }
 
 func TestDoctorBudgetAtCap(t *testing.T) {
-	path := doctorTestStore(t)
-
-	s, err := sqlite.Open(path)
-	if err != nil {
-		t.Fatalf("OpenSQLite: %v", err)
-	}
-	defer func() { _ = s.Close() }()
-
-	ctx := context.Background()
+	s, path, ctx := openDoctorStore(t)
 	for range 2 {
 		if _, err := s.Enqueue(ctx, task.New{Type: "sh"}); err != nil {
 			t.Fatalf("enqueue: %v", err)
@@ -527,15 +522,7 @@ func TestDoctorJSONShape(t *testing.T) {
 }
 
 func TestDoctorMarkOrphans(t *testing.T) {
-	path := doctorTestStore(t)
-
-	s, err := sqlite.Open(path)
-	if err != nil {
-		t.Fatalf("OpenSQLite: %v", err)
-	}
-	defer func() { _ = s.Close() }()
-
-	ctx := context.Background()
+	s, path, ctx := openDoctorStore(t)
 
 	enq, err := s.Enqueue(ctx, task.New{Type: "sh"})
 	if err != nil {
@@ -964,15 +951,7 @@ func TestDoctorVerifyPinsFlagsKnownStalePatterns(t *testing.T) {
 // clean store is ok. The check is observation-only — its detail must
 // carry the never-auto-close disclaimer.
 func TestDoctorOpenSessions(t *testing.T) {
-	path := doctorTestStore(t)
-
-	s, err := sqlite.Open(path)
-	if err != nil {
-		t.Fatalf("OpenSQLite: %v", err)
-	}
-	defer func() { _ = s.Close() }()
-
-	ctx := context.Background()
+	s, path, ctx := openDoctorStore(t)
 
 	// Bare store: no open sessions, check is ok.
 	results, err := runDoctor(ctx, doctorOptions{Deployment: config.SQLite(path)})
@@ -1506,15 +1485,7 @@ func TestDoctorWorktreeOrphans(t *testing.T) {
 // requeue evidence carries a provider, the parked check names it —
 // "parked by zai — WAITING, not broken".
 func TestDoctorParkedNamesExhaustedProvider(t *testing.T) {
-	path := doctorTestStore(t)
-
-	s, err := sqlite.Open(path)
-	if err != nil {
-		t.Fatalf("OpenSQLite: %v", err)
-	}
-	defer func() { _ = s.Close() }()
-
-	ctx := context.Background()
+	s, _, ctx := openDoctorStore(t)
 
 	park := func(provider string) {
 		t.Helper()

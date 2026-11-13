@@ -75,15 +75,9 @@ func completeHarvestedTask(t *testing.T, h *Harvester, repoName, itemText string
 }
 
 func TestAuditDetectsDrift(t *testing.T) {
-	dir := t.TempDir()
-	writeRepo(t, dir, "drifty", "# H\n- [ ] finished but unticked\n- [ ] still open work\n- [x] hand-done early\n")
-	q := openQueue(t)
-	h := New(q, Config{ProjectsDir: dir})
+	h, _ := runOverRepos(t, "drifty", "# H\n- [ ] finished but unticked\n- [ ] still open work\n- [x] hand-done early\n")
 	ctx := context.Background()
 
-	if _, err := h.Run(ctx); err != nil {
-		t.Fatal(err)
-	}
 	// The agent finished the first item; the checkbox stayed open.
 	done := completeHarvestedTask(t, h, "drifty", "finished but unticked")
 
@@ -115,15 +109,9 @@ func TestAuditDetectsDrift(t *testing.T) {
 }
 
 func TestAuditStaleDoneReportedNotRepaired(t *testing.T) {
-	dir := t.TempDir()
-	writeRepo(t, dir, "reversee", "# H\n- [ ] will be ticked by hand\n")
-	q := openQueue(t)
-	h := New(q, Config{ProjectsDir: dir})
+	h, dir := runOverRepos(t, "reversee", "# H\n- [ ] will be ticked by hand\n")
 	ctx := context.Background()
 
-	if _, err := h.Run(ctx); err != nil {
-		t.Fatal(err)
-	}
 	// Human ticks the box while the task is still pending.
 	todo := filepath.Join(dir, "reversee", DefaultTodoFile)
 	mustWrite(t, todo, "# H\n- [x] will be ticked by hand\n")
@@ -143,15 +131,8 @@ func TestAuditStaleDoneReportedNotRepaired(t *testing.T) {
 }
 
 func TestAuditEnqueuesCatchupOnce(t *testing.T) {
-	dir := t.TempDir()
-	writeRepo(t, dir, "loop", "# H\n- [ ] done but unticked forever\n")
-	q := openQueue(t)
-	h := New(q, Config{ProjectsDir: dir})
+	h, _ := runOverRepos(t, "loop", "# H\n- [ ] done but unticked forever\n")
 	ctx := context.Background()
-
-	if _, err := h.Run(ctx); err != nil {
-		t.Fatal(err)
-	}
 
 	completeHarvestedTask(t, h, "loop", "done but unticked forever")
 
