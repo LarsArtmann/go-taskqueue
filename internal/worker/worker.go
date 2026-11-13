@@ -366,6 +366,22 @@ func (p *Pool) burnEnvStreak(
 // a class-only document — the 21:40 §d4 empty-detail deaths at least
 // gain the class. Only the worker calls this: the wrapper chain that
 // decides the class is complete only here.
+// judgedFailureEvidence stamps the failure class onto the executor's
+// evidence AND appends the failure-path calibration row (verdict-less,
+// class + FailureEvidence join keys) so the dataset covers every paid
+// attempt outcome, not only completions. The worker is the only caller:
+// the wrapper chain that decides the class is complete only here.
+func judgedFailureEvidence(t task.Task, sink *executor.Sink, execErr error) jsontext.Value {
+	var ev executor.FailureEvidence
+	if raw := sink.Failure(); len(raw) > 0 {
+		_ = json.Unmarshal(raw, &ev)
+	}
+	ev.Class = string(executor.ClassifyFailure(execErr))
+	executor.RecordCalibrationFailure(t.Type, t.ID, &ev)
+
+	return stampedFailureEvidence(sink.Failure(), execErr)
+}
+
 func stampedFailureEvidence(evidence jsontext.Value, execErr error) jsontext.Value {
 	var fields map[string]any
 	if len(evidence) > 0 {
@@ -832,7 +848,7 @@ func (p *Pool) execute(ctx context.Context, t task.Task, claim queue.Claim) {
 					t.ID,
 					claim,
 					gate.Error(),
-					stampedFailureEvidence(sink.Failure(), execErr),
+					judgedFailureEvidence(t, sink, execErr),
 				)
 			}); err != nil {
 				p.log.Error("permanent fail failed", "task", t.ID, "err", err)
@@ -895,6 +911,12 @@ func (p *Pool) execute(ctx context.Context, t task.Task, claim queue.Claim) {
 		// the parsed reset time (± small jitter so many parked tasks do
 		// not reclaim in lockstep and stampede the freshly reset quota).
 		delay := rateLimitDelay(rl.RetryAfter)
+
+		// The paid turn still happened — record its failure row so the
+		// calibration dataset counts 429-parked attempts, not only
+		// completions and burns (the evidence is typically empty: the
+		// provider refused before any output worth tailing).
+		judgedFailureEvidence(t, sink, rl.Cause)
 
 		// A sibling gate refusal (the executor's in-process gate refused
 		// before any run) rides its own class so the journal counts
@@ -991,7 +1013,7 @@ func (p *Pool) execute(ctx context.Context, t task.Task, claim queue.Claim) {
 		// repo). Dead-letter now instead of burning the retry budget — for
 		// agent tasks every retry is real money.
 		if err := p.persistOutcome(terminalCtx, t.ID, func(c context.Context) error {
-			return p.store.FailPermanent(c, t.ID, claim, perm.Error(), stampedFailureEvidence(sink.Failure(), execErr))
+			return p.store.FailPermanent(c, t.ID, claim, perm.Error(), judgedFailureEvidence(t, sink, execErr))
 		}); err != nil {
 			p.log.Error("permanent fail failed", "task", t.ID, "err", err)
 		}
@@ -1011,7 +1033,7 @@ func (p *Pool) execute(ctx context.Context, t task.Task, claim queue.Claim) {
 				claim,
 				"worker shutdown: "+execErr.Error(),
 				0,
-				stampedFailureEvidence(sink.Failure(), execErr),
+				judgedFailureEvidence(t, sink, execErr),
 			)
 		}); err != nil {
 			p.log.Error("fail-on-shutdown failed", "task", t.ID, "err", err)
@@ -1031,7 +1053,7 @@ func (p *Pool) execute(ctx context.Context, t task.Task, claim queue.Claim) {
 			claim,
 			execErr.Error(),
 			p.cfg.Backoff(t.Attempts+1),
-			stampedFailureEvidence(sink.Failure(), execErr),
+			judgedFailureEvidence(t, sink, execErr),
 		)
 	}); err != nil {
 		p.log.Error("fail failed", "task", t.ID, "err", err)

@@ -1,8 +1,11 @@
 package executor
 
 import (
+	"bytes"
+
 	"encoding/json/jsontext"
 	"encoding/json/v2"
+	"fmt"
 	"os"
 	"path/filepath"
 	"time"
@@ -55,6 +58,46 @@ type CalibrationRow struct {
 	// completed WITHOUT an agent run (the no-verdict, no-cost class the
 	// tuning rules must be able to exclude).
 	PreflightDone string `json:"preflight_done,omitempty"`
+	// Failure carries the stamped forensics of a FAILED attempt (the
+	// worker's stampedFailureEvidence document: stage, class, exit code,
+	// tail, verify receipt + attestation). Nil on completion rows —
+	// ABSENCE means the row observed a completion, not a death, so the
+	// tuning rules can exclude failure outcomes from verdict rates
+	// without a second decoder.
+	Failure *FailureEvidence `json:"failure,omitempty"`
+}
+
+// RecordCalibrationFailure appends ONE verdict-less calibration row for a
+// FAILED attempt (parse miss, verify-gate death, rate-limit requeue, …):
+// the same dataset file, with the failure half populated (class + the
+// FailureEvidence join keys) and the verdict half empty. Best effort like
+// recordCalibration; a nil evidence still writes the row (the class is
+// the join the DLQ autopsy needs, and an evidence-less death is exactly
+// the empty-detail class worth counting).
+func RecordCalibrationFailure(kind string, id task.ID, evidence *FailureEvidence) {
+	dir := os.Getenv("TQ_LOG_DIR")
+	if dir == "" {
+		return
+	}
+
+	b, err := json.Marshal(CalibrationRow{
+		TaskID:  id.String(),
+		Kind:    kind,
+		At:      time.Now().UnixMilli(),
+		Failure: evidence,
+	})
+	if err != nil {
+		return
+	}
+
+	f, err := os.OpenFile(filepath.Join(dir, CalibrationDataset),
+		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
+	if err != nil {
+		return
+	}
+	defer func() { _ = f.Close() }()
+
+	_, _ = f.Write(append(b, '\n'))
 }
 
 // calibrationDetail mirrors the shared subset of the registered result
@@ -131,4 +174,70 @@ func recordCalibration(kind string, id task.ID, verdict, detail jsontext.Value) 
 	defer func() { _ = f.Close() }()
 
 	_, _ = f.Write(append(b, '\n'))
+}
+
+// CalibrationMaxBytes is the retention cap for calibration.jsonl: the
+// dataset is one append-only file that no sidecar sweep touches (the
+// sweeps consider only *.log, by design — the dataset is not a log), so
+// a long-lived pool would grow it forever. Keep-the-tail at 64 MiB ≈
+// tens of thousands of rows — far past the ≥50-per-kind tuning floor —
+// while bounding the file. Owner-adjustable later; a trim drops the
+// OLDEST rows (the freshest evidence is the tuning surface's input).
+const CalibrationMaxBytes = int64(64) << 20
+
+// TrimCalibrationDataset enforces CalibrationMaxBytes on dir's
+// calibration.jsonl: when the file exceeds the cap, the oldest rows are
+// dropped until the newest complete lines fit (a leading partial line
+// from the cut point is discarded too). The rewrite is atomic
+// (tmp + rename, mode 0600). Absent file or sub-cap size is a no-op;
+// best effort by contract — an error is returned for the caller to log,
+// never to fail the run that wrote rows.
+func TrimCalibrationDataset(dir string, maxBytes int64) (bool, error) {
+	if dir == "" || maxBytes <= 0 {
+		return false, nil
+	}
+
+	path := filepath.Join(dir, CalibrationDataset)
+
+	info, err := os.Stat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+
+		return false, fmt.Errorf("executor: stat calibration dataset: %w", err)
+	}
+
+	if info.Size() <= maxBytes {
+		return false, nil
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return false, fmt.Errorf("executor: read calibration dataset: %w", err)
+	}
+
+	// Cut to the newest maxBytes bytes, then drop the torn leading line.
+	cut := len(data) - int(maxBytes)
+	if cut > 0 {
+		if nl := bytes.IndexByte(data[cut:], '\n'); nl >= 0 {
+			cut += nl + 1
+		} else {
+			cut = len(data) // one monster row: nothing complete survives
+		}
+	}
+	trimmed := data[cut:]
+
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, trimmed, 0o600); err != nil {
+		return false, fmt.Errorf("executor: write calibration dataset trim: %w", err)
+	}
+
+	if err := os.Rename(tmp, path); err != nil {
+		_ = os.Remove(tmp)
+
+		return false, fmt.Errorf("executor: swap calibration dataset trim: %w", err)
+	}
+
+	return true, nil
 }

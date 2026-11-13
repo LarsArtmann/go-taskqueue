@@ -1,6 +1,7 @@
 package executor
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"strings"
@@ -108,5 +109,48 @@ func TestSummarizeCalibration(t *testing.T) {
 func TestSummarizeCalibrationMissingFile(t *testing.T) {
 	if _, err := SummarizeCalibration(filepath.Join(t.TempDir(), "absent.jsonl")); err == nil {
 		t.Fatal("missing dataset must error, not summarize zero")
+	}
+}
+
+func TestTrimCalibrationDataset(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, CalibrationDataset)
+
+	row := `{"task_id":"t1","kind":"agent","at":1}` + "\n"
+	var seed strings.Builder
+	for range 100 {
+		seed.WriteString(row)
+	}
+	if err := os.WriteFile(path, []byte(seed.String()), 0o600); err != nil {
+		t.Fatalf("seed dataset: %v", err)
+	}
+
+	trimmed, err := TrimCalibrationDataset(dir, 2048)
+	if err != nil {
+		t.Fatalf("TrimCalibrationDataset: %v", err)
+	}
+	if !trimmed {
+		t.Fatal("oversized dataset must report a trim")
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("reread: %v", err)
+	}
+	if int64(len(data)) > 2048+int64(len(row)) {
+		t.Fatalf("trimmed size %d exceeds cap+row", len(data))
+	}
+	if !bytes.HasPrefix(data, []byte(`{"task_id"`)) {
+		t.Fatal("trim must land on a line boundary, never a torn row")
+	}
+	if !bytes.HasSuffix(data, []byte(row)) {
+		t.Fatal("trim must keep the newest rows")
+	}
+
+	if trimmed, err := TrimCalibrationDataset(dir, 1<<30); err != nil || trimmed {
+		t.Fatalf("under-cap trim=%v err=%v, want false/nil", trimmed, err)
+	}
+	if trimmed, err := TrimCalibrationDataset(t.TempDir(), 1024); err != nil || trimmed {
+		t.Fatalf("absent-file trim=%v err=%v, want false/nil", trimmed, err)
 	}
 }

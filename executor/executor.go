@@ -69,7 +69,16 @@ type (
 	CalibrationSummary   = internalexecutor.CalibrationSummary
 )
 
-var SummarizeCalibration = internalexecutor.SummarizeCalibration
+var (
+	RecordCalibrationFailure = internalexecutor.RecordCalibrationFailure
+	SummarizeCalibration     = internalexecutor.SummarizeCalibration
+	TrimCalibrationDataset   = internalexecutor.TrimCalibrationDataset
+)
+
+// CalibrationMaxBytes is the retention cap for calibration.jsonl (the
+// pool tick trims the file to it; not a *.log, so the sidecar sweeps
+// never touch it).
+const CalibrationMaxBytes = internalexecutor.CalibrationMaxBytes
 
 // CalibrationDataset is the JSONL file name of the dataset under the
 // pool's log dir (one row per line; absent without a log dir).

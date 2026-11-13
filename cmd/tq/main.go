@@ -1609,6 +1609,18 @@ func cmdAgentPool(args []string) error {
 			}
 		}
 
+		// Calibration dataset retention: the JSONL is not a *.log, so the
+		// sweeps above never touch it — trim it to its own byte cap so a
+		// long-lived pool cannot grow it forever (oldest rows drop first;
+		// the tuning surface reads the freshest evidence).
+		if poolOpts.logDir != "" {
+			if trimmed, err := executor.TrimCalibrationDataset(poolOpts.logDir, executor.CalibrationMaxBytes); err != nil {
+				log.Warn("calibration trim failed", "err", err)
+			} else if trimmed {
+				log.Info("calibration trim", "dir", poolOpts.logDir, "cap_bytes", executor.CalibrationMaxBytes)
+			}
+		}
+
 		if !mintPass("harvest tick", func() {
 			res, err := harvester.Run(ctx)
 			if err != nil {

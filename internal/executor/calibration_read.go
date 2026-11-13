@@ -26,10 +26,14 @@ type CalibrationKindStats struct {
 	// ApproveRows and ApproveWithCommits cross-tab the review approve
 	// verdict against the derived outcome: how often an approve came with
 	// zero footer-attributed commits (the auto-dismiss tuning signal).
-	ApproveRows         int
-	ApproveWithCommits  int
+	ApproveRows        int
+	ApproveWithCommits int
 	// AttestedOK counts rows whose write-time attestation passed.
 	AttestedOK int
+	// Failures groups the row's FAILED attempts by stamped class
+	// (parse-miss, verify deaths, rate-limit requeues); completion rows
+	// carry no failure half and do not appear here.
+	Failures map[string]int
 	// AttestationRefusals groups rows by refusal class (receipt absent
 	// from the row is "(no-receipt)"); the receipt-refusal rate the
 	// tuning rules watch.
@@ -88,6 +92,17 @@ func SummarizeCalibration(path string) (CalibrationSummary, error) {
 
 		st.Rows++
 		st.TotalCostUSD += row.CostUSD
+
+		if row.Failure != nil {
+			class := row.Failure.Class
+			if class == "" {
+				class = "(unclassified)"
+			}
+			if st.Failures == nil {
+				st.Failures = map[string]int{}
+			}
+			st.Failures[class]++
+		}
 
 		if len(row.Verdict) > 0 {
 			st.WithVerdict++
