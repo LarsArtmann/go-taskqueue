@@ -14,37 +14,14 @@ import (
 	"strings"
 	"sync"
 	"testing"
+
+	"github.com/larsartmann/go-taskqueue/internal/slogcapture"
 )
 
-// captureHandler records slog records so tests can pin the fallback
-// contract: one warning per failed daemon discovery, never an error return.
-type captureHandler struct {
-	mu      sync.Mutex
-	records []slog.Record
-}
+func warnMessages(h *slogcapture.Handler) []string {
+	msgs := make([]string, 0)
 
-func (h *captureHandler) Enabled(context.Context, slog.Level) bool { return true }
-
-func (h *captureHandler) Handle(_ context.Context, r slog.Record) error {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-
-	h.records = append(h.records, r)
-
-	return nil
-}
-
-func (h *captureHandler) WithAttrs([]slog.Attr) slog.Handler { return h }
-
-func (h *captureHandler) WithGroup(string) slog.Handler { return h }
-
-func (h *captureHandler) warnings() []string {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-
-	msgs := make([]string, 0, len(h.records))
-
-	for _, r := range h.records {
+	for _, r := range h.Records() {
 		if r.Level >= slog.LevelWarn {
 			msgs = append(msgs, r.Message)
 		}
@@ -298,7 +275,7 @@ func TestDiscoverReposForFallsBackToScan(t *testing.T) {
 
 	fx := newDaemonFixture(t)
 
-	capture := &captureHandler{}
+	capture := &slogcapture.Handler{}
 
 	socket := filepath.Join(t.TempDir(), "missing.sock")
 
@@ -312,7 +289,7 @@ func TestDiscoverReposForFallsBackToScan(t *testing.T) {
 		t.Fatalf("repos = %v, want %v", repos, want)
 	}
 
-	warnings := capture.warnings()
+	warnings := warnMessages(capture)
 	if len(warnings) != 1 {
 		t.Fatalf("got %d warnings, want exactly 1: %q", len(warnings), warnings)
 	}
@@ -327,7 +304,7 @@ func TestDiscoverReposForPrefersDaemonResult(t *testing.T) {
 
 	srv, _ := newDaemonStub(t, []daemonProject{{Path: fx.withTodoA}, {Path: "gamma"}})
 
-	repos, err := DiscoverReposFor(context.Background(), srv.URL, fx.dir, DefaultTodoFile, slog.New(&captureHandler{}))
+	repos, err := DiscoverReposFor(context.Background(), srv.URL, fx.dir, DefaultTodoFile, slog.New(&slogcapture.Handler{}))
 	if err != nil {
 		t.Fatalf("DiscoverReposFor: %v", err)
 	}
@@ -370,7 +347,7 @@ func TestRunUsesDaemonDiscovery(t *testing.T) {
 
 	res, err := New(
 		q,
-		Config{ProjectsDir: fx.dir, DiscoveryAddr: srv.URL, Log: slog.New(&captureHandler{})},
+		Config{ProjectsDir: fx.dir, DiscoveryAddr: srv.URL, Log: slog.New(&slogcapture.Handler{})},
 	).Run(context.Background())
 	if err != nil {
 		t.Fatalf("Run: %v", err)
@@ -402,7 +379,7 @@ func TestRunDaemonDownStillHarvests(t *testing.T) {
 
 	res, err := New(
 		q,
-		Config{ProjectsDir: fx.dir, DiscoveryAddr: socket, Log: slog.New(&captureHandler{})},
+		Config{ProjectsDir: fx.dir, DiscoveryAddr: socket, Log: slog.New(&slogcapture.Handler{})},
 	).Run(context.Background())
 	if err != nil {
 		t.Fatalf("Run must not fail when the daemon is down: %v", err)

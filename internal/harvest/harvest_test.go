@@ -46,6 +46,23 @@ func writeRepo(t *testing.T, projectsDir, name, todo string) string {
 	return repo
 }
 
+// runOverRepos seeds one repo with the given TODO content and runs the
+// harvester once over the projects dir — the fixture every drift-audit and
+// prune test starts from: work exists only after that first Run.
+func runOverRepos(t *testing.T, name, todo string) (*Harvester, string) {
+	t.Helper()
+
+	dir := t.TempDir()
+	writeRepo(t, dir, name, todo)
+	h := New(openQueue(t), Config{ProjectsDir: dir})
+
+	if _, err := h.Run(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+
+	return h, dir
+}
+
 func TestParseRepo(t *testing.T) {
 	repo := t.TempDir()
 

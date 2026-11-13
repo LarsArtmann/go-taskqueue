@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -18,6 +17,7 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
+	"github.com/larsartmann/go-taskqueue/internal/slogcapture"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
@@ -720,28 +720,6 @@ func TestSweepMinIntervalGatesMint(t *testing.T) {
 	}
 }
 
-// captureHandler records slog records so tests can pin the warn that
-// accompanies a mint refusal.
-type captureHandler struct {
-	mu      sync.Mutex
-	records []slog.Record
-}
-
-func (h *captureHandler) Enabled(context.Context, slog.Level) bool { return true }
-
-func (h *captureHandler) Handle(_ context.Context, r slog.Record) error {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-
-	h.records = append(h.records, r)
-
-	return nil
-}
-
-func (h *captureHandler) WithAttrs([]slog.Attr) slog.Handler { return h }
-
-func (h *captureHandler) WithGroup(string) slog.Handler { return h }
-
 // flakyStatusStore fails Gets for one task ID and report enqueues with a
 // store-shaped error — the transient failure class a mint refusal
 // represents. Everything else rides the real store.
@@ -810,7 +788,7 @@ func watermarkOf(t *testing.T, s queue.Store) int64 {
 func pinRefusalHoldsCheckpoint(
 	t *testing.T,
 	s *sqlite.Store,
-	capture *captureHandler,
+	capture *slogcapture.Handler,
 	triggerSeq int64,
 	stats SweepStats,
 	err error,
@@ -831,20 +809,20 @@ func pinRefusalHoldsCheckpoint(
 
 	warned := false
 
-	for _, r := range capture.records {
+	for _, r := range capture.Records() {
 		if r.Level == slog.LevelWarn && strings.Contains(r.Message, "mint refused") {
 			warned = true
 		}
 	}
 
 	if !warned {
-		t.Fatalf("mint-refusal warn missing from %+v", capture.records)
+		t.Fatalf("mint-refusal warn missing from %+v", capture.Records())
 	}
 }
 
 // refusalSweeper builds a status sweeper (one completion per report) over
 // the flaky store with a capturing logger.
-func refusalSweeper(t *testing.T, flaky *flakyStatusStore, capture *captureHandler) *Sweeper {
+func refusalSweeper(t *testing.T, flaky *flakyStatusStore, capture *slogcapture.Handler) *Sweeper {
 	t.Helper()
 
 	sw, err := NewSweeper(context.Background(), flaky, SweeperConfig{Every: 1, Log: slog.New(capture)})
@@ -868,7 +846,7 @@ func TestSweepGetRefusalHoldsCheckpoint(t *testing.T) {
 	ctx := context.Background()
 
 	flaky := &flakyStatusStore{Store: s}
-	capture := &captureHandler{}
+	capture := &slogcapture.Handler{}
 
 	sw := refusalSweeper(t, flaky, capture)
 
@@ -902,7 +880,7 @@ func TestSweepEnqueueRefusalHoldsCheckpoint(t *testing.T) {
 	ctx := context.Background()
 
 	flaky := &flakyStatusStore{Store: s}
-	capture := &captureHandler{}
+	capture := &slogcapture.Handler{}
 
 	sw := refusalSweeper(t, flaky, capture)
 
