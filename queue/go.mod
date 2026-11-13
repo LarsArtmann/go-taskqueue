@@ -1,6 +1,6 @@
 module github.com/larsartmann/go-taskqueue/queue
 
-go 1.27.3
+go 1.27.4
 
 require github.com/larsartmann/go-taskqueue/internal/queue v0.4.2
 

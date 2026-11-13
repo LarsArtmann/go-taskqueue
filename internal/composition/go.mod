@@ -1,6 +1,6 @@
 module github.com/larsartmann/go-taskqueue/internal/composition
 
-go 1.27.3
+go 1.27.4
 
 require (
 	github.com/larsartmann/go-cqrs-lite/metaengine/sqliteengine/v4 v4.8.0
