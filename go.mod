@@ -127,7 +127,7 @@ require (
 	github.com/larsartmann/templ-components v1.27.0
 	github.com/larsartmann/templ-components/icons v1.27.0
 	github.com/larsartmann/templ-components/utils v1.27.0
-	golang.org/x/sync v0.24.0
+	golang.org/x/sync v0.25.0
 )
 
 retract v0.3.1 // broken module graph: the v0.3.1 sweep left three-segment internal requires (queue/sqlite, journal/cqrs, companion, v4 drivers) at v0.3.0, so the proxy graph cannot close
