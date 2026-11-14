@@ -475,6 +475,9 @@ func cmdEnqueue(args []string) error {
 
 	// Production-DB trap guard (2026-09-10 live enqueue): agent shells inherit
 	// TQ_DB pointing at the production journal; a bare `tq enqueue` must say so.
+	// Dispatched-shell variant (2026-11-14): TQ_DB is denylist-stripped there,
+	// so the fallback silently picks ./tasks.db — the dispatched-shell marker
+	// ($TQ_RESULT_FILE, absent from non-paid shells) names the resolved db.
 	if *db == "" {
 		if p := os.Getenv("TQ_DB"); p != "" {
 			fmt.Fprintf(
@@ -482,6 +485,13 @@ func cmdEnqueue(args []string) error {
 				"tq enqueue: warning: $TQ_DB is set (%s) — this enqueue targets that database, "+
 					"not ./tasks.db (pass --db to override)\n",
 				p,
+			)
+		} else if os.Getenv("TQ_RESULT_FILE") != "" {
+			fmt.Fprintf(
+				os.Stderr,
+				"tq enqueue: warning: dispatched shell ($TQ_RESULT_FILE set, TQ_DB stripped) — "+
+					"this enqueue targets the cwd fallback ./tasks.db, not the dispatching queue's journal "+
+					"(direct enqueue is forbidden for dispatched work; pass --db to override)\n",
 			)
 		}
 	}
@@ -2664,6 +2674,15 @@ func cmdShow(args []string) error {
 
 	t, err := resolveTask(ctx, store, fs.Arg(0))
 	if err != nil {
+		// Dispatched-shell trap guard (the 2026-11-09 ask class, mirrored
+		// for show): TQ_DB is denylist-stripped from agent shells, so a
+		// bare `tq show` silently resolves ./tasks.db and reports
+		// "no task" for an id that lives in the dispatching queue. Name
+		// the resolved db whenever the fallback (not an explicit --db or
+		// TQ_DB) chose it.
+		if *db == "" && os.Getenv("TQ_DB") == "" {
+			return fmt.Errorf("%w (resolved db: %s — in a dispatched agent shell TQ_DB is stripped, so this is the cwd fallback, likely not the dispatching queue's journal)", err, resolveDB(*db))
+		}
 		return err
 	}
 
