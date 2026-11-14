@@ -63,7 +63,7 @@ cleanup() {
 
 verify_subtag() {
 	local module=$1 tag=$2 repo=$3 pkg=${4:-} rc=0
-	local scratch= cache=
+	local scratch='' cache=
 	cleanup
 	scratch=$(mktemp -d)
 	cache=$(mktemp -d)
@@ -125,13 +125,13 @@ verify_subtag() {
 # would receive; the negative path exercises the real missing-tag refusal.
 self_test() {
 	local fixture fixture_sub stub_bin
-	local scratch= cache=
+	local scratch='' cache=
 	fixture=$(mktemp -d)
 	trap 'chmod -R u+w "${fixture:-}" 2>/dev/null; rm -rf "${fixture:-}"' EXIT
 	fixture_sub="$fixture/example"
 	git init -q "$fixture_sub"
 	(
-		cd "$fixture_sub"
+		cd "$fixture_sub" || exit
 		git config user.email t@example.test
 		git config user.name t
 		printf 'module example.com/sub\n\ngo 1.26\n' >go.mod
@@ -153,8 +153,7 @@ EOF
 
 	# Positive path under the stub go: rails must all be present.
 	local log="$fixture/stub.log"
-	local out
-	out=$(CHECK_SUBTAG_STUB_LOG="$log" PATH="$stub_bin:$PATH" verify_subtag example.com/sub v0.1.0 "$fixture_sub")
+	CHECK_SUBTAG_STUB_LOG="$log" PATH="$stub_bin:$PATH" verify_subtag example.com/sub v0.1.0 "$fixture_sub" >/dev/null
 	local pos_fail=$fail_count
 	if [ "$pos_fail" -eq 0 ]; then :; else fail "self-test: positive fixture path reported failure"; fi
 	grep -q '^GOWORK=off$' "$log.env" || fail "self-test: GOWORK not forced off in verify env"
@@ -168,7 +167,7 @@ EOF
 	scratch=$(mktemp -d)
 	cache=$(mktemp -d)
 	(
-		cd "$scratch"
+		cd "$scratch" || exit
 		git init -q .
 		git config url."file://$fixture_sub".insteadOf "https://example.com/sub/"
 	)
