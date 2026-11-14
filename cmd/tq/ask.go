@@ -107,12 +107,26 @@ func cmdAsk(args []string) error {
 		)
 	}
 
-	store := mustOpenDB(resolveDB(*dbPath))
+	// The dispatched-agent channel: TQ_DB is denylist-stripped from agent
+	// shells (envDenylistForAgents — the production journal is not an
+	// agent's business), so a dispatched ask would fall through to
+	// ./tasks.db and miss the dispatching queue entirely ("task: not
+	// found"). The pool hands the journal under TQ_ASK_DB instead; ONLY
+	// ask honors it, so enqueue and the other subcommands keep the
+	// ./tasks.db fallback. Precedence: --db > TQ_DB > TQ_ASK_DB > default.
+	askDBPath := resolveDB(*dbPath)
+	if askDBPath == defaultDB() {
+		if askDB := os.Getenv("TQ_ASK_DB"); askDB != "" {
+			askDBPath = askDB
+		}
+	}
+
+	store := mustOpenDB(askDBPath)
 	defer func() { _ = store.Close() }()
 
 	t, err := store.Get(context.Background(), task.ID(*taskID))
 	if err != nil {
-		return fmt.Errorf("tq ask: task %s: %w", *taskID, err)
+		return fmt.Errorf("tq ask: task %s: %w (looked in %s — if this is a dispatched run, the pool's TQ_ASK_DB may be missing or the ID may belong to another queue)", *taskID, err, askDBPath)
 	}
 
 	if t.Status != task.Running {

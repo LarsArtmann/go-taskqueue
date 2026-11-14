@@ -185,6 +185,19 @@ func defaultDB() string {
 	return "tasks.db"
 }
 
+// askChannelDB returns the journal path to hand dispatched agents under
+// TQ_ASK_DB (the owner-question channel — AgentExecutor.AskDB): the
+// sqlite path for sqlite pools; empty for postgres (the ask fallback's
+// mustOpenDB is sqlite-only, so a DSN there would mislead).
+func askChannelDB(d config.Deployment) string {
+	if d.Driver != config.DriverSQLite {
+		return ""
+	}
+
+	return d.DBPath
+}
+
+
 func mustOpenDB(path string) *sqlite.Store {
 	return mustOpenDBOpts(path)
 }
@@ -1123,6 +1136,11 @@ func cmdAgentPool(args []string) error {
 		ReresolveVerify: poolOpts.reresolveVerify,
 		Worktrees:       poolOpts.worktrees,
 		CrushServer:     poolOpts.crushServer,
+		// TQ_ASK_DB injection (the dispatched ask channel — see
+		// AgentExecutor.AskDB): sqlite pools hand the journal path; the
+		// denylist keeps TQ_DB itself stripped, so enqueue stays dead in
+		// agent shells while the question channel routes home.
+		AskDB: askChannelDB(deployment),
 	}
 	if poolOpts.closeout {
 		agentExec.CloseoutPrompt = executor.DefaultCloseoutPrompt

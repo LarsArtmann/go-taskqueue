@@ -144,6 +144,19 @@ type AgentExecutor struct {
 	// process. Empty = today's in-process path; rollback = unset the flag.
 	CrushServer string
 
+	// AskDB hands dispatched agents the queue's own journal under
+	// TQ_ASK_DB so `tq ask --task <id>` can find the task: TQ_DB is
+	// denylist-stripped (envDenylistForAgents — the production journal is
+	// not an agent's business), which routed every dispatched ask to
+	// ./tasks.db and dead-ended the owner-question channel with
+	// "task: not found". The variable is honored ONLY by tq ask — enqueue
+	// and every other subcommand keep the ./tasks.db fallback — so this
+	// restores exactly the question channel and nothing else. Empty (a
+	// bare executor, or a postgres DSN the ask path cannot name) = not
+	// injected; the ask-side error names the resolved db so the mismatch
+	// is self-diagnosing.
+	AskDB string
+
 	// rateLimitUntil is the UnixNano instant the provider is next expected
 	// to accept requests (0 = clear). Set when a run's output reports
 	// provider exhaustion (Z.ai 5-hour usage windows, synthetic.new quota
@@ -199,6 +212,7 @@ func (e *AgentExecutor) WithoutCloseout() *AgentExecutor {
 		MaxConcurrent:   e.MaxConcurrent,
 		ReresolveVerify: e.ReresolveVerify,
 		CrushServer:     e.CrushServer,
+		AskDB:           e.AskDB,
 		secondOpinion:   true,
 	}
 }
@@ -576,6 +590,11 @@ func assertCleanTree(ctx context.Context, repo string) error {
 // completed).
 const verdictFileEnv = "TQ_RESULT_FILE"
 
+// askDBEnv routes the owner-question channel past the TQ_DB denylist:
+// the executor hands dispatched agents the queue's journal under this
+// name (see AgentExecutor.AskDB), and ONLY cmd/tq ask honors it.
+const askDBEnv = "TQ_ASK_DB"
+
 // verdictRailTmpl is the ONE prompt rail that keeps the verdict FILE
 // channel alive under `--crush-server`: the routed bash tool sees only
 // the SERVER process env (M8), so $TQ_RESULT_FILE is invisible to a
@@ -815,6 +834,9 @@ func (e *AgentExecutor) runAgent(
 		// The full secret-injection successor (minted per-run env) is
 		// designed in docs/planning/2026-10-05_secret-injection-seam-design.md.
 		env := agentEnv(os.Environ())
+		if e.AskDB != "" {
+			env = append(env, askDBEnv+"="+e.AskDB)
+		}
 		if e.CrushServer != "" {
 			env = append(env, crushClientServerEnv+"=1")
 		}
@@ -1038,6 +1060,9 @@ func (e *AgentExecutor) runCloseoutTurn(
 		cmd.Dir = repoDir
 
 		closeoutEnv := agentEnv(os.Environ())
+		if e.AskDB != "" {
+			closeoutEnv = append(closeoutEnv, askDBEnv+"="+e.AskDB)
+		}
 		if e.CrushServer != "" {
 			closeoutEnv = append(closeoutEnv, crushClientServerEnv+"=1")
 		}
