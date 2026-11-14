@@ -164,7 +164,10 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 - **Session-close bridge**: `tq session begin/close` + `tq crush`; close
   scans `Crush-Session:` trailers → ONE review + ONE status task.
 - **PapDashboard questions**: `tq ask --task <id>` parks without attempt
-  burn; the AnswerPoller routes answers home.
+  burn; the AnswerPoller routes answers home. Dispatched runs route via
+  `TQ_ASK_DB` (pool-injected; TQ_DB is denylist-stripped; ask-only
+  precedence --db > TQ_DB > TQ_ASK_DB > ./tasks.db) — a "task: not found"
+  ask means an old pool or a foreign queue's ID.
 - **Idempotent enqueue**: `DedupKey` re-enqueue returns the stored task;
   COMPLETED keys refused (`ErrTaskDone`); cancelled/dead keys still suppress
   (escape: edit the item).

@@ -35,14 +35,19 @@ const maxQuestionTTL = 7 * 24 * time.Hour
 // strips TQ_DB from agent shells — the ask-only variable is the routing
 // the channel needs), then the ./tasks.db default.
 func askDBPath(flagVal string) string {
-	db := resolveDB(flagVal)
-	if db == defaultDB() {
-		if askDB := os.Getenv("TQ_ASK_DB"); askDB != "" {
-			return askDB
-		}
+	if flagVal != "" {
+		return flagVal
 	}
 
-	return db
+	if v := os.Getenv("TQ_DB"); v != "" {
+		return v
+	}
+
+	if v := os.Getenv("TQ_ASK_DB"); v != "" {
+		return v
+	}
+
+	return defaultDB()
 }
 
 // cmdAsk is the agent→owner question channel: an agent inside a queue task

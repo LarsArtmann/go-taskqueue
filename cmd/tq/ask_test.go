@@ -260,3 +260,33 @@ func TestCmdAskValidation(t *testing.T) {
 		})
 	}
 }
+
+// TestAskDBPathPrecedence pins the dispatched-owner-question routing
+// (the 2026-11-09 §a7 "task: not found" class): TQ_DB is denylist-
+// stripped from agent shells, so ask honors TQ_ASK_DB — but explicit
+// flags and a live TQ_DB keep winning over the channel variable.
+func TestAskDBPathPrecedence(t *testing.T) {
+	tests := []struct {
+		name  string
+		flag  string
+		tqDB  string
+		askDB string
+		want  string
+	}{
+		{name: "explicit flag wins over everything", flag: "/explicit.db", tqDB: "/tq.db", askDB: "/ask.db", want: "/explicit.db"},
+		{name: "TQ_DB wins over TQ_ASK_DB", tqDB: "/tq.db", askDB: "/ask.db", want: "/tq.db"},
+		{name: "TQ_ASK_DB routes the dispatched channel", askDB: "/ask.db", want: "/ask.db"},
+		{name: "nothing set falls to the default", want: "tasks.db"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("TQ_DB", tt.tqDB)
+			t.Setenv("TQ_ASK_DB", tt.askDB)
+
+			if got := askDBPath(tt.flag); got != tt.want {
+				t.Fatalf("askDBPath = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
