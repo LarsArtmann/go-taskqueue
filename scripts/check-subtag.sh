@@ -11,9 +11,22 @@
 # path is skipped for it — the first hand-rolled attempt tripped sumdb
 # exactly because GOPRIVATE was missing while insteadOf served locally.
 # (Discovery caveat: `go get` still serves an HTTPS ?go-get=1 meta query
-# for the module HOST before git runs — real hosts (github.com) answer it,
-# so the insteadOf rewrite covers the actual clone; the self-test pins the
-# wiring with a stubbed go, not a fake-domain fetch.)
+# for the module HOST before git runs — the insteadOf rewrite covers only
+# the actual clone, never the discovery step. github.com answers the query
+# even for private repos (auth-gated meta), so private github modules
+# verify clean here; a SELF-HOSTED host without a ?go-get=1 endpoint 404s
+# the query and `go get` dies BEFORE the insteadOf fetch is ever reached.
+# Escape rails (caller-exported env passes through the clean-room subshell
+# — the gate pins only GOWORK/GOTOOLCHAIN/GOMODCACHE/GOPRIVATE):
+#   GOVCS='<module-path>:git'   pin the VCS command (does NOT skip the
+#                               discovery query — 'off' only forbids VCS
+#                               after discovery, so there is no honest
+#                               --discovery-off flag; the query is
+#                               unskippable at the go level)
+#   GONOSUMDB / GONOPROXY       widen the no-sumdb / no-proxy sets beyond
+#                               the gate's GOPRIVATE
+# For a host that cannot answer ?go-get=1, the only cure is serving the
+# meta tag or vendoring differently — no flag can rescue it.)
 #
 # Steps per tag: go get <module>@<tag> → go list -m all (graph closes) →
 # go build <module> (the module's root package compiles). Refuses a tag
