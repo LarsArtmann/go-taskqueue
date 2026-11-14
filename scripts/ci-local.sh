@@ -218,6 +218,15 @@ step "dlq-sidecar-citations gate self-test (summary + negative-path pins)"
 step "dlq-sidecar-citations gate (pre-fix shape sweep)"
 ./scripts/check-dlq-sidecar-citations.sh
 
+# Clean-room module@tag verifier (check-subtag): countable gate per the
+# fleet convention — self-test pins the fixture rails (GOPRIVATE /
+# fresh-GOMODCACHE / GOWORK / get-args / insteadOf + missing-tag refusal).
+# The real-gate leg needs network + a real tag, so only the self-test is
+# wired here (the live proof runs per-release; TODO row 1907 owns the
+# release.sh wiring).
+step "clean-room subtag verifier self-test (fixture rails pin)"
+./scripts/check-subtag.sh --self-test
+
 # docs-gates doctrine gate (2026-11-06): org docs-health battery over this
 # repo (.docs-gates.json tunes the doctrine — rationale in AGENTS.md §Relation
 # to other projects). Host-tool optional: an absent binary self-SKIPs rc=0
