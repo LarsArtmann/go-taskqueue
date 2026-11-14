@@ -332,7 +332,9 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   `--from <oldest-blocker>`; tail-runs `scripts/check-footer-attribution.sh
   <id>` (span commits must carry trailer-parseable footers; `--self-test`;
   run standalone after ANY later rebuild); fallback = amend the unpushed
-  HEAD once `git show --stat` proves it mine.
+  HEAD once `git show --stat` proves it mine. Full DAG rebuild (corrected
+  parent, dates byte-exact, footer only on `--mine` indices, tree-identical
+  verified): `scripts/rebuild-lineage.sh <id> --mine 2,3` (`--self-test`).
 - **`TestExactlyOnceUnderConcurrency` is load-flaky and `TestSelfManagingLoop` is load-flaky**: build storms drop at clean parents — re-run before attributing; both ride KNOWN_FLAKY (scripts/lib/verify-retry.sh).
 - **Agent shells inherit `TQ_DB`** (PRODUCTION journal) — scratch smokes MUST export TQ_DB=<scratch>.
 - **Session shell hazards**: no `PIPESTATUS`; bare `unset VAR` leaks to
