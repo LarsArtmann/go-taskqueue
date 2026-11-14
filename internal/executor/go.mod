@@ -12,7 +12,7 @@ require (
 	github.com/larsartmann/go-taskqueue/internal/retryx v0.4.2
 	github.com/larsartmann/go-taskqueue/internal/task v0.4.2
 	github.com/larsartmann/go-taskqueue/internal/testastguard v0.4.2
-	modernc.org/sqlite v1.61.1
+	modernc.org/sqlite v1.62.0
 )
 
 require (
