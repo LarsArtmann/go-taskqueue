@@ -523,7 +523,6 @@ func TestAskDBChannelInjected(t *testing.T) {
 	}
 }
 
-
 func TestVerdictRailBakedIntoPrompts(t *testing.T) {
 	dir := t.TempDir()
 	argsLog := filepath.Join(dir, "argv.log")

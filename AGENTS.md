@@ -107,9 +107,9 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 - **SQLite IO policy**: steady-state handles run at the configured sync tier
   (NORMAL = checkpoint fsync, lost-tail-tolerant); migrations stay FULL. Claim
   probes use partial RUNNING-only indexes (companion.Migrate), never history;
-  idle loops back off (cap IdlePollMax 2s).
-- **Task contexts survive pool shutdown** (bounded only by `--task-timeout`)
-— no shared drain deadline.
+  idle loops back off.
+- **Task contexts survive pool shutdown** (bounded only by
+  `--task-timeout`).
 - **Facts in the same tx as state**, or it didn't happen.
 - **Additive-growth contract for detail structs** (OKF v0.2 §11): a new
   journal-detail field is OPTIONAL, documents its ABSENCE meaning, and gets a
@@ -136,7 +136,7 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   `$TQ_RESULT_FILE` (file > stdout, last-wins); prompts bake the `--file` rails
   (verdict + ask — routed bash tools see only SERVER env, crush#4210; never
   drop). `-H` sans CRUSH_CLIENT_SERVER=1 is silently LOCAL.
-- **Channels plan** (unbuilt; 0.97+ crush met): `tq mcp` pushes work via
+- **channels plan** (unbuilt; 0.97+ crush met): `tq mcp` pushes work via
   `notifications/claude/channel`; `channel_reply` replaces the file scrape;
   plan `docs/planning/2026-10-16_01-11_TQ-MCP-CHANNELS-DESIGN-INPUT.md`;
   bootstrap: `channel_enabled`.
@@ -146,51 +146,50 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   (`internal/executor/calibration.go`); best-effort — no TQ_LOG_DIR, no
   dataset. Rules tune FROM this data, not by feel. Reader `tq calibration`;
   failed attempts append verdict-less rows with the stamped class; the
-  pool tick trims keep-the-tail at 64 MiB.
+  pool tick keeps a 64 MiB tail.
 - **Batched harvest** (`--batch-items` 5, section-scoped; `--jev`:
   effort-sized runs, RAISE-only timeouts): items chunk to N or effort
   budget → one task (`batch:` sorted-key dedup; denied don't fork; one
   task per gate; unset `--task-timeout` scales); direct `tq enqueue`
-  forbidden; prompts grant it. Prompts are OUTCOME contracts: rails
-  only, AGENTS.md owns rules.
+  forbidden; prompts grant it (OUTCOME contracts: rails only, AGENTS.md
+  owns rules).
 - **`review`/`dlqfix`/`status`/`prioritize`/`depbump`**: verdict-gated or
   deterministic turns on the closeout-free agent clone; usage derived for ALL
   paid turns; findings commit-anchored (verbatim `anchor` or REJECTED); dead
-  agent tasks mint ONE autopsy (`dlqfix:<id>`); gate-artifact death WITH
+  agent tasks mint ONE autopsy (`dlqfix:<id>`); gate-artifact death with
   shipped-proof auto-dismisses (`executor.IsGateArtifactDeath`).
   depbump gomod sync delegates on BuildFlow-covered repos (`.buildflow.yml` +
   binary present) to `buildflow -s gomod-check --fix`, else hand-rolled
   tidy/vendor; `nix-hash-fix --fix` NEVER delegated (barred until BuildFlow #88).
 - **Session-close bridge**: `tq session begin/close` + `tq crush`; close
-  scans `Crush-Session:` trailers → ONE review + ONE status task.
-- **PapDashboard questions**: `tq ask --task <id>` parks without attempt
+  scans `Crush-Session:` trailers → ONE review + ONE status task.- **PapDashboard questions**: `tq ask --task <id>` parks without attempt
   burn; the AnswerPoller routes answers home. Dispatched runs route via
-  `TQ_ASK_DB` (pool-injected; TQ_DB is denylist-stripped; ask-only
-  precedence --db > TQ_DB > TQ_ASK_DB > ./tasks.db) — a "task: not found"
-  ask means an old pool or a foreign queue's ID.
+  `TQ_ASK_DB` (pool-injected; TQ_DB denylist-stripped; ask-only, precedence
+  --db > TQ_DB > TQ_ASK_DB > ./tasks.db).
 - **Idempotent enqueue**: `DedupKey` re-enqueue returns the stored task;
-  COMPLETED keys refused (`ErrTaskDone`); cancelled/dead keys still suppress
-  (escape: edit the item).
+  COMPLETED keys refused (`ErrTaskDone`); cancelled/dead keys still
+  suppress (escape: edit the item).
 - **Rate limits (429)**: `executor.DetectRateLimit`; requeue WITHOUT burn
   (jittered wait, fallback 15min cap 6h); per-repo gates fast-refuse siblings;
   closeout 429 arms `closeoutPending` resume; the provider RIDES the requeue
   evidence (`RequeueEvidence.provider`, `tq tasks --parked`).
   **Env-requeue breaker**: env requeues carry `requeue_class`; 3 consecutive
   burn an attempt + escalate (`env-streak`) — never uncap. Dirty-tree
-  preflight refusals EXEMPT (typed `ErrDirtyTree`): ladder, NO attempt burn.
+  preflight refusals EXEMPT (`ErrDirtyTree`): ladder, NO burn.
 - **Secrets redaction** (default ON): every output tail passes
-  `internal/executor/redact.go`; `tq audit --journal` reports SECRET EVIDENCE rows. Growth: ONE `secretPatterns` entry + fake-shape sample in
+  `internal/executor/redact.go`; `tq audit --journal` reports SECRET
+  EVIDENCE rows. Growth: ONE `secretPatterns` entry + fake-shape sample in
   `redact_test.go` (gosec); ONE shared table test, windows-gated. Counts =
-  distinct secret LOCATIONS; back-to-back zero-separator tokens
-  merge into ONE — distinct counts need a non-token separator.
+  distinct secret LOCATIONS; back-to-back zero-separator tokens merge —
+  distinct counts need a non-token separator.
 - **Enqueued-fact snapshots are THIN** (`{project,type}`;
   `Caps.EnqueuedSnapshot=false` pinned in conform suites).
-- **Unknown keys ≠ a newer contract**: unknown detail/payload KEYS are ignored,
-  but a greater payload `V` is REFUSED — a misparsed execution payload runs the
-  WRONG ACTION (`payload_test.go` pins both halves).
-- **Verify receipts**: each gate run records `executor.VerifyReceipt` + its
-  `AttestVerify` verdict on BOTH paths; `tq show`/`tq dlq` surface it as
-  `verify=<verdict>`.
+- **Unknown keys ≠ a newer contract**: unknown detail/payload KEYS are
+  ignored, but a greater payload `V` is REFUSED — a misparsed execution
+  payload runs the WRONG ACTION (`payload_test.go` pins both halves).
+- **Verify receipts**: each gate run records `executor.VerifyReceipt` +
+  its `AttestVerify` verdict on BOTH paths; surfaced by `tq show`/`tq dlq`
+  as `verify=<verdict>`.
 
 ### Operational contracts
 
@@ -200,22 +199,22 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   checkpoint gates forwarding; `tq watermarks show/set`; replay is seq-derived
   (idempotent).
 - **Priority (ADR-0015)**: claim order = STORED priority + aging (3d/pt,
-  cap 10); stored value never mutates. Markers `— P[1-4]` stripped before the
-  dedup hash. ONE ladder everywhere (marker > AI > keyword). Probes enter
+  cap 10); stored value never mutates; markers `— P[1-4]` stripped before
+  the dedup hash; ONE ladder (marker > AI > keyword); probes enter
   `--priority ≥90`. **Signals, never scores**: an AI score is a SCHEDULING
   signal, never a trust tier or authority grant — trust derives only from
   verification facts (the receipt's attestation).
 - **Failure-evidence surface**: `tq dlq --evidence-stage <spec>` filters the
   DLQ by the failed fact's Stage/VerifyStage/Class plus gate-env/gate-dead/
   gate-slow aliases — comma-separated, `!`-negation; `tq show` renders a
-  `failure` JSON section; `tq dlq` rows + webui timeline lines carry an
-  `evidence=` suffix (matcher `executor.MatchesEvidenceStageSet`, ONE copy).
+  `failure` JSON section; `tq dlq` rows + webui timeline carry an
+  `evidence=` suffix (ONE matcher: `executor.MatchesEvidenceStageSet`).
 - **Claim-time budget gate**: paid turns block once the daily cap/budget-cmd
   is spent — class `budget`, no burn, parked to midnight (cap) / 15m (cmd),
   outside env-streak. Claim checks run CHEAP-FIRST (budget → preflight →
-  executor: gated pools never spawn a process the hook can refuse).
-- **prune-stale**: cancels PENDING tasks whose item is `[x]` or gone; pools
-  sweep at start.
+  executor).
+- **prune-stale**: cancels PENDING tasks whose item is `[x]` or gone;
+  pools sweep at start.
 
 ## Conventions
 
@@ -236,8 +235,7 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   COUNT for conform `-run`. **Premise-check first**: RUN a batch item's
   premise gate BEFORE planning (a stale premise burned a window).
   **Observe-first for pinning**: CAPTURE live output and pin what was
-  observed — assertion-first pinning burned three windows.
-- **Gate receipts**: a report's "N ok / M fail" count is `grep -c '^ok:'`
+  observed — assertion-first pinning burned three windows.- **Gate receipts**: a report's "N ok / M fail" count is `grep -c '^ok:'`
   over a CAPTURED gate-output file — never counted in context or from a
   summary line.
 - **Fleet convention — countable gate summaries are PINNED, not
@@ -249,9 +247,9 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   `printf %.0s`, ERE bracket `\t/\d`, unscoped `gofmt`, smokes w/o `TQ_DB=`,
   force-push, `filter-branch`, redirect→`*.go`) and advises TQ_DB/unset/
   multi-tail/chained-`&`/stale vendor/GOCACHE/GOWORK/nix/dirty-tree-gate rows;
-  `tq-edit-advice`: per-path notes (templ, TODO_LIST, AGENTS size, CHANGELOG
-  O14, go.mod floor, docs/status creation). Hatches in deny messages
-  (force-push hatchless); smoke rule is command-position.
+  `tq-edit-advice`: per-path notes (templ, TODO_LIST, AGENTS size,
+  CHANGELOG O14, go.mod floor, docs/status creation). Hatches in deny
+  messages (force-push hatchless); smoke rule is command-position.
 - docs/status reports follow the a)-g) skeleton; indexed on creation
   (`check-status-index.sh`; daemon bypasses hooks — AMEND MANEUVER for
   daemon folds); ONE index-row write point (top cluster); CHANGELOG append-only; record `tq verdict` before session end
@@ -272,7 +270,7 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   behavior changes get an explicit `(BEHAVIOR CHANGE for …)` flag
   (`scripts/check-release-docs.sh`).
 - **Clock-first filenames**: run `date +%Y-%m-%d_%H-%M` BEFORE
-  composing a `<ts>_<slug>` filename — a guessed `<ts>` lies.
+  composing a `<ts>_<slug>` filename — a guessed timestamp lies.
 - **Edit→commit→battery ordering**: stage+commit BEFORE running anything
   (daemon sweeps <60 s, footer-less, take STAGED files too); after ANY commit
   re-read `git log -1 --format='%(trailers:key=Task-Queue-ID,valueonly)'` —
@@ -335,11 +333,14 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   `--from <oldest-blocker>`; tail-runs `scripts/check-footer-attribution.sh
   <id>` (span commits must carry trailer-parseable footers; `--self-test`;
   run standalone after ANY later rebuild); fallback = amend the unpushed
-  HEAD once `git show --stat` proves it mine. Full DAG rebuild (corrected
-  parent, dates byte-exact, footer only on `--mine` indices, tree-identical
-  verified): `scripts/rebuild-lineage.sh <id> --mine 2,3` (`--self-test`).
-- **`TestExactlyOnceUnderConcurrency` is load-flaky and `TestSelfManagingLoop` is load-flaky**: build storms drop at clean parents — re-run before attributing; both ride KNOWN_FLAKY (scripts/lib/verify-retry.sh).
-- **Agent shells inherit `TQ_DB`** (PRODUCTION journal) — scratch smokes MUST export TQ_DB=<scratch>.
+  HEAD once `git show --stat` proves it mine. Full DAG rebuild (dates
+  byte-exact, footer only on `--mine`): `scripts/rebuild-lineage.sh <id>
+  --mine 2,3` (`--self-test`).
+- **TestExactlyOnceUnderConcurrency and TestSelfManagingLoop are
+  load-flaky**: build storms drop at clean parents — re-run before
+  attributing; both ride KNOWN_FLAKY (scripts/lib/verify-retry.sh).
+- **Agent shells: TQ_DB denylist-stripped** (`TQ_ASK_DB` = ask-only
+  routing) — scratch smokes MUST still export TQ_DB=<scratch>.
 - **Session shell hazards**: no `PIPESTATUS`; bare `unset VAR` leaks to
   children (`env -u VAR`); multi-file `tail` fails; zero-repeat `printf`
   format yields empty; chained `&` backgrounds the wrong span; `kill` cannot
@@ -350,7 +351,7 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 - **GOEXPERIMENT/GOTOOLCHAIN**: ci-local exports jsonv2; CI setup-go + go.mod
   floors + flake tarball PINNED IN LOCKSTEP (1.27.4); NEVER lower a `go`
   directive (`check-go-mods.sh`).
-- **`fetch` empty ≠ URL dead**: an empty body is a tool mismatch — retry `download`.
+- **`fetch` empty ≠ URL dead**: empty body = tool mismatch — retry `download`.
 - **Host GOCACHE/GOROOT hazards**: gates run `GOCACHE=/tmp/go-build-cache`
   (host symlink → /nix/store ENOSPCs); "package X is not in std" +
   `$GOMODCACHE/toolchain@…` GOROOT = corrupt extraction (chmod -R u+w + trash).
@@ -377,15 +378,15 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 - **VendorHash drift**: after a go.mod change run
   `nix build .#checks.x86_64-linux.vendor-hash` and copy `got:` into flake.nix.
 - **New module + unpushed tag = replace in EVERY graph loader**: a fresh
-  module's real-tag unpushed require 404s the proxy wherever a consumer's
-  go.mod graph loads without a local replace — add it to root, every
-  facade/internal loader, cmd/tq/go.work, AND examples/embed (embed-tidy gate caught it).
+  module's real-tag unpushed require 404s the proxy wherever a consumer
+  graph loads without a local replace — add to root, every facade/internal
+  loader, cmd/tq/go.work, AND examples/embed.
 - **readmodel schema drift crash-loops the fold** (planned tables get no
-  column migration; `ConvergeProjectionHome` snapshots divergent homes
-  aside): remedy = quarantine `<db>.readmodel.db*` + restart.
+  column migration; converge snapshots divergent homes aside): quarantine
+  `<db>.readmodel.db*` + restart.
 - **History policy**: NEVER reword/amend/rebase PUSHED commits; no force-push.
-- **Kernel ETXTBSY**: fresh-binary execve intermittently fails — exec sites
-  through `execWithTransientRetry`.
+- **Kernel ETXTBSY**: fresh-binary execve intermittently fails — exec
+  sites through `execWithTransientRetry`.
 - **templ-components sibling pins**: a pseudo-version in a dep's root go.mod
   passes local builds but kills consumer graph loads (Nix FOD) — `grep -r 00010101`
   the dep before blaming the flake/vendorHash.
@@ -411,14 +412,13 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   gate, tq CSS, same-origin Datastar, trend/export + alert relay
   (`--alert-url`). **httputil** NOT adopted (MIT v1.5.0+; fleet verdicts
   `docs/review/libs/` 11-11: latest, cqrs wave landed, server_timing
-  trial MOUNTED); **go-nix-helpers** flake-input.
+  trial MOUNTED); go-nix-helpers flake-input.
 - **docs-gates (ADOPTED 2026-11-06)**: `.docs-gates.json` + ci-local gate
   `scripts/check-docs-gates.sh` (battery `run --json`; absent binary →
   SKIP rc=0). Doctrine: audit-all + annotate SKIPPED — history-locked
-  findings stay SWEEP-only (`docs-gates freshness --audit-all` /
-  `annotate`); cadence = pileup tripwire (280/75d vs pbx 15/21). A new
-  report's §f must harvest into TODO_LIST or carry
-  `<!-- fresh:skip: … -->`, else the gate trips.
+  findings stay SWEEP-only; cadence = pileup tripwire (280/75d vs pbx
+  15/21). A new report's §f must harvest into TODO_LIST or carry a
+  fresh:skip comment, else the gate trips.
 - **BuildFlow**: deliberately NOT covered (no `.buildflow.yml`) —
   ci-local + flake own quality here. Ad-hoc steps only (`-s gomod-check
   --fix`; `-s nix-hash-fix --fix` barred by the #88 Known Issue).
