@@ -162,7 +162,8 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   binary present) to `buildflow -s gomod-check --fix`, else hand-rolled
   tidy/vendor; `nix-hash-fix --fix` NEVER delegated (barred until BuildFlow #88).
 - **Session-close bridge**: `tq session begin/close` + `tq crush`; close
-  scans `Crush-Session:` trailers → ONE review + ONE status task.- **PapDashboard questions**: `tq ask --task <id>` parks without attempt
+  scans `Crush-Session:` trailers → ONE review + ONE status task.
+- **PapDashboard questions**: `tq ask --task <id>` parks without attempt
   burn; the AnswerPoller routes answers home. Dispatched runs route via
   `TQ_ASK_DB` (pool-injected; TQ_DB denylist-stripped; ask-only, precedence
   --db > TQ_DB > TQ_ASK_DB > ./tasks.db).
