@@ -16,13 +16,14 @@
 # wiring with a stubbed go, not a fake-domain fetch.)
 #
 # Steps per tag: go get <module>@<tag> → go list -m all (graph closes) →
-# go build ./... (everything compiles). Refuses a tag absent from the
-# checkout (cut the tag first — a local-only fetch of an untagged tree
-# proves nothing).
+# go build <module> (the module's root package compiles). Refuses a tag
+# absent from the checkout (cut the tag first — a local-only fetch of an
+# untagged tree proves nothing).
 #
 # Usage: scripts/check-subtag.sh <module>@<tag> [--repo <path>]
 #        scripts/check-subtag.sh --self-test
 #   <module>@<tag>  e.g. github.com/larsartmann/go-taskqueue/cmd/tq@v0.4.3
+#   --pkg           import path to compile instead of the module root
 #   --repo          checkout whose git objects serve the insteadOf fetch
 #                   (default: this repo); the tag must exist there.
 set -uo pipefail
@@ -61,18 +62,29 @@ cleanup() {
 }
 
 verify_subtag() {
-	local module=$1 tag=$2 repo=$3 rc=0
+	local module=$1 tag=$2 repo=$3 pkg=${4:-} rc=0
 	local scratch= cache=
 	cleanup
 	scratch=$(mktemp -d)
 	cache=$(mktemp -d)
 
 	tag_sha=$(git -C "$repo" rev-parse -q --verify "refs/tags/$tag^{commit}")
+	local tag_used=$tag
 	if [ -z "$tag_sha" ]; then
-		fail "tag $tag not found in $repo — cut it before verifying (a local fetch of an untagged tree proves nothing)"
+		# sub-module convention: <repo-relative-dir>/<tag> (cmd/tq/v0.4.3
+		# for .../go-taskqueue/cmd/tq@v0.4.3); the repo-relative dir is the
+		# module path minus the root module's path prefix.
+		local rootmod suffix
+		rootmod=$(sed -n 's/^module //p' "$repo/go.mod" 2>/dev/null | head -1)
+		suffix=${module#"$rootmod"/}
+		tag_sha=$(git -C "$repo" rev-parse -q --verify "refs/tags/$suffix/$tag^{commit}") &&
+			tag_used="$suffix/$tag"
+	fi
+	if [ -z "$tag_sha" ]; then
+		fail "tag $tag not found in $repo (also tried <module-suffix>/$tag) — cut it before verifying (a local fetch of an untagged tree proves nothing)"
 		return 1
 	fi
-	ok "tag $tag present in checkout ($tag_sha)"
+	ok "tag $tag_used present in checkout ($tag_sha)"
 
 	(
 		cd "$scratch"
@@ -87,13 +99,19 @@ verify_subtag() {
 		printf 'module verify\n\ngo 1.26\n' >go.mod
 		go get "$module@$tag" || exit 11
 		go list -m all >/dev/null || exit 12
-		go build ./... || exit 13
+		local build_target=$module
+		[ -n "$pkg" ] && build_target=$pkg
+		go build "$build_target" 2>"$scratch/build.err" || exit 13
 	) || rc=$?
+	if [ "$rc" -eq 13 ] && [ -z "$pkg" ] && grep -q 'no required module provides package' "$scratch/build.err" 2>/dev/null; then
+		ok "$module ships no root package (app-layer module) — list-only proof; pass --pkg <import> to compile one"
+		rc=0
+	fi
 	case $rc in
 	0) ok "clean-room verify $module@$tag (get + list -m all + build; fresh GOMODCACHE, GOPRIVATE, insteadOf → $repo)" ;;
 	11) fail "go get $module@$tag failed — tag present but the fetch graph does not resolve (sub-module require missing?)" ;;
 	12) fail "go list -m all failed for $module@$tag — consumer graph does not close (broken require/replace pin)" ;;
-	13) fail "go build failed for $module@$tag — the module builds nowhere but not here" ;;
+	13) fail "go build failed for $module@$tag — the target package does not compile" ;;
 	*) fail "clean-room verify $module@$tag crashed (rc=$rc)" ;;
 	esac
 	cleanup
@@ -127,7 +145,7 @@ self_test() {
 	mkdir -p "$stub_bin"
 	cat >"$stub_bin/go" <<'EOF'
 #!/usr/bin/env bash
-printf '%s\n' "$@" >"$CHECK_SUBTAG_STUB_LOG.args"
+printf '%s\n' "$@" >>"$CHECK_SUBTAG_STUB_LOG.args"
 env | grep -E '^(GOWORK|GOMODCACHE|GOPRIVATE)=' >"$CHECK_SUBTAG_STUB_LOG.env"
 exit 0
 EOF
@@ -141,11 +159,12 @@ EOF
 	if [ "$pos_fail" -eq 0 ]; then :; else fail "self-test: positive fixture path reported failure"; fi
 	grep -q '^GOWORK=off$' "$log.env" || fail "self-test: GOWORK not forced off in verify env"
 	grep -q "^GOPRIVATE=example.com/sub$" "$log.env" || fail "self-test: GOPRIVATE not set to the module path (the sumdb-trip class)"
-	grep -q "^GOMODCACHE=$cache$" "$log.env" || fail "self-test: GOMODCACHE not the fresh scratch cache"
-	grep -q "^get example.com/sub@v0.1.0$" "$log.args" || fail "self-test: go get did not receive module@tag"
-	local scratch_git
-	scratch_git=$(dirname "$log")/.. # not used; config asserted via fixture-scope scratch below
-	# insteadOf wiring: re-run with the scratch repo kept (stub go, no cleanup)
+	local fresh_cache host_cache
+	fresh_cache=$(sed -n 's/^GOMODCACHE=//p' "$log.env")
+	host_cache=$(go env GOMODCACHE)
+	[ -n "$fresh_cache" ] && [ "$fresh_cache" != "$host_cache" ] || fail "self-test: GOMODCACHE not redirected to a fresh scratch cache"
+	grep -q '^example.com/sub@v0.1.0$' "$log.args" || fail "self-test: go get did not receive module@tag"
+	# insteadOf wiring: assert the scratch repo's git config shape directly
 	scratch=$(mktemp -d)
 	cache=$(mktemp -d)
 	(
@@ -174,12 +193,16 @@ main() {
 		self_test
 		exit $?
 	}
-	local target=${1:-} repo=$PWD
+	local target=${1:-} repo=$PWD pkg=
 	shift || true
 	while [ $# -gt 0 ]; do
 		case $1 in
 		--repo)
 			repo=${2:-}
+			shift 2
+			;;
+		--pkg)
+			pkg=${2:-}
 			shift 2
 			;;
 		*) usage ;;
@@ -192,7 +215,7 @@ main() {
 	esac
 	local module=${target%@*} tag=${target##*@}
 	[ -d "$repo/.git" ] || die "--repo is not a git checkout: $repo"
-	verify_subtag "$module" "$tag" "$repo"
+	verify_subtag "$module" "$tag" "$repo" "$pkg"
 	echo "check-subtag: ok=$ok_count fail=$fail_count"
 	[ "$fail_count" -eq 0 ]
 }
