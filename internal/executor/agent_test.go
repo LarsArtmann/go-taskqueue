@@ -473,6 +473,57 @@ func TestAgentCrushServerSeam(t *testing.T) {
 // channel stays byte-identical (TQ_RESULT_FILE exported as before) — the
 // rail is additive, so local runs keep today's contract while routed
 // runs (whose bash tool cannot see the env) still find the channel.
+// TestAskDBChannelInjected pins the dispatched owner-question channel:
+// TQ_DB stays denylist-stripped (the production journal is not an
+// agent's business), but the pool's journal rides TQ_ASK_DB so
+// `tq ask --task <id>` routes home instead of dead-ending on
+// ./tasks.db ("task: not found", the 2026-11-09 §a7 class).
+func TestAskDBChannelInjected(t *testing.T) {
+	dir := t.TempDir()
+	envLog := filepath.Join(dir, "env.log")
+
+	stub := "#!/bin/sh\n" +
+		"env >> \"" + envLog + "\"\n" +
+		"echo 'Created session for non-interactive run session_id=stub-sess-1'\n"
+
+	bin := filepath.Join(dir, "askdb-agent")
+	if err := os.WriteFile(bin, []byte(stub), 0o755); err != nil {
+		t.Fatalf("write stub: %v", err)
+	}
+
+	repo := t.TempDir()
+	if err := os.WriteFile(filepath.Join(repo, ".crushrc"), []byte("permissions allow view\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Setenv("TQ_DB", "/pool/production/tasks.db")
+
+	e := &AgentExecutor{Bin: bin, AskDB: "/pool/production/tasks.db"}
+	if err := e.Execute(
+		context.Background(),
+		agentTaskT(t, AgentPayload{Repo: repo, Prompt: "do the work"}),
+	); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+
+	envRaw, err := os.ReadFile(envLog)
+	if err != nil {
+		t.Fatal(err)
+	}
+	env := string(envRaw)
+
+	if !strings.Contains(env, "TQ_ASK_DB=/pool/production/tasks.db") {
+		t.Fatalf("agent env lacks the ask channel TQ_ASK_DB — dispatched asks dead-end on ./tasks.db:\n%s", env)
+	}
+
+	for line := range strings.SplitSeq(env, "\n") {
+		if key, _, found := strings.Cut(line, "="); found && key == "TQ_DB" {
+			t.Fatalf("TQ_DB leaked into the agent env: %s", line)
+		}
+	}
+}
+
+
 func TestVerdictRailBakedIntoPrompts(t *testing.T) {
 	dir := t.TempDir()
 	argsLog := filepath.Join(dir, "argv.log")

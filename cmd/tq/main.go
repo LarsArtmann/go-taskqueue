@@ -197,7 +197,6 @@ func askChannelDB(d config.Deployment) string {
 	return d.DBPath
 }
 
-
 func mustOpenDB(path string) *sqlite.Store {
 	return mustOpenDBOpts(path)
 }

@@ -30,6 +30,21 @@ const defaultQuestionTTL = 72 * time.Hour
 // parking spot for the week after next.
 const maxQuestionTTL = 7 * 24 * time.Hour
 
+// askDBPath resolves where ask looks for the task: --db, then TQ_DB,
+// then the dispatched-agent channel TQ_ASK_DB (envDenylistForAgents
+// strips TQ_DB from agent shells — the ask-only variable is the routing
+// the channel needs), then the ./tasks.db default.
+func askDBPath(flagVal string) string {
+	db := resolveDB(flagVal)
+	if db == defaultDB() {
+		if askDB := os.Getenv("TQ_ASK_DB"); askDB != "" {
+			return askDB
+		}
+	}
+
+	return db
+}
+
 // cmdAsk is the agent→owner question channel: an agent inside a queue task
 // that is unsure how to proceed runs
 //
@@ -114,19 +129,14 @@ func cmdAsk(args []string) error {
 	// found"). The pool hands the journal under TQ_ASK_DB instead; ONLY
 	// ask honors it, so enqueue and the other subcommands keep the
 	// ./tasks.db fallback. Precedence: --db > TQ_DB > TQ_ASK_DB > default.
-	askDBPath := resolveDB(*dbPath)
-	if askDBPath == defaultDB() {
-		if askDB := os.Getenv("TQ_ASK_DB"); askDB != "" {
-			askDBPath = askDB
-		}
-	}
+	askDB := askDBPath(*dbPath)
 
-	store := mustOpenDB(askDBPath)
+	store := mustOpenDB(askDB)
 	defer func() { _ = store.Close() }()
 
 	t, err := store.Get(context.Background(), task.ID(*taskID))
 	if err != nil {
-		return fmt.Errorf("tq ask: task %s: %w (looked in %s — if this is a dispatched run, the pool's TQ_ASK_DB may be missing or the ID may belong to another queue)", *taskID, err, askDBPath)
+		return fmt.Errorf("tq ask: task %s: %w (looked in %s — if this is a dispatched run, the pool's TQ_ASK_DB may be missing or the ID may belong to another queue)", *taskID, err, askDB)
 	}
 
 	if t.Status != task.Running {
