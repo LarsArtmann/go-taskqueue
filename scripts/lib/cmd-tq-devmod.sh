@@ -8,10 +8,22 @@
 # module itself builds. dev.mod/dev.sum are derived, never committed.
 #
 # cmdtq_devmod: generates cmd/tq/dev.mod + dev.sum from the committed files.
+#
+# The derived files are per-DIRECTORY, not per-invocation: two concurrent
+# cmd/tq gates in the same checkout (test-cmd-tq.sh vs build-tq.sh vs a
+# background ci-local) race — one run's cleanup trap deletes dev.mod while
+# the other's `go` invocation opens it, surfacing as a lone
+# `go: open dev.mod: no such file` line (2026-10-05 §d18, 2026-11-13).
+# The lock below serializes the ENTIRE gate lifetime: cmdtq_devmod takes a
+# blocking flock on fd 9 and the sourced shell holds it until exit, so the
+# cleanup trap only ever fires while the lock is still held. The lockfile
+# lives in /tmp (never the repo tree — daemon-food).
 cmdtq_devmod() {
 	local root dir mod rver tqver drift tidylog
 	root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 	dir="$root/cmd/tq"
+	exec 9>"${TMPDIR:-/tmp}/go-taskqueue-cmdtq-devmod.lock"
+	flock 9
 	# Preflight (M17.2): the committed go.mod losing its module declaration
 	# (a bad merge, a sed accident) otherwise surfaces as a confusing
 	# downstream tidy/build failure. Fail HERE, naming the file and the fix.
