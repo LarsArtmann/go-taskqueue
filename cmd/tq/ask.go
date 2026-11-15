@@ -141,7 +141,12 @@ func cmdAsk(args []string) error {
 
 	t, err := store.Get(context.Background(), task.ID(*taskID))
 	if err != nil {
-		return fmt.Errorf("tq ask: task %s: %w (looked in %s — if this is a dispatched run, the pool's TQ_ASK_DB may be missing or the ID may belong to another queue)", *taskID, err, askDB)
+		return fmt.Errorf(
+			"tq ask: task %s: %w (looked in %s — if this is a dispatched run, the pool's TQ_ASK_DB may be missing or the ID may belong to another queue)",
+			*taskID,
+			err,
+			askDB,
+		)
 	}
 
 	if t.Status != task.Running {

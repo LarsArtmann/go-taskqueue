@@ -510,6 +510,7 @@ func TestAskDBChannelInjected(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	env := string(envRaw)
 
 	if !strings.Contains(env, "TQ_ASK_DB=/pool/production/tasks.db") {

@@ -273,7 +273,13 @@ func TestAskDBPathPrecedence(t *testing.T) {
 		askDB string
 		want  string
 	}{
-		{name: "explicit flag wins over everything", flag: "/explicit.db", tqDB: "/tq.db", askDB: "/ask.db", want: "/explicit.db"},
+		{
+			name:  "explicit flag wins over everything",
+			flag:  "/explicit.db",
+			tqDB:  "/tq.db",
+			askDB: "/ask.db",
+			want:  "/explicit.db",
+		},
 		{name: "TQ_DB wins over TQ_ASK_DB", tqDB: "/tq.db", askDB: "/ask.db", want: "/tq.db"},
 		{name: "TQ_ASK_DB routes the dispatched channel", askDB: "/ask.db", want: "/ask.db"},
 		{name: "nothing set falls to the default", want: "tasks.db"},

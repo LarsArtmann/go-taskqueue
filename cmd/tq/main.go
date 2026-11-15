@@ -2681,8 +2681,13 @@ func cmdShow(args []string) error {
 		// the resolved db whenever the fallback (not an explicit --db or
 		// TQ_DB) chose it.
 		if *db == "" && os.Getenv("TQ_DB") == "" {
-			return fmt.Errorf("%w (resolved db: %s — in a dispatched agent shell TQ_DB is stripped, so this is the cwd fallback, likely not the dispatching queue's journal)", err, resolveDB(*db))
+			return fmt.Errorf(
+				"%w (resolved db: %s — in a dispatched agent shell TQ_DB is stripped, so this is the cwd fallback, likely not the dispatching queue's journal)",
+				err,
+				resolveDB(*db),
+			)
 		}
+
 		return err
 	}
 

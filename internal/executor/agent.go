@@ -837,6 +837,7 @@ func (e *AgentExecutor) runAgent(
 		if e.AskDB != "" {
 			env = append(env, askDBEnv+"="+e.AskDB)
 		}
+
 		if e.CrushServer != "" {
 			env = append(env, crushClientServerEnv+"=1")
 		}
@@ -1063,6 +1064,7 @@ func (e *AgentExecutor) runCloseoutTurn(
 		if e.AskDB != "" {
 			closeoutEnv = append(closeoutEnv, askDBEnv+"="+e.AskDB)
 		}
+
 		if e.CrushServer != "" {
 			closeoutEnv = append(closeoutEnv, crushClientServerEnv+"=1")
 		}
