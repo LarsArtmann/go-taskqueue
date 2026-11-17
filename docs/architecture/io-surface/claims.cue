@@ -63,6 +63,7 @@ sites: {
 		resource: "task question file (TQ_QUESTION_FILE)"
 		trigger: "tq ask recording a question/answer forward"
 		durability: "recoverable"
+		rationale: "the marker is re-mintable by re-asking, but a corrupt marker parks the task permanently (questionPendingFrom treats it as PERMANENT) — hence recoverable, not ephemeral"
 	}
 	"cmd/tq.cmdCalibration": claims: {
 		resource: "TQ_LOG_DIR env"
@@ -382,6 +383,8 @@ sites: {
 	"internal/executor.ReadVerdict": claims: {
 		resource: "task verdict file"
 		trigger: "verdict read at task fold"
+		criticality: "critical"
+		rationale: "consuming end of the queue<->task evidence contract (write side cmd/tq.cmdVerdict is critical too): a misread verdict would grade a paid run against the wrong evidence"
 	}
 	"internal/executor.RecordCalibrationFailure": claims: {
 		resource: "calibration.jsonl (append under TQ_LOG_DIR)"
@@ -494,6 +497,8 @@ sites: {
 	"internal/executor.questionPendingFrom": claims: {
 		resource: "task question file"
 		trigger: "closeout: reading the pending question rail"
+		criticality: "critical"
+		rationale: "a corrupt question marker is treated as PERMANENT by design (silently completing around an owner question would hide the park) — this read enforces the owner-question contract, paired with companion.RecordAnswer"
 	}
 	"internal/executor.randomClientID": claims: {
 		resource: "crypto/rand"
@@ -502,6 +507,8 @@ sites: {
 	"internal/executor.readTQVerify": claims: {
 		resource: "repo .tq-verify pin file"
 		trigger: "verify resolution at claim time"
+		criticality: "critical"
+		rationale: "the pin wins over every other verify source and the attester compares what ran against it — a misread pin runs tasks through the wrong (or no) gate"
 	}
 	"internal/executor.recordCalibration": claims: {
 		resource: "calibration.jsonl dataset (append)"
@@ -569,6 +576,8 @@ sites: {
 	"internal/harvest.EffortCache.Load": claims: {
 		resource: "effort cache JSON"
 		trigger: "harvest effort lookup"
+		durability: "ephemeral"
+		rationale: "same cache as Save: a parse error is tolerated as a cache miss and recomputed from the source repos"
 	}
 	"internal/harvest.EffortCache.Save": claims: {
 		resource: "effort cache JSON"
@@ -962,6 +971,8 @@ sites: {
 	"internal/session.LoadRegistry": claims: {
 		resource: "session registry file"
 		trigger: "session listing/loads"
+		durability: "ephemeral"
+		rationale: "liveness metadata; missing file reads as an empty registry and torn lines are skipped — loss costs session tracking, not data (parity with PingRegistry/RewriteRegistry)"
 	}
 	"internal/session.PgrepOwner.Owns": claims: {
 		resource: "pgrep subprocess"
