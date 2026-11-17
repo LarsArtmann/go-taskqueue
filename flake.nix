@@ -44,6 +44,7 @@
       flake.nixosModules.default = import ./deploy/nixos/tq-agent-pool.nix;
 
       go-standard = rec {
+        enableTemplFreshnessCheck = true;
         pname = "go-taskqueue";
         # Keep in sync with the latest release tag — release.sh does not
         # bump this; `tq version` reports it. The ldflags line below derives
