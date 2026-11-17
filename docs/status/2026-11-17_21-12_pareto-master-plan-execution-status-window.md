@@ -160,7 +160,11 @@ delta print; 17) productize the twin hunt as scripts/dead-sha-twins.sh
 rebuild + version receipt).
 P1.5 — CI hygiene: 21) re-order ci.yml cheap-gates-first; 22) add
 check-webui-css + check-go-mods to ci-local preflight if absent;
-23) dead-sha --shrink --check snapshot refresh after the baseline append;
+23) dead-sha --shrink --check snapshot refresh after the baseline append — DONE
+2026-11-17: `--shrink --check --write` refreshed the snapshot (680 rows, verdicts
+match, rc=0); the 8 TWINED rows the stale snapshot showed were tree+subject twins
+that no longer match at HEAD (their successors are patch-id-verified — arrowed at
+their bare cites in 5 living task reports instead, verify-fork-record 8/8);
 24) watch nixpkgs for templ ≥1100 → re-enable templ-freshness.
 P2: 25) T17 stub-agent.sh smoke-lib; 26) T18 routed_run() trio; 27) T19
 negative-fixture helper; 28) T20 exec-bits check + chmod sweep; 29) T21 SSE
