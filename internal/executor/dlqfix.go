@@ -153,7 +153,7 @@ func (e *DLQFixExecutor) Execute(ctx context.Context, t task.Task) error {
 		Prompt: dlqFixPrompt(p),
 		Model:  p.Model,
 		Yolo:   p.Yolo,
-	}, t.ID)
+	}, t)
 	if err != nil {
 		return err
 	}

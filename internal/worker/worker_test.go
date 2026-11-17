@@ -812,6 +812,116 @@ func TestCrushServerDeathRequeuesWithoutAttemptBurn(t *testing.T) {
 	cancel()
 }
 
+// TestNetworkOutageRequeuesWithoutAttemptBurn pins the outage contract
+// (2026-11-17 DNS incident): a *NetworkOutageError requeues WITHOUT
+// burning an attempt — MaxAttempts=1 must survive an outage, so no task
+// dead-letters into autopsy mints while the network is down — and the
+// requeue fact carries the "network" class. The task completes from the
+// same budget once the network returns (executor healthy again).
+func TestNetworkOutageRequeuesWithoutAttemptBurn(t *testing.T) {
+	store := testStore(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	reg := executor.NewRegistry()
+
+	var (
+		healthy atomic.Bool
+		ran     atomic.Int32
+	)
+
+	reg.RegisterFunc("agent", func(context.Context, task.Task) error {
+		if !healthy.Load() {
+			return &executor.NetworkOutageError{
+				Cause: errors.New("dial tcp: lookup api.z.ai: Temporary failure in name resolution"),
+			}
+		}
+
+		ran.Add(1)
+
+		return nil
+	})
+
+	enq, _ := store.Enqueue(ctx, task.New{Type: "agent", MaxAttempts: 1})
+
+	pool := New(store, Config{
+		Concurrency: 1, PollInterval: 5 * time.Millisecond, TaskTimeout: 2 * time.Second,
+		PreflightBackoff: 120 * time.Millisecond,
+		Executors:        reg,
+	}, quietLog())
+	go func() { _ = pool.Start(ctx) }()
+
+	deadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) {
+		got, _ := store.Get(context.Background(), enq.ID)
+		if got.LastError != "" && got.Status == task.Pending && got.Attempts == 0 {
+			break
+		}
+
+		time.Sleep(5 * time.Millisecond)
+	}
+
+	first, _ := store.Get(context.Background(), enq.ID)
+	if first.Status != task.Pending || first.Attempts != 0 {
+		t.Fatalf("after network outage: status=%s attempts=%d, want pending/0", first.Status, first.Attempts)
+	}
+
+	// The requeue fact names the outage class (pool-health lanes and
+	// `tq tasks --parked` key on it), and no task.failed fact exists —
+	// the outage parked the turn, it did not judge it.
+	facts, ok := store.(interface {
+		Facts(context.Context, int64, int) ([]journal.Fact, error)
+	})
+	if !ok {
+		t.Fatal("test store lacks Facts")
+	}
+
+	fs, err := facts.Facts(context.Background(), 0, 100)
+	if err != nil {
+		t.Fatalf("facts: %v", err)
+	}
+
+	requeued := false
+
+	for _, f := range fs {
+		if f.TaskID != string(enq.ID) {
+			continue
+		}
+
+		switch f.Type {
+		case journal.Requeued:
+			requeued = true
+			if !strings.Contains(string(f.Detail), `"class":"network"`) {
+				t.Errorf("requeue fact detail lacks network class: %s", f.Detail)
+			}
+		case journal.Failed:
+			t.Fatalf("unexpected task.failed fact (attempt burned during outage): %s", f.Detail)
+		}
+	}
+
+	if !requeued {
+		t.Fatal("no task.requeued fact found for the outage park")
+	}
+
+	// The network returned: the same task completes without any rescue.
+	healthy.Store(true)
+
+	got := waitFor(t, ctx, store, enq.ID, task.Completed)
+	if got.Status != task.Completed {
+		t.Fatalf("status = %s, want completed", got.Status)
+	}
+
+	if ran.Load() != 1 {
+		t.Fatalf(
+			"executor completed %d healthy passes, want exactly 1 (the outage pass parked before any verdict)",
+			ran.Load(),
+		)
+	}
+
+	cancel()
+}
+
 // TestPreflightRequeuesWithoutAttemptBurn pins the preflight contract:
 // a *PreflightError must NOT dead-letter, NOT burn an attempt, and NOT
 // retry immediately — the task goes back to pending and is claimable again

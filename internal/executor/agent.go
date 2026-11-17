@@ -372,20 +372,9 @@ func (e *AgentExecutor) Execute(ctx context.Context, t task.Task) error {
 	// baseline green, post-attempt red — counts against the task.
 	baseRev := gitHeadRev(repoDir)
 
-	// Session-retry ladder (paperclip's same_session → fresh_session): the
-	// FIRST retry resumes the previous attempt's session so the
-	// conversation carries its context — a re-ask is cheaper than a
-	// re-explanation, and a retry usually follows a transient provider
-	// failure. From the second retry on, back to fresh: a session that
-	// failed twice is itself the prime suspect. A payload-pinned session
-	// always wins.
-	if p.Session == "" {
-		p.Session = retrySession(t)
-	}
-
 	runStart := time.Now()
 
-	output, verdict, err := e.runAgent(runCtx, runDir, &p, t.ID)
+	output, verdict, err := e.runAgent(runCtx, runDir, &p, t)
 	if err != nil {
 		// Forensics for the task.failed fact: exit code + output tail. The
 		// full output survives in the sidecar only when TQ_LOG_DIR is set,
@@ -667,18 +656,23 @@ func agentEnv(base []string) []string {
 	return out
 }
 
-// retrySession is the retry ladder's session rung: the FIRST retry
-// resumes the previous attempt's session (paperclip's same_session), later
-// retries go fresh (the session itself may be what's sick). The previous
-// attempt's session id comes from the run-output sidecar
-// ($TQ_LOG_DIR/<task-id>.log): deterministic per task id, and at retry
-// time it still holds the previous attempt's output — the current attempt
-// has not overwritten it yet (writeOutputSidecar runs at outcome time).
-// No sidecar, no directory, no id in the output: all degrade to fresh,
-// which is today's behavior.
+// retrySession is the retry ladder's session rung: a retry resumes the
+// previous attempt's session (paperclip's same_session) so the
+// conversation carries its context. Parks (rate-limit, network outage,
+// owner question, crush-server death) never burn attempts, so a parked
+// task — attempts unchanged — resumes on EVERY re-claim; only from the
+// second BURNED retry on does the ladder go fresh (the session itself
+// may be what's sick). The previous attempt's session id comes from the
+// run-output sidecar ($TQ_LOG_DIR/<task-id>.log): deterministic per task
+// id, written on BOTH outcomes now — writeFailureSidecar appends the
+// authoritative "session: <id>" trailer on every failed turn (the
+// trailer is what a RESUMED run leaves: its output never re-prints the
+// Created-session line), and recordRunOutcome's writeOutputSidecar
+// covers the success path. No sidecar, no directory, no id in the body:
+// all degrade to fresh.
 func retrySession(t task.Task) string {
-	if t.Attempts != 1 {
-		return "" // fresh: the first run, or the session had its chance
+	if t.Attempts > 1 {
+		return "" // fresh: the session had two burned chances — it is the prime suspect
 	}
 
 	dir := os.Getenv("TQ_LOG_DIR")
@@ -694,13 +688,79 @@ func retrySession(t task.Task) string {
 	return ExtractSessionID(string(body))
 }
 
-// runAgent spawns the headless agent in the repo and waits for it.
+// writeFailureSidecar persists a FAILED turn's full output to
+// $TQ_LOG_DIR/<task-id>.log, appending a "session: <id>" trailer when the
+// turn's session is known — the line the session-retry ladder reads on
+// the next claim (retrySession parses it with the same sessionRe as any
+// other session line). The trailer is authoritative for RESUMED runs,
+// whose output never re-prints the Created-session line: the executor
+// passes the session it pinned for the run, extraction from the output
+// is only the fresh-run fallback. Absent TQ_LOG_DIR, a missing session,
+// or a write error all degrade to the pre-ladder behavior (fresh session
+// on retry). The success path keeps writeOutputSidecar (verify section,
+// no trailer). The body is redacted — sidecars are the token-bearing
+// surface (17-21 #18 / 20-58 f33).
+func writeFailureSidecar(id task.ID, output, session string) {
+	dir := os.Getenv("TQ_LOG_DIR")
+	if dir == "" {
+		return
+	}
+
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return
+	}
+
+	body := redactOutput(output)
+	if session != "" {
+		body += "\nsession: " + session + "\n"
+	}
+
+	_ = os.WriteFile(filepath.Join(dir, id.String()+".log"), []byte(body), 0o600)
+}
+
+// sessionForRetry resolves the session a failed turn leaves behind: the
+// session the turn RESUMED (pinned before the run) when set, else one
+// extracted from the fresh run's output.
+func sessionForRetry(pinned, output string) string {
+	if pinned != "" {
+		return pinned
+	}
+
+	return ExtractSessionID(output)
+}
+
+// runAgent runs one agent turn (work or resumed close-out) and, on any
+// FAILED turn, persists the failure sidecar first: the full output plus
+// the session trailer the session-retry ladder reads on the next claim.
+// Every error class — plain failure, cancellation, rate-limit park,
+// network park, owner question — carries the same guarantee: a task that
+// re-claims finds its previous session id in the sidecar, so the retry
+// resumes the SAME crush session instead of minting a fresh one (the
+// DNS-outage session spam, 2026-11-17: every requeue was a new session).
+// Success keeps recordRunOutcome's sidecar (verify section, no trailer).
 func (e *AgentExecutor) runAgent(
 	ctx context.Context,
 	repoDir string,
 	p *AgentPayload,
-	id task.ID,
+	t task.Task,
 ) (string, jsontext.Value, error) {
+	output, verdict, err := e.runAgentTurn(ctx, repoDir, p, t)
+	if err != nil {
+		writeFailureSidecar(t.ID, output, sessionForRetry(p.Session, output))
+	}
+
+	return output, verdict, err
+}
+
+// runAgentTurn spawns the headless agent in the repo and waits for it.
+func (e *AgentExecutor) runAgentTurn(
+	ctx context.Context,
+	repoDir string,
+	p *AgentPayload,
+	t task.Task,
+) (string, jsontext.Value, error) {
+	id := t.ID
+
 	// The verdict channel: one temp file per run, exported to the agent
 	// process. Best-effort — when the temp dir is unusable the channel is
 	// absent and the run records no verdict (strict-parser executors fail
@@ -742,8 +802,22 @@ func (e *AgentExecutor) runAgent(
 	// turn on re-claim would double real agent cost. Resume at closeout
 	// instead. In-process only (an executor restart forgets it — the
 	// fallback is the old full re-run, never a lost close-out).
-	if out, handled, err := e.resumePendingCloseout(ctx, id, repoDir, verdictPath, questionPath); handled {
+	if out, handled, err := e.resumePendingCloseout(ctx, id, repoDir, p, verdictPath, questionPath); handled {
 		return finish(out, err)
+	}
+
+	// Session-retry ladder (paperclip's same_session → fresh_session):
+	// resume the previous attempt's session so the conversation carries
+	// its context — a re-ask is cheaper than a re-explanation. Parks
+	// (rate-limit, network outage, owner question, crush-server death)
+	// never burn attempts, so a parked task resumes its session on EVERY
+	// re-claim; only from the second BURNED retry on does the ladder go
+	// fresh — a session that failed twice on real model failures is
+	// itself the prime suspect. A payload-pinned session always wins.
+	// Living here (not in Execute) so the second-opinion executors
+	// (review/status/dlqfix/prioritize) inherit the same ladder.
+	if p.Session == "" {
+		p.Session = retrySession(t)
 	}
 
 	// Provider gate: a sibling task just observed the provider refusing
@@ -788,21 +862,17 @@ func (e *AgentExecutor) runAgent(
 		}
 	}
 
-	// The close-out turn resumes the exact session by id, so the work turn
-	// runs verbose when enabled: quiet mode suppresses the "Created session
-	// … session_id=" line ExtractSessionID needs, and --continue would race
-	// for the most recent session when another pool agent finishes at the
-	// same moment. Routed runs are ALWAYS verbose: quiet also suppresses
-	// the severed-stream WARN ("Events stream ended") — the only output
-	// discriminator a mid-run server death leaves on the rc-0 lie path
-	// (observed v0.99.0: a quiet severed run exits 0 with a 1-byte output;
-	// pinned live by the pool smoke's V2.10 leg).
-	runVerb := "--quiet"
-	if e.CloseoutPrompt != "" || e.CrushServer != "" {
-		runVerb = "--verbose"
-	}
-
-	args := []string{"run", runVerb, "--cwd", repoDir}
+	// Work turns are ALWAYS verbose: quiet mode suppresses the "Created
+	// session … session_id=" line ExtractSessionID needs for the
+	// session-retry ladder (and for session-usage attribution on the
+	// success path — quiet runs never expose their session id anywhere),
+	// and --continue would race for the most recent session when another
+	// pool agent finishes at the same moment. Routed runs additionally
+	// need verbose for the severed-stream WARN ("Events stream ended") —
+	// the only output discriminator a mid-run server death leaves on the
+	// rc-0 lie path (observed v0.99.0; pinned live by the pool smoke's
+	// V2.10 leg).
+	args := []string{"run", "--verbose", "--cwd", repoDir}
 	if e.CrushServer != "" {
 		// L1 seam: thin-client mode against the pool's shared crush server.
 		args = append(args, "-H", crushHostFlag(e.CrushServer))
@@ -888,6 +958,21 @@ func (e *AgentExecutor) runAgent(
 			return finish(buf.String(), rl)
 		}
 
+		// Connectivity loss (DNS down, no route — observed 2026-11-17:
+		// `dial tcp: lookup api.z.ai: Temporary failure in name
+		// resolution`): the session the run opened is alive server-side;
+		// the provider call failed, not the conversation. Return the typed
+		// class so the worker parks the task WITHOUT burning an attempt and
+		// the session-retry ladder resumes the SAME session on the next
+		// claim — without this, an outage mints a fresh session per
+		// attempt per task (and per minted autopsy) until everything is
+		// dead-lettered.
+		if DetectNetworkOutage(buf.String(), err.Error()) {
+			return finish(buf.String(), &NetworkOutageError{
+				Cause: fmt.Errorf("agent run failed: %w: %s", err, tailBytes(buf.Bytes(), 8192)),
+			})
+		}
+
 		return finish(buf.String(), fmt.Errorf("agent run failed: %w: %s", err, tailBytes(buf.Bytes(), 8192)))
 	}
 
@@ -902,7 +987,7 @@ func (e *AgentExecutor) runAgent(
 	// the close-out self-review before the task completes. A failed closeout
 	// fails the attempt like any other contract breach; a missing session id
 	// degrades to a logged skip (the work itself already succeeded).
-	out, cerr := e.runCloseoutIfNeeded(ctx, id, repoDir, &buf, verdictPath, questionPath)
+	out, cerr := e.runCloseoutIfNeeded(ctx, id, repoDir, p, &buf, verdictPath, questionPath)
 
 	return finish(out, cerr)
 }
@@ -933,7 +1018,9 @@ func (e *AgentExecutor) parkedAfterCloseout(id task.ID, repoDir, session, questi
 func (e *AgentExecutor) resumePendingCloseout(
 	ctx context.Context,
 	id task.ID,
-	repoDir, verdictPath, questionPath string,
+	repoDir string,
+	p *AgentPayload,
+	verdictPath, questionPath string,
 ) (string, bool, error) {
 	v, ok := e.closeoutPending.Load(id.String())
 	if !ok {
@@ -947,6 +1034,11 @@ func (e *AgentExecutor) resumePendingCloseout(
 	if pending.repoDir != repoDir {
 		return "", false, nil
 	}
+
+	// Pin the close-out session on the payload so a FAILED resumed
+	// close-out leaves it in the failure sidecar's trailer (runAgent):
+	// the re-claim after the park resumes this session, not a fresh one.
+	p.Session = pending.session
 
 	buf := &bytes.Buffer{}
 	if err := e.runCloseoutTurn(ctx, repoDir, pending.session, id, buf, verdictPath, questionPath); err != nil {
@@ -967,6 +1059,7 @@ func (e *AgentExecutor) runCloseoutIfNeeded(
 	ctx context.Context,
 	id task.ID,
 	repoDir string,
+	p *AgentPayload,
 	buf *bytes.Buffer,
 	verdictPath, questionPath string,
 ) (string, error) {
@@ -980,6 +1073,11 @@ func (e *AgentExecutor) runCloseoutIfNeeded(
 
 		return buf.String(), nil
 	}
+
+	// Pin the work turn's session on the payload so a FAILED close-out
+	// leaves it in the failure sidecar's trailer (runAgent): the re-claim
+	// resumes this session instead of minting a fresh one.
+	p.Session = session
 
 	if err := e.runCloseoutTurn(ctx, repoDir, session, id, buf, verdictPath, questionPath); err != nil {
 		return buf.String(), err
@@ -1124,6 +1222,20 @@ func (e *AgentExecutor) runCloseoutTurn(
 		e.closeoutPending.Store(id.String(), closeoutPending{repoDir: repoDir, session: session})
 
 		return rl
+	}
+
+	// Connectivity loss severed the close-out (same detector as the work
+	// turn): the work turn SUCCEEDED and its session is alive, so park —
+	// no attempt burn — with the closeout resume armed; the re-claim
+	// resumes at close-out in the SAME session.
+	if DetectNetworkOutage(buf.String(), err.Error()) {
+		ne := &NetworkOutageError{
+			Cause: fmt.Errorf("agent closeout failed: %w: %s", err, tailBytes(buf.Bytes(), 8192)),
+		}
+		ne.ResumeCloseout = true
+		e.closeoutPending.Store(id.String(), closeoutPending{repoDir: repoDir, session: session})
+
+		return ne
 	}
 
 	return fmt.Errorf("agent closeout failed: %w: %s", err, tailBytes(buf.Bytes(), 8192))

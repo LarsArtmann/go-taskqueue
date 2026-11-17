@@ -309,6 +309,10 @@ func staysOnLadder(execErr error) bool {
 		return true
 	}
 
+	if _, ok := errors.AsType[*executor.NetworkOutageError](execErr); ok {
+		return true
+	}
+
 	if _, ok := errors.AsType[*executor.RateLimitError](execErr); ok {
 		return true
 	}
@@ -968,6 +972,46 @@ func (p *Pool) execute(ctx context.Context, t task.Task, claim queue.Claim) {
 			p.log.Warn("crush server died around the routed run; requeued without attempt burn",
 				"task", t.ID, "retry after", delay, "consecutive", streak,
 				"code", executor.CrushServerDeathCode, "reason", death.Error())
+		}
+
+		return
+	}
+
+	if netErr, ok := errors.AsType[*executor.NetworkOutageError](execErr); ok {
+		// Connectivity loss (DNS down, no route): the machine's network,
+		// never the task's verdict — the identical retry fails identically
+		// until the network returns. Requeue WITHOUT burning an attempt on
+		// the escalating ladder (15m cap), EXEMPT from the env-streak
+		// breaker: an outage must park its tasks, not spend their attempts
+		// into dead-letters and autopsy mints (observed 2026-11-17: a DNS
+		// outage dead-lettered every in-flight task, and each attempt plus
+		// each minted autopsy opened a FRESH crush session — 24+ sessions
+		// in minutes). The executor's session-retry ladder resumes the SAME
+		// session on the next claim, so the outage costs zero new sessions.
+		// The spawned turn still happened — record its failure evidence so
+		// the calibration dataset counts outage-parked attempts.
+		judgedFailureEvidence(t, sink, netErr.Cause)
+
+		delay, streak := p.preflightDelay(t.ID)
+
+		if err := p.persistOutcome(terminalCtx, t.ID, func(c context.Context) error {
+			return p.store.Requeue(c, t.ID, claim, netErr.Error(), delay, netErr.ResumeCloseout, queue.RequeueClassNetwork, "")
+		}); err != nil {
+			p.log.Error("network-outage requeue failed", "task", t.ID, "err", err)
+		} else {
+			attrs := []any{
+				"task", t.ID,
+				"retry after", delay.Round(time.Second),
+				"consecutive", streak,
+				"code", executor.NetworkOutageCode,
+				"reason", netErr.Cause.Error(),
+			}
+
+			if netErr.ResumeCloseout {
+				attrs = append(attrs, "resume", "closeout")
+			}
+
+			p.log.Warn("network unreachable during agent run; requeued without attempt burn (retry resumes the same session)", attrs...)
 		}
 
 		return

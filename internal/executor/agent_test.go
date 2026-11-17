@@ -285,7 +285,7 @@ func TestAgentExecutorArgvContract(t *testing.T) {
 	// the verdict rail (M8 bridge). The rail embeds the per-run temp path
 	// AND newlines (the stub logs one line per element, so the prompt
 	// spans the remaining lines) — rejoin the tail and pin prefix+shape.
-	wantPrefix := []string{"run", "--quiet", "--cwd", repo, "--model", "prov/m1", "--"}
+	wantPrefix := []string{"run", "--verbose", "--cwd", repo, "--model", "prov/m1", "--"}
 	if len(got) < len(wantPrefix)+1 {
 		t.Fatalf("argv = %v, want %v + the work prompt", got, wantPrefix)
 	}
@@ -432,9 +432,10 @@ func TestAgentCrushServerSeam(t *testing.T) {
 				t.Fatalf("argv %v: -H %s presence = %v, want %v", argv, wantHost, hasHost, tc.wantArg)
 			}
 
-			// Routed work turns run --verbose (the severed-stream WARN is the
-			// rc-0-lie discriminator and quiet suppresses it); local runs stay
-			// --quiet. The stub argv carries exactly one of the two verbs.
+			// Work turns ALWAYS run --verbose now: the session-id line the
+			// session-retry ladder needs (and the routed severed-stream WARN,
+			// the rc-0-lie discriminator) are both quiet-suppressed. The
+			// stub argv carries exactly one of the two verbs.
 			routedVerb := ""
 
 			for _, a := range argv {
@@ -443,13 +444,8 @@ func TestAgentCrushServerSeam(t *testing.T) {
 				}
 			}
 
-			wantVerb := "--quiet"
-			if tc.wantArg {
-				wantVerb = "--verbose"
-			}
-
-			if routedVerb != wantVerb {
-				t.Fatalf("argv %v: run verb = %q, want %q", argv, routedVerb, wantVerb)
+			if routedVerb != "--verbose" {
+				t.Fatalf("argv %v: run verb = %q, want %q", argv, routedVerb, "--verbose")
 			}
 
 			envRaw, err := os.ReadFile(envLog)

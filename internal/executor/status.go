@@ -140,7 +140,7 @@ func (e *StatusExecutor) Execute(ctx context.Context, t task.Task) error {
 		Prompt: statusPrompt(payload),
 		Model:  payload.Model,
 		Yolo:   payload.Yolo,
-	}, t.ID)
+	}, t)
 	if err != nil {
 		return err
 	}

@@ -139,7 +139,7 @@ func (e *PrioritizeExecutor) Execute(ctx context.Context, t task.Task) error {
 		Prompt: prioritizePrompt(payload),
 		Model:  payload.Model,
 		Yolo:   payload.Yolo,
-	}, t.ID)
+	}, t)
 	if err != nil {
 		return err
 	}

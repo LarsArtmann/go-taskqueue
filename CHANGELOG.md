@@ -8,6 +8,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- **Network-outage park + session-resuming retries** (observed
+  2026-11-17: a DNS outage minted a fresh crush session per attempt per
+  task — 24+ sessions in minutes — then dead-lettered everything into
+  autopsy mints). Agent runs that die on connectivity loss (`dial tcp:
+  lookup … Temporary failure in name resolution`, no-such-host,
+  no-route) now classify `executor.NetworkOutageError` and requeue
+  WITHOUT burning an attempt (`requeue_class` `network`, escalating
+  ladder, outside the env-streak breaker; `tq tasks --parked` and
+  pool-health carry the new lane). Retries after a failed run now RESUME
+  the previous attempt's crush session instead of opening a new one
+  (parks resume on every cycle; only the second BURNED retry goes fresh)
+  — failed runs persist a `$TQ_LOG_DIR/<task-id>.log` sidecar whose
+  `session:` trailer feeds the ladder, and work turns always run
+  `--verbose` so the session id is extractable. A severed close-out
+  parks with the resume-closeout flag, like a 429. (BEHAVIOR CHANGE for
+  outage windows: tasks park instead of dead-lettering, and one task
+  costs one session, not one per attempt.)
+
 - **Prometheus metrics for the health dashboard** (`tq serve` with the
   metrics flag): the exposition at `/health/metrics` rides the same
   token gate + security headers as every other health route. Default

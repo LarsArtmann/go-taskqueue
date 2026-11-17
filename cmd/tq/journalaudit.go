@@ -663,6 +663,13 @@ func renderJournalAudit(ctx context.Context, store queue.Store, asJSON bool, tas
 				"  (budget requeues park paid turns until the daily cap or budget-cmd window resets — no attempt burn, outside the env-streak breaker; the pool LOOKS idle on purpose)",
 			)
 		}
+
+		if n := report.Requeues.ByClass[queue.RequeueClassNetwork]; n > 0 {
+			fmt.Fprintln(
+				w,
+				"  (network requeues park turns lost to connectivity (DNS down, no route) — no attempt burn, and each retry resumes the SAME crush session instead of minting a fresh one)",
+			)
+		}
 	}
 
 	if f := report.Failures; f.Total > 0 && f.EnvStreakBurns > 0 {

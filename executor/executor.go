@@ -130,6 +130,7 @@ type (
 	VerifyGateError       = internalexecutor.VerifyGateError
 	VerifyGateClass       = internalexecutor.VerifyGateClass
 	CrushServerDeathError = internalexecutor.CrushServerDeathError
+	NetworkOutageError    = internalexecutor.NetworkOutageError
 )
 
 // Shared crush-server death detection (crushdeath.go): the error code the
@@ -137,6 +138,13 @@ type (
 const CrushServerDeathCode = internalexecutor.CrushServerDeathCode
 
 var DetectCrushServerDeath = internalexecutor.DetectCrushServerDeath
+
+// Connectivity-loss detection (networkoutage.go): the code the outage
+// classifier keys on and the two-sided output/error matcher whose park
+// resumes the SAME crush session on retry.
+const NetworkOutageCode = internalexecutor.NetworkOutageCode
+
+var DetectNetworkOutage = internalexecutor.DetectNetworkOutage
 
 // Verify-gate failure classes (see VerifyGateError).
 const (

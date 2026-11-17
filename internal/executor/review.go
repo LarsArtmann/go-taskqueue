@@ -163,7 +163,7 @@ func (e *ReviewExecutor) Execute(ctx context.Context, t task.Task) error {
 		Prompt: reviewPrompt(p),
 		Model:  p.Model,
 		Yolo:   p.Yolo,
-	}, t.ID)
+	}, t)
 	if err != nil {
 		return err
 	}

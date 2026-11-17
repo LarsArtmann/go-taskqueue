@@ -174,6 +174,10 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   (jittered wait, fallback 15min cap 6h); per-repo gates fast-refuse siblings;
   closeout 429 arms `closeoutPending` resume; the provider RIDES the requeue
   evidence (`RequeueEvidence.provider`, `tq tasks --parked`).
+  **Network outage park** (2026-11-17): DNS/no-route deaths
+  (`executor.NetworkOutageError`) requeue class `network`, no burn, ladder;
+  retries RESUME the same session (failed runs write the sidecar `session:`
+  trailer the ladder reads; work turns always `--verbose`).
   **Env-requeue breaker**: env requeues carry `requeue_class`; 3 consecutive
   burn an attempt + escalate (`env-streak`) — never uncap. Dirty-tree
   preflight refusals EXEMPT (`ErrDirtyTree`): ladder, NO burn.

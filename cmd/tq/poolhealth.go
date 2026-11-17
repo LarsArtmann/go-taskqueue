@@ -58,6 +58,7 @@ var poolSkipClasses = map[string]bool{
 	queue.RequeueClassGate:          true,
 	queue.RequeueClassBudget:        true,
 	queue.RequeueClassPreflight:     true,
+	queue.RequeueClassNetwork:       true, // connectivity loss (DNS down, no route) — parked, retry resumes the session
 }
 
 // poolTaskMeta is the per-task identity the fold needs; sourced from the

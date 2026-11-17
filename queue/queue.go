@@ -65,6 +65,7 @@ const (
 	RequeueClassQuestion      = internalqueue.RequeueClassQuestion
 	RequeueClassBudget        = internalqueue.RequeueClassBudget
 	RequeueClassCrushServer   = internalqueue.RequeueClassCrushServer
+	RequeueClassNetwork       = internalqueue.RequeueClassNetwork
 	RequeueClassUnknown       = internalqueue.RequeueClassUnknown
 )
 

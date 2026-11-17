@@ -93,16 +93,19 @@ func TestRetrySessionLadder(t *testing.T) {
 		t.Errorf("retrySession = %q, want s_ladder1 (same_session rung)", got)
 	}
 
-	// From the second retry on, the ladder goes back to fresh.
+	// From the second BURNED retry on, the ladder goes back to fresh.
 	tk.Attempts = 2
 	if got := retrySession(tk); got != "" {
-		t.Errorf("second retry: retrySession = %q, want empty (fresh rung)", got)
+		t.Errorf("second burned retry: retrySession = %q, want empty (fresh rung)", got)
 	}
 
-	// The first run never resumes.
+	// Attempts 0 with a sidecar is the PARKED shape (network outage,
+	// rate-limit, question): parks never burn attempts, so the re-claim
+	// resumes the SAME session on every park cycle — an outage must not
+	// mint a fresh session per attempt (2026-11-17 spam).
 	tk.Attempts = 0
-	if got := retrySession(tk); got != "" {
-		t.Errorf("first run: retrySession = %q, want empty (fresh)", got)
+	if got := retrySession(tk); got != "s_ladder1" {
+		t.Errorf("parked re-claim: retrySession = %q, want s_ladder1 (parks resume the session)", got)
 	}
 }
 

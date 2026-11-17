@@ -415,7 +415,16 @@ const (
 	// signature and the worker requeues without burn — the supervisor's
 	// restart ladder owns the recovery window.
 	RequeueClassCrushServer = "crush-server"
-	RequeueClassUnknown     = "unknown" // legacy task.requeued facts predating the field
+	// RequeueClassNetwork marks connectivity loss around an agent turn
+	// (DNS down, no route — observed 2026-11-17: `dial tcp: lookup
+	// api.z.ai: Temporary failure in name resolution`): the session the
+	// run opened is alive server-side, so the worker parks the task
+	// without burn on the escalating ladder and the session-retry ladder
+	// resumes the SAME crush session when the network returns — an
+	// outage must not mint a fresh session per attempt until everything
+	// dead-letters.
+	RequeueClassNetwork = "network"
+	RequeueClassUnknown = "unknown" // legacy task.requeued facts predating the field
 )
 
 type RequeueEvidence struct {

@@ -114,7 +114,9 @@ import (
 // cqrs wave landed, server_timing trial mounted) is load-bearing
 // orientation every library-touching session needs, and the compact
 // pointer had already cost one stale-truth cycle; twin re-synced.
-const agentsDocMaxBytes = 27_200
+// 2026-11-17: conscious reset 27_200 → 27_600 for the network-outage park
+// contract (one bullet in §Payload contracts; AGENTS.md 27_453 at reset).
+const agentsDocMaxBytes = 27_600
 
 // TestAgentsDocSizeGuard keeps AGENTS.md from silently growing past its
 // byte budget (plan M89 residue); the failure names the top sections so a
