@@ -105,6 +105,13 @@ type PoolHealthReport struct {
 	// next to the journal (pool runs with --crush-server + TQ_DB set).
 	// Last/Max feed the L4 GO/NO-GO sheet (row 1448 evidence).
 	CrushServerRSS *CrushServerRSSSummary `json:"crushServerRss,omitempty"`
+	// CgroupMemoryEvents surfaces the pool's own cgroup memory.events.local
+	// counters (2026-11-17 IO review §f7): the `max` count is the number
+	// of times the deployed MemoryMax ceiling throttled an allocation —
+	// cgroup thrash visible from inside tq, not only by host forensics.
+	// Nil when the cgroup file is absent or unreadable (no systemd cgroup
+	// v2, foreign tree, permissions).
+	CgroupMemoryEvents *CgroupMemoryEventsSummary `json:"cgroupMemoryEvents,omitempty"`
 }
 
 // CrushServerRSSSummary is the folded view over the keeper's RSS log.
@@ -157,6 +164,83 @@ func readCrushServerRSS(path string) *CrushServerRSSSummary {
 	sum.Warn = sum.LastKB > crushServerRSSWarnKB
 
 	return sum
+}
+
+// CgroupMemoryEventsSummary is the parsed view over the pool cgroup's
+// memory.events.local (cgroup v2): allocation throttles and OOM kills
+// charged to THIS cgroup, excluding children — the host-forensics
+// counters (memory.events aggregates descendants) deliberately stay off
+// this surface because agent children dominate them.
+type CgroupMemoryEventsSummary struct {
+	// Max counts memory.max/high throttle hits: each one is an allocation
+	// the kernel stalled or reclaimed for — sustained growth is cgroup
+	// thrash (the deployed MemoryMax=8G eviction pressure the 2026-11-17
+	// IO review measured at 229k hits).
+	Max int64 `json:"max"`
+	OomKill int64 `json:"oomKill,omitempty"`
+}
+
+// parseCgroupMemoryEvents parses a memory.events.local body ("<event>
+// <count>" lines); unknown events are ignored, malformed counts skip the
+// line — the file is kernel-written and additive-growth.
+func parseCgroupMemoryEvents(data string) *CgroupMemoryEventsSummary {
+	sum := &CgroupMemoryEventsSummary{}
+
+	for line := range strings.SplitSeq(data, "\n") {
+		fields := strings.Fields(line)
+		if len(fields) != 2 {
+			continue
+		}
+
+		count, err := strconv.ParseInt(fields[1], 10, 64)
+		if err != nil || count < 0 {
+			continue
+		}
+
+		switch fields[0] {
+		case "max":
+			sum.Max = count
+		case "oom_kill":
+			sum.OomKill = count
+		}
+	}
+
+	return sum
+}
+
+// ownCgroupV2RelPath returns the process's cgroup v2 relative path from
+// /proc/self/cgroup (the single "0::<path>" line), empty when the host
+// is not cgroup-v2-unified.
+func ownCgroupV2RelPath() string {
+	data, err := os.ReadFile("/proc/self/cgroup")
+	if err != nil {
+		return ""
+	}
+
+	for line := range strings.SplitSeq(string(data), "\n") {
+		if rel, ok := strings.CutPrefix(line, "0::"); ok {
+			return strings.TrimSpace(rel)
+		}
+	}
+
+	return ""
+}
+
+// readCgroupMemoryEventsLocal reads THIS process's memory.events.local;
+// nil when the cgroup file is absent or unreadable (fail-soft like
+// readCrushServerRSS — an advisory surface must never fail the command).
+func readCgroupMemoryEventsLocal() *CgroupMemoryEventsSummary {
+	rel := ownCgroupV2RelPath()
+	if rel == "" {
+		return nil
+	}
+
+	data, err := os.ReadFile("/sys/fs/cgroup" + rel + "/memory.events.local")
+	if err != nil {
+		return nil
+	}
+
+	return parseCgroupMemoryEvents(string(data))
 }
 
 // harvestItemKeyPrefix mirrors harvest.ItemKey's "todo:" prefix (the
@@ -512,6 +596,7 @@ func cmdPoolHealth(args []string) error {
 	}
 
 	report.CrushServerRSS = readCrushServerRSS(crushServerRSSLogPath())
+	report.CgroupMemoryEvents = readCgroupMemoryEventsLocal()
 
 	if *asJSON {
 		enc := json.NewEncoder(os.Stdout)
@@ -550,8 +635,25 @@ func printPoolHealthTo(w io.Writer, report PoolHealthReport) {
 			rss.Samples,
 			rss.LastKB,
 			rss.MaxKB,
+				note,
+		)
+	}
+
+	if mem := report.CgroupMemoryEvents; mem != nil {
+		note := ""
+		if mem.Max > 0 {
+			note = fmt.Sprintf("  WARN: %d allocation throttle hit(s) against the deployed memory ceiling", mem.Max)
+		}
+
+		fmt.Fprintf(w,
+			"cgroup memory.events.local: max %d%s\n",
+			mem.Max,
 			note,
 		)
+
+		if mem.OomKill > 0 {
+			fmt.Fprintf(w, "cgroup memory.events.local: oom_kill %d\n", mem.OomKill)
+		}
 	}
 
 	if len(report.Repos) == 0 {
