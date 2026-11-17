@@ -176,7 +176,7 @@ type CgroupMemoryEventsSummary struct {
 	// the kernel stalled or reclaimed for — sustained growth is cgroup
 	// thrash (the deployed MemoryMax=8G eviction pressure the 2026-11-17
 	// IO review measured at 229k hits).
-	Max int64 `json:"max"`
+	Max     int64 `json:"max"`
 	OomKill int64 `json:"oomKill,omitempty"`
 }
 
@@ -635,7 +635,7 @@ func printPoolHealthTo(w io.Writer, report PoolHealthReport) {
 			rss.Samples,
 			rss.LastKB,
 			rss.MaxKB,
-				note,
+			note,
 		)
 	}
 

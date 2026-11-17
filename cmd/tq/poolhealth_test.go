@@ -783,3 +783,68 @@ func TestPoolHealthSummaryCountsBackoff(t *testing.T) {
 		t.Fatalf("summary %q lacks the explicit zero count", out)
 	}
 }
+
+// TestParseCgroupMemoryEvents pins the memory.events.local parser: max and
+// oom_kill captured, unknown events and malformed lines skipped, and a
+// body that is not the kernel's shape still yields a (zero) summary —
+// the cgroup-thrash surface must never fail the command.
+func TestParseCgroupMemoryEvents(t *testing.T) {
+	t.Parallel()
+
+	sum := parseCgroupMemoryEvents("max 229179\noom 3\noom_kill 1\noom_group_kill 0\nfuture_event 7\ngarbage\n")
+
+	if sum.Max != 229179 || sum.OomKill != 1 {
+		t.Fatalf("parse = %+v, want max=229179 oomKill=1", sum)
+	}
+
+	if got := parseCgroupMemoryEvents("max notanumber\n\nmax"); got == nil || got.Max != 0 || got.OomKill != 0 {
+		t.Fatalf("malformed body = %+v, want zero summary", got)
+	}
+}
+
+// TestPrintPoolHealthCgroupMemoryEvents pins the text surface: the max
+// count always renders, a nonzero count carries the WARN note, and
+// oom_kill renders only when nonzero — cgroup thrash visible from inside
+// tq (2026-11-17 IO review §f7).
+func TestPrintPoolHealthCgroupMemoryEvents(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+	printPoolHealthTo(&buf, PoolHealthReport{
+		CgroupMemoryEvents: &CgroupMemoryEventsSummary{Max: 229179, OomKill: 2},
+	})
+
+	out := buf.String()
+
+	for _, want := range []string{
+		"cgroup memory.events.local: max 229179  WARN: 229179 allocation throttle hit(s)",
+		"oom_kill 2",
+	} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("render %q lacks %q", out, want)
+		}
+	}
+
+	buf.Reset()
+	printPoolHealthTo(&buf, PoolHealthReport{
+		CgroupMemoryEvents: &CgroupMemoryEventsSummary{Max: 4},
+	})
+
+	// The counter is cumulative since unit start: ANY nonzero max means
+	// the deployed ceiling throttled an allocation, so even a small count
+	// carries the WARN note — only the exact zero is quiet.
+	if out := buf.String(); !strings.Contains(out, "WARN: 4 allocation throttle hit(s)") || strings.Contains(out, "oom_kill") {
+		t.Fatalf("throttled render %q must warn and lack oom_kill", out)
+	}
+
+	buf.Reset()
+	printPoolHealthTo(&buf, PoolHealthReport{
+		CgroupMemoryEvents: &CgroupMemoryEventsSummary{},
+	})
+
+	out = buf.String()
+
+	if strings.Contains(out, "WARN") || strings.Contains(out, "oom_kill") {
+		t.Fatalf("clean render %q must lack WARN and oom_kill", out)
+	}
+}
