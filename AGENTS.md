@@ -328,6 +328,9 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 
 ## Known Issues
 
+- **Pool-service IO attribution lies**: cgroup `io.stat` counts
+  agent-children build traffic, never the queue (its sda DB: 5 MB cumulative;
+  verified 2026-11-17); `/proc/<tgid>/io` folds dying children's totals.
 - **Concurrent agents commit constantly** (auto-commit daemon): re-run
   `go test ./... -race` before declaring success; never generate Go source via
   heredocs; /tmp fixtures (gated trees are daemon-food). Footer-less sweeps
@@ -341,11 +344,11 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   HEAD once `git show --stat` proves it mine. Full DAG rebuild (dates
   byte-exact, footer only on `--mine`): `scripts/rebuild-lineage.sh <id>
   --mine 2,3` (`--self-test`).
-- **TestExactlyOnceUnderConcurrency and TestSelfManagingLoop are
-  load-flaky**: build storms drop at clean parents — re-run before
-  attributing; both ride KNOWN_FLAKY (scripts/lib/verify-retry.sh).
-- **Agent shells: TQ_DB denylist-stripped** (`TQ_ASK_DB` = ask-only
-  routing) — scratch smokes MUST still export TQ_DB=<scratch>.
+- **TestExactlyOnceUnderConcurrency/TestSelfManagingLoop are load-flaky**
+  (build storms drop at clean parents): re-run before attributing; both ride
+  KNOWN_FLAKY (scripts/lib/verify-retry.sh).
+- **Agent shells: TQ_DB denylist-stripped** (`TQ_ASK_DB` = ask-only) — scratch
+  smokes MUST still export TQ_DB=<scratch>.
 - **Session shell hazards**: no `PIPESTATUS`; bare `unset VAR` leaks to
   children (`env -u VAR`); multi-file `tail` fails; zero-repeat `printf`
   format yields empty; chained `&` backgrounds the wrong span; `kill` cannot
@@ -356,7 +359,7 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 - **GOEXPERIMENT/GOTOOLCHAIN**: ci-local exports jsonv2; CI setup-go + go.mod
   floors + flake tarball PINNED IN LOCKSTEP (1.27.4); NEVER lower a `go`
   directive (`check-go-mods.sh`).
-- **`fetch` empty ≠ URL dead**: empty body = tool mismatch — retry `download`.
+- **`fetch` empty ≠ URL dead** (tool mismatch) — retry `download`.
 - **Host GOCACHE/GOROOT hazards**: gates run `GOCACHE=/tmp/go-build-cache`
   (host symlink → /nix/store ENOSPCs); "package X is not in std" +
   `$GOMODCACHE/toolchain@…` GOROOT = corrupt extraction (chmod -R u+w + trash).
@@ -368,16 +371,16 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   CSRF+lockout-guarded; non-loopback needs `--auth-token`; no new write
   endpoint without it.
 - **templ + cmd/tq LSP diagnostics are false positives — never "fix" them;
-  cmd/tq `GOWORK=off` build/test fails at HEAD** — trust the CLI gates:
-  go.work workspace or `scripts/test-cmd-tq.sh`.
+  cmd/tq `GOWORK=off` build/test fails at HEAD** — trust the CLI gates
+  (go.work or `scripts/test-cmd-tq.sh`).
 - **erraudit**: HARD gate `scripts/check-erraudit.sh` — ruled flags live
   there (`--max` dev-build-only; CI pin v0.7.0 rejects it), run from EACH
   module root (`lint` REJECTS `--modules`/`--violations-only`). `legacy_as`
   → `errors.AsType` (done); `legacy_is` sites KEEP `errors.Is` +
   `//nolint:legacyerrors // <reason>` on the call line (gate passes
   `--no-suppress`; never run `nolint-audit --fix` — deletes honored tokens).
-  `generic_return` (~197 sites / 24 modules): OWNER-RULED ADOPT, a migration
-  project — gate keeps `--disable generic_return` until it lands. Wiring:
+  `generic_return` (~197 sites/24 modules): OWNER-RULED ADOPT — gate keeps
+  `--disable generic_return` until it lands. Wiring:
   gate + ci-local HARD; CI = `--self-test` only (repo PRIVATE).
   Bugs: github.com/larsartmann/erraudit.
 - **VendorHash drift**: after a go.mod change run
@@ -390,8 +393,8 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   column migration; converge snapshots divergent homes aside): quarantine
   `<db>.readmodel.db*` + restart.
 - **History policy**: NEVER reword/amend/rebase PUSHED commits; no force-push.
-- **Kernel ETXTBSY**: fresh-binary execve intermittently fails — exec
-  sites through `execWithTransientRetry`.
+- **Kernel ETXTBSY**: fresh-binary execve intermittently fails — exec via
+  `execWithTransientRetry`.
 - **templ-components sibling pins**: a pseudo-version in a dep's root go.mod
   passes local builds but kills consumer graph loads (Nix FOD) — `grep -r 00010101`
   the dep before blaming the flake/vendorHash.
