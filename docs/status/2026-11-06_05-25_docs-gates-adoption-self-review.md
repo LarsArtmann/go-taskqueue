@@ -11,7 +11,7 @@ written.
 
 Re-audited the 04-20 session end to end against the repo's own
 conventions. The shipped work stands (battery green, gate wired, twins
-reset, doctrine recorded, daemon-folded in 885e0e2d + c413080b) — but the
+reset, doctrine recorded, daemon-folded in 885e0e2d→9d3ed6bf + c413080b→35bff13f) — but the
 verification story was thinner than the session's success language
 implied: root `go test -race`, the FULL ci-local battery, and
 `scripts/test-cmd-tq.sh` were never run (touched gates + root build/vet +
@@ -27,7 +27,7 @@ receipts, cite-drift row 1679).
 ## a) FULLY DONE
 
 1. **Re-audit of the 04-20 change-set** against AGENTS.md conventions:
-   every file in 885e0e2d/c413080b re-checked; battery re-run green on
+   every file in 885e0e2d→9d3ed6bf/c413080b→35bff13f re-checked; battery re-run green on
    the committed tree; index/TODO/report/report-skip edits verified
    against check-status-index, check-todo-list, cite-drift, doc-refs,
    unticked, agents-size, gate-ordering, guard-wiring, script-syntax,

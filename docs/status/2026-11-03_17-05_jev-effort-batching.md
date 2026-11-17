@@ -10,7 +10,7 @@ Owner session — no task ID, no Task-Queue-ID footer owed. Directly extends the
 
 All committed on local master (never pushed; branch ~160 ahead of origin):
 
-1. **Effort-aware batch fold** (`0900aefb`, internal/harvest/harvest.go):
+1. **Effort-aware batch fold** (`0900aefb→2bfc9c81`, internal/harvest/harvest.go):
    `sectionRuns(items, admissible, maxItems, budgetMinutes, effortOf)` — a run
    now stops at THREE walls: section boundary, context cap, and the summed
    member-effort budget. A single item whose estimate alone exceeds the budget
@@ -18,7 +18,7 @@ All committed on local master (never pushed; branch ~160 ahead of origin):
    budget (batchItems x DefaultBatchTimeoutMinutes) under FLAT estimates
    reproduces the count-cap grouping exactly — pinned by
    `TestSectionRunsFoldsByEffortBudget` (flat-equivalence case).
-2. **Estimator seam** (`0900aefb`): `harvest.Config.EffortEstimator`
+2. **Estimator seam** (`0900aefb→2bfc9c81`): `harvest.Config.EffortEstimator`
    (interface, once per repo over the admissible candidates) +
    `Config.BatchEffortMinutes` (0 = derive). Missing keys/non-positive values
    fall back to the flat 30m default — estimation trouble can never drop or
@@ -28,7 +28,7 @@ All committed on local master (never pushed; branch ~160 ahead of origin):
    `TestBatchEffortNeverShrinksTimeout`). Payloads record per-member
    `effortMinutes` (additive, omitempty — OKF v0.2 §11) as the durable record
    for the later estimate-vs-outcome audit (`TestBatchSizesRunsByEffort`).
-3. **Jev (TypeSafe) estimator** (`18a2862e`, moved `3c477fab` →
+3. **Jev (TypeSafe) estimator** (`18a2862e→5e692357`, moved `3c477fab→7370abac` →
    internal/harvest/effort.go): one System One Score question per item over a
    5-level effort rubric (situations, not relative sizes); code owns the math —
    piecewise-linear rubric→minutes interpolation (10/25/60/150/240), 5-minute
@@ -42,7 +42,7 @@ All committed on local master (never pushed; branch ~160 ahead of origin):
    never converted into a fabricated "small" answer. Hermetic httptest
    coverage: request shape, cache-hit-no-re-ask, chunking, fallback,
    model swap, prune roundtrip (internal/harvest/effort_test.go).
-4. **Pool wiring** (`25b1ac5a`, cmd/tq/agentpool.go): `--jev` (default OFF;
+4. **Pool wiring** (`25b1ac5a→e191d29e`, cmd/tq/agentpool.go): `--jev` (default OFF;
    missing key fails startup loudly), `--jev-model` ($TQ_JEV_MODEL),
    `--jev-api-key` ($TYPESAFE_API_KEY), `--effort-budget` minutes
    (0 = batch-items x 30m). Estimator cache = `<db>.effort.json`; startup
@@ -52,7 +52,7 @@ All committed on local master (never pushed; branch ~160 ahead of origin):
    (`TestParseAgentPoolOptionsJev`). `batchTimeoutPerItem` single-sourced from
    `harvest.DefaultBatchTimeoutMinutes` (was the 2nd of 3 copies; executor's
    own default remains — separate module/release cadence).
-5. **Docs** (`495ed0ca`): AGENTS batched-harvest bullet (effort budget fold +
+5. **Docs** (`495ed0ca→157b5c9c`): AGENTS batched-harvest bullet (effort budget fold +
    `--jev` raise-only rule; file 25,395/25,400 B — under guard), FEATURES row
    77, DOMAIN_LANGUAGE Batch row + new **Effort estimate** term, CHANGELOG
    [Unreleased] Added row (default-off + flat-equivalence stated),
@@ -81,7 +81,7 @@ All committed on local master (never pushed; branch ~160 ahead of origin):
 
 ## d) TOTALLY FUCKED UP (caught + fixed, none irreversible)
 
-1. **New-root-package import broke the release floor** (`3c477fab` fix):
+1. **New-root-package import broke the release floor** (`3c477fab→7370abac` fix):
    internal/effort as its own package + cmd/tq importing it failed
    `check-gomod-vendor-sync.sh` — cmd/tq pins PUBLISHED root v0.4.1 (tagged
    2026-10-31) which cannot contain a package created 2026-11-03; the gate's

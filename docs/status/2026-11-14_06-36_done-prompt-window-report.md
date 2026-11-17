@@ -15,7 +15,7 @@ Skeleton committed per checkpoint-early and amended at finish.
 ## a) FULLY DONE
 
 1. **Dispatch-time window-report dedup rail** (task 000001a1d27555, commits
-   89150c91 + e54fe307 → landed as 583a8260): `statusPrompt` now carries a
+   89150c91 + e54fe307 → landed as 583a8260→89150c91): `statusPrompt` now carries a
    section ordering the reporting agent to grep the docs/status/README.md
    index for the window's task IDs/timestamps BEFORE deriving, downgrading a
    same-window hit to a verification-only pass. Pinned by
@@ -26,11 +26,11 @@ Skeleton committed per checkpoint-early and amended at finish.
 2. **Reviewer-fix trio completed at ZERO cost via done-preflight dedup**
    (tasks 000001a1d4459f0752 / …f1fd / …f2d0): all three were completed
    attempts=0, session_cost_usd=0 — the done-preflight judged each finding
-   already cured at claim time ("fix ticket cured (SHA fb5a9794 /
-   56e4c606 / 7102684a …)" in the completion facts, pool journal seq
-   19526–19533). All three SHAs verified reachable at HEAD: fb5a9794
-   (calibration failure-path rows), 56e4c606 (29th-dispatch ticks +
-   CHANGELOG sync), 7102684a (64 MiB calibration retention cap). No agent
+   already cured at claim time ("fix ticket cured (SHA fb5a9794→2caabcf5 /
+   56e4c606→6220d097 / 7102684a→e7e10de4 …)" in the completion facts, pool journal seq
+   19526–19533). All three SHAs verified reachable at HEAD: fb5a9794→2caabcf5
+   (calibration failure-path rows), 56e4c606→6220d097 (29th-dispatch ticks +
+   CHANGELOG sync), 7102684a→e7e10de4 (64 MiB calibration retention cap). No agent
    turns ran; no reports owed.
 3. **Calibration batch** (task 000001a1d441108a, commits 95ab1ee6 + d9270e53,
    closeout 2026-11-13_17-05): item 1 (first data-driven tuning pass) was
@@ -138,7 +138,7 @@ Skeleton committed per checkpoint-early and amended at finish.
 50-item list was already harvested as rows 1898–1906+ by its own closeout)
 
 1. Record the first live verification-only done-prompt pass receipt for the
-   window-dedup rail (zero live runs since 583a8260).
+   window-dedup rail (zero live runs since 583a8260→89150c91).
 2. Confirm TestDoctorHealthyEmptyDB green in-repo at HEAD post-exclusion and
    annotate row 54's stale "fails in-repo" symptom claim.
 3. Postgres-pool ask routing ruling (owner BLOCKED).

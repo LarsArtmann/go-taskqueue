@@ -4,10 +4,10 @@
 channel owed) · **Scope**: this session's work only, per directive.
 
 Commits this session (all unpushed, branch ahead of origin):
-`6dfd763a` (section-scoped grouping + default 5 + scaled timeout ceiling),
-`0caf84b1` (docs, amended over a daemon sweep that took exactly these files),
-`59967d38` (AGENTS budget heal + owed calibration facade aliases),
-`1b548c95` (gofmt fix for a hard-gate miss found in this self-review).
+`6dfd763a→63c4a31c` (section-scoped grouping + default 5 + scaled timeout ceiling),
+`0caf84b1→c8544ded` (docs, amended over a daemon sweep that took exactly these files),
+`59967d38→e868d5d6` (AGENTS budget heal + owed calibration facade aliases),
+`1b548c95→fb08c913` (gofmt fix for a hard-gate miss found in this self-review).
 
 ---
 
@@ -97,15 +97,15 @@ Commits this session (all unpushed, branch ahead of origin):
    other gate.
 2. **Doc edits daemon-swept**: edited 5 doc files across multiple tool calls,
    staged too late — the auto-commit daemon took them as
-   `chore: auto-commit 5 changed file(s) (heuristic)` (`53195d6c`). Healed by
+   `chore: auto-commit 5 changed file(s) (heuristic)` (`53195d6c→c8544ded`). Healed by
    the sanctioned amend fallback (unpushed, `--stat` proved all 5 files mine),
-   re-titled `0caf84b1`. Lesson (already in AGENTS): stage per-file-group
+   re-titled `0caf84b1→c8544ded`. Lesson (already in AGENTS): stage per-file-group
    immediately after each edit cluster.
 3. **Banner string with unbalanced parens** shipped in my first edit — caught
    in the same minute, fixed before commit.
 4. **gofft hard-gate miss**: I claimed gates green having run vet+tests but
    NOT `gofmt -l`; self-review caught `cmd/tq/agentpool.go` (missing blank
-   line after the new const). Fixed `1b548c95`. This is the exact
+   line after the new const). Fixed `1b548c95→fb08c913`. This is the exact
    "verify-window battery" class the repo documents — scoped gofmt belongs in
    MY battery, not just CI's.
 5. **Dismissed a failing run on documentation alone**: the `GOWORK=off`

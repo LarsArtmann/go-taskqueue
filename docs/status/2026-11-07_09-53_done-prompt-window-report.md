@@ -39,82 +39,82 @@ Verified landed (closeout evidence + artifact exists at HEAD):
    `TestParkedJSONSurfacesProvider` provider-join phase in
    cmd/tq/parked_test.go; ratelimit-e2e greps real JSON `"provider": "zai"`.
 9. **Parked wire-shape golden pin + doctor cap + evidence fold** (…d0000000,
-   11-02_22-23): `TestParkedTaskRowJSONWireShape` (0843a8d8), cappedProviderList
-   in `cmd/tq/doctor.go` (bed52bca), single-pass `latestRequeueEvidence`
-   serving 5 surfaces (7abed40d).
+   11-02_22-23): `TestParkedTaskRowJSONWireShape` (0843a8d8→82889392), cappedProviderList
+   in `cmd/tq/doctor.go` (bed52bca→66472203), single-pass `latestRequeueEvidence`
+   serving 5 surfaces (7abed40d→f753064b).
 10. **Webui parked provider tag** (…00000000, 11-02_22-45): parked view renders
     `parked: [<provider>]` via `parkedRequeueEvidence`
-    (`internal/webui/components.go`, 9af1014c). Premise-check-first and
-    gate-receipt conventions landed in AGENTS.md (f2bbbb23, 55ab0d6d).
+    (`internal/webui/components.go`, 9af1014c→14f376fb). Premise-check-first and
+    gate-receipt conventions landed in AGENTS.md (f2bbbb23→608d7fd5, 55ab0d6d→c4c51089).
 11. **Reviewer-fix disposition audit** (…80000000, 11-02_22-59):
     journal-verified (read-only probe of the production journal) that task
     …189a00000000 was completed zero-cost by the done-preflight; first wrong
-    disposition retracted in-session (4116f8db).
+    disposition retracted in-session (4116f8db→e2e57271).
 12. **statusresume forensic** (…10000000, 11-02_23-15): empty file was a stray
-    untracked artifact; deletion lossless (e03d0247); zero-byte source guard
-    installed by the pre-commit installer, live-verified (39cd5471).
+    untracked artifact; deletion lossless (e03d0247→fe0fc8a6); zero-byte source guard
+    installed by the pre-commit installer, live-verified (39cd5471→e569ffe5).
 13. **check-unticked.sh** (…00000000, 11-02_23-38): landed-but-unticked sweep
-    tool + self-test + ci-local wiring (f74b192d); real run 102 candidates /
+    tool + self-test + ci-local wiring (f74b192d→2cf2e0b3); real run 102 candidates /
     676 rows / 253 symbols.
 14. **"row N" cite re-anchoring** (…00000000, 11-02_23-50): ~12 rotted cites
-    re-anchored across 14 scripts (a22aa57c).
+    re-anchored across 14 scripts (a22aa57c→4e988b50).
 15. **erraudit gate + tool bugs** (…00000000 / …e2000000, 11-03_00-21/00-46):
-    gate verified green (947195ec); issues #12/#13/#14 filed (ecf2b602); all
+    gate verified green (947195ec→eb13e9d4); issues #12/#13/#14 filed (ecf2b602→03383c86); all
     three FIXED in the erraudit repo (05cddefb/24374215/4d6980ca — local only,
-    see §b); generic_return first wave 4 modules/5 sites (91123a3d).
+    see §b); generic_return first wave 4 modules/5 sites (91123a3d→eb185640).
 16. **TestConcurrentClientsRace flake** (…ee8000000, 11-03_00-55): root-caused
     (SSE stream never closes; 500 ms collector window at fault) and fixed
-    500ms→5s (8f6f02c8).
+    500ms→5s (8f6f02c8→63ac6167).
 17. **shellcheck SC1007 re-green** (…1c9fa000, 11-03_01-07):
-    check-flag-count.sh env-routed assignment (73b7adb4); syntax gate 129/0.
+    check-flag-count.sh env-routed assignment (73b7adb4→b60e2dcc); syntax gate 129/0.
 18. **Windows-vet / ci.yml decouple / README demoted-serve** (…d9f1000000,
     11-03_01-46): ci.yml windows gate moved after the smoke cluster
-    (350f2eca); README ruling paragraph (34755b87); windows-vet row ticked
+    (350f2eca→ea609df5); README ruling paragraph (34755b87→2aa1eb17); windows-vet row ticked
     PREMISE-STALE (battery existed since 2026-09-07).
 19. **Filter-branch dead-cite heal** (…c8590000, 11-03_02-06): 43 dead SHAs
     from the 2026-10-28 double rewrite healed into fork records across 16
-    files (14a5e9e3).
+    files (14a5e9e3→d39ee080).
 20. **Commit-before-gate advisory + rewrite-rate probe + shrink chain**
     (…4c100000, 11-03_02-56 → 03-18/03-45/04-40/05-12): tq-bash-guard
-    dirty-gate advisory scope-matched (2f85808a); `rewrite-rate-probe.sh` wired
+    dirty-gate advisory scope-matched (2f85808a→e6ab9227); `rewrite-rate-probe.sh` wired
     into ci-local WARN + nightly ledger with amend counting and per-actor
-    attribution (7731e5f9, abe9c8d2); `check-dead-sha-refs --shrink/--check`
+    attribution (7731e5f9→4d297d26, abe9c8d2→4f8d17e3); `check-dead-sha-refs --shrink/--check`
     with committed snapshot + ~4.5× perf (54s→12s gate) + `--json`
-    (104917cc, 6459bd47); advisory side-channel `TQ_HOOK_ADVISORY_LOG`
-    (cd2966fd); per-occurrence window-scan dedup bug fix surfaced 18 real dead
-    cites, all healed (eb401d1a).
+    (104917cc→a0abf48d, 6459bd47→003507f1); advisory side-channel `TQ_HOOK_ADVISORY_LOG`
+    (cd2966fd→6f823b0f); per-occurrence window-scan dedup bug fix surfaced 18 real dead
+    cites, all healed (eb401d1a→7572b2f9).
 21. **Checkpoint-early protocol** (…b4000000, 11-03_05-28): status prompt now
     carries checkpoint-early; silent deaths diagnosed as pre-spawn executor
-    death + lazy reclaim under budget gating (c7dcc202, pinned by
+    death + lazy reclaim under budget gating (c7dcc202→823b683e, pinned by
     `TestStatusPromptCarriesCheckpointEarly` — verified in
     internal/executor/status_test.go:400).
 22. **consumer-job CI red triage** (…d6d00000, 11-03_05-41): go.sum/missing
-    retryx tag-wave issue diagnosed, no code change needed (9ae55e91 et al.);
-    `gh run view --log-failed` triage recipe landed in AGENTS.md (15f3c8c7).
+    retryx tag-wave issue diagnosed, no code change needed (9ae55e91→7330959f et al.);
+    `gh run view --log-failed` triage recipe landed in AGENTS.md (15f3c8c7→3cd70bba).
 23. **embed-tidy gate + testastguard module** (…c0000000, 11-03_06-13):
     `scripts/check-embed-tidy.sh` wired into ci-local (first live catch: 208
     stale go.sum entries); `internal/testastguard` v0.1.0 wired into every
     graph loader (verified in root go.mod + cmd/tq/go.work); embed
-    replace-set KEEP-FOREVER ruling (4644bc3c).
+    replace-set KEEP-FOREVER ruling (4644bc3c→930d0bfe).
 24. **headermatrix negative path + SECURITY doc matrix census** (…00000000,
-    11-03_06-49): withContentType mismatch fixture (ff87768e);
+    11-03_06-49): withContentType mismatch fixture (ff87768e→892fbbd5);
     `TestSecurityDocMatrixMatchesGoMatrix` bidirectional census
-    (46429e9d/715702fd); root-gate rc=0 receipt.
+    (46429e9d→f14944c9/715702fd→7c9e049e); root-gate rc=0 receipt.
 25. **L4 memory pilot** (…5a00000000, 11-03_07-21): crush-server-memory.sh
-    (f6093af1 et al.): shared-server RSS does NOT accumulate per wave
+    (f6093af1→074827ed et al.): shared-server RSS does NOT accumulate per wave
     (baseline 55-58 MB, peak 110-135 MB @4 concurrent, wave-2 quiescent never
     above wave-1); `TestShowJSONCarriesFailureEvidence` flake fixed via
-    writer-parameterized `showTaskJSON` (d99afecc).
+    writer-parameterized `showTaskJSON` (d99afecc→c2210c66).
 26. **Hook advisories trio** (…0540000000, 11-03_07-36): ADOPTION.md edit-advice
-    note (20d71351), never-rm trash advisory (2283b056),
-    heredoc-fixture-under-/tmp advisory (cfb5c0da).
+    note (20d71351→16145b78), never-rm trash advisory (2283b056→0a0e64e5),
+    heredoc-fixture-under-/tmp advisory (cfb5c0da→9f4c1d67).
 27. **captureStdout sweep** (…300000000, 11-03_08-25): all 11 t.Parallel global
     capture tests converted to writer-parameterized renders + AST guard
-    `TestNoParallelGlobalStdoutCapture` (de958597); shared
+    `TestNoParallelGlobalStdoutCapture` (de958597→505982fd); shared
     `scripts/smoke/lib/crush-server.sh` (verified at HEAD); 12 dead SHAs
-    healed (09a4f4e0).
+    healed (09a4f4e0→9089e9d3).
 28. **Mirror-clone baseline widening** (…fd9000000, 11-07_09-29, commit
-    18ab39a4): known-acceptable adapter pairs pinned in
+    18ab39a4→d2bf33e9): known-acceptable adapter pairs pinned in
     scripts/mirror-baseline.txt + `--show-suppressed`; AGENTS.md channels
     one-liner + both standing nix receipts green.
 

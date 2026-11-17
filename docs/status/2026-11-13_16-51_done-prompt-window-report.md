@@ -47,7 +47,7 @@ CHANGELOG/TODO_LIST gates.
    in the ONE matcher copy + known-term pin, the cmd/tq `verifyReceiptView` hand-rolled
    twin dropped for the real executor types with flat-JSON compatibility preserved, and
    a full E2E dlq-filter pin added (9c07fce1; closeout 16-36); the follow-up facade-parity
-   skew fixed with the labeled const-block re-export (ab663ef9; closeout 2026-11-10_01-00);
+   skew fixed with the labeled const-block re-export (ab663ef9→0739d980; closeout 2026-11-10_01-00);
    stale post-heal sha cites cured with fork-record arrows (20f43282); CHANGELOG rows for
    the new filter vocabulary landed (2e93b471).
 7. **Two-tick fan to go-cqrs-lite + cross-repo batch** (000001a1c0f84e0e): two-tick
@@ -63,12 +63,12 @@ CHANGELOG/TODO_LIST gates.
    papdashboard `io.LimitReader`), cqrs-lint path fixed to `cmd/cqrs-lint/v4` in both
    ci.yml and ci-local, govulncheck GO-2026-6859 cured via a full Go 1.27.4 lockstep pin
    (setup-go ×8, flake, every module directive, cmd/tq go.work; check-toolchain-pins 11/11)
-   (6a89c734, eb6339c8); dead `FuzzExtractResultPayload` target retired with its orphaned
-   448-file corpus, RULING-BY-AGENT recorded (1b0551fc); `tq calibration` dataset reader
-   shipped, first receipt = 1201 production rows parsed (0d4312ac); keep-the-tail 64 MiB
-   retention trim wired into the pool tick (7102684a); failure-path calibration rows
+   (6a89c734→0d817515, eb6339c8→5ed73719); dead `FuzzExtractResultPayload` target retired with its orphaned
+   448-file corpus, RULING-BY-AGENT recorded (1b0551fc→52cca809); `tq calibration` dataset reader
+   shipped, first receipt = 1201 production rows parsed (0d4312ac→38311a4e); keep-the-tail 64 MiB
+   retention trim wired into the pool tick (7102684a→e7e10de4); failure-path calibration rows
    (optional `Failure` half, additive-growth compliant) stamped at judged-fail + 429 sites
-   (fb5a9794); docs/ticks (56e4c606); captured battery 48 `ok:` anchors; three daemon-sweep
+   (fb5a9794→2caabcf5); docs/ticks (56e4c606→6220d097); captured battery 48 `ok:` anchors; three daemon-sweep
    heals, final `check-footer-attribution.sh` OK 7/7 (closeout 2026-11-13_01-59).
 9. **Two window tasks completed FREE at claim-time preflight** (…c0aecff0, …c0cedaff):
    journal probe shows both `completed` with attempts=0, cost 0 — the reviewfix preflight
@@ -76,7 +76,7 @@ CHANGELOG/TODO_LIST gates.
    missing work: their cure commits (7a7bb39a-lineage / 95a1cd56) are items 1 and 3 above.
 10. **CHANGELOG sync** — this session (docs-health): the `tq calibration` reader and the
     retention/failure-rows entries are now actually IN `[Unreleased]` (they were claimed
-    by 56e4c606's message but absent from its diff — see §d1).
+    by 56e4c606→6220d097's message but absent from its diff — see §d1).
 
 ## b) Partially done
 
@@ -93,7 +93,7 @@ CHANGELOG/TODO_LIST gates.
 4. **Attribution splits**: the gate-polish bundle's archive-evidence bulk rode footer-less
    daemon sweep 9b788272 between foreign footer commits — heal structurally refused
    (mixed span), attribution carried by tick commit citing the sweep sha (15-36 §b2);
-   same shape for the twentyeighth-dispatch's heal `--repo` deliverable (be14730b, below
+   same shape for the twentyeighth-dispatch's heal `--repo` deliverable (be14730b→2c2c879c, below
    foreign footers; 01-24 §b).
 5. **go-cqrs-lite docs-gates debt** (4 error findings) observed and rowed, not cured
    (01-24 §c).
@@ -112,7 +112,7 @@ CHANGELOG/TODO_LIST gates.
 
 ## d) Totally fucked up
 
-1. **A closeout commit claimed CHANGELOG rows its diff never landed** (56e4c606: message
+1. **A closeout commit claimed CHANGELOG rows its diff never landed** (56e4c606→6220d097: message
    says "Unreleased CHANGELOG gains the `tq calibration` reader and the dataset
    retention/failure-row entry"; the diff touches AGENTS.md + calibration.go only).
    Found by this session's docs-health CHANGELOG sweep; fixed here. Class: commit-message
@@ -130,7 +130,7 @@ CHANGELOG/TODO_LIST gates.
    had — plus the facade-parity skew (exported consts without re-export, parity gate not
    mechanically enforced; the pre-commit wiring row 1861 is open).
 4. **Footer-less daemon sweeps split attribution in three separate windows** (9b788272,
-   be14730b, and the 29th's three heals which WERE recovered) — the edit→commit ordering
+   be14730b→2c2c879c, and the 29th's three heals which WERE recovered) — the edit→commit ordering
    rule keeps getting paid for instead of followed; the `--fold` mechanization row is open.
 5. **Premise rot burned windows twice**: the twentyeighth-dispatch batch carried two stale
    premises from the 11-02 report (the pseudo-version sed path that had to be REVERSED, and

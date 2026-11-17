@@ -6,11 +6,11 @@ session only (the effort-batching + Jev session that produced
 `2026-11-03_17-05_jev-effort-batching.md`). Owner session, no task footer.
 Scope rule honored: no new research beyond what this session did and noticed.
 
-Session commits (local master, never pushed): `0900aefb` (effort fold in harvest),
-`18a2862e` (internal/effort package), `25b1ac5a` (pool flags), `495ed0ca` (docs),
-`3c477fab` (floor fix: effort folded into internal/harvest), `89eeb6d7` (prior
-report). The daemon took my TODO_LIST row-506 note edit (`12838836`, byte-identical,
-benign). Foreign sessions interleaved `ade9b0c3`/`cb7c23d4`/`57707ef0`.
+Session commits (local master, never pushed): `0900aefb→2bfc9c81` (effort fold in harvest),
+`18a2862e→5e692357` (internal/effort package), `25b1ac5a→e191d29e` (pool flags), `495ed0ca→157b5c9c` (docs),
+`3c477fab→7370abac` (floor fix: effort folded into internal/harvest), `89eeb6d7→608f7a60` (prior
+report). The daemon took my TODO_LIST row-506 note edit (`12838836→8361ee38`, byte-identical,
+benign). Foreign sessions interleaved `ade9b0c3→d34502a9`/`cb7c23d4→b5867749`/`57707ef0→0058a182`.
 
 ## a) FULLY DONE
 
@@ -201,9 +201,9 @@ benign). Foreign sessions interleaved `ade9b0c3`/`cb7c23d4`/`57707ef0`.
 
 ## Verification (evidence for THIS report)
 
-- Re-checked at `89eeb6d7`+foreign: tree clean; agents-size OK 25,384/25,400;
+- Re-checked at `89eeb6d7→608f7a60`+foreign: tree clean; agents-size OK 25,384/25,400;
   status-index ok (414 rows, pre-existing bloat warn); TODO row-506 note
-  present exactly once (rode the benign daemon sweep `12838836`); race battery
+  present exactly once (rode the benign daemon sweep `12838836→8361ee38`); race battery
   + test-cmd-tq + vendor-sync/go-mods/erraudit green as itemized in §a (run
   against the final code content; receipts read from captured tool output,
   not tee'd files — the §b caveat applies to all of them).

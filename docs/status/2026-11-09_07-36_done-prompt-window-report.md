@@ -8,18 +8,18 @@ against the tree at HEAD 5195cd5f.
 ## a) FULLY DONE
 
 1. **Dedup-ledger extraction triggers pinned in AGENTS.md** (task
-   …b23689cfad, commit 2aee0247 after a daemon-sweep heal): all three
+   …b23689cfad, commit 2aee0247→2d9b3838 after a daemon-sweep heal): all three
    extraction triggers (doctor pending-listing, executor payload-validation,
    `companion/reads.go` scanInto) live in the Executor-shared-seams bullet
    with the source citation — verified by grep at HEAD (AGENTS.md:298-301).
    Size budget consciously raised 26_400 → 26_800 with both twins re-synced.
 2. **Vendor-sync lint-leak regression pin** (task …f987c4438af, commit
-   656f90cb): `lint_leak_scan` in `scripts/check-gomod-vendor-sync.sh`
+   656f90cb→58648306): `lint_leak_scan` in `scripts/check-gomod-vendor-sync.sh`
    names the CI 41877954180 go.sum leak class at gate time; self-test
    Case 8 pins leak/clean/absent paths; `--self-test` flag added. Verified:
    5 `lint_leak_scan` hits in the script at HEAD.
 3. **docs-gates bridge sweeper shipped** (task …1778e0fd6a9, commit
-   9519eb06): `internal/docsgates` (Bridge.Sweep, per-repo `docs-gates run
+   9519eb06→57b76be6): `internal/docsgates` (Bridge.Sweep, per-repo `docs-gates run
    --json`, dedup `docs-gates:<repo>:<gate>`, journal watermark
    `docsgates-bridge`, no-checkpoint-on-runner-failure test-pinned), wired
    as `tq agent-pool --docs-gates*`. Verified: package present at HEAD
@@ -54,7 +54,7 @@ against the tree at HEAD 5195cd5f.
    (`go install …/cmd/tq@v0.4.3`) therefore still cannot run. TODO row 53
    stays open; its BLOCKED note is now narrower than written (only the
    supersession-tag push + verify remain, master itself is pushed).
-2. **The orphaned-lineage state persists**: root `v0.4.2` sits on 2f0bea71,
+2. **The orphaned-lineage state persists**: root `v0.4.2` sits on 2f0bea71→97bf1bbd,
    verified ORPHANED from HEAD (`git merge-base --is-ancestor` fails).
    Consequence now CI-level, not just local: master CI run 42551677517
    FAILS in the test job on `TestDoctorHealthyEmptyDB`

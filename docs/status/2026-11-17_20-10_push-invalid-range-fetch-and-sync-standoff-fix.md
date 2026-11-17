@@ -6,10 +6,10 @@
 
 ## Timeline (what actually happened)
 
-1. **~19:50 — failure state at session start.** User's `git sync` (git-town) had left a pending push step; every push died: `fatal: Invalid revision range a84573533…..0c9c96f51…` / `…196f7a894…` then `error: failed to push some refs`. Branch: `master…origin/master [ahead 8→9]`, tree clean.
-2. **Diagnosis.** `origin/master` locally = `4cb76971` (valid, 10 commits behind HEAD). `a84573533` — the LEFT side of the failing range — was **absent from the local object store**. The pre-push hook runs `scripts/check-push-timing.sh`, which walks `git rev-list <remote-advertised-sha>..<local-sha>` over the whole pushed range; the remote had moved 2 commits ahead (`test(fuzz): grow nightly seed corpora`, one new seed file each) that we had never fetched → rev-list fatal → hook exit → push aborted *before git even attempted the transfer*. Both failing tips (`0c9c96f5`, `196f7a89`) existed locally; only the remote base was missing.
+1. **~19:50 — failure state at session start.** User's `git sync` (git-town) had left a pending push step; every push died: `fatal: Invalid revision range a84573533…..0c9c96f51→c1a8e7c3…` / `…196f7a894→74fd1950…` then `error: failed to push some refs`. Branch: `master…origin/master [ahead 8→9]`, tree clean.
+2. **Diagnosis.** `origin/master` locally = `4cb76971` (valid, 10 commits behind HEAD). `a84573533` — the LEFT side of the failing range — was **absent from the local object store**. The pre-push hook runs `scripts/check-push-timing.sh`, which walks `git rev-list <remote-advertised-sha>..<local-sha>` over the whole pushed range; the remote had moved 2 commits ahead (`test(fuzz): grow nightly seed corpora`, one new seed file each) that we had never fetched → rev-list fatal → hook exit → push aborted *before git even attempted the transfer*. Both failing tips (`0c9c96f5→c1a8e7c3`, `196f7a89→74fd1950`) existed locally; only the remote base was missing.
 3. **Fix half 1: `git fetch origin`.** Objects restored, `origin/master` → `a8457353`. Divergence now explicit: remote ahead 2 (the two fuzz-seed commits, each one new file under `internal/harvest/testdata/fuzz/FuzzParseRepo/`, disjoint from our 30 changed files), local ahead 9.
-4. **Integration decision.** `git town config`: main branch `master`, **perennial sync strategy: rebase**. But repo precedent `b476a4ca` ("merge: integrate the parallel fuzz-corpus push (7c3bb33d)") resolves *this exact scenario* — parallel fuzz-corpus push — with a **merge**, citing the "no-rebase-of-tagged-lineage doctrine" (merge keeps local history unwritten; tags + sweep baselines stay valid). Cite audit found 5 orphaning-prone cites (`0c9c96f5` ×2 files, `f811bda2` ×3 files, all in `docs/status/`). Chose merge.
+4. **Integration decision.** `git town config`: main branch `master`, **perennial sync strategy: rebase**. But repo precedent `b476a4ca` ("merge: integrate the parallel fuzz-corpus push (7c3bb33d)") resolves *this exact scenario* — parallel fuzz-corpus push — with a **merge**, citing the "no-rebase-of-tagged-lineage doctrine" (merge keeps local history unwritten; tags + sweep baselines stay valid). Cite audit found 5 orphaning-prone cites (`0c9c96f5→c1a8e7c3` ×2 files, `f811bda2→792c43ed` ×3 files, all in `docs/status/`). Chose merge.
 5. **Merge attempt → `fatal: stash failed` (rc=128), UNEXPLAINED.** Three wrong-layer hypotheses chased (merge alias, `merge.autostash`, git wrapper) — all negative. Re-run with `GIT_TRACE=1` printed `Already up to date.` — and the reflog explained everything: **a concurrent actor had manually rebased all 9 local commits onto the fetched `a8457353`** (picks committer-dated 84s earlier) and then added `69a835e4` ("docs: backlog Pareto master plan"). My merge was moot; nothing was created by it.
 6. **New blocker: push-timing guard false positive.** The rebase re-dated the three footer-less `chore: auto-commit` commits to committer-time-now (age 84s); the guard refuses footer-less daemon chores younger than 600s keyed on **committer** date. Their AUTHOR dates were 14h–2 days old, so the fold window had long closed — pure re-dating artifact. Chose the honest path: background `sleep 480 && git push` (unblocks at 471s), no `--no-verify`.
 7. **Push landed:** `push-timing summary: 10 commits checked, 0 refused`, `a8457353..69a835e4 master -> master`.
@@ -30,7 +30,7 @@
 
 ## b) PARTIALLY DONE
 
-1. **Post-rebase citation integrity** — orphaned cites found and reported, NOT repaired. Sites: `docs/status/README.md:129` (`0c9c96f5`→`c1a8e7c3`), `:130` (`f811bda2`→`792c43ed`), `2026-11-17_18-31_dns-outage…:6` (`f811bda2`), `2026-11-17_19-40_io-review…:7,51,53` (`0c9c96f5`, `f811bda2`). Deliberate: a concurrent session owns exactly those docs mid-flow (it created `69a835e4` minutes earlier); `check-tick-claims.sh` will WARN until repaired.
+1. **Post-rebase citation integrity** — orphaned cites found and reported, NOT repaired. Sites: `docs/status/README.md:129` (`0c9c96f5→c1a8e7c3`→`c1a8e7c3`), `:130` (`f811bda2→792c43ed`→`792c43ed`), `2026-11-17_18-31_dns-outage…:6` (`f811bda2→792c43ed`), `2026-11-17_19-40_io-review…:7,51,53` (`0c9c96f5→c1a8e7c3`, `f811bda2→792c43ed`). Deliberate: a concurrent session owns exactly those docs mid-flow (it created `69a835e4` minutes earlier); `check-tick-claims.sh` will WARN until repaired.
 2. **Push-timing guard rebase-blindness** — diagnosed, workaround applied (wait), **not fixed**: the guard keys on committer date, which every rebase re-pick resets, so each divergent `git sync` (perennial strategy IS rebase) freezes pushes 10 min on old daemon chores. Not persisted to AGENTS.md/TODO_LIST yet (collision caution during the active session; now recorded HERE).
 3. **Merge-vs-rebase strategy tension** — `git-town.sync-perennial-strategy=rebase` vs the `b476a4ca` merge doctrine surfaced with evidence; decision is the owner's. Note: merge would have avoided BOTH today's guard freeze AND the cite orphaning.
 4. **§(f) harvest into `TODO_LIST.md`** — not done: the Pareto session restructured TODO_LIST minutes before my write window; user instruction was report-then-wait. Rows below are report-only until harvested.
@@ -38,7 +38,7 @@
 
 ## c) NOT STARTED
 
-1. **Fork record** (old→new sha map) for the ~19:54 concurrent rebase — the conventions require one whenever cited unpushed shas get rewritten; nothing exists yet (map is recoverable from `git reflog`: `a8be0408`→`2edb2524`, `bcb644e6`→`9ec4452e`, `70f84e26`→`10f3e0ab`, `40468e95`→(pick), `8e234d0b`→`93468aac`, `f811bda2`→`792c43ed`, `0c9c96f5`→`c1a8e7c3`, `196f7a89`→`634674b6`, `b9b25fd3`→(picked as parent of `69a835e4`'s predecessor — recover from reflog entries 5-9)).
+1. **Fork record** (old→new sha map) for the ~19:54 concurrent rebase — the conventions require one whenever cited unpushed shas get rewritten; nothing exists yet (map is recoverable from `git reflog`: `a8be0408→2edb2524`→`2edb2524`, `bcb644e6→9ec4452e`→`9ec4452e`, `70f84e26→10f3e0ab`→`10f3e0ab`, `40468e95→f9a4396e`→(pick), `8e234d0b→93468aac`→`93468aac`, `f811bda2→792c43ed`→`792c43ed`, `0c9c96f5→c1a8e7c3`→`c1a8e7c3`, `196f7a89→74fd1950`→`634674b6`, `b9b25fd3→634674b6`→(picked as parent of `69a835e4`'s predecessor — recover from reflog entries 5-9)).
 2. **Guard hardening** (author-date basis + rebased-chore `--self-test` case).
 3. **AGENTS.md Known-Issues row** for the re-dating blind spot.
 4. **Stash-failed repro/autopsy** on git 2.56.0.
@@ -52,7 +52,7 @@ Honest verdict: **nothing rose to catastrophic** — no data loss, no force-push
 1. **Three wrong-layer hypotheses before the one command that answered it.** After the inexplicable `fatal: stash failed`, I spent ~2 minutes on alias/config/wrapper archaeology instead of running `git reflog` + `git status` FIRST — in a repo whose own AGENTS.md opens with "concurrent agents commit constantly; re-read state". Reflog would have ended the detour in one command.
 2. **The unexplained rc=128 was omitted from the final handoff.** I reported the happy path; the one anomaly I could not explain never made it into the message the user actually read. Handoff completeness fail — every unexplained anomaly belongs in the handoff, even when moot.
 3. **Under-weighted the concurrency for history-touching moves.** I verified repo state before merge attempt #1 but treated that check as durable 4 minutes later for the retry — in this repo, state checks are single-use. Also my scheduled 8-minute-delayed background push widened a race window with an actor whose intentions I couldn't see (outcome benign: their push would simply no-op).
-4. **The daemon's own `b9b25fd3` commit 3.5 min old should have read as "session is HOT right now"** — the freshest possible signal that another writer was mid-flow, and I planned a merge + timed push anyway.
+4. **The daemon's own `b9b25fd3→634674b6` commit 3.5 min old should have read as "session is HOT right now"** — the freshest possible signal that another writer was mid-flow, and I planned a merge + timed push anyway.
 
 ## e) WHAT WE SHOULD IMPROVE
 
@@ -68,9 +68,9 @@ Honest verdict: **nothing rose to catastrophic** — no data loss, no force-push
 ## f) Up to 50 things to get done next — session-grounded, impact-ordered
 
 Immediate repair (high impact, cheap):
-1. Repair orphaned cites in `docs/status/README.md:129-130` (`0c9c96f5`→`c1a8e7c3`, `f811bda2`→`792c43ed`).
-2. Repair `2026-11-17_18-31_dns-outage…:6` (`f811bda2`→`792c43ed`).
-3. Repair `2026-11-17_19-40_io-review…:7,51,53` (`0c9c96f5`, `f811bda2`).
+1. Repair orphaned cites in `docs/status/README.md:129-130` (`0c9c96f5→c1a8e7c3`→`c1a8e7c3`, `f811bda2→792c43ed`→`792c43ed`).
+2. Repair `2026-11-17_18-31_dns-outage…:6` (`f811bda2→792c43ed`→`792c43ed`).
+3. Repair `2026-11-17_19-40_io-review…:7,51,53` (`0c9c96f5→c1a8e7c3`, `f811bda2→792c43ed`).
 4. Write the fork record (old→new map, §c1) where `check-tick-claims.sh` consumes it — verify the mechanism's accepted form first.
 5. Run `scripts/check-tick-claims.sh` to capture the WARN baseline before/after 1–4.
 6. Harvest this report's §(f) into `TODO_LIST.md` once the Pareto session's TODO restructure settles (avoid a collision).
@@ -90,7 +90,7 @@ Strategy/decision (owner calls):
 
 Queue↔git cross-reference integrity:
 16. Confirm `tq facts` git-scan has zero references to any of the 9 pre-rebase shas (they were all footer-less — trailer scan verified — so expected clean; confirm from the journal if a TQ_DB is handy).
-17. Spot-verify one rebased pick is semantically identical to its pre-rebase original (`git diff 792c43ed f811bda2` class, per pick).
+17. Spot-verify one rebased pick is semantically identical to its pre-rebase original (`git diff 792c43ed f811bda2→792c43ed` class, per pick).
 
 Fuzz-corpus pipeline (noticed via the incoming commits):
 18. Identify WHO pushes the nightly seed corpora to master (author/committer of `c2e7123f`/`a8457353`) — CI bot or a second machine.

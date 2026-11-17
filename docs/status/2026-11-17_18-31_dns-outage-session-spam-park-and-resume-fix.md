@@ -3,7 +3,7 @@
 **Session**: direct owner dispatch 2026-11-17 ~16:45–18:30 (no queue task; no
 Task-Queue-ID footer). **Trigger**: "SystemNix got spammed with sessions
 because the DNS/internet was down — why don't we send a retry message to the
-existing session?" **Deliverable**: commit `f811bda2` (21 files, +668/−68),
+existing session?" **Deliverable**: commit `f811bda2→792c43ed` (21 files, +668/−68),
 gates green.
 
 ## What the incident actually was (forensics, from live data)

@@ -137,7 +137,7 @@ the lead; (3) root `go build/vet` and full ci-local NOT run — change set is do
 30. post-wave refresh trigger: re-audit go-cqrs-lite.md + go-datastar.md once the bumps land (score deltas)
 31. cqrs-lite.md §3 scan-caching opportunity (52-row inventory) — fold into the wave task <!-- fresh:skip: folds into §f1-4 wave; canonical home go-cqrs-lite.md §4 -->
 32. research README: mark the 2026-10-05 cqrs row SUPERSEDED inline (it is only noted in the new row today)
-33. heal dead SHAs 64b22f25 / 573acfee in docs/status/tasks/2026-11-08_18-16 task closeout — pre-existing, surfaced by this window's post-report dead-sha gate run, not this session's citations <!-- fresh:skip: not this session's report; routed for the next docs-health pass -->
+33. heal dead SHAs 64b22f25→b9d09371 / 573acfee→ae1e13b8 in docs/status/tasks/2026-11-08_18-16 task closeout — pre-existing, surfaced by this window's post-report dead-sha gate run, not this session's citations <!-- fresh:skip: not this session's report; routed for the next docs-health pass -->
 34. INDEX BLOAT: 421 live rows in docs/status/README.md > 400 threshold — run the ratified monthly digest ritual (ANNOTATE+ARCHIVE sweep + digest row) <!-- fresh:skip: fleet ritual, owner-scheduled (08-25 f20); this window added 1 row to a 420-row index -->
 
 ## g) Questions I cannot figure out myself

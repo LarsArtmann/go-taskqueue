@@ -13,14 +13,14 @@ are re-grepped at HEAD, and the *delta since the tenth pass (22:12)* is recorded
 Work evidence per task: all 13 window commits re-checked
 `git merge-base --is-ancestor` at HEAD this pass (`df2addff` `cb85ee51`
 `c5fa8f9d` `4d2ac0f4` `d1ae7a60` `12c3049a` `e9168c2c` `ef2f843e` `df3ce1c0`
-`ce417938` `9b90487f` `4aa9ceec` `1b5a7825` — all ancestor, HEAD `565a0c27`),
+`ce417938` `9b90487f` `4aa9ceec` `1b5a7825` — all ancestor, HEAD `565a0c27→10256ec3`),
 the two zero-footer reviewer tickets (`…ba892ab9`, `…ba892bb3`) confirmed
 completed-free per the earlier passes' journal reads (attempts=0; also NOT
 present in the current production journal — pruned/absorbed), and the
 push-master task (`…f208e533`) remains subsumed by the v0.4.1 wave (row 70
 ticked; origin/master..master = 0 since the ninth pass).
 
-## a) FULLY DONE (re-verified at HEAD 565a0c27, not re-derived)
+## a) FULLY DONE (re-verified at HEAD 565a0c27→10256ec3, not re-derived)
 
 All headline artifacts re-confirmed green this pass:
 

@@ -13,12 +13,12 @@ re-grepped at HEAD, and the *delta since the eleventh pass (22:29)* recorded.
 Work evidence per task: all 13 window commits re-checked
 `git merge-base --is-ancestor` at HEAD this pass (`df2addff` `cb85ee51`
 `c5fa8f9d` `4d2ac0f4` `d1ae7a60` `12c3049a` `e9168c2c` `ef2f843e` `df3ce1c0`
-`ce417938` `9b90487f` `4aa9ceec` `1b5a7825` — all ancestor, HEAD `e4b24c64`),
+`ce417938` `9b90487f` `4aa9ceec` `1b5a7825` — all ancestor, HEAD `e4b24c64→cf9aca50`),
 the two zero-footer reviewer tickets confirmed completed-free per the earlier
 passes' journal reads, and the push-master task remains subsumed by the v0.4.1
 wave (origin/master..master = 13 unpushed, push still an owner call).
 
-## a) FULLY DONE (re-verified at HEAD e4b24c64, not re-derived)
+## a) FULLY DONE (re-verified at HEAD e4b24c64→cf9aca50, not re-derived)
 
 All headline artifacts re-confirmed green this pass:
 
@@ -39,15 +39,15 @@ All headline artifacts re-confirmed green this pass:
 ## b) PARTIALLY DONE (delta since the eleventh pass)
 
 1. **Parked-trio closeout landed after the eleventh pass** — HEAD moved
-   565a0c27 → e4b24c64: `9af1014c` (feat webui: parked strip names the
+   565a0c27→10256ec3 (prior walk e4b24c64→cf9aca50): `9af1014c→14f376fb` (feat webui: parked strip names the
    exhausted provider from the shared evidence decode), rows 1251-1253 ticked
-   (`d28202f6`), AGENTS.md premise-check + gate-receipt lines (`f2bbbb23`,
-   `55ab0d6d`). This was LATER-window work, not this window's; recorded here
+   (`d28202f6→829549be`), AGENTS.md premise-check + gate-receipt lines (`f2bbbb23→608d7fd5`,
+   `55ab0d6d→c4c51089`). This was LATER-window work, not this window's; recorded here
    only as delta. Nothing in THIS window is half-landed: the owner-gated
    §g1/§g2 SECURITY.md rows remain BLOCKED (re-asked verbatim in ≥8 window
    reports; standing consolidated ruling row 1516).
 2. No stale-row tick opportunities found this pass: the eleventh pass's row
-   1157 cure stands; rows 1251-1253 were already ticked by `d28202f6`.
+   1157 cure stands; rows 1251-1253 were already ticked by `d28202f6→829549be`.
 
 ## c) NOT STARTED
 
@@ -101,7 +101,7 @@ cites → row 45; §g1/§g2 → row 1516; AGENTS budget → row 1499; window ded
 row 1515; tick-cite → row 1581, landed by the sibling window tonight). Minting
 any again would re-create the reworded-duplicate loop the 2026-09-11 review
 found. No evidence-backed ticks available: every landed candidate this pass
-(rows 1251-1253) was already ticked by `d28202f6` before this pass opened.
+(rows 1251-1253) was already ticked by `d28202f6→829549be` before this pass opened.
 
 ## g) QUESTIONS FOR THE OWNER
 

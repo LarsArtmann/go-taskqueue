@@ -85,7 +85,7 @@ lineage class.
     fleet successors.
 15. **M18 dead-SHA heal** (F50): patch-id analysis proved both dead
    cites content-identical to reachable commits — fork records added:
-   `64b22f25` → `b9d09371`, `573acfee` → `ae1e13b8`.
+   `64b22f25→b9d09371` → `b9d09371`, `573acfee→ae1e13b8` → `ae1e13b8`.
 16. **M13 re-score completion** (F42): post-wave delta sections landed —
    go-datastar 17→83 ("moderate-high post-wave (2.5/3)": row 1 cache
    identity FULL via static.Version, ScriptHandler flip, client-pin
@@ -192,7 +192,7 @@ None — all five former §c items closed (§a16–§a20).
    Documented in 2eff5d56 ("forked-lineage residue"); NOT caused by this
    session; needs an owner ruling (§g1).
 2. **NEW dead SHAs from concurrent fleet**: three reports minted at
-   07:25–07:33 today (not this session's) cite `9519eb06` — commit
+   07:25–07:33 today (not this session's) cite `9519eb06→57b76be6` — commit
    exists but unreachable from HEAD. Their owning sessions/daemon should
    heal them; healing others' reports while their sessions may still be
    writing felt wrong (§g3).
@@ -249,7 +249,7 @@ None — all five former §c items closed (§a16–§a20).
 19. v0.4.3 release prep: CHANGELOG Unreleased is loaded; release flow
     per docs/release/ (owner-gated).
 20. Owner push decision for the wave commits (§g2). <!-- fresh:skip: owner-gated question, not agent-executable work (never push without an explicit order) -->
-21. Heal `9519eb06` dead cites in the three 07:25–07:33 fleet reports
+21. Heal `9519eb06→57b76be6` dead cites in the three 07:25–07:33 fleet reports
     once their sessions close (§g3).
 22. Consider WithPrefetch on TasksPage reads (cqrs report §4 opportunity
     2, post-wave, cheap).
@@ -264,7 +264,7 @@ None — all five former §c items closed (§a16–§a20).
 ## g) Questions I cannot figure out myself
 
 1. **v0.4.2 forked lineage**: `TestDoctorHealthyEmptyDB` is red at HEAD
-   because the v0.4.2 tag (2f0bea71) is unreachable from master — cut on
+   because the v0.4.2 tag (2f0bea71→97bf1bbd) is unreachable from master — cut on
    a forked tree, documented as residue in 2eff5d56. Healing means
    either history surgery (re-tag/merge — barred without owner), or
    baselining the tag-ancestry check. Which? Releases "must not cut
@@ -273,7 +273,7 @@ None — all five former §c items closed (§a16–§a20).
    above) sits in daemon-committed local commits, unpushed. Push now, or
    hold for the v0.4.3 train? (No push without an explicit order.)
 3. **Concurrent-fleet dead cites**: the 07:25–07:33 reports citing
-   `9519eb06` belong to other sessions — heal them in the next
+   `9519eb06→57b76be6` belong to other sessions — heal them in the next
    docs-health pass, or leave strictly to their owners?
 
 — Recorded 2026-11-09_08-54 CET; amended 2026-11-09 ~20:30 CET after the

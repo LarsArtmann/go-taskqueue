@@ -4,7 +4,7 @@
 no Task-Queue-ID footer). **Trigger**: "tq-agent-pool.service — ~102 MB/s
 pure reads; IO stall (PSI avg300 = 75.8%) — WTF?! I/O review! DEEP!
 Leverage io-surface". **Deliverable**: root-cause verdict + AGENTS.md
-Known-Issues bullet (commit 0c9c96f5, size guard 27600/27600).
+Known-Issues bullet (commit 0c9c96f5→c1a8e7c3, size guard 27600/27600).
 
 ## Verdict (one line)
 
@@ -48,9 +48,9 @@ swap — the pool's own DB on sda read ~5 MB cumulative in 3.2 h.
   read-amplification bug in tq.**
 - **Durable record**: AGENTS.md Known Issues gained the attribution-trap
   bullet (+ concept-preserving trims elsewhere; guard green at exactly
-  27600/27600 B, `check-agents-size.sh` OK); commit 0c9c96f5.
+  27600/27600 B, `check-agents-size.sh` OK); commit 0c9c96f5→c1a8e7c3.
 - **Tree heal while in flight**: the concurrent session's dns-outage report
-  (companion of f811bda2) landed unindexed and made the pre-commit hook fail
+  (companion of f811bda2→792c43ed) landed unindexed and made the pre-commit hook fail
   EVERY commit; indexed it (top cluster row) and carried it — commit
   unblocked.
 

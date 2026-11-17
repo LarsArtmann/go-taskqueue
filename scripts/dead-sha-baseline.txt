@@ -842,3 +842,16 @@ bf93485c
 
 # legacy dangle named in docs/status/tasks/2026-11-03_02-06_task-…918bf0 line 31 (footer-less daemon sweep, no successor; subject-match non-derivable)
 b3dc12af
+
+# 2026-11-17 dead-SHA heal wave: no reachable counterpart exists (patch-id + tree matchers empty at HEAD 40f96302); cites kept for history — 0932f54e 67255578 84efe35d 8aa78376 d705be27 d7fb0736 fa05f88d
+0932f54e
+67255578
+84efe35d
+8aa78376
+d705be27
+d7fb0736
+fa05f88d
+# 2026-11-17 heal: b7302f56/0843a8d8/bed52bca are the heal-daemon-sweep oscillation WALK (ever-older blockers, 23-50 report line 130), a succession chain — not same-change fork pairs; baselined rather than falsified into arrow form
+b7302f56
+0843a8d8
+bed52bca
