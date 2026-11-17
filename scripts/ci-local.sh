@@ -131,6 +131,18 @@ step "commit-msg hook self-test (Task-Queue-ID trailer placement pin)"
 step "session-start probe self-test (red-master tolerance pin)"
 ./scripts/check-session-start-probe.sh
 
+# The WITH-ARGS branch pin for the same ritual (smoke/session-start.sh,
+# hermetic scratch repo): without a wiring surface the guard-wiring gate
+# flags it orphaned — the pin runs here, not only when someone remembers.
+step "session-start with-args pin (hermetic scratch repo)"
+./scripts/smoke/session-start.sh
+
+# Footer-attribution self-test (heal tail-run contract): span commits must
+# carry trailer-parseable Task-Queue-ID footers; wired here per the fleet
+# convention (countable gate summaries pinned, never folklore).
+step "footer-attribution self-test (heal tail-run contract)"
+./scripts/check-footer-attribution.sh --self-test
+
 # Pin the push-timing pre-push guard the same way (check-push-timing): the installer
 # heredoc is the shipped bytes; the fresh-footer-less-daemon refusal and
 # summary format fail here, not at the next real push.

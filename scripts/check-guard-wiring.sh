@@ -40,10 +40,31 @@ self_test() {
 	fi
 	must_mention "ORPHANED GUARD: $orphan" "$out" "orphan branch fires on the unwired fixture"
 	must_mention "guard-wiring summary: 1 scripts wired, 1 orphaned" "$out" "summary pins exact counters (ritual wired + fixture orphaned)"
+	# Sibling-sourcing rule (2026-11-17): a smoke library a sibling sources
+	# counts as wired; a lib nothing sources stays an orphan. Fixtures are a
+	# fake smoke dir (TQ_GUARD_SMOKE_DIR) + TQ_GUARD_FILES pair — hermetic,
+	# the real scripts/smoke tree stays untouched.
+	mkdir -p "$tmp/smoke"
+	: >"$tmp/smoke/fakelib.sh"
+	printf '. "$(dirname "$0")/fakelib.sh"\n' >"$tmp/smoke/consumer.sh"
+	: >"$tmp/smoke/unsourced.sh"
+	local src_out src_rc=0
+	src_out="$(TQ_GUARD_FILES="$tmp/smoke/fakelib.sh $tmp/smoke/unsourced.sh" TQ_GUARD_SMOKE_DIR="$tmp/smoke" "$self_abs" 2>&1)" || src_rc=$?
+	if [ "$src_rc" -ne 1 ]; then
+		echo "FAIL: sibling-sourcing battery (want rc=1, got rc=$src_rc)"
+		printf '%s\n' "$src_out"
+		exit 1
+	fi
+	if grep -qF "ORPHANED GUARD: $tmp/smoke/fakelib.sh" "$src_out"; then
+		echo "FAIL: sourced lib must count as wired"
+		printf '%s\n' "$src_out"
+		exit 1
+	fi
+	must_mention "ORPHANED GUARD: $tmp/smoke/unsourced.sh" "$src_out" "unsourced lib stays an orphan"
+	must_mention "guard-wiring summary: 1 scripts wired, 1 orphaned" "$src_out" "sibling-sourcing summary pins exact counters (sourced lib wired)"
 	local pos_out pos_wired pos_orphaned
 	pos_out="$("$self_abs" 2>&1)" || true
 	pos_wired=$(printf '%s\n' scripts/check-*.sh scripts/smoke/*.sh | wc -l)
-	pos_wired=$((pos_wired + 1)) # + the convention-invoked session-start ritual
 	pos_orphaned=$(grep -c '^ORPHANED GUARD:' <<<"$pos_out" || true)
 	pos_wired=$((pos_wired - pos_orphaned))
 	# rc is NOT pinned: a pre-existing orphan elsewhere in the fleet keeps
@@ -80,6 +101,27 @@ for f in "$@"; do
 			break
 		fi
 	done
+	if [ "$wired" = 0 ]; then
+		case "$f" in
+		"${TQ_GUARD_SMOKE_DIR:-scripts/smoke}"/*)
+			# Shared smoke libraries (_lib.sh, the scratch-repo factory)
+			# are wired by their CONSUMERS: a sibling smoke script sourcing
+			# the basename counts as a wiring surface — a lib nothing
+			# sources is dead code the orphan branch should still catch,
+			# but a sourced lib runs on every consumer run (2026-11-17:
+			# _lib.sh orphaned by the literal-path grep while every
+			# hermetic smoke sourced it).
+			base=${f##*/}
+			for g in "${TQ_GUARD_SMOKE_DIR:-scripts/smoke}"/*.sh; do
+				[ "$g" = "$f" ] && continue
+				if grep -qE "^[[:space:]]*(source|[.])[[:space:]].*${base}" "$g" 2>/dev/null; then
+					wired=1
+					break
+				fi
+			done
+			;;
+		esac
+	fi
 	if [ "$wired" = 0 ]; then
 		echo "ORPHANED GUARD: $f is not referenced by ci-local.sh, ci.yml, or flake.nix — wire it or delete it"
 		rc=1
