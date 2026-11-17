@@ -129,31 +129,31 @@ conventions.
 
 ## d) TOTALLY FUCKED UP (owned)
 
-1. **Edit-tool tab-glue struck AGAIN** (the exact hazard the prior session
+~~1. **Edit-tool tab-glue struck AGAIN** (the exact hazard the prior session~~ done (docs-health pass 2026-10-01)
    documented): the M11 `doctorTreeGofmt` insertion glued
    `filter := exec.CommandContext(…)` onto a comment line as literal `\t`
    text — commented-out code, undefined `filter`. Caught by viewing the
    file immediately after the edit (before compiling); fixed via python.
    Rule reaffirmed: big insertions adjacent to tab-bearing lines go through
    python or symbol-scoped tools, never free-text edit.
-2. **Wrote a smoke grep against an output format I never read**: first
+~~2. **Wrote a smoke grep against an output format I never read**: first~~ done (docs-health pass 2026-10-01)
    loop-detector run failed on `loop suspects 1` vs the actual
    `%2d`-rendered `loop suspects  1` — the format string was MY OWN M10
    Printf written an hour earlier. Read the render before asserting on it.
-3. **Type-unchecked call site**: passed `filter.Project` (`*string`) into a
+~~3. **Type-unchecked call site**: passed `filter.Project` (`*string`) into a~~ done (docs-health pass 2026-10-01)
    helper I'd typed `string` — one wasted cmd/tq gate cycle; the shim
    caught it instantly. Check field kinds before writing call sites.
-4. **Assumed staging beats the daemon — it does not**: ferry-2 (`8305e044`)
+~~4. **Assumed staging beats the daemon — it does not**: ferry-2 (`8305e044`)~~ done (docs-health pass 2026-10-01)
    swept STAGED files mid-gate. The ferry protocol now reads: during any
    > 30s gate, staged AND unstaged work will ferry; plan the fold BEFORE
    > starting gates (verify contiguity, reset --soft, re-commit in ONE
    > chain).
-5. **CV pre-commit collision**: attempted a normal commit; CV's BuildFlow
+~~5. **CV pre-commit collision**: attempted a normal commit; CV's BuildFlow~~ done (docs-health pass 2026-10-01)
    hook runs repo-wide `go vet` and died on the exact `internal/di` failure
    my report documents. Recovered with `--no-verify` (docs-only, the
    daemon's own commit mode) — but the daemon ferry had already won the
    race ("nothing to commit"). No damage; the double-attempt was noise.
-6. Minor: stats_test.go append left triple blank lines (gofmt tolerated);
+~~6. Minor: stats_test.go append left triple blank lines (gofmt tolerated);~~ done (docs-health pass 2026-10-01)
    one edit retry on CV's TODO_LIST.md after a parallel-session modtime
    bump (re-read + python recovered).
 
@@ -181,48 +181,48 @@ conventions.
 
 ## f) NEXT (ranked)
 
-1. **M18 close-out** — archive evidence, write the full a–g close-out
+~~1. **M18 close-out** — archive evidence, write the full a–g close-out~~ done (docs-health pass 2026-10-01)
    embedding the M15/M16 tables + deviations, index row,
    `check-status-index.sh`.
-2. **M19 harvest rows** — P6 operator park verb, P8 bare-worker agent-claim
+~~2. **M19 harvest rows** — P6 operator park verb, P8 bare-worker agent-claim~~ done (docs-health pass 2026-10-01)
    refusal, `ClaimCount` GROUP BY store method (census perf), dlqfix
    mint-refusal hardening; `check-todo-list.sh` green.
-3. **F65** — first harvested dispatch survives the gate (BLOCKED on pool
+~~3. **F65** — first harvested dispatch survives the gate (BLOCKED on pool~~ done (docs-health pass 2026-10-02)
    health, §g).
-4. **M21 AGENTS lessons** — env-requeue class + breaker, scoped-gofmt
+~~4. **M21 AGENTS lessons** — env-requeue class + breaker, scoped-gofmt~~ done (docs-health pass 2026-10-01)
    idiom + doctor split, staged-ferry fact, P6/P7/P8; ≤15,000 B guard.
-5. **F70** — full `scripts/ci-local.sh` + M1 re-check (no new claims on
+~~5. **F70** — full `scripts/ci-local.sh` + M1 re-check (no new claims on~~ done (docs-health pass 2026-11-17)
    `000001a0eebb…`; loop-suspect surface should be clean).
-6. Owner decision ride-alongs: dlqfix watermark rewind (§g), pool restart,
+~~6. Owner decision ride-alongs: dlqfix watermark rewind (§g), pool restart,~~ **Superseded — pool recovered 2026-10-02; rewind stays open row TODO_LIST:621; pushes happened (v0.3.3 2026-10-07).**
    push posture.
-7. Webui/stats census perf: GROUP BY claim-count store method (replace the
+~~7. Webui/stats census perf: GROUP BY claim-count store method (replace the~~ done (docs-health pass 2026-10-12)
    O(tasks) facts-walk per snapshot).
-8. dlqfix sweeper: checkpoint gating on refused mints.
-9. Doctor: consumer-cursor staleness check (would have flagged the 06:38
+~~8. dlqfix sweeper: checkpoint gating on refused mints.~~ done (docs-health pass 2026-10-18)
+~~9. Doctor: consumer-cursor staleness check (would have flagged the 06:38~~ done (docs-health pass 2026-10-11)
    pool freeze).
-10. CV gate fixes (their TODO lane; closes the 99-dead verify family at the
+~~10. CV gate fixes (their TODO lane; closes the 99-dead verify family at the~~ **Won't implement — external CV repo gate fixes (their TODO lane).**
     source).
-11. Looper `000001a0f539…` disposition (owner; carried).
-12. Bridge acceptance as a doctor surface ("bridge watermark == head"
+~~11. Looper `000001a0f539…` disposition (owner; carried).~~ **Won't implement — stale — task 000001a0f539 completed 2026-10-01 05-10.**
+~~12. Bridge acceptance as a doctor surface ("bridge watermark == head"~~ **Won't implement — ruled no-row-possible: bridge keeps NO journal cursor (2026-10-11 §B9.1).**
     would have made M13 a one-liner).
-13. `tq top`: consider the loop-suspect column (optional, low).
+~~13. `tq top`: consider the loop-suspect column (optional, low).~~ **Won't implement — optional-low; loop-suspect surface lives in tq stats; column never rowed.**
 
 ## g) QUESTIONS (cannot resolve from here)
 
-1. **Is the agent-pool down/hung since ~06:38, and did you restart it
+~~1. **Is the agent-pool down/hung since ~06:38, and did you restart it~~ **Won't implement — stale — pool recovered; dispatched windows resumed 2026-10-02.**
    ~06:33?** All three sweepers' cursors froze at seq 8661 between
    06:33:25–06:38:25 while the journal advanced to 8696 by 08:34; the
    bridge cursor kept moving (it also rides `tq worker`), so the pool being
    down is consistent but unprovable from this shell (`systemctl`/`sudo`
    banned). If it IS down: M19/F65 (first harvested dispatch survives the
    gate) stays blocked until it's back.
-2. **Rewind the dlqfix sweeper for the historical landfill?** The deployed
+2. **Rewind the dlqfix sweeper for the historical landfill?** The deployed **→ routed TODO_LIST:621 open (BLOCKED owner rewind ruling; runbook row)**
    sweeper first-ran at journal HEAD, so 315 dead agent letters (incl. 167
    gofmt-class WITH shipped proof — those auto-dismiss FREE) will never
    autopsy unless you run `tq watermarks set dlqfix-sweeper 0` and let the
    pool replay (~148 others would mint PAID autopsies, dedup-forever
    bounded). Rewind, partial rewind, or leave the landfill?
-3. **Push posture** (carried, third ask): ~36 unpushed commits on
+~~3. **Push posture** (carried, third ask): ~36 unpushed commits on~~ **Won't implement — stale — pushes since happened: v0.3.3 published 2026-10-07; 84-commit wave pushed 2026-10-27.**
    go-taskqueue master after this session, CV ahead of origin, plus
    SystemNix/go-cqrs-lite from prior windows. Push now, or hold everything
    until M18–M21/F70 close the plan?

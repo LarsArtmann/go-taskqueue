@@ -10,7 +10,7 @@ covers only this session's work).
 
 ## a) FULLY DONE
 
-1. **DEAD-SHA mass triage (row 279) — the session's biggest unblock.**
+~~1. **DEAD-SHA mass triage (row 279) — the session's biggest unblock.**~~ done (docs-health pass 2026-10-01)
    check-dead-sha-refs was rc=1 at session start with 498 dead-cite lines
    (174 unique tokens) stranded by the 2026-09-26 lineage rewrite. Built a
    patch-id mapper (/tmp, refs/original old lineage vs HEAD): 142 tokens had
@@ -24,7 +24,7 @@ covers only this session's work).
    aac17ad9 a 06-26 parallel report citing a chore commit its own
    soft-reset heal orphaned, de92677ab1f7a8312f96057abb26a2f36adb601a/e411e087e2fba8ec0200b21f03d4e90cc3ca8960).
 
-2. **AGENTS.md consolidated conventions pass (rows 430, 431, 432, 309,
+~~2. **AGENTS.md consolidated conventions pass (rows 430, 431, 432, 309,~~ done (docs-health pass 2026-10-01)
    255, 261, 326, 327, 337 partial, 433).** One size-budgeted edit wave
    (d6e6cc34): Edit→commit→battery rule now demands stage+commit BEFORE
    any gate (daemon sweeps <60 s, no exceptions); closeouts touching
@@ -42,14 +42,14 @@ covers only this session's work).
    (`journal/cqrs` → `internal/journal/cqrs`, 2 sites — an earlier prune
    broke the path refs and the gate had been riding red).
 
-3. **Stale-verify audit executed once against the dogfood journal (row
+~~3. **Stale-verify audit executed once against the dogfood journal (row~~ done (docs-health pass 2026-10-01)
    337's run half).** Built tq via `scripts/build-tq.sh /tmp/tq-audit`, ran
    `tq tasks --status pending --type agent --verify-contains 'gofmt -l'`
    against the production `$TQ_DB` (read-only): 1 stale-pin pending task
    surfaced (the root-module-only gate pattern). Workflow proven
    end-to-end; recipe line lives in AGENTS.md Conventions.
 
-4. **CountTasks/List agreement under every CLI filter (row 384)**
+~~4. **CountTasks/List agreement under every CLI filter (row 384)**~~ done (docs-health pass 2026-10-01)
    (d3cee2a4). `TestCountTasksMatchesList` in the shared conform suite
    rewritten: diverse seed (2 projects × 2 types, priority-controlled
    claim order, 1 completed, 1 rate-limit-parked) and a 13-filter table —
@@ -61,7 +61,7 @@ covers only this session's work).
    through the registered SUBTEST path per the row-344 recipe); postgresv4
    env-skipped ok (TQ_TEST_POSTGRES unset).
 
-5. **`tq tasks` truncation/count pins + `--count --json` + JSON envelope
+~~5. **`tq tasks` truncation/count pins + `--count --json` + JSON envelope~~ done (docs-health pass 2026-10-01)
    (rows 380, 382, 383)** (c4c274cf). `printTaskListTo(w io.Writer, …)`
    writer injection; `TestPrintTaskListFooterShapes` pins all three footer
    shapes (uncapped `N task(s)`, capped `showing N of M …`, total-error
@@ -71,7 +71,7 @@ covers only this session's work).
    flag wraps `{tasks, total, truncated}` (TestCmdTasksJSONEnvelope).
    Full cmd/tq module gate ok 7.8s; help-text smoke PASS.
 
-6. **Drift-audit coverage honesty + census reconciliation (rows 373, 381,
+~~6. **Drift-audit coverage honesty + census reconciliation (rows 373, 381,~~ done (docs-health pass 2026-10-01)
    387, 388)** (b2ecf030 + fold 1c4f0212). `tq audit --journal` with
    priority/dedup coverage 0/0 now prints "NOT REPLAYABLE — engine enqueue
    details are thin {project,type} (S1 divergence D2, M4-gated); 0/N does
@@ -85,14 +85,14 @@ covers only this session's work).
    census closed the 01-30 loop: **317 dead tasks** (`--count` and
    `--limit 0 --json` agree; default listing says "showing 50 of 317" live).
 
-7. **Help-text smoke per-subcommand flag pins (row 386)** (b2ecf030). The
+~~7. **Help-text smoke per-subcommand flag pins (row 386)** (b2ecf030). The~~ done (docs-health pass 2026-10-01)
    smoke already walks `tq <cmd> -h` for 18 subcommands; added explicit
    assertions that `tq tasks -h` carries -count, -json-envelope,
    -verify-contains, -limit (first cut used `--flag` which never matches
    the flag package's single-dash output — caught by running the smoke,
    fixed, PASS).
 
-8. **doctorVerifyPins verdict merge + hygiene summarize + structured
+~~8. **doctorVerifyPins verdict merge + hygiene summarize + structured~~ done (docs-health pass 2026-10-01)
    items (rows 348, 349, 350)** (40ad3c85, healed from daemon fold
    40ad3c85219d38eabc762c37ab700a8fe070d032 via soft-reset). Both verdicts now computed for EVERY pin
    (the known-stale pattern check used to `continue` past the repo ladder,
@@ -106,7 +106,7 @@ covers only this session's work).
    pins the both-half case. Full cmd/tq gate ok 10.9s; doctor suite
    23+ PASS.
 
-9. **Executor seams (rows 266, 267, 268)** (acfc158b). Excerpt's byte cut
+~~9. **Executor seams (rows 266, 267, 268)** (acfc158b). Excerpt's byte cut~~ done (docs-health pass 2026-10-01)
    now backs off to a whole UTF-8 boundary (TestExcerptRuneSafe: valid
    UTF-8, ellipsis, short-text, first-line); LogPath moved from the five
    paid result types into the shared `sessionUsage` block — wire JSON
@@ -117,7 +117,7 @@ covers only this session's work).
    TQ_LOG_DIR honoring, omit-empty shape. Gates: executor ok 20.1s,
    budget ok, worker build ok, root build/vet ok.
 
-10. **README `--hygiene` row (352)** — STALE on arrival: the README doctor
+~~10. **README `--hygiene` row (352)** — STALE on arrival: the README doctor~~ done (docs-health pass 2026-10-01)
     table cell already documents `--hygiene` (README.md:304); ticked with
     pointer, no edit (023dfad0).
 
@@ -127,28 +127,28 @@ two ticks belong to re-verify/stale findings). Row 204 got a live specimen
 
 ## b) PARTIALLY DONE
 
-1. **Row 332 (verify-window battery mandate)** — ticked with the AGENTS.md
+~~1. **Row 332 (verify-window battery mandate)** — ticked with the AGENTS.md~~ done (docs-health pass 2026-10-01)
    line + today's gate runs as evidence, but the row's "(+ own-file flag
    grep scoped to the files touched)" half is NOT implemented: the dead-SHA
    gate has no own-file mode; a repo-wide run stands in. Own-file grep
    remains an agent ritual, not a gate flag.
 
-2. **Row 350 (structured hygiene findings)** — shipped as additive
+~~2. **Row 350 (structured hygiene findings)** — shipped as additive~~ **NOT-DO — deliberately deferred: additive items[] strings accepted as shipped shape; typed schema never rowed.**
    `items[]` of strings (summary + verbatim rows). The fuller per-task
    schema the row anticipated (id/reasons/will_fire as separate typed
    fields) is deliberately deferred: changing checks[].detail shape is a
    versioned --json change.
 
-3. **Row 327 (a)-g) skeleton MANDATED)** — AGENTS.md now says MANDATED
+~~3. **Row 327 (a)-g) skeleton MANDATED)** — AGENTS.md now says MANDATED~~ **Won't implement — enforcement stayed prose-only; skeleton conventions instead extended in AGENTS.md (TODO_LIST:1163/1221 ticked); no structural gate ever minted.**
    incl. DONE-on-arrival windows, but enforcement is prose-only; no gate
    checks report structure (this report complies voluntarily).
 
-4. **Row 293 (journal-drift replay)** — verified PASS at HEAD and ticked
+~~4. **Row 293 (journal-drift replay)** — verified PASS at HEAD and ticked~~ done (docs-health pass 2026-10-01)
    as re-verified, but the underlying coverage came from the upstream S1/M4
    arc landed by other windows; this window contributed the verification
    and the tick only.
 
-5. **Daemon-fold attribution hygiene** — one of the two daemon sweeps was
+~~5. **Daemon-fold attribution hygiene** — one of the two daemon sweeps was~~ **Superseded — attribution-tooling family: heal-daemon-sweep.sh + fold-marker.sh + check-footer-attribution.sh (TODO_LIST:1501 DONE 2026-11-09).**
    healed via soft-reset (40ad3c85219d38eabc762c37ab700a8fe070d032 → 40ad3c85); the other (1c4f0212,
    journalaudit + help-smoke) was left as a fold with the footer commit
    landing adjacent (b2ecf030). Queue derivation will fold-attribute, but
@@ -188,14 +188,14 @@ two ticks belong to re-verify/stale findings). Row 204 got a live specimen
 
 ## d) TOTALLY FUCKED UP
 
-1. **I violated the Edit→commit→battery rule I shipped earlier the same
+~~1. **I violated the Edit→commit→battery rule I shipped earlier the same~~ done (docs-health pass 2026-10-01)
    window.** Twice the daemon swept my unstaged edits during multi-second
    gates (1c4f0212 after the journalaudit edit, 40ad3c85219d38eabc762c37ab700a8fe070d032 after the doctor
    edit during a 10.9 s module gate). One healed via soft-reset; one left
    as a fold. The rule exists because <60 s sweeps beat any gate run —
    there is no safe gate-then-commit ordering.
 
-2. **I generated Go test source via heredoc twice** (tasks_test.go
+~~2. **I generated Go test source via heredoc twice** (tasks_test.go~~ done (docs-health pass 2026-10-01)
    additions, doctor_test.go TestDoctorVerifyPinsMergesVerdicts) — the
    exact hazard AGENTS.md prohibits ("never generate Go source via
    heredocs"). Both compiled and passed, but the tooling caught a related
@@ -203,20 +203,20 @@ two ticks belong to re-verify/stale findings). Row 204 got a live specimen
    the write was rejected until I read it). No corruption occurred; the
    process breach is the finding.
 
-3. **My first TODO tick batch mangled four rows into `- [ ] [x]…`** (the
+~~3. **My first TODO tick batch mangled four rows into `- [ ] [x]…`** (the~~ done (docs-health pass 2026-10-01)
    checked marker inserted after the unchecked prefix via a bad slice in
    the python one-liner) — invisible to the parser AND to
    check-todo-list.sh, which stayed green through the damage. This is a
    live, fresh specimen for row 204's malformed-prefix rejection ask; the
    four rows are repaired (de92677ab1f7a8312f96057abb26a2f36adb601a).
 
-4. **The first help-smoke flag assertion used `--flag` spellings** that can
+~~4. **The first help-smoke flag assertion used `--flag` spellings** that can~~ done (docs-health pass 2026-10-01)
    never match the flag package's single-dash help output; only running the
    smoke caught it (then the smoke failed on -verify-contains while
    --count matched only via PROSE in other flags' help — the pass was
    accidentally green until the spelling fix).
 
-5. **First conform rewrite relied on claim-order assumptions** (completing
+~~5. **First conform rewrite relied on claim-order assumptions** (completing~~ done (docs-health pass 2026-10-01)
    `ids[0]` with whichever task the first claim returned) →
    ErrLeaseNotHeld on the park transition; fixed by priority-controlling
    the seed and using the claimed task itself. Also: my bash one-liners
@@ -225,142 +225,142 @@ two ticks belong to re-verify/stale findings). Row 204 got a live specimen
 
 ## e) WHAT WE SHOULD IMPROVE
 
-1. **Commit BEFORE any gate, no exceptions** — even a 10 s module gate is
+~~1. **Commit BEFORE any gate, no exceptions** — even a 10 s module gate is~~ **Superseded — AGENTS.md "Edit→commit→battery ordering" bullet.**
    daemon-race territory. The mechanical form is already there
    (`scripts/commit-task.sh`); it just has to be the reflex.
-2. **Use write/edit tools for ALL Go source** — never heredocs, even for
+~~2. **Use write/edit tools for ALL Go source** — never heredocs, even for~~ **Superseded — AGENTS.md "never generate Go source via heredocs" + tab-insertion rule.**
    test files that "are just going to compile anyway".
-3. **Glob before write** — `ls` the target test file before appending;
+~~3. **Glob before write** — `ls` the target test file before appending;~~ done (docs-health pass 2026-10-01)
    excerpt_test.go already existed with a compatible TestExcerpt.
-4. **Batch TODO ticks with a proven-correct transformation** — the second
+~~4. **Batch TODO ticks with a proven-correct transformation** — the second~~ **Superseded — scripts/check-todo-list.sh structural legs + self-tests.**
    batch's `"- [x]" + line[len("- [ ]"):]` was right; the first batch's
    slice arithmetic was wrong. A `scripts/commit-task.sh`-style tick
    helper (or row 204's gate) would have caught `- [ ] [x]` immediately.
-5. **Assert flag spellings against actual help output** — grep the real
+~~5. **Assert flag spellings against actual help output** — grep the real~~ done (docs-health pass 2026-10-01)
    `tq <cmd> -h` bytes when pinning help surfaces.
-6. **Patch-id triage script deserves a home** — /tmp/map-dead-shas.sh is
+~~6. **Patch-id triage script deserves a home** — /tmp/map-dead-shas.sh is~~ **Superseded — scripts/verify-fork-record.sh (TODO_LIST:95 DONE 2026-11-17).**
    the third use of the pattern (06-05, 2026-09-20, today); promoting it
    to scripts/ with a --verify mode would make the next rewrite heal
    mechanical instead of ad-hoc.
-7. **Parallel-window awareness** — at least four sibling windows landed
+~~7. **Parallel-window awareness** — at least four sibling windows landed~~ **Superseded — scripts/check-tick-claims.sh tick-claim guard + DONE-ANNOTATION-UNCHECKED WARN.**
    rows 116–119 while this window ran; re-grepping TODO_LIST before
    ticking (I hit one stale README row, 352) should extend to re-reading
    the row text at tick time, not just grep-locating it.
-8. **The dead-SHA baseline keeps regrowing from daemon-fold citations** —
+~~8. **The dead-SHA baseline keeps regrowing from daemon-fold citations** —~~ **Superseded — check-dead-sha-refs --shrink + fork-record arrows (TODO_LIST:120 DONE 2026-11-03; verify-fork-record.sh 2026-11-17).**
    reports citing `chore:` SHAs are structurally fragile (folds get
    soft-reset away); reports should cite the footer commit, not the fold.
 
 ## f) NEXT (highest value first)
 
-1. ci-local pool-env scrub (`env -u TQ_QUESTION_FILE -u TQ_RESULT_FILE -u
+~~1. ci-local pool-env scrub (`env -u TQ_QUESTION_FILE -u TQ_RESULT_FILE -u~~ done (docs-health pass 2026-10-01)
    TQ_DB -u TQ_REDACT -u TQ_LOG_DIR -u TQ_PAP_API_KEY -u TQ_PAP_URL`) +
    os.Unsetenv in question_test (rows 331, 213) — ~20 min/agent-window
    recurring burn, one fix.
-2. check-todo-list.sh malformed-prefix rejection (row 204) — I just
+~~2. check-todo-list.sh malformed-prefix rejection (row 204) — I just~~ done (docs-health pass 2026-10-01)
    shipped live damage it missed; harvest's TestRepoTodoListParses half
    too.
-3. scripts/verify-battery.sh (row 368) — collapses rows 332/344/372/383
+~~3. scripts/verify-battery.sh (row 368) — collapses rows 332/344/372/383~~ done (docs-health pass 2026-10-01)
    asks into one rc-captured script; every future window saves a battery.
-4. smoke/api.sh lockout e2e (131) + smoke/redaction.sh (132) — the two
+~~4. smoke/api.sh lockout e2e (131) + smoke/redaction.sh (132) — the two~~ done (docs-health pass 2026-10-01)
    missing security smokes; wire into ci-local.
-5. Redaction pins (166/167/168) + structural tail-helper guard (169).
-6. Lockout test de-sleep via nowFunc (134) + Retry-After boundary (407) +
+~~5. Redaction pins (166/167/168) + structural tail-helper guard (169).~~ done (docs-health pass 2026-10-14)
+6. Lockout test de-sleep via nowFunc (134) + Retry-After boundary (407) + **→ routed TODO_LIST:605/611/691/700 open**
    eviction WARN + clock unify (135) + knob constants (414).
-7. `?token=` strike path + all-routes lockout pins (136) + lowercase
+7. `?token=` strike path + all-routes lockout pins (136) + lowercase **→ routed TODO_LIST:601/602/604 open**
    scheme row (404) + SSE header e2e (405) + security-header table
    refactor (406).
-8. TQ_TASK_ID export to agent runs (193) + closeout-free
+8. TQ_TASK_ID export to agent runs (193) + closeout-free **→ routed TODO_LIST:374/375/377 open**
    TQ_QUESTION_FILE pin (195) + expiry-sweep fact (194).
-9. install-pre-commit.sh hooksPath respect (397) + inert-hooks detection
+9. install-pre-commit.sh hooksPath respect (397) + inert-hooks detection **→ routed TODO_LIST:523/524 open**
    (314) + session-start hooks-liveness probe (316) — the hooks have been
    inert on this host since 2026-09-14.
-10. fold-marker.sh (251) + daemon footer-attach heal script (408) — stop
+~~10. fold-marker.sh (251) + daemon footer-attach heal script (408) — stop~~ done (docs-health pass 2026-10-07)
     hand-inventing the two maneuvers this window itself needed twice.
-11. lint-baseline regen typecheck-poison refusal (200).
-12. check-archive-eligibility.sh (233) + next archive sweep (142/173/121).
-13. doctor --hygiene scratch-DB smoke + reresolve claim-time proof (139,
+11. lint-baseline regen typecheck-poison refusal (200). **→ routed TODO_LIST:382 open**
+~~12. check-archive-eligibility.sh (233) + next archive sweep (142/173/121).~~ done (docs-health pass 2026-10-26)
+~~13. doctor --hygiene scratch-DB smoke + reresolve claim-time proof (139,~~ done (docs-health pass 2026-10-31)
     351) — extends the smoke I touched with the stale-pin seeding half.
-14. doctor crushrc shadow WARN (423) + tq doctor TODO-ticked check (247).
-15. Webui: render-pin for result-card LogPath lines (356) +
+14. doctor crushrc shadow WARN (423) + tq doctor TODO-ticked check (247). **→ routed TODO_LIST:619 open**
+15. Webui: render-pin for result-card LogPath lines (356) + **→ routed TODO_LIST:566/733 open**
     fullOutputLine fragment extraction (357) + badge smoke assertion (367)
     - payload-substring filter (339).
-16. tq dlq/show FailureEvidence.Stage surface (419) + evidence-stage
+~~16. tq dlq/show FailureEvidence.Stage surface (419) + evidence-stage~~ done (docs-health pass 2026-10-26)
     filter.
-17. S1 divergence register doc (420) + D2 cross-links (375) + postgres
+17. S1 divergence register doc (420) + D2 cross-links (375) + postgres **→ routed TODO_LIST:572/617 open**
     drift-audit parity executed (376).
-18. README logs section (425) + SECURITY.md trust-boundary note (196) +
+18. README logs section (425) + SECURITY.md trust-boundary note (196) + **→ routed TODO_LIST:378/610 open**
     per-IP verify-and-close (413) + FEATURES placement (218).
-19. CHANGELOG [Unreleased] cut-planning pass (385) + CHANGELOG audit vs
+19. CHANGELOG [Unreleased] cut-planning pass (385) + CHANGELOG audit vs **→ routed TODO_LIST:530/531/534 open**
     tags (row 113 residue: phantom v0.3.1 section audit 321).
-20. check-transient-retry.sh in ci.yml (160) + call-site census pin (159)
+20. check-transient-retry.sh in ci.yml (160) + call-site census pin (159) **→ routed TODO_LIST:336/337/339 open**
     - check-go-mods retry pin (162) + silent-retry WARN audit (163).
-21. check-ci.sh single-gh-call + HEAD sha + ancestry wording (164).
-22. flake goTarballHash single-source (418).
-23. tq audit --redispatch surface (325) + release-gate CHANGELOG-tag
+~~21. check-ci.sh single-gh-call + HEAD sha + ancestry wording (164).~~ done (docs-health pass 2026-10-14)
+~~22. flake goTarballHash single-source (418).~~ done (docs-health pass 2026-10-12)
+23. tq audit --redispatch surface (325) + release-gate CHANGELOG-tag **→ routed TODO_LIST:533/534 open**
     extension (324) + TODO_LIST release-conditional sweep (323).
-24. Dead-export audit trio (244/245/246): allowlist-growth warn, committed
+24. Dead-export audit trio (244/245/246): allowlist-growth warn, committed **→ routed TODO_LIST:423/424 open**
     dead list, count-over-time log.
-25. Gate-attribution guard (289) + annotation-cite spot-checker (212) +
+25. Gate-attribution guard (289) + annotation-cite spot-checker (212) + **→ routed TODO_LIST:392/503 open**
     index-row phrase-drift guard (281) — the advisory docs gates family.
-26. session-start.sh FINAL SUMMARY master-CI state (214).
-27. Pre-commit report-filename timestamp gate (190).
-28. Frozen-date fixture sweep (174) + ratelimit-e2e GNU-date note (175)
+26. session-start.sh FINAL SUMMARY master-CI state (214). **→ routed TODO_LIST:393 open**
+~~27. Pre-commit report-filename timestamp gate (190).~~ **Superseded — shipped as verify-battery -r date-measured leg + AGENTS.md clock-first-filenames bullet.**
+~~28. Frozen-date fixture sweep (174) + ratelimit-e2e GNU-date note (175)~~ done (docs-health pass 2026-11-17)
     - stub-log assertion (177) + ci.yml parity (176).
-29. Provider tag in parked surface (178) + doctorParked day-aware pin
+29. Provider tag in parked surface (178) + doctorParked day-aware pin **→ routed TODO_LIST:364 open**
     (179) + stats parked-count pin (180).
-30. tq pool-health one-shot summarizer (40/148).
-31. Mint-time done-check for repeat dispatches (156) + gate-slow
+~~30. tq pool-health one-shot summarizer (40/148).~~ done (docs-health pass 2026-10-11)
+31. Mint-time done-check for repeat dispatches (156) + gate-slow **→ routed TODO_LIST:684 open**
     re-dispatch guard (412) + queue-side dedup→COMPLETED short-circuit
     (187).
-32. Harvest anti-race guard (208) + doctor TODO-row-ticked check (247).
-33. Verify-failure log stage capture (207) + FailureEvidence tail size
+32. Harvest anti-race guard (208) + doctor TODO-row-ticked check (247). **→ routed TODO_LIST:508/509 open (caller inventory DONE 2026-11-01)**
+33. Verify-failure log stage capture (207) + FailureEvidence tail size **→ routed TODO_LIST:435 open**
     (263-family).
-34. Rune-safety sibling: `truncate(oneLine(...), 60)` in tasks.go still
+34. Rune-safety sibling: `truncate(oneLine(...), 60)` in tasks.go still **→ routed row-not-found: cmd/tq truncate() still byte-cuts at HEAD**
     byte-cuts — same class as 266, same fix (not rowed; fold into a
     follow-up).
-35. AMBIGUOUS verdict soften (294) + daemonCommitSubject regex pin (295)
+~~35. AMBIGUOUS verdict soften (294) + daemonCommitSubject regex pin (295)~~ done (docs-health pass 2026-11-17)
     - show --commits folded_here help (296) + changed-file list (343).
-36. Consumer unsubscribe deterministic pin (298) + caller inventory (299)
+36. Consumer unsubscribe deterministic pin (298) + caller inventory (299) **→ routed TODO_LIST:508/509 open**
     - TestSelfManagingLoop flake root-cause (297).
-37. TestSweepPinsCloseoutReportPaths flake root-cause (271).
-38. depbump SetFailureEvidence (170) + dep-sweep e2e smoke (227).
-39. GitLogScanner trailer end-to-end pin (198) + tq show review-token
+~~37. TestSweepPinsCloseoutReportPaths flake root-cause (271).~~ done (docs-health pass 2026-10-17)
+~~38. depbump SetFailureEvidence (170) + dep-sweep e2e smoke (227).~~ done (docs-health pass 2026-10-31)
+~~39. GitLogScanner trailer end-to-end pin (198) + tq show review-token~~ **Won't implement — review-token surface superseded by the 2026-10-11 outcome-contract redesign.**
     detail (199).
-40. Legacy TQ_RESULT stdout deletion window (239) — plan it against the
+~~40. Legacy TQ_RESULT stdout deletion window (239) — plan it against the~~ done (docs-health pass 2026-11-02)
     live pool's in-flight set.
-41. Worktree open-questions mint (120) + R1/R2/R3 ruling follow-through
+~~41. Worktree open-questions mint (120) + R1/R2/R3 ruling follow-through~~ done (docs-health pass 2026-11-17)
     (planning doc landed by a parallel window mid-session).
-42. Prompt de-micromanage (392) + batch default (393) — the directive
+~~42. Prompt de-micromanage (392) + batch default (393) — the directive~~ done (docs-health pass 2026-11-01)
     rows; budget a full window each.
-43. row 262 battery probe lines (gofmt non-vendor scoped + df headroom) —
+~~43. row 262 battery probe lines (gofmt non-vendor scoped + df headroom) —~~ **Won't implement — folded into verify-battery.sh which shipped.**
     ride verify-battery.sh (item 3).
-44. closeoutPending lifetime audit (145) + per-key map bound sweep (146).
-45. tq api --help lockout mention + doctor/serve lockout WARNs (147).
-46. SECURITY.md response-header matrix pin (403).
-47. Postgres drift-audit parity (376) + D2 doc cross-links (375) + stale
+44. closeoutPending lifetime audit (145) + per-key map bound sweep (146). **→ routed TODO_LIST:314 open**
+~~45. tq api --help lockout mention + doctor/serve lockout WARNs (147).~~ done (docs-health pass 2026-10-31)
+~~46. SECURITY.md response-header matrix pin (403).~~ done (docs-health pass 2026-11-17)
+47. Postgres drift-audit parity (376) + D2 doc cross-links (375) + stale **→ routed TODO_LIST:571/572 open**
     enqueue-snapshot docs heal (374).
-48. Index-row placement gate option (427's check-status-index half) +
+48. Index-row placement gate option (427's check-status-index half) + **→ routed TODO_LIST:390/885 open**
     row-note accretion spot-check (210's enforcement half).
-49. Sibling-repo hooksPath sweep (315) — cross-repo, read-only, one
+49. Sibling-repo hooksPath sweep (315) — cross-repo, read-only, one **→ routed TODO_LIST:523 open (BLOCKED owner)**
     sitting.
-50. Tick row 133 (httpauth) and 116-119 leftovers as part of the next
+~~50. Tick row 133 (httpauth) and 116-119 leftovers as part of the next~~ done (docs-health pass 2026-10-04)
     docs-health harvest — discovered-shipped rows should close with
     verification citations, not linger open.
 
 ## g) QUESTIONS FOR THE OWNER
 
-1. **Daemon-race terminal state**: when the auto-commit daemon folds
+~~1. **Daemon-race terminal state**: when the auto-commit daemon folds~~ **Superseded — 2026-10-01_13-42 decision note + AGENTS.md heal-tool documentation.**
    footer-deserving work mid-window (twice this session), is the
    unpushed soft-reset heal the SANCTIONED move every time, or is
    leave-the-fold + adjacent-footer-commit acceptable? (Feeds rows
    251/408/427 and the AGENTS.md wording I shipped; every window currently
    re-decides this under time pressure.)
-2. **Discovered-shipped rows**: when a window finds a row already done by
+~~2. **Discovered-shipped rows**: when a window finds a row already done by~~ **Superseded — scripts/check-unticked.sh + landed-but-unticked sweep convention (TODO_LIST:1101 2026-10-27).**
    a parallel agent (internal/httpauth, and earlier the S1 journal-drift
    fix), should it tick the row with its own verification battery, or
    leave discovered-shipped rows for the docs-health sweep? (This window
    did both — ticked 293, left 133 — pick one convention.)
-3. **Next window's lane**: continue the code-hardening lane (env scrub,
+~~3. **Next window's lane**: continue the code-hardening lane (env scrub,~~ **Won't implement — lane question consumed — the 13-42 window ran the code-hardening lane.**
    todo-list gate, verify-battery.sh, security smokes — items 1–7 above)
    or switch to the docs bundle (README/SECURITY/S1 register/CHANGELOG
    planning)? Both are unblocked; the code lane burns down recurring

@@ -9,7 +9,7 @@
 
 ## a) FULLY DONE
 
-1. **Full-corpus re-triage of the live 2026-0\* corpus: 267 files, 13
+~~1. **Full-corpus re-triage of the live 2026-0\* corpus: 267 files, 13~~ done (docs-health pass 2026-10-01)
    sub-agent date buckets, 3 serial relaunches after 429 waves.** Every live
    status report (09-08..09-30), planning doc, and feedback draft got a
    CLASS verdict at CURRENT HEAD against the ratified archive bar: 17 DONE
@@ -17,60 +17,60 @@
    feedback file, rest KEEP-OPEN by convention. Today's `2026-10-01_*`
    reports (21 by close, 8 landed mid-sweep) are outside the ritual glob and
    were checked for index presence only (see §b3).
-2. **28-file archive with inline per-item verdicts.** 17 fully-done windows
+~~2. **28-file archive with inline per-item verdicts.** 17 fully-done windows~~ done (docs-health pass 2026-10-01)
    struck FORWARD-LOOKING items only (~215 items: §f/§g, tail asks, routed
    `TRACKED row` lines) via `annotate-status-items.py` (emit-keys → verify →
    apply; atomic; 17/17 pass `check-rows.py`); 3 duplicates carry the
    ratified whole-file `DUPLICATE — ARCHIVED` note; 7 executed planning
    docs struck + `EXECUTED — ARCHIVED` notes + `git mv`. All moves cite
    per-item evidence; zero files moved on prose judgment alone.
-3. **Citation hygiene held.** 23 index rows repointed to backticked
+~~3. **Citation hygiene held.** 23 index rows repointed to backticked~~ done (docs-health pass 2026-10-01)
    `archived/…`; 8 live reports + TODO_LIST + replay.go doc comment
    repointed in the same change; stale-cite sweep found and fixed the
    residue (row 233's 06-01 cite); `check-doc-refs.sh` ok; the pre-existing
    FEATURES dead cite `3faaf0b` healed via byte-identical patch-id twin
    (fork record `3faaf0b→33f5eeeed`, tree-hash proven).
-4. **TODO_LIST surgery: 49 `[x]` rows purged** (DONE-DELETED ruling),
+~~4. **TODO_LIST surgery: 49 `[x]` rows purged** (DONE-DELETED ruling),~~ done (docs-health pass 2026-10-01)
    emptied section header dropped, CHANGELOG `[Unreleased]` coverage
    verified for the user-facing closures (added the missing
    `executor.Excerpt` rune-safe Fixed entry), 230 open rows remain,
    2 harvest rows minted, `check-todo-list.sh` ok.
-5. **Living-doc verify + fixes.** README/ROADMAP/FEATURES read in full
+~~5. **Living-doc verify + fixes.** README/ROADMAP/FEATURES read in full~~ done (docs-health pass 2026-10-01)
    against the tree; FEATURES `tq tasks` truncated cell reconstructed from
    `cmd/tq/tasks.go` (second truncation caught in this file in two sweeps —
    §e2); docs/status/README.md counters (439→459 reports, 27→34 plans) +
    sweep paragraph + `digest 2026-10 (1st)` row.
-6. **Gates at close:** check-todo-list, check-status-index, check-doc-refs,
+~~6. **Gates at close:** check-todo-list, check-status-index, check-doc-refs,~~ done (docs-health pass 2026-10-01)
    check-ghost-archives, check-dead-sha-refs own-file leg (all 34 touched
    files), harvest module gate (parses TODO_LIST), root build+vet+test
    -race rc=0. Four explicit commits, tree clean at `5ea8156b`.
-7. **The 05-57 strike collision was caught and repaired in-session** (§d2),
+~~7. **The 05-57 strike collision was caught and repaired in-session** (§d2),~~ done (docs-health pass 2026-10-01)
    and the applied-lines-vs-input-lines diff became a per-file ritual for
    every later apply.
 
 ## b) PARTIALLY DONE
 
-1. **~210 KEEP-OPEN reports stay live by convention** with their unrouted
+~~1. **~210 KEEP-OPEN reports stay live by convention** with their unrouted~~ **Won't implement — KEEP-OPEN convention itself superseded 2026-10-26 by check-archive-eligibility (every-item-resolved bar).**
    items visible in-file; the per-bucket OPEN lists exist only in this
    session's transcript — the highest-value unrowed items were NOT swept
    into TODO_LIST this pass (only 2 process rows minted; the 09-30 pass
    minted 9). The mass is enumerated, not harvested.
-2. **The sweep report's own battery claim is scoped, not absolute:** the
+~~2. **The sweep report's own battery claim is scoped, not absolute:** the~~ **Superseded — scoped-battery claim form encoded in AGENTS.md "No absolute verification phrases" bullet.**
    full-corpus dead-sha gate is RED at HEAD (5 cites in the in-flight
    13-15 report, orphaned by the day's earlier rewrite, file still being
    edited mid-sweep); this session ran the own-file leg instead of healing
    a moving tree. The red default-scope gate is inherited by every window
    until 13-15's owner closes.
-3. **Today's 21 `2026-10-01_*` reports were never triaged** (out of the
+~~3. **Today's 21 `2026-10-01_*` reports were never triaged** (out of the~~ **Superseded — same-day 21-reports triage completed by the 16-06 resweep (§a1).**
    `2026-0*` ritual glob): several carry unrouted §f items that a future
    sweep will re-derive; the 09-56/11-01/11-37/13-15 queue-health arc and
    the 13-42 todo-sweep window each minted rows already (verified by
    TODO_LIST presence), but the residue was not harvested per-file.
-4. **Agent verdicts were trusted more than they were verified.** Spot-checks
+~~4. **Agent verdicts were trusted more than they were verified.** Spot-checks~~ **Superseded — spot-check discipline encoded in AGENTS.md claims-carry-citations + docs-gates annotate gate.**
    covered ~4 shipped-claims across 13 buckets (one per risky bucket at
    most); the strike tool proves STRUCTURE (line matched), not TRUTH (claim
    true). A wrong `shipped at HEAD` verdict would now be archived as struck.
-5. **The strike-scope question was half-settled:** this pass applied
+~~5. **The strike-scope question was half-settled:** this pass applied~~ **Superseded — strike-scope settled by the 2026-10-26 mechanical bar (check-archive-eligibility contract).**
    FORWARD-ONLY strikes as de-facto policy (16-06 §a2), but it is an
    agent decision, not a ratification — the 09-30 pass did the opposite.
 

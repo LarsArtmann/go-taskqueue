@@ -104,15 +104,15 @@ The P1 loop alone consumed ~120% of the daily cap on its worst day.
 
 ## d) DEVIATIONS & OWNED ERRORS (recorded deliberately)
 
-1. **F32 conform→worker-e2e pin.** The plan asked for a conform-suite
+~~1. **F32 conform→worker-e2e pin.** The plan asked for a conform-suite~~ done (docs-health pass 2026-10-01)
    pin ("env class never loops > N"); the breaker lives in the worker
    loop, not the store, so the pin landed as the worker e2e
    `TestEnvRequeueStreakBurnsAttempt` (+ conform already carries
    `RequeueClass` from M9). Deviation, not scope loss.
-2. **F23 `go mod vendor` deliberately skipped.** Root builds auto-use
+~~2. **F23 `go mod vendor` deliberately skipped.** Root builds auto-use~~ done (docs-health pass 2026-10-01)
    `vendor/`; regenerating it would re-plant the exact poisoned tree M2
    removed. Root -race gates ran vendor-less (rc-to-file) instead.
-3. **Two daemon ferry folds (M10).** Ferries 76ef8874→7addfe95 and
+~~3. **Two daemon ferry folds (M10).** Ferries 76ef8874→7addfe95 and~~ done (docs-health pass 2026-10-01)
    8305e044→7addfe95 (fork records; both folded away)
    swept staged work during gates (the second proved ferries take
    STAGED files too); folded into `7addfe95` while local-only +
@@ -120,18 +120,18 @@ The P1 loop alone consumed ~120% of the daily cap on its worst day.
    second ferry was re-committed as `5672d4a8`. CV ferries interleave
    foreign-session files ⇒ never fold in CV, verify content in HEAD
    instead.
-4. **CV `--no-verify` docs commit.** CV's pre-commit runs repo-wide go
+~~4. **CV `--no-verify` docs commit.** CV's pre-commit runs repo-wide go~~ done (docs-health pass 2026-10-01)
    vet; the cross-post docs landed via the CV daemon ferry
    (`2a688e03b`) after `--no-verify` found "nothing to commit" —
    content verified in HEAD. Daemonic equivalent of the same exception.
-5. **`tq serve` → `tq worker` attribution fix.** The M13 annotation and
+~~5. **`tq serve` → `tq worker` attribution fix.** The M13 annotation and~~ done (docs-health pass 2026-10-01)
    the 13-15 report claimed the papdashboard bridge cursor is "also
    written by `tq serve`"; the code has bridges only in `cmdWorker`
    (`cmd/tq/main.go:600`) and `cmdAgentPool` (`cmd/tq/main.go:990`).
    Both reports corrected this close-out (rides `3eb69467`). The
    finding itself — bridge currency does NOT prove pool health — is
    unchanged.
-6. **Archive gate catch:** the first `archive-evidence.sh` run was
+~~6. **Archive gate catch:** the first `archive-evidence.sh` run was~~ done (docs-health pass 2026-10-01)
    refused because `loopsmoke.log` matched the assets `*.log` ignore
    rules; archived as `loopsmoke-output.txt` — the gate working as
    designed, recorded so the class is known.
@@ -150,17 +150,17 @@ The P1 loop alone consumed ~120% of the daily cap on its worst day.
 
 ## f) NEXT (ranked)
 
-1. Owner: pool health call + restart (unblocks F65 and the sweepers).
-2. Owner: dlqfix watermark rewind decision (§g2).
-3. M19 follow-through: F65 verification once the pool is back.
-4. F70 final `scripts/ci-local.sh` full battery (this session, after
+~~1. Owner: pool health call + restart (unblocks F65 and the sweepers).~~ **Won't implement — stale — pool restart + sweepers recovered 2026-10-02.**
+~~2. Owner: dlqfix watermark rewind decision (§g2).~~ **Superseded — rewind decision lives in open row TODO_LIST:621 (BLOCKED owner ruling).**
+~~3. M19 follow-through: F65 verification once the pool is back.~~ **Superseded — F65 verification absorbed by the 2026-10-02 recovery (task reports 06-16+ green).**
+~~4. F70 final `scripts/ci-local.sh` full battery (this session, after~~ **Won't implement — stale — superseded by today's full-battery runs (2026-11-17 ci-local routine).**
    M19/M21) + M1 re-check (claims still frozen at 169).
-5. CV: land its two gate fixes (their P1 lane) so CV dead letters stop
+~~5. CV: land its two gate fixes (their P1 lane) so CV dead letters stop~~ **Won't implement — CV's own lane — CV gate fixes landed 2026-10-02 (their closeout, not rowed here).**
    growing at 94%-own-gate.
 
 ## g) QUESTIONS (carried, third ask — cannot resolve from this shell)
 
-1. **Is the agent-pool down/hung since ~06:38?** All three sweepers'
+~~1. **Is the agent-pool down/hung since ~06:38?** All three sweepers'~~ **Superseded — answered 2026-10-02: pool restarted, sweepers recovered (13-15 §g2 verdict).**
    cursors froze at seq 8661 (06:33:25–06:38:25) while the journal ran
    to 8696 by 08:34; the bridge cursor kept moving (it also rides
    `tq worker`), so pool-down is consistent but unprovable here
