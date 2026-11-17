@@ -14,6 +14,19 @@ Items carry their evidence: a code path and/or the status report that filed
 them (`docs/status/<date>_<slug>.md`). Completed items live in CHANGELOG.md,
 not here.
 
+## IO-review follow-ups (2026-11-17; source: docs/status/2026-11-17_19-40_io-review-pool-attribution-verdict.md §f)
+
+- [ ] Host: drop `IOSchedulingPriority=7` (lowest class) from the deployed tq-agent-pool unit — it inflates IO PSI stall time for the whole cgroup behind every other submitter (source report §a/§e) — BLOCKED: owner host action (root-owned /etc/systemd/system/tq-agent-pool.service; repo template is clean)
+- [ ] Host: soften the deployed unit's MemoryMax=8G (229k max events observed) to MemoryHigh=10G + MemoryMax=24G + MemoryMin=256M so the pool keeps its page cache and the daemon stops swapping (source report §a/§e) — BLOCKED: owner host action; poolhealth's 2 GiB crush-server WARN band assumes the 8G and stays valid under a bigger ceiling
+- [ ] Investigate llama-vlm-cap.service continuous GGUF weight streaming (~22–40 MB/s from /data/ai, top sustained reader during the review) — BLOCKED: foreign service, owner ruling pending (report §g2)
+- [ ] Add per-service IO/PSI attribution to monitoring: cgroup io.stat deltas + the service's OWN memory.pressure, not system-wide PSI + cgroup bytes (the alert that triggered the review mis-attributed both) — BLOCKED: monitor365 repo row, not executable here (report §e)
+- [ ] Verify the /proc tgid io counter-fold mechanism (observed +1290 MB leader jump as a 1281 MB child exited, +9 MB device traffic) against kernel sources or a scratch-VM repro — kills the review's last unknown (report §b)
+- [ ] Full io-surface claims.cue judgment pass over the 51 file-read sites (lint is 0-error; the durability/frequency judgments in claims are unreviewed since the 2026-11-15 fill) (report §b)
+- [ ] poolhealth: surface `memory.events.local: max` in the health JSON so cgroup thrash is visible from inside tq, not only by host forensics (report §f7; cmd/tq/poolhealth.go)
+- [ ] Audit crush session-store growth: /mnt/hot/crush = 84 GB across projects (SystemNix crush.db 11.4 GB alone) with no observed retention — measure growth rate and propose a prune/archive policy (report §f8)
+- [ ] monitor365: zram swap-in-rate alert as the thrash early-warning (today's failure surfaced as a generic "IO stall") — BLOCKED: monitor365 repo row (report §f9)
+- [ ] Record the deployed-unit override contract (repo template carries no Memory*/IOSched*; the host adds MemoryMax=8G, ioprio 7, CPUQuota=400%) in deploy/systemd/ or docs/problems so the next IO incident does not re-derive it (report §a; AGENTS.md Known Issues has the one-liner)
+
 ## Docs-health corpus-sweep harvest (2026-11-04; sources: the 2026-0* ANNOTATE sweep over all 28 live 2026-09 root reports — banners carry per-item verdicts at HEAD d65b9774; deduped against rows 344/340/371/376/546/550/617/652/656/662/838/839/844/850/884/906/992/1059/1096/1166/1168/1210/1293/1496/1563/1595/1709)
 
 - [x] Widen check-mirror-clones.sh beyond the strict `-t 3` gate: pin the known-acceptable adapter pairs as an explicit baseline (scripts/mirror-baseline.txt is zero rows today) and add a `--show-suppressed` pass so the ~24 hidden same-file groups get line-by-line triage instead of silently passing (2026-09-27_15-29 §f2/§f17/§f6; scripts/check-mirror-clones.sh) — DONE 2026-11-07: gate parses canonical + raw `--show-suppressed` passes, hidden NEW mass fails strict; two observed pairs pinned with recorded reasons (engine delegators, 6-token test prolog); `--show-suppressed` lists baselined rows line-by-line; fleet `--self-test` battery (format pin, baseline-identity drift, hidden-new rc=1, advisory, resolved, zero) wired into ci-local; raw-view observation at HEAD: exactly the 2 pinned groups, canonical view 0
