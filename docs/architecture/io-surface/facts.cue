@@ -763,14 +763,9 @@ sites: {
 			call: ["os.Getenv"]
 		}
 	}
-	"internal/executor.AgentExecutor.runAgent": {
+	"internal/executor.AgentExecutor.runAgentTurn": {
 		location: [
-			"internal/executor/agent.go:710",
-			"internal/executor/agent.go:715",
-			"internal/executor/agent.go:722",
-			"internal/executor/agent.go:727",
-			"internal/executor/agent.go:829",
-			"internal/executor/agent.go:836",
+			"internal/executor/agent.go:770",
 		]
 		family: "file-write"
 		facts: {
@@ -1255,6 +1250,15 @@ sites: {
 		family: "file-read"
 		facts: {
 			call: ["os.Stat"]
+		}
+	}
+	"internal/executor.writeFailureSidecar": {
+		location: [
+			"internal/executor/agent.go:704",
+		]
+		family: "file-write"
+		facts: {
+			call: ["os.Getenv", "os.MkdirAll", "os.WriteFile"]
 		}
 	}
 	"internal/executor.writeOutputSidecar": {

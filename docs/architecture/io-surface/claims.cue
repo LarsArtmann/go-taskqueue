@@ -319,11 +319,11 @@ sites: {
 		resource: "agent binary env resolution"
 		trigger: "agent executor build"
 	}
-	"internal/executor.AgentExecutor.runAgent": claims: {
-		resource: "agent stdin/stdout temp files + child process env"
-		trigger: "each agent task run"
+	"internal/executor.AgentExecutor.runAgentTurn": claims: {
+		resource: "agent stdin/stdout temp files + child process env (per turn)"
+		trigger: "each agent task turn"
 		durability: "ephemeral"
-		rationale: "temp files are created and removed within the run; loss costs nothing"
+		rationale: "temp files are created and removed within the turn; loss costs nothing"
 	}
 	"internal/executor.AgentExecutor.runCloseoutTurn": claims: {
 		resource: "closeout turn child process (question rail payload)"
@@ -541,6 +541,12 @@ sites: {
 	"internal/executor.vendorGofmtSignature": claims: {
 		resource: "vendor dir + gofmt state signature"
 		trigger: "verify: vendor/fmt stage gate"
+	}
+	"internal/executor.writeFailureSidecar": claims: {
+		resource: "redacted failure sidecar under TQ_LOG_DIR (session-resume ladder evidence)"
+		trigger: "network-outage agent run failure"
+		durability: "recoverable"
+		rationale: "best-effort redacted evidence; absent TQ_LOG_DIR or a write error degrades to the fresh-run fallback — loss costs the resume ladder and the diagnosis trail, never task state"
 	}
 	"internal/executor.writeOutputSidecar": claims: {
 		resource: "task output sidecar dir (TQ sidecar root)"
@@ -940,9 +946,8 @@ sites: {
 		resource: "fold lock file (O_CREATE|O_RDWR flock)"
 		trigger: "each fold attempt: single-folder fold contract"
 		criticality: "critical"
-		rationale: "the fold lock is the split-brain guard between folders"
+		rationale: "the fold lock is the split-brain guard between folders; it is content-free — flock owns the mutual exclusion, the file bytes are never parsed, so a torn creation is harmless"
 		durability: "ephemeral"
-		rationale: "the fold lock is content-free: flock owns the mutual exclusion, the file bytes are never parsed, so a torn creation is harmless"
 	}
 	"internal/readmodel.writeWorkerFailedMarkerAt": claims: {
 		resource: "worker-failed marker (tmp+rename + os.Remove)"

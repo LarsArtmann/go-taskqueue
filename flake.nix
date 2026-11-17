@@ -44,7 +44,15 @@
       flake.nixosModules.default = import ./deploy/nixos/tq-agent-pool.nix;
 
       go-standard = rec {
-        enableTemplFreshnessCheck = true;
+        # DISABLED 2026-11-17: the freshness oracle is hardcoded pkgs.templ
+        # (nixpkgs pins templ 0.3.1020, which emits the pre-removal
+        # templ.ResolveAttributeValue/JoinURLErrs API), but the module graph
+        # needs runtime >= v0.3.1100 (templ-components v1.27.0 floor) and
+        # upstream REMOVED that API by 1100 — output matching the oracle
+        # cannot compile, output matching the runtime cannot pass the
+        # oracle. Re-enable once nixpkgs ships templ >= 0.3.1100 (or
+        # go-nix-helpers grows an oracle-version override).
+        enableTemplFreshnessCheck = false;
         pname = "go-taskqueue";
         # Keep in sync with the latest release tag — release.sh does not
         # bump this; `tq version` reports it. The ldflags line below derives

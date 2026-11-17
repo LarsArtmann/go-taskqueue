@@ -14,6 +14,11 @@ Items carry their evidence: a code path and/or the status report that filed
 them (`docs/status/<date>_<slug>.md`). Completed items live in CHANGELOG.md,
 not here.
 
+## CI-green recovery follow-ups (2026-11-17; source: this session's red-master heal at 5e1928b6+)
+
+- [ ] Re-enable `enableTemplFreshnessCheck` in flake.nix once nixpkgs ships templ >= 0.3.1100 (or go-nix-helpers grows an oracle-version override): the freshness oracle is hardcoded pkgs.templ (nixpkgs pins 0.3.1020, whose generator emits the pre-removal templ.ResolveAttributeValue/JoinURLErrs API) while the module graph needs runtime >= v0.3.1100 (templ-components v1.27.0 floor) and upstream removed that API by 1100 — no committed output can satisfy both; the gate shipped red-by-construction in 93468aac and was disabled 2026-11-17 with the full reasoning in the flake comment
+- [ ] Consider filing the go-nix-helpers ask: let the templ-freshness oracle version be overridden (e.g. templPackage option) so repos whose runtime floor exceeds the nixpkgs templ pin can still run the regenerate-and-diff gate — verify the option truly does not exist at the locked rev 15c84349 first (source: same session)
+
 ## IO-review follow-ups (2026-11-17; source: docs/status/2026-11-17_19-40_io-review-pool-attribution-verdict.md §f)
 
 - [ ] Host: add `MemoryMin=256M` to the deployed tq-agent-pool unit — the only measured pool-harm was the DAEMON swapping (majflt 2.2k→25k in 30 min) while its cgroup cap evicted cache; cache eviction for a background job is by design, daemon-swap is not (source report §a/§e) — BLOCKED: owner host action; owner ruling 2026-11-17: keep MemoryMax=8G as the fence and keep IOSchedulingPriority=7 (background job yields; NVMe blk-mq barely honors ioprio and swap-in reads ignore it — the earlier drop-ioprio and MemoryMax=24G recs are withdrawn)
