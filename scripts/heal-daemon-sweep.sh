@@ -194,21 +194,30 @@ check_rails() {
 		# foreign footer below — the 2026-10-12 01-41 shape) is the span
 		# boundary, not a refusal: with a DEFAULT base the heal narrows to
 		# the exactly-mine span above it. An explicit --from is a conscious
-		# choice and never auto-narrows; >1 blocker is a genuinely mixed
-		# span and refuses with the exact invocation that would be accepted
-		# (row 56: never make the caller eyeball git log).
+		# choice and never auto-narrows.
 		if [ "${#blockers[@]}" -eq 1 ] && [ -z "$mode" ]; then
 			echo "narrow ${blockers[0]}"
 			return 0
 		fi
-		local oldest="${blockers[${#blockers[@]} - 1]}"
+		# The suggestion is the NEAREST different-id footer (blockers[0];
+		# rev-list is newest-first), not the oldest: --from is an EXCLUSIVE
+		# base bound, so --from <oldest> still contains every nearer blocker
+		# and re-refuses one per iteration — the 2026-11-02 three-attempt
+		# --from walk (§f8). One step from the nearest footer converges; the
+		# lower foreign-footer commits below it belong to other owners'
+		# heals. The amend fallback (AGENTS Known Issues) stays the exit for
+		# a tip that is exactly-mine and already footered.
+		local nearest="${blockers[0]}"
 		{
 			echo "refusing: ${#blockers[@]} commit(s) in $base..HEAD inside the heal range:"
 			for c in "${blockers[@]}"; do
 				echo "  $(git log -1 --oneline "$c") carries a different Task-Queue-ID footer"
 			done
-			echo "Heal only your span (auto-detected oldest blocker):"
-			echo "  $0 $id --from $oldest"
+			echo "Heal only your exactly-mine span above the NEAREST different-id footer:"
+			echo "  $0 $id --from $nearest"
+			if [ "${#blockers[@]}" -gt 1 ]; then
+				echo "(lower foreign-footer commits stay for their own owners' heals; never widen --from past a blocker — that is the 2026-11-02 oscillation walk)"
+			fi
 		} >&2
 		return 1
 	fi
@@ -900,8 +909,9 @@ EOF
 	fi
 
 	# Row 56 refusal UX: TWO different-id footers in the range must refuse
-	# AND print the exact --from invocation (the oldest blocker) so the
-	# caller never has to eyeball git log.
+	# AND print the exact --from invocation (the NEAREST blocker — the
+	# pre-2026-11-17 oldest-blocker form re-refused once per blocker, the
+	# 2026-11-02 three-attempt walk) so the caller never eyeballs git log.
 	local repo3="$tmp/repo3"
 	git init -q "$repo3"
 	git -C "$repo3" config user.email t@t
@@ -913,16 +923,43 @@ EOF
 	echo f1 >"$repo3/f1.txt"
 	git -C "$repo3" add f1.txt
 	git -C "$repo3" commit -qm $'chore: foreign one\n\nTask-Queue-ID: aaaa000000000000000000000000000001'
-	local blocker1
-	blocker1=$(git -C "$repo3" rev-parse HEAD)
+	local blocker_oldest
+	blocker_oldest=$(git -C "$repo3" rev-parse HEAD)
 	echo f2 >"$repo3/f2.txt"
 	git -C "$repo3" add f2.txt
 	git -C "$repo3" commit -qm $'chore: foreign two\n\nTask-Queue-ID: bbbb000000000000000000000000000002'
+	local blocker_nearest
+	blocker_nearest=$(git -C "$repo3" rev-parse HEAD)
 	echo m >"$repo3/m.txt"
 	git -C "$repo3" add m.txt
 	git -C "$repo3" commit -qm "chore: sweep mine"
 	(cd "$repo3" && "$self" deadbeef00000000000000000000000000000003) >"$tmp/out_multi" 2>"$tmp/err_multi"
-	expect_refusal "mixed span (two foreign footers)" $? "--from $blocker1" "$tmp/err_multi"
+	expect_refusal "mixed span (two foreign footers)" $? "--from $blocker_nearest" "$tmp/err_multi"
+	if grep -qF -- "--from $blocker_oldest" "$tmp/err_multi"; then
+		fail=$((fail + 1))
+		echo "SELF-TEST FAIL: the suggestion must be the NEAREST blocker, not the oldest (2026-11-02 oscillation walk)" >&2
+	else
+		ok=$((ok + 1))
+	fi
+
+	# T09 oscillation-breaker walkthrough (2026-11-02 §f8/§f9): running the
+	# printed suggestion converges in ONE step — only the exactly-mine top
+	# span is healed, both foreign footers stay byte-identical in place —
+	# and a WIDER --from (at the oldest blocker) still refuses, proving the
+	# walk cannot be shortcut past a blocker.
+	(cd "$repo3" && "$self" deadbeef00000000000000000000000000000003 --from "$blocker_nearest") >"$tmp/out_walk" 2>"$tmp/err_walk"
+	if [ "$?" = "0" ] &&
+		footer_well_formed "$(git -C "$repo3" log -1 --format='%B' HEAD)" "deadbeef00000000000000000000000000000003" &&
+		[ "$(git -C "$repo3" log -1 --format='%B' HEAD~1)" = "$(printf 'chore: foreign two\n\nTask-Queue-ID: bbbb000000000000000000000000000002')" ] &&
+		[ "$(git -C "$repo3" log -1 --format='%B' HEAD~2)" = "$(printf 'chore: foreign one\n\nTask-Queue-ID: aaaa000000000000000000000000000001')" ]; then
+		ok=$((ok + 1))
+	else
+		fail=$((fail + 1))
+		echo "SELF-TEST FAIL: one-step convergence — top span healed, foreign footers byte-identical" >&2
+		cat "$tmp/err_walk" >&2
+	fi
+	(cd "$repo3" && "$self" deadbeef00000000000000000000000000000003 --from "$blocker_oldest") >/dev/null 2>"$tmp/err_wide"
+	expect_refusal "wider --from past a blocker still refuses" $? "carries a different Task-Queue-ID footer" "$tmp/err_wide"
 
 	# Row 184 dirty-tree tolerance: a dirty worktree (modified + untracked)
 	# heals cleanly — the msg-only rewrite preserves HEAD's tree, so the
