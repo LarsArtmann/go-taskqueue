@@ -61,10 +61,11 @@ self_test() {
 		exit 1
 	fi
 	must_mention "ORPHANED GUARD: $tmp/smoke/unsourced.sh" "$src_out" "unsourced lib stays an orphan"
-	must_mention "guard-wiring summary: 1 scripts wired, 1 orphaned" "$src_out" "sibling-sourcing summary pins exact counters (sourced lib wired)"
+	must_mention "guard-wiring summary: 2 scripts wired, 1 orphaned" "$src_out" "sibling-sourcing summary pins exact counters (sourced lib wired + the convention-invoked ritual)"
 	local pos_out pos_wired pos_orphaned
 	pos_out="$("$self_abs" 2>&1)" || true
 	pos_wired=$(printf '%s\n' scripts/check-*.sh scripts/smoke/*.sh | wc -l)
+	pos_wired=$((pos_wired + 1)) # + the convention-invoked scripts/session-start.sh ritual (asserted below the loop)
 	pos_orphaned=$(grep -c '^ORPHANED GUARD:' <<<"$pos_out" || true)
 	pos_wired=$((pos_wired - pos_orphaned))
 	# rc is NOT pinned: a pre-existing orphan elsewhere in the fleet keeps
