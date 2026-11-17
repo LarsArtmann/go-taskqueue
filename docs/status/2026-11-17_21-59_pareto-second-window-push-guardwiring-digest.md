@@ -113,6 +113,7 @@ self-test + delta, deploy cadence ×2); T17-T32 (P2); T33-T35 (P3). The
 1. Retry `git push` (timing window expires ~22:03) → watch run → tick
    CI-reds rows 1687/1385/1709 on green (T36).
 2. Finish T02: test -race receipt + full ci-local green rc.
+   <!-- fresh:skip — session-in-flight (Pareto master plan T02), ticked at closeout -->
 3. Apply `/tmp/pareto-battery/annotate-wave1.tsv` (repair dry-run already
    reviewed; apply + check-rows over the 8 touched files).
 4. Derive wave-1 remainder in-session (10-02 06-44 → 08-06, 8 reports).
@@ -121,6 +122,7 @@ self-test + delta, deploy cadence ×2); T17-T32 (P2); T33-T35 (P3). The
    (concurrent session mid-flight — coordinate), owner digest, JSON pin,
    facade-parity, dead-sha-twins.sh.
 7. P3: residue batches + pool dispatch wave.
+   <!-- fresh:skip — session plan tier (Pareto master plan T33–T35), not backlog -->
 
 ## g) Questions for the owner
 
