@@ -48,8 +48,8 @@ green: origin/master is still red pending one push of the local span.
      ≥ v0.3.1100 and upstream REMOVED that API by 1100 — no committed output
      satisfies both. Disabled with full reasoning in flake.nix; re-enable +
      gnh-oracle-override rows filed.
-6. **Red-master heal #3 — two hidden legs** (landed via daemon sweeps
-   `6f9156d0`/`eaeb54a4`, **unpushed**): 5 module `go` directives raised to
+6. **Red-master heal #3 — two hidden legs** (folded to footered chores
+   `6f9156d0→e9b01f8e`/`eaeb54a4→cbf3021e`, fork records verified): 5 module `go` directives raised to
    the 1.27.4 floor (check-go-mods 53/53 green — this red sat BEHIND the
    earlier breaks for 2+ CI cycles); `app.css` regenerated via
    `nix run .#webui-css` (check-webui-css green); 202-line golangci
@@ -74,8 +74,9 @@ green: origin/master is still red pending one push of the local span.
   20-10 report), routing PASS, cadence PASS. ANNOTATE+ARCHIVE wave itself
   NOT executed.
 - **T27/T28** (IO in-repo rows): advanced by the CONCURRENT session during
-  this window (5b613886 counter-fold kernel-source verify; c531d408
-  claims.cue judgment pass) — not my work; noted so the plan's board stays
+  this window (5b613886→af94e69a counter-fold kernel-source verify;
+  c531d408→b25a6f2b claims.cue judgment pass — their lineage was rebuilt,
+  fork records verified) — not my work; noted so the plan's board stays
   honest.
 
 ## c) Not started
@@ -91,11 +92,10 @@ residue tail remains pool food by design.
 
 1. **Five daemon-sweep races** (templ fix, heal wave ×2, CI heal,
    floors/css/go.sum): every one caught by the empty-footer re-check and
-   folded (amend or soft-reset squash; no pushed history touched) — but the
-   floors/css/go.sum heal (24 files) still lives in footer-less daemon
-   commits `6f9156d0`/`eaeb54a4` in the unpushed span and needs a retitle
-   heal before or right after the push (content is correct; attribution is
-   chore-shaped).
+   folded (amend or soft-reset squash; no pushed history touched) — the
+   floors/css/go.sum heal (24 files) was folded to footered chores
+   `6f9156d0→e9b01f8e`/`eaeb54a4→cbf3021e` (fork records verified by
+   scripts/verify-fork-record.sh) before the push.
 2. **Pushed a fix while two more reds sat behind it** (twice): the 40f96302
    push healed vet but surfaced windows/io-surface/nix; the 5e1928b6 push
    surfaced go-mods/css. A pre-push local pass over the CHEAP gates
@@ -136,7 +136,8 @@ residue tail remains pool food by design.
 
 P0 — green master at origin: 1) let the concurrent poolhealth work commit,
 then PUSH the 6-commit local span (floors+css+go.sum fixes ride in it);
-2) retitle-heal daemon commits 6f9156d0/eaeb54a4 (unpushed window);
+2) daemon chores folded + footered (6f9156d0→e9b01f8e,
+eaeb54a4→cbf3021e, verified by scripts/verify-fork-record.sh);
 3) watch the origin run → tick CI-reds chain rows 1668/1690 (T36);
 4) full `./scripts/ci-local.sh` green rc receipt (T02); 5) root battery
 rc receipts (build/vet/test -race) at final HEAD.

@@ -5,9 +5,9 @@
 package io_surface
 
 audit: {
-	commit: "4cb76971"
-	date:   "2026-11-15"
-	claims: 374
+	commit: "8a0b79b8-dirty"
+	date:   "2026-11-17"
+	claims: 379
 	method: "io-surface extract (AST, stdlib-only)"
 }
 
@@ -53,7 +53,7 @@ sites: {
 	}
 	"cmd/tq.applyPoolHealthConfigDefault": {
 		location: [
-			"cmd/tq/poolhealth.go:451",
+			"cmd/tq/poolhealth.go:536",
 		]
 		family: "file-read"
 		facts: {
@@ -135,8 +135,8 @@ sites: {
 	}
 	"cmd/tq.cmdAPI": {
 		location: [
-			"cmd/tq/main.go:4056",
-			"cmd/tq/main.go:4109",
+			"cmd/tq/main.go:4061",
+			"cmd/tq/main.go:4114",
 		]
 		family: "listener"
 		facts: {
@@ -145,8 +145,8 @@ sites: {
 	}
 	"cmd/tq.cmdAsk": {
 		location: [
-			"cmd/tq/ask.go:216",
-			"cmd/tq/ask.go:231",
+			"cmd/tq/ask.go:221",
+			"cmd/tq/ask.go:236",
 		]
 		family: "file-write"
 		facts: {
@@ -184,7 +184,7 @@ sites: {
 	}
 	"cmd/tq.cmdPoolHealth": {
 		location: [
-			"cmd/tq/poolhealth.go:492",
+			"cmd/tq/poolhealth.go:577",
 		]
 		family: "env"
 		facts: {
@@ -193,11 +193,11 @@ sites: {
 	}
 	"cmd/tq.cmdServe": {
 		location: [
-			"cmd/tq/main.go:4303",
 			"cmd/tq/main.go:4308",
-			"cmd/tq/main.go:4322",
-			"cmd/tq/main.go:4332",
+			"cmd/tq/main.go:4313",
+			"cmd/tq/main.go:4327",
 			"cmd/tq/main.go:4337",
+			"cmd/tq/main.go:4342",
 		]
 		family: "env"
 		facts: {
@@ -238,8 +238,8 @@ sites: {
 	}
 	"cmd/tq.commitsForTask": {
 		location: [
-			"cmd/tq/main.go:3124",
-			"cmd/tq/main.go:3128",
+			"cmd/tq/main.go:3129",
+			"cmd/tq/main.go:3133",
 		]
 		family: "ipc-subprocess"
 		facts: {
@@ -433,7 +433,7 @@ sites: {
 	}
 	"cmd/tq.foreignTaskRefs": {
 		location: [
-			"cmd/tq/main.go:3090",
+			"cmd/tq/main.go:3095",
 		]
 		family: "ipc-subprocess"
 		facts: {
@@ -442,7 +442,7 @@ sites: {
 	}
 	"cmd/tq.gitChangedFiles": {
 		location: [
-			"cmd/tq/main.go:2977",
+			"cmd/tq/main.go:2982",
 		]
 		family: "ipc-subprocess"
 		facts: {
@@ -451,7 +451,7 @@ sites: {
 	}
 	"cmd/tq.gitChildCommit": {
 		location: [
-			"cmd/tq/main.go:3017",
+			"cmd/tq/main.go:3022",
 		]
 		family: "ipc-subprocess"
 		facts: {
@@ -460,7 +460,7 @@ sites: {
 	}
 	"cmd/tq.gitCommitMeta": {
 		location: [
-			"cmd/tq/main.go:2997",
+			"cmd/tq/main.go:3002",
 		]
 		family: "ipc-subprocess"
 		facts: {
@@ -483,6 +483,15 @@ sites: {
 		family: "file-read"
 		facts: {
 			call: ["os.Open"]
+		}
+	}
+	"cmd/tq.ownCgroupV2RelPath": {
+		location: [
+			"cmd/tq/poolhealth.go:215",
+		]
+		family: "file-read"
+		facts: {
+			call: ["os.ReadFile"]
 		}
 	}
 	"cmd/tq.parkBy": {
@@ -529,7 +538,7 @@ sites: {
 	}
 	"cmd/tq.printCQRSEvents": {
 		location: [
-			"cmd/tq/main.go:3839",
+			"cmd/tq/main.go:3844",
 		]
 		family: "stream-copy"
 		facts: {
@@ -545,9 +554,18 @@ sites: {
 			call: ["os.ReadFile"]
 		}
 	}
+	"cmd/tq.readCgroupMemoryEventsLocal": {
+		location: [
+			"cmd/tq/poolhealth.go:238",
+		]
+		family: "file-read"
+		facts: {
+			call: ["os.ReadFile"]
+		}
+	}
 	"cmd/tq.readCrushServerRSS": {
 		location: [
-			"cmd/tq/poolhealth.go:126",
+			"cmd/tq/poolhealth.go:134",
 		]
 		family: "file-read"
 		facts: {
@@ -585,7 +603,7 @@ sites: {
 	}
 	"cmd/tq.runDLQ": {
 		location: [
-			"cmd/tq/main.go:3299",
+			"cmd/tq/main.go:3304",
 		]
 		family: "env"
 		facts: {
@@ -766,6 +784,11 @@ sites: {
 	"internal/executor.AgentExecutor.runAgentTurn": {
 		location: [
 			"internal/executor/agent.go:770",
+			"internal/executor/agent.go:775",
+			"internal/executor/agent.go:782",
+			"internal/executor/agent.go:787",
+			"internal/executor/agent.go:899",
+			"internal/executor/agent.go:906",
 		]
 		family: "file-write"
 		facts: {
@@ -774,8 +797,8 @@ sites: {
 	}
 	"internal/executor.AgentExecutor.runCloseoutTurn": {
 		location: [
-			"internal/executor/agent.go:1059",
-			"internal/executor/agent.go:1062",
+			"internal/executor/agent.go:1158",
+			"internal/executor/agent.go:1161",
 		]
 		family: "ipc-subprocess"
 		facts: {
@@ -991,7 +1014,7 @@ sites: {
 	}
 	"internal/executor.assertCleanTree": {
 		location: [
-			"internal/executor/agent.go:557",
+			"internal/executor/agent.go:546",
 		]
 		family: "ipc-subprocess"
 		facts: {
@@ -1000,9 +1023,9 @@ sites: {
 	}
 	"internal/executor.autoDetectVerify": {
 		location: [
-			"internal/executor/agent.go:1436",
-			"internal/executor/agent.go:1440",
-			"internal/executor/agent.go:1444",
+			"internal/executor/agent.go:1550",
+			"internal/executor/agent.go:1554",
+			"internal/executor/agent.go:1558",
 		]
 		family: "file-read"
 		facts: {
@@ -1088,8 +1111,8 @@ sites: {
 	}
 	"internal/executor.defaultVerify": {
 		location: [
-			"internal/executor/agent.go:1408",
-			"internal/executor/agent.go:1421",
+			"internal/executor/agent.go:1522",
+			"internal/executor/agent.go:1535",
 		]
 		family: "file-read"
 		facts: {
@@ -1161,7 +1184,7 @@ sites: {
 	}
 	"internal/executor.readTQVerify": {
 		location: [
-			"internal/executor/agent.go:1353",
+			"internal/executor/agent.go:1467",
 		]
 		family: "file-read"
 		facts: {
@@ -1198,7 +1221,7 @@ sites: {
 	}
 	"internal/executor.requireRepoAutonomy": {
 		location: [
-			"internal/executor/agent.go:1319",
+			"internal/executor/agent.go:1433",
 		]
 		family: "file-read"
 		facts: {
@@ -1216,8 +1239,8 @@ sites: {
 	}
 	"internal/executor.resolveRepoDir": {
 		location: [
-			"internal/executor/agent.go:523",
-			"internal/executor/agent.go:536",
+			"internal/executor/agent.go:512",
+			"internal/executor/agent.go:525",
 		]
 		family: "file-read"
 		facts: {
@@ -1226,8 +1249,8 @@ sites: {
 	}
 	"internal/executor.retrySession": {
 		location: [
-			"internal/executor/agent.go:684",
-			"internal/executor/agent.go:689",
+			"internal/executor/agent.go:678",
+			"internal/executor/agent.go:683",
 		]
 		family: "env"
 		facts: {
@@ -1236,7 +1259,7 @@ sites: {
 	}
 	"internal/executor.runVerify": {
 		location: [
-			"internal/executor/agent.go:1213",
+			"internal/executor/agent.go:1327",
 		]
 		family: "ipc-subprocess"
 		facts: {
@@ -1255,6 +1278,8 @@ sites: {
 	"internal/executor.writeFailureSidecar": {
 		location: [
 			"internal/executor/agent.go:704",
+			"internal/executor/agent.go:709",
+			"internal/executor/agent.go:718",
 		]
 		family: "file-write"
 		facts: {
@@ -1263,9 +1288,9 @@ sites: {
 	}
 	"internal/executor.writeOutputSidecar": {
 		location: [
-			"internal/executor/agent.go:464",
+			"internal/executor/agent.go:453",
+			"internal/executor/agent.go:458",
 			"internal/executor/agent.go:469",
-			"internal/executor/agent.go:480",
 		]
 		family: "file-write"
 		facts: {
