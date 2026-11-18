@@ -202,6 +202,12 @@ step "smoke-coverage freshness gate self-test (name-coverage pin)"
 step "stub-agent smoke lib self-test (prologue + file-only rail pin)"
 ./scripts/smoke/lib/stub-agent.sh --self-test
 
+step "crush-server smoke lib self-test (sourcing contract over a fake crush)"
+./scripts/smoke/lib/crush-server.sh --self-test
+
+step "gate-fixture lib self-test (write round-trips + expect pins)"
+./scripts/lib/gate-fixture.sh --self-test
+
 step "exec-bits gate self-test (summary pin + 644 negative)"
 ./scripts/check-smoke-exec-bits.sh --self-test
 

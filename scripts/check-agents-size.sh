@@ -26,40 +26,20 @@ set -euo pipefail
 if [ "${1:-}" = "--self-test" ]; then
 	self_abs="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 	repo_root="$(cd "$(dirname "$self_abs")/.." && pwd)"
-	tmp="$(mktemp -d)"
+	. "$(dirname "$self_abs")/lib/gate-fixture.sh"
+	tmp="$(gate_fixture_tree)"
 	trap 'rm -rf "$tmp"' EXIT
-	printf 'const agentsDocMaxBytes = 10\n' >"$tmp/const.go"
-	printf 'const agentsDocMaxBytes = 1_2\n' >"$tmp/const_underscore.go"
-	printf '0123456789A\n' >"$tmp/doc.md"
-	pass=0 fail=0
-	expect() {
-		local desc="$1" want_rc="$2" want="$3"
-		shift 3
-		local out rc=0
-		out="$(env "$@" 2>&1)" || rc=$?
-		if [ "$rc" -ne "$want_rc" ]; then
-			echo "SELF-TEST FAIL: $desc (rc=$rc, want $want_rc): $out" >&2
-			fail=$((fail + 1))
-			return
-		fi
-		if [ -n "$want" ] && ! grep -qF -- "$want" <<<"$out"; then
-			echo "SELF-TEST FAIL: $desc (output missing '$want'): $out" >&2
-			fail=$((fail + 1))
-			return
-		fi
-		pass=$((pass + 1))
-	}
-	expect "derived budget trips with over-by delta" 1 "budget 10 B, over by 2 B" TQ_AGENTS_CONST_FILE="$tmp/const.go" "$self_abs" "$tmp/doc.md"
-	expect "underscore-literal const parses" 0 "12/12 B (headroom 0 B)" TQ_AGENTS_CONST_FILE="$tmp/const_underscore.go" "$self_abs" "$tmp/doc.md"
-	expect "AGENTS_BUDGET_BYTES override beats derived const + headroom delta" 0 "12/20 B (headroom 8 B)" TQ_AGENTS_CONST_FILE="$tmp/const.go" AGENTS_BUDGET_BYTES=20 "$self_abs" "$tmp/doc.md"
-	expect "missing const fails loud at exit 2" 2 "cannot parse agentsDocMaxBytes" TQ_AGENTS_CONST_FILE="$tmp/absent.go" "$self_abs" "$tmp/doc.md"
+	gate_fixture_write "$tmp" "const.go" 'const agentsDocMaxBytes = 10'
+	gate_fixture_write "$tmp" "const_underscore.go" 'const agentsDocMaxBytes = 1_2'
+	gate_fixture_write "$tmp" "doc.md" '0123456789A
+'
+	gate_fixture_expect "derived budget trips with over-by delta" 1 "budget 10 B, over by 2 B" TQ_AGENTS_CONST_FILE="$tmp/const.go" "$self_abs" "$tmp/doc.md"
+	gate_fixture_expect "underscore-literal const parses" 0 "12/12 B (headroom 0 B)" TQ_AGENTS_CONST_FILE="$tmp/const_underscore.go" "$self_abs" "$tmp/doc.md"
+	gate_fixture_expect "AGENTS_BUDGET_BYTES override beats derived const + headroom delta" 0 "12/20 B (headroom 8 B)" TQ_AGENTS_CONST_FILE="$tmp/const.go" AGENTS_BUDGET_BYTES=20 "$self_abs" "$tmp/doc.md"
+	gate_fixture_expect "missing const fails loud at exit 2" 2 "cannot parse agentsDocMaxBytes" TQ_AGENTS_CONST_FILE="$tmp/absent.go" "$self_abs" "$tmp/doc.md"
 	live_size="$(wc -c <"$repo_root/AGENTS.md")"
-	expect "real-file OK summary format (live-size budget)" 0 "agents-size OK: $repo_root/AGENTS.md is $live_size/$live_size B (headroom 0 B)" AGENTS_BUDGET_BYTES="$live_size" "$self_abs" "$repo_root/AGENTS.md"
-	if [ "$fail" -ne 0 ]; then
-		echo "agents-size self-test FAILED ($fail of $((pass + fail)) checks)" >&2
-		exit 1
-	fi
-	echo "agents-size self-test ok ($pass checks: derived-budget pin + negative battery)"
+	gate_fixture_expect "real-file OK summary format (live-size budget)" 0 "agents-size OK: $repo_root/AGENTS.md is $live_size/$live_size B (headroom 0 B)" AGENTS_BUDGET_BYTES="$live_size" "$self_abs" "$repo_root/AGENTS.md"
+	gate_fixture_summary "agents-size self-test" "derived-budget pin + negative battery"
 	exit 0
 fi
 
