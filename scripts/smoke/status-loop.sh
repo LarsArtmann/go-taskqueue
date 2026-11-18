@@ -114,8 +114,33 @@ wait_completed() {
 	done
 }
 
+# Fast-fail evidence (row: wait_completed fast-fail): a timeout prints the
+# non-fresh task rows (attempts>0 or dead) and the tail of every pool log
+# so "recorded no verdict"-class causes surface in run 1, not run 2.
+wait_completed_dump() {
+	local rows
+	rows="$($TMP/tq tasks --json --limit 0 2>/dev/null || true)"
+	printf '%s' "$rows" | python3 -c '
+import json, sys
+try:
+    rows = json.load(sys.stdin)
+except Exception:
+    sys.exit(0)
+for r in rows if isinstance(rows, list) else []:
+    if r.get("status") == "dead" or (r.get("attempts") or 0) > 0:
+        print("task %s status=%s attempts=%s" % (r.get("id", "?")[-8:], r.get("status"), r.get("attempts")))
+' || true
+	local log
+	for log in "$TMP"/pool*.log; do
+		[ -e "$log" ] || continue
+		echo "--- tail $log ---"
+		tail -20 "$log"
+	done
+}
+
 STATS="$(wait_completed 4)" || {
 	echo "FAIL: want 4 completed (polled 15s)"
+	wait_completed_dump
 	exit 1
 }
 echo "$STATS"
@@ -136,6 +161,7 @@ grep -q 'freshly minted status-loop item' "$TMP/harvest.json" || {
 }
 STATS="$(wait_completed 4)" || {
 	echo "FAIL: completed count changed"
+	wait_completed_dump
 	exit 1
 }
 echo "$STATS"
