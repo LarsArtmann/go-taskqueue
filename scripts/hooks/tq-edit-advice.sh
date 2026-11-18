@@ -141,7 +141,7 @@ TODO_LIST.md)
 	note="TODO_LIST.md is machine-consumed: '- [ ]' one per line, never tables; blocked items use '— BLOCKED: <reason>'; items must be agent-executable (check-todo-list.sh gates this)."
 	;;
 AGENTS.md)
-	root="$(cd "$(dirname "$0")/.." && pwd)"
+	root="$(cd "$(dirname "$0")/../.." && pwd)"
 	asize=0
 	if [ -f "$fp" ]; then
 		asize="$(wc -c <"$fp")"
