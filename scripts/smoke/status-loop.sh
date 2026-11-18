@@ -105,13 +105,13 @@ wait_completed() {
 			echo "$stats"
 			return 0
 		fi
-		if [ "$attempt" -ge 15 ]; then
-			echo "$stats"
-			return 1
-		fi
+		[ "$attempt" -ge 15 ] && break
 		attempt=$((attempt + 1))
 		sleep 1
 	done
+	echo "FAIL: wait_completed exhausted 15 polls wanting completed=$want" >&2
+	echo "$stats"
+	return 1
 }
 
 # Fast-fail evidence (row: wait_completed fast-fail): a timeout prints the
