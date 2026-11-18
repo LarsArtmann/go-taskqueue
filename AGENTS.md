@@ -344,9 +344,9 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   HEAD once `git show --stat` proves it mine. Full DAG rebuild (dates
   byte-exact, footer only on `--mine`): `scripts/rebuild-lineage.sh <id>
   --mine 2,3` (`--self-test`).
-- **TestExactlyOnceUnderConcurrency/TestSelfManagingLoop are load-flaky**
-  (build storms drop at clean parents): re-run before attributing; both ride
-  KNOWN_FLAKY (scripts/lib/verify-retry.sh).
+- **TestExactlyOnceUnderConcurrency is load-flaky** and
+  **TestSelfManagingLoop is load-flaky** (build storms at clean parents):
+  rerun before attributing; ride KNOWN_FLAKY (lib/verify-retry.sh).
 - **Agent shells: TQ_DB denylist-stripped** (`TQ_ASK_DB` = ask-only) — scratch
   smokes MUST still export TQ_DB=<scratch>.
 - **Session shell hazards**: no `PIPESTATUS`; bare `unset VAR` leaks to
