@@ -99,10 +99,12 @@
    tick CI-reds rows 1687/1385/1709 + T09 row ~1411 (T36 close).
 2. Re-run `scripts/test-cmd-tq.sh` + full `./scripts/ci-local.sh` green
    (T02 close).
+   <!-- fresh:skip — session-in-flight (Pareto master plan T02), ticked at closeout -->
 3. Write 08-04 + 08-06 specs; apply d1–d8; check-rows; docs-gates; commit
    (T03/T04 wave-2 close).
 4. T10–T16 per the plan's ≤12-min breakdown.
 5. P2 tier T17–T32; then P3 T33–T35 + the pool dispatch wave.
+   <!-- fresh:skip — session plan tier (Pareto master plan T17–T35), not backlog -->
 6. Fold this report's §e1/§e2 rules into AGENTS Conventions at the next
    AGENTS-touching commit (budget: 17 B headroom — fold into T13/T14).
 
