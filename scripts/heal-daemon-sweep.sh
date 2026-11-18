@@ -235,8 +235,15 @@ check_rails() {
 		local nearest="${blockers[0]}"
 		{
 			echo "refusing: ${#blockers[@]} commit(s) in $base..HEAD inside the heal range:"
+			local shown=0 c
 			for c in "${blockers[@]}"; do
-				echo "  $(git log -1 --oneline "$c") carries a different Task-Queue-ID footer"
+				if [ "$shown" -lt 5 ]; then
+					echo "  $(git log -1 --oneline "$c") carries a different Task-Queue-ID footer"
+					shown=$((shown + 1))
+				else
+					echo "  …$(( ${#blockers[@]} - 5 )) more"
+					break
+				fi
 			done
 			echo "Heal only your exactly-mine span above the NEAREST different-id footer:"
 			echo "  $0 $id --from $nearest"
