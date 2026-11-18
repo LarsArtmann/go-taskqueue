@@ -87,6 +87,19 @@ while IFS= read -r zf; do
 	fi
 done < <(git diff --cached --name-only --diff-filter=A | grep -E '\.(go|templ|sh)$' || true)
 
+# Facade-parity gate (ADR-0016, row 1885): "parity BEFORE staging" was
+# memory-enforced until the 9c07fce1 skew landed 2 MISSING-ALIAS findings
+# unnoticed. Fires only when staged paths touch a facade module dir; the
+# gate itself is go/parser over the pinned pairs (~0.2s warm).
+if git diff --cached --name-only | grep -qE '^(task|journal|queue|executor|worker)/'; then
+	if ! ./scripts/check-facade-parity.sh >/dev/null 2>&1; then
+		echo "FAIL: staged changes touch a facade module dir but facade parity is BROKEN:" >&2
+		./scripts/check-facade-parity.sh >&2 || true
+		echo "  Add the missing re-export alias in the SAME commit (ADR-0016: every new internal export gains its facade alias in the same change)." >&2
+		exit 1
+	fi
+fi
+
 exit 0
 EOF
 chmod +x "$pre_commit"
