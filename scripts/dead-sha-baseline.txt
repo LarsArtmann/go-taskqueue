@@ -855,3 +855,7 @@ fa05f88d
 b7302f56
 0843a8d8
 bed52bca
+# 2026-11-18: 6f9156d0/eaeb54a4/b8a2b16b are footer-less daemon-sweep commits orphaned by the pareto-window heal folds — heuristic-sweep subjects are ambiguous by design, so no provable reachable counterpart exists; baselined rather than falsified into arrow form
+6f9156d0
+eaeb54a4
+b8a2b16b

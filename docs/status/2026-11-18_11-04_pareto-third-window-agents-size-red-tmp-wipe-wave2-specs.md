@@ -34,7 +34,7 @@
    oscillation archaeology from the AGENTS heal bullet; the
    nearest-vs-oldest semantics live in the script self-test + T09 commit).
    Both twins green: `check-agents-size.sh` OK 27,583/27,600; the canonical
-   `scripts/test-cmd-tq.sh` gate owed a re-run (see §b). Commit `642512ec`.
+   `scripts/test-cmd-tq.sh` gate owed a re-run (see §b). Commit `642512ec→abb9e1e58eece284312ea0b811e1d52dd6b0c450`.
 
 ## b) PARTIALLY DONE
 
@@ -42,7 +42,7 @@
    full `ci-local.sh` rc=1 — died at the check-ci foreign-red refusal (the
    origin run predating the tree). Green re-run owed after the prune push.
 2. **T36**: push half done; the watched run went RED (agents-size); the cure
-   (`642512ec`) sits UNPUSHED. Overnight someone pushed `0db2ca90` (not me —
+   (`642512ec→abb9e1e58eece284312ea0b811e1d52dd6b0c450`) sits UNPUSHED. Overnight someone pushed `0db2ca90` (not me —
    concurrent agent/daemon/owner) and its CI run 44177605500 is RED on the
    same guard (the Fuzz run 44230073805 at the same sha is green — different
    workflow). CI-reds TODO rows (1687/1385/1709) + the T09 row (~1411)
@@ -95,7 +95,7 @@
 
 ## f) Up to 50 things we should get done next (priority order)
 
-1. Push `642512ec` (13 h old — timing guard moot) → watch CI green →
+1. Push `642512ec→abb9e1e58eece284312ea0b811e1d52dd6b0c450` (13 h old — timing guard moot) → watch CI green →
    tick CI-reds rows 1687/1385/1709 + T09 row ~1411 (T36 close).
 2. Re-run `scripts/test-cmd-tq.sh` + full `./scripts/ci-local.sh` green
    (T02 close).

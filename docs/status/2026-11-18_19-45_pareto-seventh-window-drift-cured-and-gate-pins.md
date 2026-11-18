@@ -60,9 +60,9 @@ mid-edit 4×, every sweep healed by exactly-mine verify + soft-reset fold).
      surface in run 1.
    - f13 heal refusal cap (`97e73973`): blocker list capped at 5 + "…N more"
      (the 29-blocker flood class); self-test 45 checks green.
-   - f17 push-timing env hooks pinned in the header (`bade0adc`).
+   - f17 push-timing env hooks pinned in the header (`bade0adc→000230575d7bf1a47ff049f3b1aa6f352ca8489f`).
    - f20 heal usage() names the --from exclusive-base recipe + terminator
-     walk (`bade0adc`).
+     walk (`bade0adc→000230575d7bf1a47ff049f3b1aa6f352ca8489f`).
    - f4 rows 394/928 citation RESOLVED (`0ed5f093`): historical row 928
      (2e444fbd era) is the windows-green confirmation row, NOT a ruling row
      — the 19-04 closeout carried a wrong-premise assumption; its report now

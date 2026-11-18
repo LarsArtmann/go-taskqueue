@@ -15,7 +15,7 @@ NEW leg (guard-wiring) whose fix sits unpushed behind the push-timing guard.
    (0 errors/0 warnings); `cmd/tq/go.work.sum` carried a 210-line golangci
    lint-leak (the writer hunt stays open) → truncated back to its empty
    at-origin state, check-gomod-vendor-sync green; 4 dead-SHA danglers
-   (6f9156d0/eaeb54a4/5b613886/c531d408 — the folded chores + rebuilt io
+   (6f9156d0/eaeb54a4/5b613886→af94e69a6bab134c3315b558517d8ba6232b7f29/c531d408→b25a6f2b3c7b9e2a83062e63b2d6e53233a44e49 — the folded chores + rebuilt io
    lineage) → fork-record arrows, all 4 verified by verify-fork-record.sh.
 2. **The 9-commit span PUSHED clean** (`9d321e1d..0067c328`, push-timing 9
    checked / 0 refused): floors + app.css + go.sum purge + concurrent

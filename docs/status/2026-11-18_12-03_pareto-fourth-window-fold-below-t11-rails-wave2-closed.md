@@ -15,7 +15,7 @@
 
 1. **Daemon-folded report commit healed** — HEAD `b8a2b16b` was a
    footer-less daemon chore holding exactly my 2 report files (verified
-   `git show --stat`); amended into my subject `21c84a7f`. Local-only at
+   `git show --stat`); amended into my subject `21c84a7f→23056a36ebbf01c2581c1c3605c6f11f7c0f42fd`. Local-only at
    the time, so the amend was policy-clean.
 2. **Cure pushed**: rebased my pair onto overnight `cd5bf85d` (2-line fuzz
    corpus, no overlap) → pushed `23056a36`. Origin had moved twice
