@@ -11,7 +11,10 @@
 # sed-derives every value from here (the check-gosec.sh --self-test evals
 # the workflow's exact sed lines against this file).
 # shellcheck disable=SC2034  # consumed by check-gosec.sh and sed-derived by ci.yml
-GOSEC_VERSION=v2.29.0
+# 2026-11-18: v2.29.0 -> v2.30.0 — the system-profile activation moved
+# /run/current-system/sw/bin/gosec; the gate refuses a version mismatch,
+# so the pin follows the installed binary (crush-drift precedent).
+GOSEC_VERSION=v2.30.0
 # shellcheck disable=SC2034
 GOSEC_EXCLUDES=-exclude=G104,G115,G118,G124,G202,G204,G301,G302,G304,G306,G404,G702,G703,G710
 # shellcheck disable=SC2034

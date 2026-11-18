@@ -167,7 +167,10 @@ func NewHealthRelay(cfg Config) (*HealthRelay, error) {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /health-events", r.handle)
-	r.srv = &http.Server{Handler: mux}
+	r.srv = &http.Server{
+		Handler:           mux,
+		ReadHeaderTimeout: 10 * time.Second,
+	}
 
 	go func() { _ = r.srv.Serve(ln) }()
 

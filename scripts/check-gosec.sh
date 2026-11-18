@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # One-command post-config gosec gate (round-13 T6 triage encoded as excludes).
 #
-# Pinned gosec v2.29.0 with the CI-encoded exclude set — any finding is a
+# Pinned gosec (v2.30.0 since 2026-11-18, see scripts/lib/tool-pins.sh) with the CI-encoded exclude set — any finding is a
 # NEW class needing a fresh triage note (AGENTS.md "gosec advisory
 # baseline"), never a silent re-exclusion.
 #
@@ -363,7 +363,7 @@ fi
 
 # The pin must hold for a pre-existing binary too (GOSEC override or
 # PATH/GOPATH discovery): a stale gosec silently changes what green means.
-# Only this script's own install path is exempt (v2.29.0 by construction).
+# Only this script's own install path is exempt (the pinned version by construction).
 # An UNSTAMPED binary (Version: dev, e.g. a scratch-module build) cannot be
 # verified: it warns instead of failing because go install is
 # sandbox-blocked for agent sessions on this host and binary provenance is
