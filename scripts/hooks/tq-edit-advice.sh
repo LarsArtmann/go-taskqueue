@@ -86,6 +86,7 @@ if [ "${1:-}" = "--self-test" ]; then
 	rcase ctx:'templ generate' 'templ edit advice' "$tmp/layout.templ"
 	rcase ctx:'machine-consumed' 'TODO_LIST edit advice' "$tmp/TODO_LIST.md"
 	rcase ctx:'size-guarded' 'AGENTS edit advice' "$tmp/AGENTS.md"
+	rcase ctx:'headroom' 'AGENTS live-size advice' "$tmp/AGENTS.md"
 	rcase ctx:'display.Eyebrow' 'webui ADOPTION edit advice' "$tmp/internal/webui/ADOPTION.md"
 	rcase ctx:'### Internal' 'CHANGELOG edit advice' "$tmp/CHANGELOG.md"
 	rcase ctx:'check-go-mods.sh' 'go.mod edit advice' "$tmp/go.mod"
@@ -140,7 +141,19 @@ TODO_LIST.md)
 	note="TODO_LIST.md is machine-consumed: '- [ ]' one per line, never tables; blocked items use '— BLOCKED: <reason>'; items must be agent-executable (check-todo-list.sh gates this)."
 	;;
 AGENTS.md)
+	root="$(cd "$(dirname "$0")/.." && pwd)"
+	asize=0
+	if [ -f "$fp" ]; then
+		asize="$(wc -c <"$fp")"
+	fi
+	abudget="$(sed -n 's/^const agentsDocMaxBytes = \([0-9_]*\).*$/\1/p' "$root/cmd/tq/facts_json_test.go" 2>/dev/null | tr -d '_' | head -n1)" || true
+	case "$abudget" in
+	'' | *[!0-9]*) abudget="" ;;
+	esac
 	note="AGENTS.md is size-guarded (TestAgentsDocSizeGuard) and dense by design: prefer replacing stale bullets over appending; keep the reader-route lanes intact."
+	if [ -n "$abudget" ]; then
+		note="$note NOW: ${asize}/${abudget} B ($((abudget - asize)) B headroom) — run scripts/check-agents-size.sh BEFORE composing any edit; when headroom <100 B, prune stale phrases first."
+	fi
 	;;
 CHANGELOG.md)
 	note="CHANGELOG is append-only; [Unreleased] carries OPERATOR-VISIBLE changes only — repo-internal rows go under '### Internal'; behavior changes get an explicit '(BEHAVIOR CHANGE ...)' flag (O14, check-release-docs.sh)."
