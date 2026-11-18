@@ -149,10 +149,12 @@ step "footer-attribution self-test (heal tail-run contract)"
 step "push-timing guard self-test (pre-push refusal pin)"
 ./scripts/check-push-timing.sh --self-test
 
-# AGENTS.md byte budget at gate time (check-agents-size): mirrors the cmd/tq
-# TestAgentsDocSizeGuard budget and prints the top sections to prune, so a
-# red trip is a 2-minute targeted fix instead of a test failure two windows
-# later.
+# AGENTS.md byte budget at gate time (check-agents-size): derives its budget
+# from the cmd/tq TestAgentsDocSizeGuard const (single source of truth — no
+# twin drift) and prints the top sections to prune, so a red trip is a
+# 2-minute targeted fix instead of a test failure two windows later.
+step "agents-size self-test (derived-budget + negative battery)"
+./scripts/check-agents-size.sh --self-test
 step "AGENTS.md size budget (agentsDocMaxBytes twin)"
 ./scripts/check-agents-size.sh
 
