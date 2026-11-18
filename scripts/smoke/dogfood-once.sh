@@ -46,6 +46,7 @@ STUB="$TMP/stub-agent"
 {
 	stub_agent_prologue
 	cat <<'EOF'
+# pins: stub-agent-turn-split — prompt-keyed work/review turn dispatch (lib prologue)
 case "$prompt" in
 	*"senior code reviewer"*)
 		printf 'looks fine\n'

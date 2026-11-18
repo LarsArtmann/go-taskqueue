@@ -471,7 +471,8 @@ EOF
 	# pins: two-tick fusion rail (row 1661) — records are
 	# 'lineno<TAB>epoch<TAB>row'; epochs 1793404800=2026-10-31
 	# (pre-convention, grandfathered), 1794268800=2026-11-10 (in force).
-	cat >"$tmp/fusioncmd.sh" <<'EOF'
+	# pins: two-tick fusion records — lineno/epoch/row shapes; 1793404800 grandfathered vs 1794268800 in force
+
 #!/bin/sh
 printf '1\t1794268800\t- [ ] repro the crash in a clean tree and file upstream with the engine named\n'
 printf '2\t1793404800\t- [ ] repro the crash in a clean tree and file upstream with the engine named\n'

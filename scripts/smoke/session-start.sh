@@ -30,7 +30,8 @@ pass() { echo "ok: $*"; }
 # DONE-row filter pipes into a second rg call).
 stubbin="$WORK/stubbin"
 mkdir -p "$stubbin"
-cat >"$stubbin/rg" <<'EOF'
+# pins: rg surface — -l/-m1/-n flag shapes the with-args probe relies on
+
 #!/bin/sh
 case $1 in
 -l) shift; pat=$1; shift; exec grep -rl -- "$pat" "$@" ;;
@@ -39,7 +40,8 @@ case $1 in
 *) exec grep -E "$@" ;;
 esac
 EOF
-cat >"$stubbin/tq" <<'EOF'
+# pins: tq show stub — PENDING record line the DONE-row detection reads
+
 #!/bin/sh
 [ "$1" = show ] || exit 0
 echo "stub queue record for $2 (status=PENDING attempts=0)"
@@ -52,7 +54,8 @@ mkdir -p "$r/docs/status"
 export PATH="$stubbin:$PATH"
 
 # Seed: a prior report with verdict + DONE row, a footer commit for the ID.
-cat >"$r/docs/status/prior.md" <<EOF
+# pins: prior-report seed — verdict line + DONE row + footer commit fixture
+
 # prior window
 
 **Verdict: DONE — pinned by smoke**

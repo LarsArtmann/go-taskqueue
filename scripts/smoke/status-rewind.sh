@@ -44,6 +44,7 @@ STUB="$TMP/stub-agent"
 {
 	stub_agent_prologue
 	cat <<'EOF'
+# pins: status-reporter write+commit and the commit-free work branch (nothing-to-commit dead-letter trap)
 case "$prompt" in
 	*"status reporter"*)
 		mkdir -p docs/status

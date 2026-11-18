@@ -66,6 +66,7 @@ STUB="$TMP/stub-agent"
 {
 	stub_agent_prologue
 	cat <<EOF
+# pins: secret-leak-both-outcomes — fake tokens on work AND review turns (lib prologue)
 case "\$prompt" in
 	*"redaction-fail"*)
 		echo "fail turn leaked $FAKE_ANTHROPIC and $FAKE_AWS"

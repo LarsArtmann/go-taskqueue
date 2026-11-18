@@ -46,6 +46,7 @@ STUB="$TMP/stub-agent"
 {
 	stub_agent_prologue
 	cat <<'EOF'
+# pins: stub-agent-loop-turns — prompt-keyed work/review turn dispatch (lib prologue)
 case "$prompt" in
 	*"status reporter"*)
 		mkdir -p docs/status
