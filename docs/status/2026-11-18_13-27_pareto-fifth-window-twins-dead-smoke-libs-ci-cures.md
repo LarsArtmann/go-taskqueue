@@ -1,5 +1,9 @@
 # Fifth-window Pareto execution — twins dead, smoke libs landed, CI cures ticked
 
+- **Date:** 2026-11-18 13:27 CET (window: ~12:25–13:30)
+- **Repo:** go-taskqueue · master · direct owner dispatch ("GET SHIT DONE!
+  The WHOLE TODO LIST!"), concurrent agent session active
+
 Batch: backlog-pareto master-plan continuation (docs/planning/2026-11-17_19-53_backlog-pareto-master-plan.md),
 session under the standing dispatch; T36/T02/T12/T13/T14/T17/T18/T20 executed,
 T15/T16 confirmed owner-gated, drift row minted.
