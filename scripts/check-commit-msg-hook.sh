@@ -122,8 +122,30 @@ run_case "fixup! subject with footer-final stays accepted" 0 "$tmp/fixup-footer-
 run_case "squash! body with footer-final stays accepted" 0 "$tmp/squash-footer-final.txt" || rc=1
 run_case "merge message with footer-final stays accepted" 0 "$tmp/merge-footer-final.txt" || rc=1
 
+# Consumer-side pin: the queue's attribution channel reads the footer
+# through git's own scan (git log --grep + %(trailers)) — the hook leg
+# above proves acceptance; this leg proves the merge-shaped message is
+# FOUND by the consumers (the 2026-10-26 special-shape verification was
+# hook+interpret-trailers only until this pin).
+git init -q "$tmp/consumer"
+git -C "$tmp/consumer" config user.email pin@tq.local
+git -C "$tmp/consumer" config user.name "tq pin"
+git -C "$tmp/consumer" commit --allow-empty -q -m "Merge branch 'feature'" -m "Crush-Session: abc" -m "Task-Queue-ID: $id"
+found="$(git -C "$tmp/consumer" log --grep="$id" --format=%H)"
+trailer="$(git -C "$tmp/consumer" log -1 --format='%(trailers:key=Task-Queue-ID,valueonly)')"
+if [ -z "$found" ]; then
+	echo "FAIL: consumer leg — git log --grep missed the merge-shaped footer"
+	rc=1
+elif [ "$trailer" != "$id" ]; then
+	echo "FAIL: consumer leg — %(trailers) yielded '$trailer', want $id"
+	rc=1
+else
+	cases=$((cases + 1))
+	echo "ok: merge-shaped footer found by the queue's own scan (--grep + trailers)"
+fi
+
 if [ "$rc" -ne 0 ]; then
 	echo "commit-msg hook pin FAILED"
 	exit 1
 fi
-echo "commit-msg hook pin ok (extraction guarded, $cases cases, $reasons reason-pinned: placement, last-line, count, format, comment-tail, trailing-prose, crlf, special-shapes)"
+echo "commit-msg hook pin ok (extraction guarded, $cases cases, $reasons reason-pinned: placement, last-line, count, format, comment-tail, trailing-prose, crlf, special-shapes, consumer-scan)"
