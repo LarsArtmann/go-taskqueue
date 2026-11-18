@@ -61,7 +61,12 @@ cleanup() {
 	pkill -9 -f "crush server --host unix://$SOCK" 2>/dev/null || true
 	pkill -f "$TMP/tq agent-pool" 2>/dev/null || true
 	pkill -f "mock_crush_pool.py $PORT" 2>/dev/null || true
-	rm -rf "$TMP"
+	# TQ_SMOKE_KEEP=1 keeps the scratch tree for forensics on a failure.
+	if [ "${TQ_SMOKE_KEEP:-0}" = "1" ]; then
+		echo "== TQ_SMOKE_KEEP=1: scratch tree left at $TMP"
+	else
+		rm -rf "$TMP"
+	fi
 }
 trap cleanup EXIT
 
