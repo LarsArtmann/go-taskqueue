@@ -59,18 +59,30 @@ chmod +x "$hook"
 
 id="00000000000000000000000000000000deadbeef"
 
-# run_case <name> <want_rc> <message-file>
+# run_case <name> <want_rc> <message-file> [want-msg-fragment]
+# The optional 4th arg pins the guard REASON (a substring of the hook's
+# rejection output), so a hook edit that changes why a shape is rejected
+# trips even though the rc stays green (row: reason-pinned hook cases).
 cases=0
+reasons=0
 run_case() {
-	local name="$1" want_rc="$2" file="$3"
-	local rc=0
-	"$hook" "$file" >/dev/null 2>&1 || rc=$?
+	local name="$1" want_rc="$2" file="$3" want_msg="${4:-}"
+	local rc=0 out
+	out="$($hook "$file" 2>&1)" || rc=$?
 	if [ "$rc" -ne "$want_rc" ]; then
 		echo "FAIL: $name — want rc=$want_rc, got rc=$rc (hook output:)"
-		"$hook" "$file" >&2 || true
+		printf '%s\n' "$out" >&2
+		return 1
+	fi
+	if [ -n "$want_msg" ] && ! grep -qF -- "$want_msg" <<<"$out"; then
+		echo "FAIL: $name — rc ok but the guard reason drifted (missing '$want_msg'):"
+		printf '%s\n' "$out" >&2
 		return 1
 	fi
 	cases=$((cases + 1))
+	if [ -n "$want_msg" ]; then
+		reasons=$((reasons + 1))
+	fi
 	echo "ok: $name (rc=$rc)"
 }
 
@@ -95,17 +107,17 @@ printf "Merge branch 'feature'\n\nCrush-Session: abc\n\nTask-Queue-ID: %s\n" "$i
 
 rc=0
 run_case "footer as final line after attribution (sanctioned)" 0 "$tmp/sanctioned.txt" || rc=1
-run_case "footer above attribution block (the 05-47 defect)" 1 "$tmp/above-attribution.txt" || rc=1
+run_case "footer above attribution block (the 05-47 defect)" 1 "$tmp/above-attribution.txt" "not the LAST non-empty line" || rc=1
 run_case "plain footer without attribution" 0 "$tmp/plain.txt" || rc=1
 run_case "no footer (presence stays optional)" 0 "$tmp/no-footer.txt" || rc=1
-run_case "two footers" 1 "$tmp/two-footers.txt" || rc=1
-run_case "malformed footer value" 1 "$tmp/malformed.txt" || rc=1
+run_case "two footers" 1 "$tmp/two-footers.txt" "exactly one allowed" || rc=1
+run_case "malformed footer value" 1 "$tmp/malformed.txt" "not a queue task ID" || rc=1
 run_case "footer with editor comment tail stays accepted" 0 "$tmp/comment-tail.txt" || rc=1
-run_case "trailing prose after footer" 1 "$tmp/trailing-prose.txt" || rc=1
-run_case "footer mid-trailer-block (footer-final-line pin: last non-empty line must BE the footer)" 1 "$tmp/footer-mid-block.txt" || rc=1
-run_case "footer above a separate trailer block" 1 "$tmp/footer-above-trailer.txt" || rc=1
+run_case "trailing prose after footer" 1 "$tmp/trailing-prose.txt" "not the LAST non-empty line" || rc=1
+run_case "footer mid-trailer-block (footer-final-line pin: last non-empty line must BE the footer)" 1 "$tmp/footer-mid-block.txt" "not the LAST non-empty line" || rc=1
+run_case "footer above a separate trailer block" 1 "$tmp/footer-above-trailer.txt" "not the LAST non-empty line" || rc=1
 run_case "CRLF message with footer as final line stays accepted" 0 "$tmp/crlf-final.txt" || rc=1
-run_case "CRLF footer above attribution block rejects" 1 "$tmp/crlf-above-attribution.txt" || rc=1
+run_case "CRLF footer above attribution block rejects" 1 "$tmp/crlf-above-attribution.txt" "not the LAST non-empty line" || rc=1
 run_case "fixup! subject with footer-final stays accepted" 0 "$tmp/fixup-footer-final.txt" || rc=1
 run_case "squash! body with footer-final stays accepted" 0 "$tmp/squash-footer-final.txt" || rc=1
 run_case "merge message with footer-final stays accepted" 0 "$tmp/merge-footer-final.txt" || rc=1
@@ -114,4 +126,4 @@ if [ "$rc" -ne 0 ]; then
 	echo "commit-msg hook pin FAILED"
 	exit 1
 fi
-echo "commit-msg hook pin ok (extraction guarded, $cases cases: placement, last-line, count, format, comment-tail, trailing-prose, crlf, special-shapes)"
+echo "commit-msg hook pin ok (extraction guarded, $cases cases, $reasons reason-pinned: placement, last-line, count, format, comment-tail, trailing-prose, crlf, special-shapes)"
