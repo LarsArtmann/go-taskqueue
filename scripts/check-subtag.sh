@@ -157,6 +157,7 @@ self_test() {
 	stub_bin="$fixture/stubbin"
 	mkdir -p "$stub_bin"
 	# pins: stub-go rails — argv log + GOWORK/GOMODCACHE/GOPRIVATE env echo, exit 0 (clean-room <module>@<tag> proof)
+	cat >"$stub_bin/go" <<'EOF'
 
 #!/usr/bin/env bash
 printf '%s\n' "$@" >>"$CHECK_SUBTAG_STUB_LOG.args"

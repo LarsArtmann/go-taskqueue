@@ -31,6 +31,7 @@ pass() { echo "ok: $*"; }
 stubbin="$WORK/stubbin"
 mkdir -p "$stubbin"
 # pins: rg surface — -l/-m1/-n flag shapes the with-args probe relies on
+cat >"$stubbin/rg" <<'EOF'
 
 #!/bin/sh
 case $1 in
@@ -41,6 +42,7 @@ case $1 in
 esac
 EOF
 # pins: tq show stub — PENDING record line the DONE-row detection reads
+cat >"$stubbin/tq" <<'EOF'
 
 #!/bin/sh
 [ "$1" = show ] || exit 0
@@ -55,6 +57,7 @@ export PATH="$stubbin:$PATH"
 
 # Seed: a prior report with verdict + DONE row, a footer commit for the ID.
 # pins: prior-report seed — verdict line + DONE row + footer commit fixture
+cat >"$r/docs/status/prior.md" <<EOF
 
 # prior window
 
