@@ -184,12 +184,19 @@ func cmdTasks(args []string) error {
 		return nil
 	}
 
+	// Empty match sets still marshal as [] — the store returns a nil slice
+	// when nothing matches, and null would make every JSON consumer
+	// special-case the empty case (2026-11-07_10-33 §e3).
 	if *parkedClass == "" {
 		var err error
 
 		tasks, err = store.List(ctx, filter)
 		if err != nil {
 			return err
+		}
+
+		if tasks == nil {
+			tasks = []task.Task{}
 		}
 	}
 

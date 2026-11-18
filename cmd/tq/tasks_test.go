@@ -401,3 +401,65 @@ func TestCmdTasksJSONEnvelope(t *testing.T) {
 		t.Fatalf("envelope = len %d total %d truncated %v, want 4/9/true", len(got.Tasks), got.Total, got.Truncated)
 	}
 }
+
+// TestCmdTasksJSONEmptyArray pins the empty-match contract: every --json
+// surface emits [] (never null) when nothing matches, so consumers stop
+// special-casing the empty case (2026-11-07_10-33 §e3). The assertion is
+// RAW bytes: null unmarshals into a nil slice with len 0, so a decode-based
+// check cannot see the regression.
+func TestCmdTasksJSONEmptyArray(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "tasks-cli-empty.db")
+
+	seed, err := sqlite.Open(dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := seed.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	cases := []struct {
+		name string
+		args []string
+	}{
+		{"plain", []string{"--db", dbPath, "--json"}},
+		{"envelope", []string{"--db", dbPath, "--json", "--json-envelope"}},
+		{"parked", []string{"--db", dbPath, "--parked", "--json"}},
+		{"parked-class", []string{"--db", dbPath, "--parked-class", "rate-limit", "--json"}},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			out := captureStdout(t, func() {
+				if err := cmdTasks(tc.args); err != nil {
+					t.Errorf("%v: %v", tc.name, err)
+				}
+			})
+
+			trimmed := strings.TrimSpace(out)
+
+			if trimmed == "null" {
+				t.Fatalf("%s --json emitted null, want []", tc.name)
+			}
+
+			switch tc.name {
+			case "plain", "parked", "parked-class":
+				if trimmed != "[]" {
+					t.Fatalf("%s --json = %q, want []", tc.name, trimmed)
+				}
+			case "envelope":
+				var env struct {
+					Tasks json.RawMessage `json:"tasks"`
+				}
+				if err := json.Unmarshal([]byte(out), &env); err != nil {
+					t.Fatalf("decode %q: %v", out, err)
+				}
+
+				if strings.TrimSpace(string(env.Tasks)) != "[]" {
+					t.Fatalf("envelope tasks = %s, want []", env.Tasks)
+				}
+			}
+		})
+	}
+}
