@@ -195,7 +195,7 @@ shrink_pass() {
 	local -A twins=()
 	local sha tree subj
 	while read -r sha tree subj; do
-		twins["${tree}|${subj}"]="${twins[${tree} | ${subj}]:-}${sha}"$'\n'
+		twins["${tree} | ${subj}"]="${twins[${tree} | ${subj}]:-}${sha}"$'\n'
 	done < <(git log --format='%H %T %s' HEAD 2>/dev/null)
 	[ -f "$baseline" ] || {
 		echo "shrink: no baseline at $baseline"
