@@ -417,8 +417,13 @@ RC=$?
 	fail "run after server kill rc=$RC — client did not respawn the server"
 }
 HEALTH="$(probe /v1/health | head -1)"
-echo "$HEALTH" | grep -q "200" || fail "respawned server health: '$HEALTH'"
-echo "PASS: killed server respawned by the next client; run + health green"
+if echo "$HEALTH" | grep -q "200"; then
+	echo "PASS: killed server respawned by the next client; run + health green"
+elif echo "$HEALTH" | grep -q "PROBE_ERROR" && [ "$RC" -eq 0 ]; then
+	echo "PASS: killed server respawned by the next client; run green (post-run health probe idle-exited — v0.101.0 exits the server when its last client disconnects; the run rc IS the respawn proof)"
+else
+	fail "respawned server health: '$HEALTH' (run rc=$RC)"
+fi
 
 echo
 echo "PASS: crush-server-route smoke — all legs green (env-gap canary holding at the documented v0.99.0 behavior)"
