@@ -13,6 +13,12 @@
 # --self-test pins the summary format and runs a negative/positive battery
 # over a fixture repo with backdated commit timestamps (fleet convention:
 # countable gate summaries are PINNED).
+#
+# Env hooks (pinned here so future sessions don't rediscover them by
+# self-test failure): TQ_PUSH_TIMING_REPO points the gate at a fixture
+# repo (the --check battery needs a repo that is NOT this one);
+# TQ_PUSH_TIMING_NOW overrides `date +%s` for the "now" side of the age
+# math (backdated fixtures need a matching now).
 set -euo pipefail
 cd "${TQ_PUSH_TIMING_REPO:-$(dirname "$0")/..}"
 

@@ -97,6 +97,9 @@ usage() {
 	echo "  heal through these rails instead of a hand-rolled rebase." >&2
 	echo "  --from <ref> is an EXCLUSIVE base bound: only <ref>..HEAD is healed;" >&2
 	echo "  the commit AT <ref> itself is never rewritten (it may stay footer-less)." >&2
+	echo "  --from recipe: pass the last commit you OWN below the sweep (exclusive" >&2
+	echo "  base) — when a PARENT-naming refusal blocks the span, run the printed" >&2
+	echo "  --from <oldest-blocker> terminator walk instead of widening past it." >&2
 	echo "  --retitle renames ONLY footer-less sweeps; commits already carrying a" >&2
 	echo "  Task-Queue-ID footer keep their subject and message byte-identical." >&2
 	echo "  --tip-only narrows --retitle to the range's tip commit only." >&2
