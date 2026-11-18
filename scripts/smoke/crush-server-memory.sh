@@ -30,6 +30,11 @@ fail() {
 # Shared boot plumbing (third-duplication cure). This smoke keeps its own
 # minimal inert mock-provider scripting.
 . "$(dirname "${BASH_SOURCE[0]}")/lib/crush-server.sh"
+# routed-turn knobs — the turn runner is the shared crush_smoke_routed_run
+# (lib/crush-server.sh); this smoke rides the bare defaults (no pins) with
+# only the prompt varied.
+# shellcheck disable=SC2034 # consumed by crush_smoke_routed_run (sourced lib)
+CRUSH_SMOKE_PROMPT="reply done"
 crush_smoke_require_bins
 
 TMP="$(mktemp -d /tmp/tq-crush-memory-smoke.XXXXXX)"
@@ -137,16 +142,6 @@ probe() { # <path> — status-only view of the shared probe
 	crush_smoke_probe "$SOCK" "$1" | head -1
 }
 
-routed_run() { # <log> — one routed turn; rc on stdout
-	(
-		cd "$REPO"
-		XDG_CONFIG_HOME="$XDG" XDG_DATA_HOME="$DATA" \
-			CRUSH_CLIENT_SERVER=1 \
-			timeout 90 crush run -H "unix://$SOCK" --verbose \
-			"reply done" >"$TMP/$1" 2>&1
-	)
-}
-
 run_wave() { # <wave-n> — CONCURRENCY concurrent routed turns; echoes peak rss
 	n="$1"
 	: >"$TMP/rss-$n.log"
@@ -160,7 +155,7 @@ run_wave() { # <wave-n> — CONCURRENCY concurrent routed turns; echoes peak rss
 	SAMPLER=$!
 	pids=""
 	for i in $(seq 1 "$CONCURRENCY"); do
-		routed_run "run-$n-$i.log" &
+		crush_smoke_routed_run "run-$n-$i.log" &
 		pids="$pids $!"
 	done
 	rc_total=0
@@ -180,7 +175,7 @@ run_wave() { # <wave-n> — CONCURRENCY concurrent routed turns; echoes peak rss
 		done
 		pids=""
 		for i in $(seq 1 "$CONCURRENCY"); do
-			routed_run "run-$n-$i-retry.log" &
+			crush_smoke_routed_run "run-$n-$i-retry.log" &
 			pids="$pids $!"
 		done
 		for p in $pids; do

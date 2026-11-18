@@ -74,6 +74,13 @@ trap cleanup EXIT
 export TQ_DB="$TMP/tasks.db" # hook contract: smokes never ride the production journal
 
 CRUSH_BIN="$(command -v crush)"
+# routed-turn knobs — the turn runner is the shared crush_smoke_routed_run
+# (lib/crush-server.sh); this smoke pins its resolved binary + the scratch
+# verdict/question files (the server strips both from ITS env).
+# shellcheck disable=SC2034 # consumed by crush_smoke_routed_run (sourced lib)
+CRUSH_SMOKE_BIN="$CRUSH_BIN"
+# shellcheck disable=SC2034 # consumed by crush_smoke_routed_run (sourced lib)
+CRUSH_SMOKE_PIN_FILES=1
 XDG="$TMP/xdg"
 DATA="$TMP/data"
 REPO="$TMP/repo"
@@ -224,17 +231,6 @@ probe() { # <path> — GET on the scratch socket via the shared probe
 	crush_smoke_probe "$SOCK" "$1"
 }
 
-routed_run() { # <log-name> — one CRUSH_CLIENT_SERVER run; rc on stdout
-	(
-		cd "$REPO"
-		XDG_CONFIG_HOME="$XDG" XDG_DATA_HOME="$DATA" \
-			TQ_RESULT_FILE="$TMP/result.json" \
-			CRUSH_CLIENT_SERVER=1 \
-			timeout 90 "$CRUSH_BIN" run -H "unix://$SOCK" --verbose \
-			"please write the verdict file now" >"$TMP/$1" 2>&1
-	)
-}
-
 echo "== boot isolated server"
 start_mock 'printf %s "{\"verdict\":\"ok-routed\"}" > smoke-verdict.json' 'mock done' 0
 crush_smoke_start_server "$SOCK" "$XDG" "$DATA" "$TMP/server.log"
@@ -245,7 +241,7 @@ echo "PASS: /v1/health 200 on the scratch socket"
 echo "== leg: routed verdict round-trip (M1/M4)"
 rm -f "$REPO/smoke-verdict.json"
 : >"$TMP/mock-requests.log" # truncate, never rm: the mock holds an append handle
-routed_run run1.log
+crush_smoke_routed_run run1.log
 RC=$?
 [ "$RC" -eq 0 ] || {
 	cat "$TMP/run1.log"
@@ -268,7 +264,7 @@ echo "PASS: routed tool-call wrote the verdict file"
 echo "== leg: live workspace + M5 shapes during the run"
 start_mock 'printf %s "{\"verdict\":\"ok-routed\"}" > smoke-verdict.json' 'mock done' 20
 rm -f "$REPO/smoke-verdict.json" "$TMP/shapes.json"
-routed_run run2.log &
+crush_smoke_routed_run run2.log &
 RUN2_PID=$!
 WS_JSON=""
 for _ in $(seq 1 20); do
@@ -333,7 +329,7 @@ ensure_our_server() {
 ensure_our_server
 start_mock "printf %s server-env > \"\$XDG_CONFIG_HOME/env-proof.txt\"; printf %s \"[\$TQ_RESULT_FILE]\" > \"$TMP/tqrf-seen.txt\"" 'mock done' 0
 rm -f "$XDG/env-proof.txt" "$TMP/tqrf-seen.txt" "$REPO/smoke-verdict.json"
-routed_run run3.log
+crush_smoke_routed_run run3.log
 [ "$(cat "$XDG/env-proof.txt" 2>/dev/null)" = "server-env" ] || fail "server-env side of the canary broke: bash tool no longer sees the server env (behavior changed — investigate!)"
 SEEN="$(cat "$TMP/tqrf-seen.txt" 2>/dev/null || echo MISSING)"
 if [ "$SEEN" = "[]" ]; then
@@ -361,7 +357,7 @@ BRIDGE_OUT="$TMP/bridge-verdict.json"
 rm -f "$BRIDGE_OUT" "$REPO/smoke-verdict.json"
 start_mock "\"$TMP/tq-bin\" verdict --file \"$BRIDGE_OUT\" '{\"verdict\":\"bridge-ok\"}'" 'mock done' 0
 RC=0
-routed_run run-bridge.log || RC=$?
+crush_smoke_routed_run run-bridge.log || RC=$?
 [ "$RC" -eq 0 ] || {
 	cat "$TMP/run-bridge.log"
 	fail "bridge run rc=$RC"
@@ -399,7 +395,7 @@ CRUSHEOF
 # blocked command must NOT leave its file (it was denied).
 start_mock "echo hook-deny-probe > \"$TMP/tool-ran.txt\"" 'mock done' 0
 rm -f "$TMP/hook.log" "$TMP/tool-ran.txt" "$REPO/smoke-verdict.json"
-routed_run run4.log
+crush_smoke_routed_run run4.log
 [ -s "$TMP/hook.log" ] || {
 	cat "$TMP/run4.log"
 	fail "hook.log empty — the PreToolUse hook never fired server-side (M3 broken)"
@@ -414,7 +410,7 @@ rm -f "$REPO/smoke-verdict.json"
 kill -9 "$SERVER_PID" 2>/dev/null || true
 SERVER_PID=""
 sleep 1
-routed_run run5.log
+crush_smoke_routed_run run5.log
 RC=$?
 [ "$RC" -eq 0 ] || {
 	cat "$TMP/run5.log"

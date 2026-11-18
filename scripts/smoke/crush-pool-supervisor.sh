@@ -230,22 +230,17 @@ start_server() {
 	crush_smoke_start_server "$SOCK" "$XDG" "$DATA" "$TMP/server.log" setsid
 }
 
-# The executor's exact seam argv: CRUSH_CLIENT_SERVER=1 + -H (agentEnv).
-routed_run() { # log-name
-	(
-		cd "$REPO"
-		XDG_CONFIG_HOME="$XDG" XDG_DATA_HOME="$DATA" CRUSH_CLIENT_SERVER=1 \
-			timeout 150 crush run -H "unix://$SOCK" --verbose \
-			"please write the verdict file now" >"$TMP/$1" 2>&1
-	)
-}
+# The routed 429 leg rides the shared crush_smoke_routed_run (lib owns the
+# executor's exact seam argv); this smoke's legs need the longer timeout.
+# shellcheck disable=SC2034 # consumed by crush_smoke_routed_run (sourced lib)
+CRUSH_SMOKE_TIMEOUT=150
 
 echo "== leg: routed 429 fast-refuse (executor seam argv)"
 start_mock_429
 start_server
 [ "$(probe_health)" = "200" ] || fail "server health probe failed before the 429 leg"
 RC=0
-routed_run run429.log || RC=$?
+crush_smoke_routed_run run429.log || RC=$?
 [ "$RC" -ne 0 ] || {
 	cat "$TMP/run429.log"
 	fail "routed 429 run exited 0 — fast-refuse contract broken"

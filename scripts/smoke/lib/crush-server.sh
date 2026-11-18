@@ -21,7 +21,9 @@
 # was only debugged to green in place; do not "simplify" it from here.
 #
 # Convention: CRUSH_SMOKE_* globals are set by the start helpers so a
-# smoke's cleanup trap can kill exactly what was booted.
+# smoke's cleanup trap can kill exactly what was booted. The same namespace
+# carries the routed-turn knobs (CRUSH_SMOKE_BIN / _TIMEOUT / _PROMPT /
+# _PIN_FILES) read by crush_smoke_routed_run.
 
 # crush_smoke_require_bins — both binaries the boot block shells out to.
 crush_smoke_require_bins() {
@@ -203,3 +205,83 @@ PYEOF
 crush_smoke_health_ok() {
 	crush_smoke_probe "$1" /v1/health | head -1 | grep -q 200
 }
+
+# crush_smoke_routed_run <log-name> — ONE routed client turn against the
+# scratch socket; rc propagates to the caller. This is the executor's exact
+# seam argv (CRUSH_CLIENT_SERVER=1 + -H, agentEnv) and the single home of
+# the three near-identical per-smoke routed_run definitions (routed-lib
+# extraction row; each hand-rolled copy rotted independently). Requires
+# the sourcing smoke's REPO/XDG/DATA/SOCK/TMP globals. Knobs:
+#   CRUSH_SMOKE_BIN       client binary (default `crush`; the route smoke
+#                         passes its resolved CRUSH_BIN)
+#   CRUSH_SMOKE_TIMEOUT   client timeout seconds (default 90)
+#   CRUSH_SMOKE_PROMPT    the turn prompt (default the verdict-write ask)
+#   CRUSH_SMOKE_PIN_FILES set 1 to pin TQ_RESULT_FILE/TQ_QUESTION_FILE to
+#                         scratch paths in the CLIENT env — the server
+#                         strips both from its own env, and an inherited
+#                         agent-shell verdict env must never be mistaken
+#                         for propagation (the route round-trip leg sets
+#                         this; memory/pool legs deliberately run bare)
+crush_smoke_routed_run() {
+	local log=$1
+	local bin=${CRUSH_SMOKE_BIN:-crush}
+	local tmo=${CRUSH_SMOKE_TIMEOUT:-90}
+	local prompt=${CRUSH_SMOKE_PROMPT:-please write the verdict file now}
+	local pins=()
+	if [ "${CRUSH_SMOKE_PIN_FILES:-0}" = "1" ]; then
+		pins=(TQ_RESULT_FILE="$TMP/result.json" TQ_QUESTION_FILE="$TMP/question.txt")
+	fi
+	(
+		cd "$REPO"
+		env "${pins[@]}" \
+			XDG_CONFIG_HOME="$XDG" XDG_DATA_HOME="$DATA" \
+			CRUSH_CLIENT_SERVER=1 \
+			timeout "$tmo" "$bin" run -H "unix://$SOCK" --verbose \
+			"$prompt" >"$TMP/$log" 2>&1
+	)
+}
+
+# --self-test: sourcing-contract pins over a FAKE crush binary (no server,
+# no network) — the seam argv, the XDG isolation pair, the pins branch, the
+# knob plumbing, and rc propagation. bash stub-agent.sh/--self-test shape.
+if [ "${1:-}" = "--self-test" ]; then
+	set -euo pipefail
+	fail() {
+		echo "crush-server lib self-test FAIL: $1" >&2
+		exit 1
+	}
+	tmp="$(mktemp -d)"
+	trap 'rm -rf "$tmp"' EXIT
+	mkdir -p "$tmp/bin" "$tmp/repo" "$tmp/xdg" "$tmp/data"
+	cat >"$tmp/bin/crush" <<'EOF'
+#!/bin/sh
+{
+	echo "argv: $*"
+	echo "CRUSH_CLIENT_SERVER=${CRUSH_CLIENT_SERVER:-}"
+	echo "XDG_CONFIG_HOME=${XDG_CONFIG_HOME:-}"
+	echo "TQ_RESULT_FILE=${TQ_RESULT_FILE:-}"
+} >"$(dirname "$0")/fake.log"
+exit 0
+EOF
+	chmod +x "$tmp/bin/crush"
+	REPO="$tmp/repo" XDG="$tmp/xdg" DATA="$tmp/data" SOCK="$tmp/crush.sock" TMP="$tmp" \
+		env -u TQ_RESULT_FILE -u TQ_QUESTION_FILE PATH="$tmp/bin:$PATH" \
+		bash -c '
+		. "$1" || exit 9
+		crush_smoke_routed_run fake.log
+		echo "rc=$?"' _ "$(cd "$(dirname "$0")" && pwd)/$(basename "$0")" >"$tmp/out" 2>&1
+	grep -q "argv: run -H unix://$tmp/crush.sock --verbose please write the verdict file now" "$tmp/bin/fake.log" ||
+		fail "seam argv wrong: $(grep argv: "$tmp/bin/fake.log" 2>/dev/null || echo none)"
+	grep -q "CRUSH_CLIENT_SERVER=1" "$tmp/bin/fake.log" || fail "CRUSH_CLIENT_SERVER not set"
+	grep -q "XDG_CONFIG_HOME=$tmp/xdg" "$tmp/bin/fake.log" || fail "XDG isolation pair missing"
+	grep -q 'TQ_RESULT_FILE=.' "$tmp/bin/fake.log" && fail "bare run inherited a TQ_RESULT_FILE value"
+	grep -q '^rc=0' "$tmp/out" || fail "rc did not propagate"
+	REPO="$tmp/repo" XDG="$tmp/xdg" DATA="$tmp/data" SOCK="$tmp/crush.sock" TMP="$tmp" \
+		PATH="$tmp/bin:$PATH" CRUSH_SMOKE_PIN_FILES=1 CRUSH_SMOKE_TIMEOUT=7 \
+		CRUSH_SMOKE_PROMPT="reply done" \
+		bash -c '. "$1"; crush_smoke_routed_run fake2.log' _ "$(cd "$(dirname "$0")" && pwd)/$(basename "$0")" >/dev/null 2>&1
+	grep -q "TQ_RESULT_FILE=$tmp/result.json" "$tmp/bin/fake.log" || fail "pins branch did not inject TQ_RESULT_FILE"
+	grep -q "argv: run -H unix://$tmp/crush.sock --verbose reply done" "$tmp/bin/fake.log" || fail "prompt knob not honored"
+	echo "crush-server lib self-test ok (seam argv, XDG isolation, pins branch, knobs, rc propagation)"
+	exit 0
+fi
