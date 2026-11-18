@@ -337,9 +337,8 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   heal via `scripts/heal-daemon-sweep.sh [--repo <path>] [--from <ref>] [--retitle <s>] <id>`
   (unpushed only; `--repo` heals OTHER repos cross-cwd; backup on failure; `--self-test` pins rails): REFUSES
   non-contiguous spans; a PARENT-naming refusal (foreign footer BELOW an
-  exactly-mine span) = terminator shape — run its printed `--from` (the
-  NEAREST different-id footer; pre-11-17 the oldest-blocker form walked one
-  refusal per blocker); tail-runs `scripts/check-footer-attribution.sh
+  exactly-mine span) = terminator shape — run its printed `--from`;
+  tail-runs `scripts/check-footer-attribution.sh
   <id>` (span commits must carry trailer-parseable footers; `--self-test`;
   run standalone after ANY later rebuild); fallback = amend the unpushed
   HEAD once `git show --stat` proves it mine. Full DAG rebuild (dates
