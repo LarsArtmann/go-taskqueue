@@ -80,7 +80,7 @@ self_test() {
 	trap 'rm -rf "$tmp"' RETURN
 	git -C "$tmp" init -q 2>/dev/null || git init -q "$tmp"
 	git -C "$tmp" config user.email t@t && git -C "$tmp" config user.name t
-	cd "$tmp"
+	cd "$tmp" || return 1
 	local ok=0 fail=0
 	check() { # check <desc> <want-rc> <got-rc> <want-reason> <got-reason>
 		if [ "$2" = "$3" ] && [ "$4" = "$5" ]; then

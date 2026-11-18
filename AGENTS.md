@@ -334,10 +334,10 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 - **Concurrent agents commit constantly** (auto-commit daemon): re-run
   `go test ./... -race` before declaring success; never generate Go source via
   heredocs; /tmp fixtures (gated trees are daemon-food). Footer-less sweeps
-  heal via `scripts/heal-daemon-sweep.sh [--repo <path>] [--from <ref>] [--retitle <s>] <id>`
+  heal via `scripts/heal-daemon-sweep.sh [--repo <path>] [--from <ref>] [--retitle <s>] [--fold-below <sha>] <id>`
   (unpushed only; `--repo` heals OTHER repos cross-cwd; backup on failure; `--self-test` pins rails): REFUSES
   non-contiguous spans; a PARENT-naming refusal (foreign footer BELOW an
-  exactly-mine span) = terminator shape — run its printed `--from`;
+  exactly-mine span) = terminator shape — run its `--from`;
   tail-runs `scripts/check-footer-attribution.sh
   <id>` (span commits must carry trailer-parseable footers; `--self-test`;
   run standalone after ANY later rebuild); fallback = amend the unpushed

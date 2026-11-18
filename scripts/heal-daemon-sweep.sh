@@ -43,7 +43,7 @@
 #     `git commit --amend` territory per the AGENTS.md Known Issues
 #     fallback), or the sanctioned soft-reset fold.
 #
-# Usage: scripts/heal-daemon-sweep.sh [--repo <path>] [--from <ref>] [--retitle <subject>] [--tip-only] [--dry-run] <Task-Queue-ID>
+# Usage: scripts/heal-daemon-sweep.sh [--repo <path>] [--from <ref>] [--retitle <subject>] [--tip-only] [--fold-below <sha>] [--dry-run] <Task-Queue-ID>
 #        scripts/heal-daemon-sweep.sh --self-test
 #   --from <ref>  EXCLUSIVE base bound of the heal range (default:
 #                 origin/master, then @{upstream}, then the root commit).
@@ -63,6 +63,15 @@
 #                 --retitle stamps the WHOLE span, destroying foreign
 #                 subjects — the 2026-11-09 wave-completion closeout §d2
 #                 destruction class).
+#   --fold-below <sweep-sha>
+#                 the daemon-commit-BELOW-footer recovery (2026-11-07
+#                 09-43 §a4/§d3, row 1835): fold the footer-less DAEMON
+#                 sweep <sha> into the single footered tip above it via
+#                 soft-reset + commit -C, leaving ONE footered commit;
+#                 tree-equality + footer verified, fork records printed.
+#                 Recognizes BOTH daemon shapes — the literal auto-commit
+#                 subject and the AI-titled `Daemon: true` body (row 1825:
+#                 AI-titled sweeps needed manual commit-tree surgery).
 #   --dry-run     print the heal span + per-commit proposed subjects and
 #                 exit 0 WITHOUT rewriting anything (history-rewriting
 #                 tools obey dry-run-first hardest, closeout §d1).
@@ -81,7 +90,7 @@ die() {
 }
 
 usage() {
-	echo "usage: $0 [--repo <path>] [--from <ref>] [--retitle <subject>] [--tip-only] [--dry-run] <Task-Queue-ID>" >&2
+	echo "usage: $0 [--repo <path>] [--from <ref>] [--retitle <subject>] [--tip-only] [--fold-below <sha>] [--dry-run] <Task-Queue-ID>" >&2
 	echo "       $0 --self-test" >&2
 	echo "  --repo <path> heal a DIFFERENT repository (cross-repo mode): all git" >&2
 	echo "  operations run with <path> as cwd, so sweeps outside go-taskqueue" >&2
@@ -109,6 +118,17 @@ footer_well_formed() {
 
 has_footer() {
 	printf '%s\n' "$1" | grep -q '^Task-Queue-ID: '
+}
+
+# is_daemon_sweep <full-message>: BOTH daemon shapes — the literal
+# `chore: auto-commit N changed file(s) (heuristic)` subject AND the
+# AI-titled sweep whose body carries the `Daemon: true` marker (2026-11-03
+# 08-25 §d2: an AI-titled sweep defeated the first heal attempt and needed
+# manual commit-tree surgery; row 1825). Key on the body marker, never on
+# the subject alone — the daemon's heuristic summary can be anything.
+is_daemon_sweep() {
+	printf '%s\n' "$1" | sed -n 1p | grep -Eq '^chore: auto-commit [0-9]+ changed file' && return 0
+	printf '%s\n' "$1" | grep -q '^Daemon: true$'
 }
 
 # token_arrow_escaped <tok> <text>: rc=0 iff the token IS a member of an
@@ -187,6 +207,11 @@ check_rails() {
 			continue
 		fi
 		unfootered=$((unfootered + 1))
+		# Daemon-shape classification (row 1825): a footer-less commit that
+		# is NEITHER daemon shape is named to stderr — the caller confirms
+		# exactly-mine before the footer lands on it (foreign work rides
+		# footer-less commits too; the heal stamps whatever is in range).
+		is_daemon_sweep "$msg" || echo "note: $(git log -1 --oneline "$c") is footer-less and NOT daemon-shaped — heal only if exactly-mine" >&2
 	done < <(git rev-list "$base..HEAD")
 	if [ "${#blockers[@]}" -gt 0 ]; then
 		# Row 55 span terminator: ONE different-id footer below an
@@ -412,8 +437,76 @@ check_citations() {
 	return 0
 }
 
+# fold_below_mode sweep id dry_run: the daemon-commit-BELOW-footer recovery
+# (2026-11-07 09-43 §a4/§d3, row 1835): a footer-less daemon sweep sits
+# directly below MY footered tip. The msg-filter heal keeps both commits
+# (the sweep gains its own footer); when the caller wants ONE footered
+# commit instead, this scripts the sanctioned manual recipe —
+#   git reset --soft <pre-sweep-parent> + git commit -C <tip>
+# — with tree-equality and footer verification. Refuses everything the
+# recipe cannot prove: a non-daemon sweep (both shapes recognized via
+# is_daemon_sweep), a foreign or missing footer on the tip, more than one
+# commit above the sweep, pushed refs or tags inside the fold range, a
+# dirty tree (the fold re-commits the index), or the sweep being the tip.
+fold_below_mode() {
+	local sweep=$1 id=$2 dry_run=$3
+	local tip parent tipmsg sweepmsg above
+	git rev-parse --verify --quiet "$sweep^{commit}" >/dev/null 2>&1 || die "fold-below: sweep commit '$sweep' not found"
+	sweep=$(git rev-parse "$sweep^{commit}")
+	tip=$(git rev-parse HEAD)
+	[ "$sweep" != "$tip" ] || die "fold-below: the sweep IS the tip — a plain heal (or the AGENTS amend maneuver) applies, not a fold"
+	git rev-parse --verify --quiet "$sweep^" >/dev/null 2>&1 || die "fold-below: the sweep is a root commit — nothing to fold below"
+	parent=$(git rev-parse "$sweep^")
+	git merge-base --is-ancestor "$sweep" HEAD || die "fold-below: the sweep is not an ancestor of HEAD"
+	above=$(git rev-list --count "$sweep..HEAD")
+	[ "$above" = "1" ] || die "fold-below: expected exactly 1 commit above the sweep, found $above (the fold merges one sweep into one footered tip; multi-commit spans heal via the msg-filter instead)"
+	tipmsg=$(git log -1 --format='%B' "$tip")
+	has_footer "$tipmsg" || die "fold-below: the tip carries no footer — a plain heal applies"
+	footer_well_formed "$tipmsg" "$id" || die "fold-below: the tip carries a different Task-Queue-ID footer (fold only your exactly-mine tip)"
+	sweepmsg=$(git log -1 --format='%B' "$sweep")
+	has_footer "$sweepmsg" && die "fold-below: the sweep already carries a footer — nothing to fold"
+	is_daemon_sweep "$sweepmsg" || die "fold-below: the sweep is NOT daemon-shaped (neither the literal auto-commit subject nor a 'Daemon: true' body) — refusing to fold unknown work into your footer"
+	local r hits
+	while IFS= read -r r; do
+		hits=$(comm -12 <(git rev-list "$r" | sort) <(git rev-list "$parent..HEAD" | sort))
+		[ -z "$hits" ] || die "fold-below: refusing — pushed commits inside $parent..HEAD (history policy)"
+	done < <(git for-each-ref --format='%(refname)' 'refs/remotes/')
+	while IFS= read -r r; do
+		hits=$(comm -12 <(git rev-list "$r" | sort) <(git rev-list "$parent..HEAD" | sort))
+		[ -z "$hits" ] || die "fold-below: refusing — tag(s) reference commits inside the fold range; re-tag after healing"
+	done < <(git for-each-ref refs/tags --format='%(refname)')
+	[ -z "$(git status --porcelain)" ] || die "fold-below: worktree dirty — commit or stash first (the fold re-commits the index)"
+	local tree_old
+	tree_old=$(git rev-parse "$tip^{tree}")
+	if [ -n "$dry_run" ]; then
+		echo "DRY-RUN: would fold $(git log -1 --oneline "$sweep") into $(git log -1 --oneline "$tip") via soft reset to $parent + commit -C $tip"
+		echo "DRY-RUN: no commits were rewritten"
+		return 0
+	fi
+	git update-ref "$BACKUP_REF" "$tip"
+	git reset -q --soft "$parent"
+	if ! git commit -q -C "$tip"; then
+		git reset -q --soft "$BACKUP_REF"
+		die "fold-below: re-commit failed — restored via $BACKUP_REF"
+	fi
+	local tree_new newmsg
+	tree_new=$(git rev-parse "HEAD^{tree}")
+	newmsg=$(git log -1 --format='%B' HEAD)
+	if [ "$tree_new" != "$tree_old" ] ||
+		! footer_well_formed "$newmsg" "$id" ||
+		[ "$(printf '%s\n' "$newmsg" | grep -c '^Task-Queue-ID: ')" != "1" ]; then
+		git reset -q --soft "$BACKUP_REF"
+		die "fold-below: verification FAILED (tree/footer) — restored via $BACKUP_REF"
+	fi
+	printf 'FORK-RECORD: %s→%s\n' "$sweep" "$(git rev-parse HEAD)"
+	printf 'FORK-RECORD: %s→%s\n' "$tip" "$(git rev-parse HEAD)"
+	git update-ref -d "$BACKUP_REF"
+	echo "FOLD-BELOW OK — sweep folded into the footered tip; backup ref dropped"
+	return 0
+}
+
 main() {
-	local base_arg="" footer="" retitle="" repo_arg="" tip_only="" dry_run="" base id
+	local base_arg="" footer="" retitle="" repo_arg="" tip_only="" dry_run="" fold_below="" base id
 	while [ $# -gt 0 ]; do
 		case $1 in
 		--repo)
@@ -437,6 +530,11 @@ main() {
 		--tip-only)
 			tip_only=1
 			shift
+			;;
+		--fold-below)
+			[ $# -ge 2 ] || usage
+			fold_below=$2
+			shift 2
 			;;
 		--dry-run)
 			dry_run=1
@@ -462,6 +560,11 @@ main() {
 	fi
 	git rev-parse --is-inside-work-tree >/dev/null 2>&1 || die "not inside a git work tree"
 	[ -z "$tip_only" ] || [ -n "$retitle" ] || die "--tip-only requires --retitle"
+	if [ -n "$fold_below" ]; then
+		[ -z "$retitle" ] && [ -z "$tip_only" ] || die "--fold-below does not combine with --retitle/--tip-only"
+		fold_below_mode "$fold_below" "$id" "$dry_run"
+		return $?
+	fi
 	base=$(resolve_base "$base_arg")
 
 	git update-ref -d "$BACKUP_REF" 2>/dev/null
@@ -1101,6 +1204,130 @@ EOF
 	# --tip-only without --retitle refuses (nothing to narrow).
 	(cd "$repo7" && "$self" --from origin/master --tip-only deadbeef0000000000000000000000000000000c) >/dev/null 2>"$tmp/err_tip2"
 	expect_refusal "--tip-only without --retitle" $? "--tip-only requires --retitle" "$tmp/err_tip2"
+
+	# AI-titled daemon sweep heals via the NORMAL msg-filter path (row
+	# 1825): subject `feat(smoke): …` + body `Daemon: true` — the footer
+	# lands, the AI subject and body marker survive byte-identical.
+	local repo8="$tmp/repo8"
+	git init -q "$repo8"
+	git -C "$repo8" config user.email t@t
+	git -C "$repo8" config user.name t
+	echo a >"$repo8/a.txt"
+	git -C "$repo8" add a.txt
+	git -C "$repo8" commit -qm "base"
+	git -C "$repo8" update-ref refs/remotes/origin/master HEAD
+	echo b >"$repo8/b.txt"
+	git -C "$repo8" add b.txt
+	git -C "$repo8" commit -qm "$(printf 'feat(smoke): heuristic summary title\n\nDaemon: true')"
+	local ai_msg ai_rc
+	(cd "$repo8" && "$self" --from origin/master deadbeef0000000000000000000000000000000d) >"$tmp/out_ai" 2>"$tmp/err_ai"
+	ai_rc=$?
+	ai_msg=$(git -C "$repo8" log -1 --format='%B' HEAD)
+	if [ "$ai_rc" = "0" ] &&
+		[ "$(git -C "$repo8" log -1 --format='%s' HEAD)" = "feat(smoke): heuristic summary title" ] &&
+		printf '%s\n' "$ai_msg" | grep -q '^Daemon: true$' &&
+		footer_well_formed "$ai_msg" "deadbeef0000000000000000000000000000000d"; then
+		ok=$((ok + 1))
+	else
+		fail=$((fail + 1))
+		echo "SELF-TEST FAIL: AI-titled Daemon:true sweep must heal normally (row 1825)" >&2
+		cat "$tmp/out_ai" "$tmp/err_ai" >&2
+	fi
+
+	# --fold-below happy path, BOTH daemon shapes (rows 1835+1825): footer-
+	# less daemon sweep directly below the footered tip folds into ONE
+	# footered commit; tree byte-equal, subject = the tip's, fork records
+	# printed for both rewritten shas.
+	local fold_repo="$tmp/repo9" fold_id=deadbeef0000000000000000000000000000000e
+	fold_repo_fixture() {
+		local subject=$1
+		git init -q "$fold_repo"
+		git -C "$fold_repo" config user.email t@t
+		git -C "$fold_repo" config user.name t
+		echo a >"$fold_repo/a.txt"
+		git -C "$fold_repo" add a.txt
+		git -C "$fold_repo" commit -qm "base"
+		git -C "$fold_repo" update-ref refs/remotes/origin/master HEAD
+		echo b >"$fold_repo/b.txt"
+		git -C "$fold_repo" add b.txt
+		git -C "$fold_repo" commit -qm "$subject"
+		echo c >"$fold_repo/c.txt"
+		git -C "$fold_repo" add c.txt
+		git -C "$fold_repo" commit -qm "$(printf 'feat: my real work\n\nTask-Queue-ID: %s' "$fold_id")"
+	}
+	local fold_sweep fold_tip fold_tree
+	for fold_subject in "chore: auto-commit 1 changed file(s) (heuristic)" "$(printf 'chore: heuristic summary sweep\n\nDaemon: true')"; do
+		rm -rf "$fold_repo"
+		fold_repo_fixture "$fold_subject"
+		fold_sweep=$(git -C "$fold_repo" rev-parse HEAD~1)
+		fold_tip=$(git -C "$fold_repo" rev-parse HEAD)
+		fold_tree=$(git -C "$fold_repo" rev-parse "$fold_tip^{tree}")
+		(cd "$fold_repo" && "$self" --fold-below "$fold_sweep" "$fold_id") >"$tmp/out_fold" 2>"$tmp/err_fold"
+		if [ "$?" = "0" ] &&
+			[ "$(git -C "$fold_repo" rev-list --count origin/master..HEAD)" = "1" ] &&
+			[ "$(git -C "$fold_repo" rev-parse "HEAD^{tree}")" = "$fold_tree" ] &&
+			[ "$(git -C "$fold_repo" log -1 --format='%s' HEAD)" = "feat: my real work" ] &&
+			footer_well_formed "$(git -C "$fold_repo" log -1 --format='%B' HEAD)" "$fold_id" &&
+			grep -qF "FORK-RECORD: ${fold_sweep}→" "$tmp/out_fold" &&
+			grep -qF "FORK-RECORD: ${fold_tip}→" "$tmp/out_fold"; then
+			ok=$((ok + 1))
+		else
+			fail=$((fail + 1))
+			echo "SELF-TEST FAIL: --fold-below must fold the daemon sweep into one footered commit ($fold_subject)" >&2
+			cat "$tmp/out_fold" "$tmp/err_fold" >&2
+		fi
+	done
+
+	# --fold-below refusals: non-daemon sweep, foreign tip footer, two
+	# commits above the sweep, dirty tree, and the sweep-as-tip shape.
+	rm -rf "$fold_repo"
+	fold_repo_fixture "chore: manual tidy"
+	fold_sweep=$(git -C "$fold_repo" rev-parse HEAD~1)
+	(cd "$fold_repo" && "$self" --fold-below "$fold_sweep" "$fold_id") >/dev/null 2>"$tmp/err_fold1"
+	expect_refusal "fold-below non-daemon sweep" $? "NOT daemon-shaped" "$tmp/err_fold1"
+
+	rm -rf "$fold_repo"
+	fold_repo_fixture "chore: auto-commit 1 changed file(s) (heuristic)"
+	git -C "$fold_repo" commit -q --amend -m "$(printf 'feat: foreign work\n\nTask-Queue-ID: deadbeef000000000000000000000000000000ff')"
+	fold_sweep=$(git -C "$fold_repo" rev-parse HEAD~1)
+	(cd "$fold_repo" && "$self" --fold-below "$fold_sweep" "$fold_id") >/dev/null 2>"$tmp/err_fold2"
+	expect_refusal "fold-below foreign tip footer" $? "different Task-Queue-ID footer" "$tmp/err_fold2"
+
+	rm -rf "$fold_repo"
+	fold_repo_fixture "chore: auto-commit 1 changed file(s) (heuristic)"
+	echo d >"$fold_repo/d.txt"
+	git -C "$fold_repo" add d.txt
+	git -C "$fold_repo" commit -qm "$(printf 'feat: more work\n\nTask-Queue-ID: %s' "$fold_id")"
+	fold_sweep=$(git -C "$fold_repo" rev-parse HEAD~2)
+	(cd "$fold_repo" && "$self" --fold-below "$fold_sweep" "$fold_id") >/dev/null 2>"$tmp/err_fold3"
+	expect_refusal "fold-below with two commits above" $? "exactly 1 commit above" "$tmp/err_fold3"
+
+	rm -rf "$fold_repo"
+	fold_repo_fixture "chore: auto-commit 1 changed file(s) (heuristic)"
+	fold_sweep=$(git -C "$fold_repo" rev-parse HEAD~1)
+	fold_tip=$(git -C "$fold_repo" rev-parse HEAD)
+	echo dirty >"$fold_repo/dirty.txt"
+	(cd "$fold_repo" && "$self" --fold-below "$fold_sweep" "$fold_id") >/dev/null 2>"$tmp/err_fold4"
+	expect_refusal "fold-below dirty tree" $? "worktree dirty" "$tmp/err_fold4"
+	(cd "$fold_repo" && "$self" --fold-below "$fold_tip" "$fold_id") >/dev/null 2>"$tmp/err_fold5"
+	expect_refusal "fold-below sweep IS the tip" $? "a plain heal" "$tmp/err_fold5"
+
+	# --fold-below --dry-run prints the plan and rewrites nothing.
+	rm -rf "$fold_repo"
+	fold_repo_fixture "chore: auto-commit 1 changed file(s) (heuristic)"
+	fold_sweep=$(git -C "$fold_repo" rev-parse HEAD~1)
+	fold_tip=$(git -C "$fold_repo" rev-parse HEAD)
+	(cd "$fold_repo" && "$self" --fold-below "$fold_sweep" --dry-run "$fold_id") >"$tmp/out_folddry" 2>"$tmp/err_folddry"
+	if [ "$?" = "0" ] &&
+		grep -qF "DRY-RUN: would fold" "$tmp/out_folddry" &&
+		[ "$(git -C "$fold_repo" rev-parse HEAD)" = "$fold_tip" ] &&
+		[ "$(git -C "$fold_repo" rev-list --count origin/master..HEAD)" = "2" ]; then
+		ok=$((ok + 1))
+	else
+		fail=$((fail + 1))
+		echo "SELF-TEST FAIL: --fold-below --dry-run must print the plan and rewrite nothing" >&2
+		cat "$tmp/out_folddry" "$tmp/err_folddry" >&2
+	fi
 
 	if [ "$fail" = "0" ]; then
 		echo "SELF-TEST OK ($ok checks)"
