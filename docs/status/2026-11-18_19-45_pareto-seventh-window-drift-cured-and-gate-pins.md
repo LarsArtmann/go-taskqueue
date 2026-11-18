@@ -159,8 +159,10 @@ mid-edit 4×, every sweep healed by exactly-mine verify + soft-reset fold).
 3. T22 keep-set: land the first 5 webui SSE pins (rows 1535 header-matrix
    hub-less shape, 602 header e2e, 693 aria-sort, 1534 probe shrink, 1783
    window-comment convention).
-4. T21 triage doc: classify the remaining SSE cluster rows keep/pool/
-   obsolete (dated planning note, TODO_LIST left compress-neutral).
+4. T21 triage doc: classify the webui SSE cluster rows into keep/pool/
+   obsolete (dated planning note; the pool dispatches the 1-test-pin tail
+   per the pareto plan — most cluster members are one-pin asks, only the
+   keep-set lands by hand) — minted as a residue row this window.
 5. T33/T34 residue batches (oldest done-prompt sections) — pool food per
    the plan.
 6. T35 pool dispatch wave: mint the harvest items for the per-report residue
@@ -170,14 +172,17 @@ mid-edit 4×, every sweep healed by exactly-mine verify + soft-reset fold).
 8. Stub-first-line-shebang invariant: a guard pinning that generated stubs
    carry #!/bin/sh as the FIRST heredoc body line (the exec-format-error
    class, sixth report §e2).
-9. Battery df preflight: ci-local refuses to start when /tmp free < floor
-   (§e4 class).
+9. ci-local df preflight: refuse the battery when /tmp free space is under
+   a floor (ENOSPC wall class; sixth report §e4) — minted as a residue row
+   this window.
 10. Fixture block-count floor: check-fixture-attribution gains a minimum
     heredoc count (94→100 class, §e6).
 11. go-build prune ritual row: the 482 G cache on / at 94 % is one
     ENOSPC away from the next wall.
-12. Monthly digest ritual: docs/status/README.md at 418/400 — run the
-    ratified ANNOTATE+ARCHIVE digest (advisory fired all window).
+12. Run the 2026-11 monthly ANNOTATE+ARCHIVE digest sweep over
+    docs/status/README.md (index 419/400, advisory fired all window) and
+    land its `digest 2026-11` row per the ratified ritual — minted as a
+    residue row this window.
 13. Row 84: the scripted-doc-mutation rail (today's incidents are the cited
     evidence; convention + guard sketch).
 14. Accuracy pass over the 6 fixture pins I authored (the gate enforces
@@ -192,7 +197,9 @@ mid-edit 4×, every sweep healed by exactly-mine verify + soft-reset fold).
 19. Time-hook audit: grep gates reading date +%s against fixed fixtures
     without a time-env override.
 20. install-pre-commit.sh: honor core.hooksPath (write into the RESOLVED
-    hooks dir) — the dangling-global-hooksPath silent-inert class.
+    hooks dir) so a host-global hooksPath pointing at a missing dir cannot
+    silently disable every guard (the standing open row in the commit-msg
+    section owns this).
 21. session-start.sh: detect the dangling hooksPath shape specifically and
     print the repo-local override remedy.
 22. Host-wide hooksPath audit across other repos on this machine.
@@ -213,7 +220,10 @@ mid-edit 4×, every sweep healed by exactly-mine verify + soft-reset fold).
     requeue fold).
 35. End-to-end tq doctor smoke: parked-provider "+N more" capping.
 36. Webui parked badge tooltip: provider + reason join in title attr.
-37. Webui fragments render test: parked provider badge OUTPUT pin.
+37. Webui fragments render test: pin the `parked: [<provider>]` badge
+    OUTPUT for a provider-carrying requeue fact (render-level;
+    TestParkedRequeueEvidenceProvider only pins the decode) — the standing
+    open row owns this.
 38. audit the reviewfix done-preflight weak-anchor false-cure class (row
     …173ee1329).
 39. journal-drift.sh unix-milli negative test (seconds-granularity seed
