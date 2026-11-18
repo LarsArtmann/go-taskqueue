@@ -9,6 +9,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 REPO_ROOT="$(pwd)"
+. "$REPO_ROOT/scripts/smoke/lib/stub-agent.sh"
 
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
@@ -40,21 +41,16 @@ export REPORT_PATH
 STUB="$TMP/stub-agent"
 # pins: the status-reporter branch (report write + footer commit) and the
 # commit-free work branch (the nothing-to-commit dead-letter trap)
-cat >"$STUB" <<'EOF'
-#!/bin/sh
-prompt=""
-prev=""
-for a in "$@"; do
-	[ "$prev" = "--" ] && prompt="$a"
-	prev="$a"
-done
+{
+	stub_agent_prologue
+	cat <<'EOF'
 case "$prompt" in
 	*"status reporter"*)
 		mkdir -p docs/status
 		printf '# rewind smoke report\n' >"$REPORT_PATH"
 		git add -A
 		git commit -qm "docs: rewind smoke report"
-		printf '%s\n' "{\"report\":\"$REPORT_PATH\"}" > "$TQ_RESULT_FILE"
+		stub_verdict "{\"report\":\"$REPORT_PATH\"}"
 		;;
 	*)
 		# Work branch stays commit-free (a nothing-to-commit git exit 1
@@ -64,8 +60,8 @@ case "$prompt" in
 		;;
 esac
 EOF
-chmod +x "$STUB"
-export TQ_AGENT_BIN="$STUB"
+} >"$STUB"
+stub_agent_install "$STUB"
 cd "$TMP"
 
 echo "== enqueue one agent task + drain with the status sweeper armed"

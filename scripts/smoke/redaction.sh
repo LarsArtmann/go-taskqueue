@@ -15,6 +15,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 REPO_ROOT="$(pwd)"
+. "$REPO_ROOT/scripts/smoke/lib/stub-agent.sh"
 
 TMP="$(mktemp -d)"
 cleanup() {
@@ -62,14 +63,9 @@ git -C "$REPO" commit -qm "seed"
 echo "== stub agent: leaks fake tokens on both outcomes"
 STUB="$TMP/stub-agent"
 # pins: secret-leak-both-outcomes — stub leaks fake tokens on work AND review turns
-cat >"$STUB" <<EOF
-#!/bin/sh
-prompt=""
-prev=""
-for a in "\$@"; do
-	[ "\$prev" = "--" ] && prompt="\$a"
-	prev="\$a"
-done
+{
+	stub_agent_prologue
+	cat <<EOF
 case "\$prompt" in
 	*"redaction-fail"*)
 		echo "fail turn leaked $FAKE_ANTHROPIC and $FAKE_AWS"
@@ -82,12 +78,12 @@ case "\$prompt" in
 		sed -i 's/^- \[ \] stub redaction-ok item.*/- [x] stub redaction-ok item/' TODO_LIST.md
 		git add -A
 		git commit -qm "stub redaction work" -m "Task-Queue-ID: \$qid"
-		printf '%s\n' '{"summary":"stub ok"}' > "\$TQ_RESULT_FILE"
+		stub_verdict '{"summary":"stub ok"}'
 		;;
 esac
 EOF
-chmod +x "$STUB"
-export TQ_AGENT_BIN="$STUB"
+} >"$STUB"
+stub_agent_install "$STUB"
 
 cd "$TMP"
 

@@ -7,6 +7,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 REPO_ROOT="$(pwd)"
+. "$REPO_ROOT/scripts/smoke/lib/stub-agent.sh"
 
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
@@ -42,14 +43,9 @@ REPORT_PATH="docs/status/$(date +%Y-%m-%d_%H-%M)_smoke.md"
 export REPORT_PATH
 STUB="$TMP/stub-agent"
 # pins: stub-agent-loop-turns — prompt-keyed work/review turn dispatch
-cat >"$STUB" <<'EOF'
-#!/bin/sh
-prompt=""
-prev=""
-for a in "$@"; do
-	[ "$prev" = "--" ] && prompt="$a"
-	prev="$a"
-done
+{
+	stub_agent_prologue
+	cat <<'EOF'
 case "$prompt" in
 	*"status reporter"*)
 		mkdir -p docs/status
@@ -57,16 +53,15 @@ case "$prompt" in
 		printf -- '- [ ] freshly minted status-loop item\n' >> TODO_LIST.md
 		git add -A
 		git commit -qm "docs: smoke status report"
-		# Verdict rail is FILE-only (dcd2d542 dropped the stdout fallback).
-		printf '%s\n' "{\"report\":\"$REPORT_PATH\",\"next_items\":1}" > "$TQ_RESULT_FILE"
+		stub_verdict "{\"report\":\"$REPORT_PATH\",\"next_items\":1}"
 		;;
 	*)
 		printf 'did the work\n'
 		;;
 esac
 EOF
-chmod +x "$STUB"
-export TQ_AGENT_BIN="$STUB"
+} >"$STUB"
+stub_agent_install "$STUB"
 
 echo "== enqueue two agent tasks (the window)"
 "$TMP/tq" enqueue --type agent --project smoke --payload "{\"repo\":\"$REPO\",\"prompt\":\"do work one\"}"

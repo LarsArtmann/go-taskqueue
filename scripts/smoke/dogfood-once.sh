@@ -13,6 +13,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 REPO_ROOT="$(pwd)"
+. "$REPO_ROOT/scripts/smoke/lib/stub-agent.sh"
 
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
@@ -42,18 +43,13 @@ git -C "$REPO" commit -qm "seed"
 echo "== stub agent (work turn vs review turn)"
 STUB="$TMP/stub-agent"
 # pins: stub-agent-turn-split — prompt-keyed work/review turn dispatch
-cat >"$STUB" <<'EOF'
-#!/bin/sh
-prompt=""
-prev=""
-for a in "$@"; do
-	[ "$prev" = "--" ] && prompt="$a"
-	prev="$a"
-done
+{
+	stub_agent_prologue
+	cat <<'EOF'
 case "$prompt" in
 	*"senior code reviewer"*)
 		printf 'looks fine\n'
-		printf '%s\n' '{"verdict":"approve","summary":"stub review","findings":[]}' > "$TQ_RESULT_FILE"
+		stub_verdict '{"verdict":"approve","summary":"stub review","findings":[]}'
 		;;
 	*)
 		qid="$(printf '%s\n' "$prompt" | grep -o 'Task-Queue-ID: [0-9a-f]*' | head -1 | cut -d' ' -f2)"
@@ -62,12 +58,12 @@ case "$prompt" in
 		git add -A
 		git commit -qm "stub dogfood work" -m "Task-Queue-ID: $qid"
 		printf 'did the work\n'
-		printf '%s\n' '{"summary":"stub work"}' > "$TQ_RESULT_FILE"
+		stub_verdict '{"summary":"stub work"}'
 		;;
 esac
 EOF
-chmod +x "$STUB"
-export TQ_AGENT_BIN="$STUB"
+} >"$STUB"
+stub_agent_install "$STUB"
 
 echo "== one pool tick: harvest -> work -> review (bare name + foreign cwd,"
 echo "== as in the proof; --projects-dir exercises the name expansion fix)"

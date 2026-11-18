@@ -199,6 +199,9 @@ step "fleet gate-ordering guard (self-test ahead of real gate)"
 step "smoke-coverage freshness gate self-test (name-coverage pin)"
 ./scripts/check-smoke-coverage.sh --self-test
 
+step "stub-agent smoke lib self-test (prologue + file-only rail pin)"
+./scripts/smoke/lib/stub-agent.sh --self-test
+
 step "smoke-coverage freshness gate (leg-to-assertion index)"
 ./scripts/check-smoke-coverage.sh
 
