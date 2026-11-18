@@ -81,7 +81,24 @@ if [ "${1:-}" = "--self-test" ]; then
 		fail "--amend was not refused on a foreign commit"
 	fi
 	[ -z "$(git diff --cached --name-only)" ] || fail "--amend refusal left files staged"
-	echo "commit-task self-test ok: footer is the last line with and without a body; --amend folds daemon sweeps and refuses foreign commits"
+	# Row 101 + 1872/1914: a footer-less sweep below the fold is named on
+	# BOTH paths — the new-commit WARN (unclaimed sweep below) and the
+	# own-footer --amend WARN (the silent no-op hides the real target).
+	echo five >g.txt
+	git add g.txt
+	git commit -qm "chore: auto-commit 1 changed file(s) (heuristic)"
+	echo six >h.txt
+	out=$("$self_dir/commit-task.sh" 0000000000000000abcd above-sweep h.txt 2>&1) || fail "commit above sweep failed"
+	printf '%s' "$out" | grep -qF 'WARN: footer-less commit below the fold' || fail "row 101 WARN missing: $out"
+	out=$("$self_dir/commit-task.sh" --amend 0000000000000000abcd late-file h.txt 2>&1) || fail "own-footer amend failed"
+	printf '%s' "$out" | grep -qF 'WARN: HEAD is already yours' || fail "row 1872 WARN missing: $out"
+	# Row 1817: a named file with no delta in the resulting commit fails
+	# loudly (the daemon-swept-the-named-files shape leaves only residue).
+	echo seven >i.txt
+	git add i.txt
+	out=$("$self_dir/commit-task.sh" 0000000000000000abcd partial i.txt g.txt 2>&1) && fail "row 1817 must fail loudly"
+	printf '%s' "$out" | grep -qF 'absent from the resulting commit' || fail "row 1817 message missing: $out"
+	echo "commit-task self-test ok: footer is the last line with and without a body; --amend folds daemon sweeps and refuses foreign commits; sweep-below WARNs on both fold paths; named-file residue fails loudly"
 	exit 0
 fi
 
@@ -139,6 +156,34 @@ done
 
 git add -- "${files[@]}"
 
+# Every named file must actually differ in the resulting commit (row 1817):
+# the daemon can sweep the named files moments before this script runs,
+# leaving the footer commit carrying only the residue — verify post-commit
+# and fail loudly instead of printing a silent success.
+verify_named_files_in_head() {
+	local changed missing=()
+	changed=$(git diff-tree --root --no-commit-id --name-only -r HEAD)
+	local f
+	for f in "${files[@]}"; do
+		printf '%s\n' "$changed" | grep -qxF "$f" || missing+=("$f")
+	done
+	if [ "${#missing[@]}" -gt 0 ]; then
+		echo "FAIL: committed, but named file(s) absent from the resulting commit (daemon sweep? idempotent re-run?): ${missing[*]}" >&2
+		echo "  inspect: git show --stat HEAD; heal: scripts/heal-daemon-sweep.sh $task_id" >&2
+		exit 1
+	fi
+}
+
+# Row 101: a daemon sweep landing BELOW the fold between the caller's edit
+# and the commit is unclaimed — name it so the heal happens while the
+# unpushed window is open (2026-11-03: 6b23554e rode below unclaimed).
+warn_footerless_below() {
+	[ -n "$(git rev-parse --verify -q HEAD~1)" ] || return 0
+	git log -1 --format='%(trailers:key=Task-Queue-ID,valueonly)' HEAD~1 | grep -q . && return 0
+	echo "WARN: footer-less commit below the fold — unclaimed: $(git log -1 --oneline HEAD~1)" >&2
+	echo "  heal while the unpushed window is open: scripts/heal-daemon-sweep.sh $task_id" >&2
+}
+
 if [ "$amend" -eq 1 ]; then
 	head_subj=$(git log -1 --format='%s')
 	head_footer=$(git log -1 --format='%(trailers:key=Task-Queue-ID,valueonly)')
@@ -148,11 +193,23 @@ if [ "$amend" -eq 1 ]; then
 		[ -z "$body" ] || body_args=(-m "$body")
 		git commit --amend -m "$subject" "${body_args[@]}" -m "Task-Queue-ID: $task_id"
 		echo "amended: $(git log -1 --oneline)"
+		verify_named_files_in_head
+		warn_footerless_below
 		exit 0
 	elif [ "$head_footer" = "$task_id" ]; then
 		# Our own footer commit: keep the message, fold the late files in.
 		git commit --amend --no-edit
 		echo "amended: $(git log -1 --oneline)"
+		# Row 1872/1914: a silent no-op amend hides the real target — when
+		# the commit below HEAD is footer-less, the caller almost certainly
+		# meant to fold THAT sweep; name it instead of leaving it unclaimed.
+		if [ -n "$(git rev-parse --verify -q HEAD~1)" ] &&
+			! git log -1 --format='%(trailers:key=Task-Queue-ID,valueonly)' HEAD~1 | grep -q .; then
+			echo "WARN: HEAD is already yours; the footer-less commit below it stays untouched:" >&2
+			echo "  $(git log -1 --oneline HEAD~1)" >&2
+			echo "If that was the target: scripts/heal-daemon-sweep.sh $task_id (or its --fold-below <sweep-sha> to merge it into one commit)" >&2
+		fi
+		verify_named_files_in_head
 		exit 0
 	fi
 	echo "FAIL: --amend refused — HEAD is neither a 'chore: auto-commit' daemon sweep nor a commit carrying Task-Queue-ID: $task_id" >&2
@@ -190,3 +247,5 @@ fi
 # Row 41: a silent success forces every window into a follow-up `git log`
 # to confirm the footer commit landed — echo the hash + subject instead.
 echo "committed: $(git log -1 --oneline)"
+verify_named_files_in_head
+warn_footerless_below
