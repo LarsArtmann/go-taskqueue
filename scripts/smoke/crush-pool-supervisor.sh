@@ -349,6 +349,13 @@ rows = [r for r in (rows or []) if isinstance(r, dict)]
 if sys.argv[1] == "running-id":
     running = [r for r in rows if r.get("status") == "running"]
     print(running[0]["id"] if running else "")
+elif sys.argv[1] == "bridge-id":
+    live = [r for r in rows if r.get("status") == "running" and r.get("id") != sys.argv[2]]
+    if live:
+        print(live[0]["id"])
+    else:
+        done = [r for r in rows if r.get("status") == "completed" and r.get("id") != sys.argv[2]]
+        print(done[0]["id"] if done else "")
 else:
     row = next((r for r in rows if r.get("id") == sys.argv[1]), None)
     if not row:
@@ -443,9 +450,15 @@ printf -- '- [ ] smoke probe: record the verdict result\n' >"$TMP/poolproj/repo/
 git -C "$TMP/poolproj/repo" add -A
 git -C "$TMP/poolproj/repo" commit -qm "open the routed verdict probe item"
 VERDICT_ID=""
+# The verdict path is stall-free by design (the mock scripts the real tq
+# verdict call), so the whole claim -> turn -> complete cycle can fit
+# inside one 0.3s poll gap (v0.101.0 made it sub-second — created and
+# completed share a timestamp in the drift receipt). bridge-id falls back
+# to completed: a finished verdict task is the bridge's own goal, not a
+# missed observation.
 for _ in $(seq 1 150); do
-	VERDICT_ID="$(task_state running-id)"
-	[ -n "$VERDICT_ID" ] && [ "$VERDICT_ID" != "$RUNNING_ID" ] && break
+	VERDICT_ID="$(task_state bridge-id "$RUNNING_ID")"
+	[ -n "$VERDICT_ID" ] && break
 	size_guard
 	sleep 0.3
 done
