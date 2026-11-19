@@ -149,6 +149,14 @@ step "footer-attribution self-test (heal tail-run contract)"
 step "push-timing guard self-test (pre-push refusal pin)"
 ./scripts/check-push-timing.sh --self-test
 
+# Stub-first-line-shebang invariant (check-stub-shebang): every smoke heredoc
+# embedding #!/bin/sh must carry it as the FIRST body line — the
+# exec-format-error class (sixth window §e2); the gate's first live run
+# caught two blank-first-line stubs in session-start.sh.
+step "stub-shebang gate (exec-format-error class pin)"
+./scripts/check-stub-shebang.sh --self-test
+./scripts/check-stub-shebang.sh
+
 # AGENTS.md byte budget at gate time (check-agents-size): derives its budget
 # from the cmd/tq TestAgentsDocSizeGuard const (single source of truth — no
 # twin drift) and prints the top sections to prune, so a red trip is a
