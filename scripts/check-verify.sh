@@ -42,6 +42,29 @@ done
 
 fail=0
 
+# --list debug mode (2026-10-13 02-08 follow-up §f8): print the extracted
+# KNOWN_FLAKY names in both directions (lib list + AGENTS.md mentions) and
+# exit — debugging the cross-check pin without hand-running its greps.
+if [ "${1:-}" = "--list" ]; then
+	echo "lib KNOWN_FLAKY entries (from $lib):"
+	sed -n '/^KNOWN_FLAKY=(/,/^)/p' "$lib" | grep -oE '"Test[A-Za-z0-9_]+"' | tr -d '"' | sed 's/^/  /'
+	echo "AGENTS.md '<Test> is load-flaky' mentions:"
+	grep -oE '`?Test[A-Za-z0-9_]+`? is load-flaky' AGENTS.md | grep -oE 'Test[A-Za-z0-9_]+' | sed 's/^/  /'
+	exit 0
+fi
+
+# Pin 8 (2026-10-13 02-08 follow-up §f10): the CI battery runs this gate —
+# ci-local.sh must keep invoking it, not only root-gate's verify leg.
+ci_local=scripts/ci-local.sh
+[ -f "$ci_local" ] || {
+	echo "FAIL: $ci_local missing"
+	exit 1
+}
+if ! grep -qF './scripts/check-verify.sh' "$ci_local"; then
+	echo "FAIL: $ci_local no longer invokes ./scripts/check-verify.sh — the self-test is unwired from CI"
+	fail=1
+fi
+
 # Pin 1: the wrapper's battery line IS the `.tq-verify` line.
 battery="$(sed -n 's/^verify_gate() { //; s/; }$//p' "$verify")"
 shipped="$(cat "$tq_verify")"
@@ -151,6 +174,7 @@ cp "$lib" "$st_tree/scripts/lib/verify-retry.sh"
 cp "$verify" "$st_tree/scripts/verify.sh"
 cp "$root_gate" "$st_tree/scripts/root-gate.sh"
 cp "$tq_verify" "$st_tree/.tq-verify"
+cp "$ci_local" "$st_tree/scripts/ci-local.sh"
 sed 's/is load-flaky/was load-flaky (reworded)/g' AGENTS.md >"$st_tree/AGENTS.md"
 st_out="$(bash "$st_tree/scripts/check-verify.sh" 2>&1)" && st_rc=0 || st_rc=$?
 if [ "$st_rc" -ne 1 ]; then
@@ -165,6 +189,87 @@ if ! grep -qF -- "$st_msg" <<<"$st_out"; then
 	exit 1
 fi
 echo "ok: pin 6 empty-extraction failure message fires on a reworded Known Issues bullet"
+
+# --self-test mode (2026-10-13 02-08 follow-up §e + §f9): the spot-checks
+# above become permanent regression coverage by injecting the three red-path
+# shapes into temp copies and asserting the gate goes red with the expected
+# message: a dropped KNOWN_FLAKY entry, an undocumented entry, and a
+# signature-shaped genuine red (a lib mutation that would mask a still-red
+# retry as green — the exhaust contract must catch it). Plus the §f9
+# timing-budget pin: a clean copy's default run stays sub-second.
+make_gate_tree() {
+	local tree=$1
+	mkdir -p "$tree/scripts/lib"
+	cp "$0" "$tree/scripts/check-verify.sh"
+	cp "$lib" "$tree/scripts/lib/verify-retry.sh"
+	cp "$verify" "$tree/scripts/verify.sh"
+	cp "$root_gate" "$tree/scripts/root-gate.sh"
+	cp "$tq_verify" "$tree/.tq-verify"
+	cp "$ci_local" "$tree/scripts/ci-local.sh"
+	cp AGENTS.md "$tree/AGENTS.md"
+}
+
+run_red_path() {
+	local name=$1 want_msg=$2 tree=$3 out rc
+	out="$(bash "$tree/scripts/check-verify.sh" 2>&1)" && rc=0 || rc=$?
+	if [ "$rc" -ne 1 ]; then
+		echo "FAIL: red-path self-test '$name' (want rc=1, got rc=$rc)"
+		printf '%s\n' "$out"
+		exit 1
+	fi
+	if ! grep -qF -- "$want_msg" <<<"$out"; then
+		echo "FAIL: red-path self-test '$name' — gate exited 1 but without the expected message: $want_msg"
+		printf '%s\n' "$out"
+		exit 1
+	fi
+	echo "ok: red-path self-test '$name' fires"
+}
+
+if [ "${1:-}" = "--self-test" ]; then
+	# Shape 1: a dropped KNOWN_FLAKY entry (AGENTS.md still mentions it) —
+	# the cross-check pin must name the missing flake.
+	drop_tree="$tmp/drop-tree"
+	make_gate_tree "$drop_tree"
+	sed '/"TestSelfManagingLoop"/d' "$lib" >"$drop_tree/scripts/lib/verify-retry.sh"
+	run_red_path "dropped KNOWN_FLAKY entry" \
+		"AGENTS.md Known Issues flake 'TestSelfManagingLoop' is missing from scripts/lib/verify-retry.sh KNOWN_FLAKY" \
+		"$drop_tree"
+
+	# Shape 2: an undocumented entry (lib lists a flake AGENTS.md never
+	# declared load-flaky) — the bidirectional half must catch it.
+	undoc_tree="$tmp/undoc-tree"
+	make_gate_tree "$undoc_tree"
+	sed 's/^KNOWN_FLAKY=(/KNOWN_FLAKY=(\n\t"TestUndocumentedFlake"/' "$lib" >"$undoc_tree/scripts/lib/verify-retry.sh"
+	run_red_path "undocumented KNOWN_FLAKY entry" \
+		"KNOWN_FLAKY entry 'TestUndocumentedFlake' has no '<Test> is load-flaky' mention in AGENTS.md" \
+		"$undoc_tree"
+
+	# Shape 3: signature-shaped genuine red — a lib mutation that returns 0
+	# after a still-red retry (masking a real failure as flake-green) must
+	# trip the exhaust behavior pin in the copy's own run.
+	mask_tree="$tmp/mask-tree"
+	make_gate_tree "$mask_tree"
+	sed '/still red after the flake retry/,/return 1/ s/return 1/return 0/' \
+		"$lib" >"$mask_tree/scripts/lib/verify-retry.sh"
+	run_red_path "signature-shaped genuine red (masked exhaust)" \
+		"FAIL: flaky signature still red after the retry" \
+		"$mask_tree"
+
+	# Timing budget (§f9): a clean copy's default run stays sub-second —
+	# the gate now spawns extra shims; a slow drift red here before CI.
+	t0="${EPOCHREALTIME:-0}"
+	bash "$0" >/dev/null 2>&1
+	t1="${EPOCHREALTIME:-0}"
+	elapsed_ms="$(awk -v a="$t0" -v b="$t1" 'BEGIN { printf "%.0f", (b - a) * 1000 }')"
+	if [ "$elapsed_ms" -ge 1000 ]; then
+		echo "FAIL: timing budget — default gate run took ${elapsed_ms}ms (budget <1000ms)"
+		exit 1
+	fi
+	echo "ok: timing budget (${elapsed_ms}ms < 1000ms)"
+
+	echo "check-verify --self-test ok (3 red-path shapes red with pinned messages + sub-second timing budget)"
+	exit 0
+fi
 
 # Behavior pins: run the SHIPPED lib bytes through the four contract cases
 # (the lib is sourced once above; each case calls it in a fresh subshell).
@@ -341,4 +446,4 @@ must_not_mention "in-situ test-stage case" 'retrying ONCE'
 must_not_mention "in-situ test-stage case" 'FLAKE-RETRY'
 echo "ok: in-situ verify.sh genuine-red at the TEST stage (rc=1, one go test invocation, zero retry lines)"
 
-echo "verify self-test ok (battery parity with .tq-verify, wrapper + lib markers, root-gate extraction, green/heal/exhaust/non-signature semantics, in-situ verify.sh flake-heal verified, KNOWN_FLAKY↔AGENTS.md bidirectional cross-check (+ reworded-bullet empty-extraction self-test), in-situ genuine-red rc=1 no-retry verified (build-stage + test-stage))"
+echo "verify self-test ok (battery parity with .tq-verify, wrapper + lib markers, root-gate extraction, ci-local wiring, green/heal/exhaust/non-signature semantics, in-situ verify.sh flake-heal verified, KNOWN_FLAKY↔AGENTS.md bidirectional cross-check (+ reworded-bullet empty-extraction self-test), in-situ genuine-red rc=1 no-retry verified (build-stage + test-stage); --list debug mode + --self-test 3-red-path regression coverage + sub-second timing budget)"
