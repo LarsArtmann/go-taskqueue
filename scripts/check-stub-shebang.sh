@@ -38,7 +38,13 @@ if [ "${1:-}" = "--self-test" ]; then
 	printf 'cat >"$CFG" <<EOF\nkey=value\nEOF\n' >"$tmp/nonstub.sh"
 	# out of scope: non-sh first-line shebang (python stub, correct form)
 	printf 'cat >"$PYSTUB" <<EOF\n#!/usr/bin/env python3\nprint("hi")\nEOF\n' >"$tmp/pystub.sh"
-
+	# out of scope: a COMMENT line carrying a heredoc opener (a usage example
+	# like `# cat <<EOF` must not parse as a heredoc — f9, 2026-11-19)
+	printf '# usage: cat >"$STUB" <<EOF\n# #!/bin/sh\n# EOF\ncat >"$STUB" <<EOF\n#!/bin/sh\nexit 0\nEOF\n' >"$tmp/comment.sh"
+	# <<- heredoc: TAB-stripped body + TAB-indented closing delimiter must
+	# still terminate and count the tab-stripped #!/bin/sh as first line (f23)
+	printf 'main() {\n\tcat >"$STUB" <<-EOF\n\t#!/bin/sh\n\texit 0\n\tEOF\n}\n' >"$tmp/dash.sh"
+	
 	out="$(TQ_STUB_SHEBANG_SCOPE="$tmp/*.sh" "$self_abs" 2>&1)" && rc=0 || rc=$?
 	[ "$rc" -eq 1 ] || {
 		echo "stub-shebang self-test FAIL: negative battery rc=$rc (want 1): $out"
@@ -50,20 +56,20 @@ if [ "${1:-}" = "--self-test" ]; then
 			exit 1
 		}
 	done
-	grep -qF "1 stub heredoc ok / 4 checked" <<<"$out" || {
+	grep -qF "3 stub heredoc ok / 6 checked" <<<"$out" || {
 		echo "stub-shebang self-test FAIL: summary shape wrong: $out"
 		exit 1
 	}
-	out="$(TQ_STUB_SHEBANG_SCOPE="$tmp/good.sh $tmp/nonstub.sh $tmp/pystub.sh" "$self_abs" 2>&1)" && rc=0 || rc=$?
+	out="$(TQ_STUB_SHEBANG_SCOPE="$tmp/good.sh $tmp/nonstub.sh $tmp/pystub.sh $tmp/comment.sh $tmp/dash.sh" "$self_abs" 2>&1)" && rc=0 || rc=$?
 	[ "$rc" -eq 0 ] || {
 		echo "stub-shebang self-test FAIL: positive battery rc=$rc (want 0): $out"
 		exit 1
 	}
-	grep -qF "1 stub heredoc ok / 1 checked" <<<"$out" || {
+	grep -qF "3 stub heredoc ok / 3 checked" <<<"$out" || {
 		echo "stub-shebang self-test FAIL: green summary wrong: $out"
 		exit 1
 	}
-	echo "stub-shebang self-test ok (summary pin + blank-first-line x2 + misplaced-shebang negatives + non-stub/non-sh exclusions)"
+	echo "stub-shebang self-test ok (summary pin + blank-first-line x2 + misplaced-shebang negatives + non-stub/non-sh exclusions + comment-line opener exclusion + <<- tab-stripped delimiter)"
 	exit 0
 fi
 
@@ -104,7 +110,7 @@ while i < len(lines):
         stripped = lines[i].lstrip("\t") if dash else lines[i]
         if stripped == delim:
             break
-        body.append(lines[i].rstrip("\r"))
+        body.append(stripped.rstrip("\r"))
         i += 1
     first = body[0] if body else ""
     if first == "#!/bin/sh":
