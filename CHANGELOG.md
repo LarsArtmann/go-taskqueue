@@ -126,6 +126,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Internal
 
+- Re-enabled the templ-freshness regenerate-and-diff gate (disabled
+  red-by-construction 2026-11-17): go-nix-helpers `templCliPackage`
+  oracle override consumed via a flake.lock bump, oracle pinned to
+  templ v0.3.1100 in flake.nix (gate green at cc2b0e37; drop-day =
+  nixpkgs ships >= 0.3.1100).
 - Dedup sweep to zero harmful clones (2026-11-13 `-t 1` scan, canonical
   `scripts/art-dupl.json` verdict): 9 extraction seams landed — shared
   slogcapture.Handler (new `internal/slogcapture` package) replacing four
