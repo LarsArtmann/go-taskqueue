@@ -37,6 +37,24 @@ has_target_footer() {
 	printf '%s\n' "$parsed" | grep -qi "^task-queue-id: $id\$"
 }
 
+# nearest_foreign_footer <id>: the NEWEST commit below HEAD (HEAD excluded)
+# carrying a trailer-parseable footer whose Task-Queue-ID differs from the
+# target — the span terminator heal-daemon-sweep scopes to (row 55). A
+# footer commit bounds the exactly-mine span; footer-less daemon sweeps
+# above it are foreign and must not red a default-run check (g2, 2026-11-19).
+nearest_foreign_footer() {
+	local id=$1 c parsed
+	while IFS= read -r c; do
+		parsed=$(git log -1 --format='%B' "$c" | git interpret-trailers --parse 2>/dev/null) || parsed=""
+		if printf '%s\n' "$parsed" | grep -qi '^task-queue-id: ' &&
+			! printf '%s\n' "$parsed" | grep -qi "^task-queue-id: $id\$"; then
+			echo "$c"
+			return 0
+		fi
+	done < <(git rev-list HEAD | tail -n +2)
+	return 1
+}
+
 # resolve_base: same default chain as heal-daemon-sweep.
 resolve_base() {
 	local requested=$1
@@ -89,8 +107,19 @@ check() {
 	done
 	[ -n "$id" ] || usage
 	git rev-parse --is-inside-work-tree >/dev/null 2>&1 || die "not inside a git work tree"
-	local base
+	local base base_note=""
 	base=$(resolve_base "$base_arg")
+	# Default-run span scoping: without --from, scope to the exactly-mine span
+	# (nearest different-id footer) so foreign footer-less commits between a
+	# stale origin/master and the session's span cannot red the check (g2).
+	if [ -z "$base_arg" ]; then
+		local term
+		term=$(nearest_foreign_footer "$id") || term=""
+		if [ -n "$term" ] && git merge-base --is-ancestor "$base" "$term" 2>/dev/null; then
+			base="$term"
+			base_note="default span scoped to $term..HEAD (nearest different-id footer; pass --from <ref> to widen)"
+		fi
+	fi
 	local span
 	span=$(git rev-list --reverse "$base..HEAD")
 	if [ -z "$span" ]; then
@@ -127,10 +156,16 @@ check() {
 	fi
 
 	if [ "$fail" = "0" ]; then
+		[ -z "$base_note" ] || echo "$base_note"
 		echo "ATTRIBUTION OK ($n commits in $base..HEAD all footer-attributed to $id)"
 		return 0
 	fi
-	die "attribution drift in $base..HEAD (see FAIL lines above); re-heal or re-footer before closeout"
+	local nearest hint=""
+	nearest=$(nearest_foreign_footer "$id") || nearest=""
+	if [ -n "$nearest" ] && [ "$nearest" != "$base" ]; then
+		hint=" — or scope to the exactly-mine span: $0 --from $nearest $id"
+	fi
+	die "attribution drift in $base..HEAD (see FAIL lines above); re-heal or re-footer before closeout$hint"
 }
 
 self_test() {
@@ -214,6 +249,42 @@ self_test() {
 		fail=$((fail + 1))
 		echo "SELF-TEST FAIL: footer dropped by rebuild must FAIL on set + visibility" >&2
 		cat "$tmp/out_unfootered" "$tmp/err_unfootered" >&2
+	fi
+
+	# Default-span scoping (g2): origin/master pinned at the base commit;
+	# a foreign different-id footer commit sits between it and the target
+	# span. The bare default run must scope past the foreign commit and
+	# stay green; the drift path must print the --from hint in FAIL output.
+	local scoped="$tmp/scoped"
+	git init -q -b master "$scoped"
+	git -C "$scoped" config user.email t@t
+	git -C "$scoped" config user.name t
+	echo base >"$scoped/base.txt"
+	git -C "$scoped" add base.txt
+	git -C "$scoped" commit -qm "base"
+	git -C "$scoped" update-ref refs/remotes/origin/master HEAD
+	echo f >"$scoped/f.txt"
+	git -C "$scoped" add f.txt
+	git -C "$scoped" commit -qm $'chore: foreign session commit\n\nTask-Queue-ID: otherid000000000000000000000000000000'
+	echo x >"$scoped/x.txt"
+	git -C "$scoped" add x.txt
+	git -C "$scoped" commit -qm $'chore: mine one\n\nTask-Queue-ID: deadbeef00000000000000000000000000000001'
+	(cd "$scoped" && "$self" deadbeef00000000000000000000000000000001) >"$tmp/out_scoped" 2>"$tmp/err_scoped" &&
+		grep -qF "default span scoped" "$tmp/out_scoped" &&
+		grep -qF "ATTRIBUTION OK (1 commits" "$tmp/out_scoped" &&
+		ok=$((ok + 1)) || {
+		fail=$((fail + 1))
+		echo "SELF-TEST FAIL: default run must scope past the foreign different-id footer" >&2
+		cat "$tmp/out_scoped" "$tmp/err_scoped" >&2
+	}
+	git -C "$scoped" commit -q --amend -m "chore: mine one rebuilt"
+	(cd "$scoped" && "$self" --from origin/master deadbeef00000000000000000000000000000001) >"$tmp/out_sdrift" 2>"$tmp/err_sdrift"
+	if [ "$?" != "0" ] && grep -qF -e "--from" "$tmp/err_sdrift" && grep -qF "exactly-mine span" "$tmp/err_sdrift"; then
+		ok=$((ok + 1))
+	else
+		fail=$((fail + 1))
+		echo "SELF-TEST FAIL: FAIL output must carry the --from scoping hint" >&2
+		cat "$tmp/out_sdrift" "$tmp/err_sdrift" >&2
 	fi
 
 	if [ "$fail" = "0" ]; then
