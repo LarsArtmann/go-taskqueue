@@ -1724,6 +1724,8 @@ not here.
 - [ ] Re-run the session-start smoke end-to-end against a scratch TQ_DB to prove the blank-first-line stub fixes (9d30192f) shift no pin — only bash -n ran at closeout time (2026-11-19 closeout f22)
 - [ ] Run scripts/check-tick-claims.sh over the 2026-11-19 pareto-residue batch's ticks (T24/T25/T26/322 + check-verify family) — they cite verification evidence, not tick-commit SHAs; confirm the WARN gate is satisfied or add the cites (2026-11-19 closeout f30)
 - [ ] Annotate the pareto-residue batch section header with the landed commit SHAs (d5d2df6c, 6c2701cf, 9d30192f, 94ca6865 + go-cqrs-lite 709324f82/0f0d8a74f) for tick-claim citability (2026-11-19 closeout f28)
+- [ ] check-todo-list.sh ambiguity tripwire: decide and pin whether an unchecked row whose text carries DONE-adjacent markers ("owed new row", "decide whether", "determine") should WARN — shape-alone cannot distinguish deliberate open rows from state-left-in-prose rows (2026-11-20_00-42 closeout e3)
+- [ ] Prose-only-state cross-check: grep the 2026-11-19/20 tasks/ closeouts' §b "partially/deliberately open" rationales against their unticked TODO_LIST rows and append missing ` — BLOCKED:` suffixes (or drain) — d6fb8730 landed the T33/T34 rationale only in report prose and needed a reviewer finding to surface (2026-11-20_00-42 closeout e2)
 
 - [ ] T21 triage doc: classify the webui SSE cluster rows into keep/pool/obsolete (dated planning note; the pool dispatches the 1-test-pin tail per the pareto plan — most cluster members are one-pin asks, only the keep-set lands by hand)
 - [ ] ci-local df preflight: refuse the battery when /tmp free space is under a floor (the ENOSPC wall class; sixth report §e4 — four runs died into a full tmpfs before any guard existed)
