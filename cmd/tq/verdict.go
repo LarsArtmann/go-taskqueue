@@ -91,7 +91,7 @@ func cmdVerdict(args []string) error {
 		)
 	}
 
-	if err := os.WriteFile(path, body, 0o600); err != nil {
+	if err := writeFileAtomic(path, body, 0o600); err != nil {
 		return fmt.Errorf("tq verdict: write %s: %w", path, err)
 	}
 

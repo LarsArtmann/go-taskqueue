@@ -755,7 +755,7 @@ func (o bootstrapOptions) installService() error {
 	}
 
 	conf := filepath.Join(confDir, "pool.conf")
-	if err := os.WriteFile(conf, []byte(renderPoolConfig(o)), 0o600); err != nil {
+	if err := writeFileAtomic(conf, []byte(renderPoolConfig(o)), 0o600); err != nil {
 		return fmt.Errorf("bootstrap: install: %w", err)
 	}
 
@@ -765,7 +765,7 @@ func (o bootstrapOptions) installService() error {
 	}
 
 	unit := filepath.Join(unitDir, "tq-agent-pool.service")
-	if err := os.WriteFile(unit, []byte(renderUnit(o.binPath)), 0o644); err != nil {
+	if err := writeFileAtomic(unit, []byte(renderUnit(o.binPath)), 0o644); err != nil {
 		return fmt.Errorf("bootstrap: install: %w", err)
 	}
 
