@@ -192,6 +192,8 @@ if [ "${1:-}" = "--self-test" ]; then
 	rcase silent 'git add of a smoke file (FP regression)' 'git add scripts/smoke/api.sh'
 	rcase silent 'grep over a smoke path (FP regression)' 'grep -n TQ_DB scripts/smoke/webui.sh'
 	rcase silent 'cat of a smoke doc (FP regression)' 'cat scripts/smoke/COVERAGE.md'
+	rcase silent 'commit message quoting a smoke path (FP regression, d5/g1)' 'git commit -m "fix: scripts/smoke/session-start.sh stub first line"'
+	rcase silent "commit message single-quoted smoke path" 'git commit -m 'mention scripts/smoke/api.sh here''
 	rcase silent 'plain git push' 'git push origin main'
 	rcase ctx:'trash' 'plain rm advisory' 'rm -rf /tmp/fixture'
 	rcase silent 'git rm is legitimate' 'git rm tracked.txt'
@@ -437,9 +439,16 @@ fi
 # the first fleet FP (2026-10-30 04-40 closeout §d1) blocked `git add` of
 # a smoke file; `git add -u` was the workaround. No longer needed.
 smoke_invoked() {
-	printf '%s' "$cmd" | awk '
+	printf '%s' "$cmd" | awk -v sq="'" '
 		{
-			n = split($0, segs, /[;|&]+/)
+			line = $0
+			# Quoted-string stripping: a smoke path inside a quoted message
+			# (git commit -m "...scripts/smoke/x.sh...") is TEXT, not an
+			# executable command position (second FP class, 2026-11-19 closeout
+			# d5/g1). Assumption: quotes are balanced on the single input line.
+			gsub(/"[^"]*"/, "", line)
+			gsub(sq "[^" sq "]*" sq, "", line)
+			n = split(line, segs, /[;|&]+/)
 			for (s = 1; s <= n; s++) {
 				m = split(segs[s], w, /[[:space:]]+/)
 				i = 1
