@@ -12,8 +12,17 @@
 #
 # Not a ci-local replacement: the pre-push gate stays the full battery
 # (scripts/ci-local.sh); this is the fast loop for one green signal.
+#
+# Receipt discipline: the gate's FULL output is teed to a dated receipt
+# file (/var/tmp/tq-root-gate-<ts>.log; override with TQ_ROOT_GATE_RECEIPT)
+# so closeouts cite a captured file instead of session scrollback. The
+# receipt records failure output too — a red run leaves the same artifact.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+
+receipt="${TQ_ROOT_GATE_RECEIPT:-/var/tmp/tq-root-gate-$(date +%Y-%m-%d_%H-%M).log}"
+exec > >(tee "$receipt") 2>&1
+echo "root-gate receipt: $receipt"
 
 export GOEXPERIMENT=jsonv2
 export GOTOOLCHAIN=auto
@@ -36,3 +45,5 @@ run_gate() {
 }
 
 run_with_flake_retry "ROOT-GATE" run_gate
+
+echo "root-gate receipt: $receipt"
