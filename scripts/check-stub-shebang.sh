@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # scripts/check-stub-shebang.sh — every heredoc in the smoke corpus that
-# embeds a shell shebang must carry `#!/bin/sh` as the FIRST heredoc body
-# line. Born from the 2026-11-18 sixth-window incident (report §e2): a
+# embeds a shell shebang must carry an `#!/bin/sh` shebang as the FIRST
+# heredoc body line (flags after the interpreter, e.g. `#!/bin/sh -e`, are
+# LEGAL: the kernel passes the remainder as one interpreter argument — the
+# invariant is first-line POSITION, not exact-match). Born from the 2026-11-18 sixth-window incident (report §e2): a
 # repair left a BLANK FIRST HEREDOC LINE, so the generated stub began with
 # a newline before `#!/bin/sh` and every run died with
 # `fork/exec: exec format error` while the script looked right.
@@ -41,6 +43,9 @@ if [ "${1:-}" = "--self-test" ]; then
 	# out of scope: a COMMENT line carrying a heredoc opener (a usage example
 	# like `# cat <<EOF` must not parse as a heredoc — f9, 2026-11-19)
 	printf '# usage: cat >"$STUB" <<EOF\n# #!/bin/sh\n# EOF\ncat >"$STUB" <<EOF\n#!/bin/sh\nexit 0\nEOF\n' >"$tmp/comment.sh"
+	# f45 policy pin: flags after the interpreter are a LEGAL first line
+	# (kernel passes the remainder as one interpreter argument)
+	printf 'cat >"$STUB" <<EOF\n#!/bin/sh -e\nexit 0\nEOF\n' >"$tmp/flagenok.sh"
 	# <<- heredoc: TAB-stripped body + TAB-indented closing delimiter must
 	# still terminate and count the tab-stripped #!/bin/sh as first line (f23)
 	printf 'main() {\n\tcat >"$STUB" <<-EOF\n\t#!/bin/sh\n\texit 0\n\tEOF\n}\n' >"$tmp/dash.sh"
@@ -56,20 +61,20 @@ if [ "${1:-}" = "--self-test" ]; then
 			exit 1
 		}
 	done
-	grep -qF "3 stub heredoc ok / 6 checked" <<<"$out" || {
+	grep -qF "4 stub heredoc ok / 7 checked" <<<"$out" || {
 		echo "stub-shebang self-test FAIL: summary shape wrong: $out"
 		exit 1
 	}
-	out="$(TQ_STUB_SHEBANG_SCOPE="$tmp/good.sh $tmp/nonstub.sh $tmp/pystub.sh $tmp/comment.sh $tmp/dash.sh" "$self_abs" 2>&1)" && rc=0 || rc=$?
+	out="$(TQ_STUB_SHEBANG_SCOPE="$tmp/good.sh $tmp/nonstub.sh $tmp/pystub.sh $tmp/comment.sh $tmp/dash.sh $tmp/flagenok.sh" "$self_abs" 2>&1)" && rc=0 || rc=$?
 	[ "$rc" -eq 0 ] || {
 		echo "stub-shebang self-test FAIL: positive battery rc=$rc (want 0): $out"
 		exit 1
 	}
-	grep -qF "3 stub heredoc ok / 3 checked" <<<"$out" || {
+	grep -qF "4 stub heredoc ok / 4 checked" <<<"$out" || {
 		echo "stub-shebang self-test FAIL: green summary wrong: $out"
 		exit 1
 	}
-	echo "stub-shebang self-test ok (summary pin + blank-first-line x2 + misplaced-shebang negatives + non-stub/non-sh exclusions + comment-line opener exclusion + <<- tab-stripped delimiter)"
+	echo "stub-shebang self-test ok (summary pin + blank-first-line x2 + misplaced-shebang negatives + non-stub/non-sh exclusions + comment-line opener exclusion + <<- tab-stripped delimiter + flags-after-interpreter legal)"
 	exit 0
 fi
 
@@ -85,10 +90,13 @@ for f in $scope; do
 		[ -n "$kind" ] || continue
 		checked=$((checked + 1))
 		[ "$kind" = "VIOLATION" ] || continue
-		echo "FAIL: $f heredoc body does not start with #!/bin/sh (first body line: ${first:-<blank>}) — the exec-format-error class (2026-11-18 sixth window §e2: a blank first heredoc line fork/exec-failed every run while the script looked right)" >&2
+		echo "FAIL: $f heredoc body does not start with an #!/bin/sh shebang (first body line: ${first:-<blank>}) — the exec-format-error class (2026-11-18 sixth window §e2: a blank first heredoc line fork/exec-failed every run while the script looked right)" >&2
 		viol=$((viol + 1))
 	done < <(python3 - "$f" <<'PYEOF'
 import re, sys
+
+def is_sh_shebang(line):
+    return line == "#!/bin/sh" or re.match(r"^#!/bin/sh( +-[A-Za-z]+)+$", line) is not None
 
 path = sys.argv[1]
 start_re = re.compile(r"<<-?[ \t]*([\"']?)([A-Za-z_][A-Za-z0-9_]*)\1")
@@ -113,9 +121,9 @@ while i < len(lines):
         body.append(stripped.rstrip("\r"))
         i += 1
     first = body[0] if body else ""
-    if first == "#!/bin/sh":
+    if is_sh_shebang(first):
         print("OK\t" + first)
-    elif any(line == "#!/bin/sh" for line in body[1:]):
+    elif any(is_sh_shebang(line) for line in body[1:]):
         print("VIOLATION\t" + first)
     elif first == "" and any(line.startswith("#!") for line in body[1:]):
         print("VIOLATION\t" + first)
