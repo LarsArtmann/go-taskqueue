@@ -1230,6 +1230,21 @@ func TestBudgetCardRendersFromSnapshot(t *testing.T) {
 	if strings.Contains(stats, "tq-meter-warn") || strings.Contains(stats, "tq-meter-over") {
 		t.Error("budget meter at 40%% must not carry warn/over tone")
 	}
+
+	// Over-cap semantics: aria-valuenow stays RAW (HTML meter allows
+	// now > max) while the fill clamps to the full track — the intentional
+	// divergence between fill and now must not silently flip.
+	over := data
+	over.Budget = &BudgetView{Spent: 9, Cap: 5}
+	overStats := renderComponent(context.Background(), StatusCards(over))
+	for _, want := range []string{
+		`aria-valuemax="5"`, `aria-valuenow="9"`,
+		"tq-meter-fill-100", "tq-meter-over",
+	} {
+		if !strings.Contains(overStats, want) {
+			t.Errorf("over-cap meter missing %q", want)
+		}
+	}
 }
 
 // TestBudgetMeterToneAndQuantization pins the meter's server-side classes:

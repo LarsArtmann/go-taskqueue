@@ -957,8 +957,11 @@ const (
 	budgetMeterMinSliver = 5   // a nonzero spend always shows this much
 )
 
-// budgetMeterPct is the meter's spent percentage, clamped to the full
-// track — the fill class and the meter role's aria-valuenow share it.
+// budgetMeterPct is the meter fill's spent percentage, clamped to the full
+// track. Deliberately NOT shared with aria-valuenow: the fill clamps at the
+// cap (a width above 100% is unrenderable), while aria-valuenow stays raw
+// (HTML meter semantics allow now > max) — pinned by the over-cap case in
+// TestBudgetCardRendersFromSnapshot.
 func budgetMeterPct(b BudgetView) int {
 	if b.Spent <= 0 || b.Cap <= 0 {
 		return 0
