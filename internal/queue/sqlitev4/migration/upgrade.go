@@ -219,7 +219,8 @@ func snapshotLegacy(ctx context.Context, path string) (string, error) {
 // restoreOnConvergeFailure copies the snapshot back over the database
 // file after a failed convergence or verification, so a retry starts from
 // the untouched legacy shape. Best effort: failures are logged, never
-// masked — the caller's error already fails the open.
+// masked — the caller's error already fails the open. The restore is
+// atomic (temp + rename) so a crash mid-copy never leaves a torn database.
 func restoreOnConvergeFailure(path, backupPath string) {
 	removeSQLiteSidecars(path)
 
@@ -230,8 +231,16 @@ func restoreOnConvergeFailure(path, backupPath string) {
 		return
 	}
 
-	if err := os.WriteFile(path, data, 0o600); err != nil {
-		slog.Error("migration: restore: write db failed", "path", path, "err", err)
+	tmp := path + ".restore-tmp"
+	if err := os.WriteFile(tmp, data, 0o600); err != nil {
+		slog.Error("migration: restore: write temp failed", "path", tmp, "err", err)
+
+		return
+	}
+
+	if err := os.Rename(tmp, path); err != nil {
+		_ = os.Remove(tmp)
+		slog.Error("migration: restore: rename into place failed", "path", path, "err", err)
 
 		return
 	}
