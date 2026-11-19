@@ -1215,7 +1215,13 @@ func TestBudgetCardRendersFromSnapshot(t *testing.T) {
 	}
 	// The spend meter renders inside the budget readout: 2/5 quantizes to
 	// the 40% fill class, tone stays green under 75% (no warn/over class).
-	for _, want := range []string{"tq-meter", "tq-meter-fill-40"} {
+	// The meter element is a landmark for assistive tech: role=meter with
+	// min/max/now mirroring the readout.
+	for _, want := range []string{
+		"tq-meter", "tq-meter-fill-40",
+		`role="meter"`, `aria-label="daily budget spent"`,
+		`aria-valuemin="0"`, `aria-valuemax="5"`, `aria-valuenow="2"`,
+	} {
 		if !strings.Contains(stats, want) {
 			t.Errorf("budget meter missing %q", want)
 		}

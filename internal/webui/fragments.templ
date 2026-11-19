@@ -2,6 +2,7 @@ package webui
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/larsartmann/go-taskqueue/internal/dlqbackoff"
@@ -68,7 +69,7 @@ templ StatusCards(data DashboardData) {
 			if data.Budget != nil {
 				<span class="card-budget inline-flex items-center gap-2" title="agent tasks enqueued today vs the daily cap">
 					budget today { formatInt(data.Budget.Spent) }/{ formatInt(data.Budget.Cap) }
-					<span class={ budgetMeterClass(*data.Budget) }><span class={ budgetMeterFillClass(*data.Budget) }></span></span>
+					<span class={ budgetMeterClass(*data.Budget) } role="meter" aria-label="daily budget spent" aria-valuemin="0" aria-valuemax={ strconv.Itoa(data.Budget.Cap) } aria-valuenow={ strconv.Itoa(data.Budget.Spent) }><span class={ budgetMeterFillClass(*data.Budget) }></span></span>
 				</span>
 			}
 		</div>

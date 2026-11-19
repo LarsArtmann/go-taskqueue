@@ -957,6 +957,16 @@ const (
 	budgetMeterMinSliver = 5   // a nonzero spend always shows this much
 )
 
+// budgetMeterPct is the meter's spent percentage, clamped to the full
+// track — the fill class and the meter role's aria-valuenow share it.
+func budgetMeterPct(b BudgetView) int {
+	if b.Spent <= 0 || b.Cap <= 0 {
+		return 0
+	}
+
+	return min(b.Spent*budgetMeterMaxPct/b.Cap, budgetMeterMaxPct)
+}
+
 // budgetMeterFillClass is the meter's fill: a nonzero spend always shows a
 // sliver — rounding 2% down to an empty track would lie.
 func budgetMeterFillClass(b BudgetView) string {
@@ -964,9 +974,7 @@ func budgetMeterFillClass(b BudgetView) string {
 		return "tq-meter-fill"
 	}
 
-	pct := min(b.Spent*budgetMeterMaxPct/b.Cap, budgetMeterMaxPct)
-
-	quantized := (pct + budgetMeterRoundPct) / budgetMeterStepPct * budgetMeterStepPct
+	quantized := (budgetMeterPct(b) + budgetMeterRoundPct) / budgetMeterStepPct * budgetMeterStepPct
 	quantized = max(quantized, budgetMeterMinSliver)
 
 	return "tq-meter-fill tq-meter-fill-" + strconv.Itoa(quantized)
