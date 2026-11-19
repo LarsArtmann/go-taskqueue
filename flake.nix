@@ -32,6 +32,26 @@
       # it): the nix build filters .git out of the source, so the binary
       # cannot discover the rev itself. `self` rides the outputs argset.
       flakeShortRev = inputs.self.dirtyShortRev or (inputs.self.shortRev or "unknown");
+      # templ CLI override (single source — the go-standard templCliPackage
+      # option AND the perSystem treefmt formatter must never drift):
+      # nixpkgs pins templ 0.3.1020, whose generator emits the pre-removal
+      # templ.ResolveAttributeValue/JoinURLErrs API, but the module graph
+      # needs runtime >= v0.3.1100 (templ-components v1.27.0 floor) and
+      # upstream REMOVED that API by 1100 — no committed output can satisfy
+      # both oracles. Pin to the module graph's templ version; drop the pin
+      # when nixpkgs ships >= 0.3.1100 (nixpkgs-templ-pin drop-day).
+      templCliOverride =
+        pkgs:
+        pkgs.templ.overrideAttrs (_: {
+          version = "0.3.1100";
+          vendorHash = "sha256-MMAoHofeZzGNFsjxY4nrPRyaiKOk4fLYY+kIVmdAL3g=";
+          src = pkgs.fetchFromGitHub {
+            owner = "a-h";
+            repo = "templ";
+            rev = "v0.3.1100";
+            hash = "sha256-QViQAMtCqaXS4GodlSCW/nE4Sox+EF49sbb7h9RBIS0=";
+          };
+        });
     in
     flake-parts.lib.mkFlake { inherit inputs; } {
       imports = [ inputs.go-nix-helpers.flakeModules.go-standard ];
@@ -44,15 +64,11 @@
       flake.nixosModules.default = import ./deploy/nixos/tq-agent-pool.nix;
 
       go-standard = rec {
-        # DISABLED 2026-11-17: the freshness oracle is hardcoded pkgs.templ
-        # (nixpkgs pins templ 0.3.1020, which emits the pre-removal
-        # templ.ResolveAttributeValue/JoinURLErrs API), but the module graph
-        # needs runtime >= v0.3.1100 (templ-components v1.27.0 floor) and
-        # upstream REMOVED that API by 1100 — output matching the oracle
-        # cannot compile, output matching the runtime cannot pass the
-        # oracle. Re-enable once nixpkgs ships templ >= 0.3.1100 (or
-        # go-nix-helpers grows an oracle-version override).
-        enableTemplFreshnessCheck = false;
+        # The freshness oracle rides templCliPackage (go-nix-helpers e0c4b70
+        # grew the override) — see templCliOverride above for the version
+        # reasoning.
+        templCliPackage = templCliOverride;
+        enableTemplFreshnessCheck = true;
         pname = "go-taskqueue";
         # Keep in sync with the latest release tag — release.sh does not
         # bump this; `tq version` reports it. The ldflags line below derives
@@ -229,7 +245,7 @@
             # above). Drop with the goTarball block when nixpkgs ships
             # go >= 1.27.1.
             formatter = {
-              templ.command = lib.mkForce (formatterWithGo "templ" pkgs.templ);
+              templ.command = lib.mkForce (formatterWithGo "templ" (templCliOverride pkgs));
               goimports.command = lib.mkForce (formatterWithGo "goimports" pkgs.gotools);
             };
           };
