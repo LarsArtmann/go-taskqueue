@@ -1995,3 +1995,6 @@ not here.
 - [ ] (repo: go-cqrs-lite) wire check-doc-links into its pre-commit/ci as a 0-broken ratchet after the 8828ea837 repoint (report §f6)
 - [ ] (repo: go-cqrs-lite) scope-silence the 7 ambiguous-alias doc-check warnings (command/query/dispatcher/id/kv/record/metadata) by importing the package in the referencing blocks (report §f8)
 - [ ] (repo: go-cqrs-lite) add `— P[1-4]` markers to the 12 rows in the TODO_LIST "Metaengine codec Tier -1 harvest" section so the pool picks a lane (report §f9)
+- [ ] Run the standing monthly digest ritual (ANNOTATE+ARCHIVE sweep) — status index at 425 live rows, over the 400 threshold; land the `digest 2026-11` row in docs/status/README.md (fix-closeout §c; staging warning)
+- [ ] Add `check-committed-file-claims.sh`: every file a docs/status report cites as "committed" must appear in the cited commit's `git show --stat`; WARN-only first (FP risk: squash/rebase flows), self-test per fleet convention (fix-closeout §f2)
+- [ ] Add heal pre-flight to `scripts/heal-daemon-sweep.sh`: check the parent commit's footer BEFORE the range computation and emit the `--from` hint proactively, so the first invocation never dies on the terminator shape (fix-closeout §f6)
