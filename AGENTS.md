@@ -319,11 +319,9 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 - POSIX-only suites carry `//go:build unix`; tests hermetic (nix checkPhase
   lacks host tools).
 - Generated `*_templ.go` + minified `app.css` COMMITTED; after template
-  edits run `templ generate` + `nix run .#webui-css` (REPO ROOT).
-  Generator skew: the HOST PATH `templ` (v0.3.1123) ≠ go.mod/floor
-  (v0.3.1100, flake templCliOverride pin) — generate INSIDE the nix
-  shell; `scripts/check-templ-header.sh` (ci-local) rejects committed
-  `// templ: version:` headers that drift from go.mod.
+  edits run `templ generate` (nix shell ONLY — host templ 0.3.1123 skews
+  go.mod's 0.3.1100; `check-templ-header.sh` rejects drifted headers)
+  + `nix run .#webui-css` (REPO ROOT).
 - Web UI uses templ-components (guard-pinned; table
   internal/webui/ADOPTION.md); REJECTED display.Eyebrow,
   KanbanBoard, errorpage, icons.Render.
@@ -342,15 +340,13 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 - **Concurrent agents commit constantly** (auto-commit daemon): re-run
   `go test ./... -race` before declaring success; never generate Go source via
   heredocs; /tmp fixtures (gated trees are daemon-food). Footer-less sweeps
-  heal via `scripts/heal-daemon-sweep.sh [--repo <path>] [--from <ref>] [--retitle <s>] [--fold-below <sha>] <id>`
-  (unpushed only; `--repo` heals OTHER repos cross-cwd; backup on failure; `--self-test` pins rails): REFUSES
-  non-contiguous spans; a PARENT-naming refusal (foreign footer BELOW an
-  exactly-mine span) = terminator shape — run its `--from`;
-  tail-runs `scripts/check-footer-attribution.sh
-  <id>` (`--self-test`; run standalone after ANY later rebuild);
-  fallback = amend the unpushed HEAD once `git show --stat` proves it mine.
-  Full DAG rebuild (byte-exact dates, footer only on `--mine`):
-  `scripts/rebuild-lineage.sh <id> --mine 2,3` (`--self-test`).
+  heal via `scripts/heal-daemon-sweep.sh [--repo|--from|--retitle|--fold-below] <id>`
+  (unpushed only; backup on failure; `--self-test` pins rails): REFUSES
+  non-contiguous spans; a PARENT-naming refusal = terminator shape — run its
+  `--from`; tail-runs `check-footer-attribution.sh <id>` (rerun after ANY
+  later rebuild); fallback = amend the unpushed HEAD once `git show --stat`
+  proves it mine. Full DAG rebuild: `scripts/rebuild-lineage.sh <id> --mine 2,3`
+  (`--self-test`).
 - **TestExactlyOnceUnderConcurrency is load-flaky** and
   **TestSelfManagingLoop is load-flaky** (build storms at clean parents):
   rerun before attributing; ride KNOWN_FLAKY (lib/verify-retry.sh).
