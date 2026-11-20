@@ -59,6 +59,15 @@ self_test() {
 	assert "double checkbox still fails (structural)" 1 "DOUBLE-CHECKBOX" "- [ ] [x] double box row"
 	assert "glued two-item row fails (structural, row 1138)" 1 "GLUED-CHECKBOX" "- [ ] First row- [ ] Second row"
 	assert "backticked prose checkbox mention stays quiet" 0 "TODO_LIST gate ok" "- [ ] Keep the \`- [ ]\` checkbox format, one item per line"
+	# Row 1727 pin: DONE-ADJACENT phrasing markers do NOT warn. The live
+	# candidates ("owed new row", "decide whether", "determine") are
+	# first-person TASK phrasing, not verdict state — at the 2026-11-20
+	# decision point all 5 matching rows were genuinely open, so a
+	# shape-alone warn on them would be 100% false positives. The boundary
+	# stays at the em-dash DONE/VERIFIED annotation shape above.
+	assert "decide-whether phrasing stays quiet (row 1727 pin)" 0 "TODO_LIST gate ok" "- [ ] decide whether the gate should warn on this marker"
+	assert "owed-new-row phrasing stays quiet (row 1727 pin)" 0 "TODO_LIST gate ok" "- [ ] stub guard fixture (sixth report §e2, owed new row)"
+	assert "determine phrasing stays quiet (row 1727 pin)" 0 "TODO_LIST gate ok" "- [ ] determine why the window verified without ticking the row"
 	assert "summary line pinned format" 0 "todo-list summary: 0 advisory warn(s), 0 structural violation class(es) — advisory warnings do not fail the gate" "- [ ] Another plain row"
 
 	rm -rf "$dir" 2>/dev/null || true
