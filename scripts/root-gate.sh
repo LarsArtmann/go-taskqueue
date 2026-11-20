@@ -28,60 +28,10 @@ cd "$(dirname "$0")/.."
 KEEP_RECEIPTS="${TQ_ROOT_GATE_KEEP_RECEIPTS:-20}"
 self_abs="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 
-rotate_receipts() {
-	local current="$1" f
-	local old
-	# shellcheck disable=SC2012 # receipt filenames are machine-generated, never adversarial
-	old="$(ls -1t "$(dirname "$current")"/tq-root-gate-*.log 2>/dev/null | tail -n +"$((KEEP_RECEIPTS + 1))" || true)"
-	for f in $old; do
-		[ "$f" = "$current" ] && continue
-		rm -f "$f"
-		echo "root-gate receipt rotated out: $f"
-	done
-}
+. scripts/lib/receipt.sh
 
 self_test() {
-	local dir out rc
-	dir="$(mktemp -d)"
-	touch -d '1 hour ago' "$dir/tq-root-gate-old1.log"
-	touch -d '30 minutes ago' "$dir/tq-root-gate-old2.log"
-	: >"$dir/tq-root-gate-now.log"
-	# keep=2 over 3 receipts: oldest goes, newest old + current survive
-	out="$(TQ_ROOT_GATE_ROTATE_ONLY=1 TQ_ROOT_GATE_KEEP_RECEIPTS=2 TQ_ROOT_GATE_RECEIPT="$dir/tq-root-gate-now.log" "$self_abs" 2>&1)" && rc=0 || rc=$?
-	[ "$rc" -eq 0 ] || {
-		echo "root-gate self-test FAIL: rotation rc=$rc: $out"
-		rm -rf "$dir"
-		exit 1
-	}
-	[ -f "$dir/tq-root-gate-now.log" ] || {
-		echo "root-gate self-test FAIL: current receipt must survive rotation"
-		rm -rf "$dir"
-		exit 1
-	}
-	if [ -f "$dir/tq-root-gate-old1.log" ]; then
-		echo "root-gate self-test FAIL: oldest receipt should be rotated out (keep=2 over 3 receipts)"
-		rm -rf "$dir"
-		exit 1
-	fi
-	[ -f "$dir/tq-root-gate-old2.log" ] || {
-		echo "root-gate self-test FAIL: newest old receipt must survive (keep=2)"
-		rm -rf "$dir"
-		exit 1
-	}
-	# keep=1: everything but the current receipt goes
-	TQ_ROOT_GATE_ROTATE_ONLY=1 TQ_ROOT_GATE_KEEP_RECEIPTS=1 TQ_ROOT_GATE_RECEIPT="$dir/tq-root-gate-now.log" "$self_abs" >/dev/null 2>&1
-	if [ -f "$dir/tq-root-gate-old2.log" ]; then
-		echo "root-gate self-test FAIL: only the current receipt should survive keep=1"
-		rm -rf "$dir"
-		exit 1
-	fi
-	[ -f "$dir/tq-root-gate-now.log" ] || {
-		echo "root-gate self-test FAIL: current receipt lost at keep=1"
-		rm -rf "$dir"
-		exit 1
-	}
-	rm -rf "$dir"
-	echo "root-gate self-test ok (receipt rotation keeps newest N, current survives)"
+	bash scripts/lib/receipt.sh --self-test
 }
 
 if [ "${1:-}" = "--self-test" ]; then
@@ -90,7 +40,7 @@ if [ "${1:-}" = "--self-test" ]; then
 fi
 
 receipt="${TQ_ROOT_GATE_RECEIPT:-/var/tmp/tq-root-gate-$(date +%Y-%m-%d_%H-%M).log}"
-rotate_receipts "$receipt"
+receipt_rotate "$receipt" "$KEEP_RECEIPTS" "$(dirname "$receipt")"/tq-root-gate-*.log
 if [ "${TQ_ROOT_GATE_ROTATE_ONLY:-}" = "1" ]; then
 	: >"$receipt"
 	exit 0
