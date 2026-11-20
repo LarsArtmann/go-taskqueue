@@ -86,10 +86,81 @@ func TestServeFlagsRegistered(t *testing.T) {
 	for _, name := range []string{
 		"addr", "poll", "verbose", "auth-token", "allow-writes",
 		"read-model", "dlq-backoff", "config", "daily-budget",
-		"crush-server", "alert-url", "alert-api-key", "db", "store",
+		"crush-server", "alert-url", "alert-api-key", "health-metrics", "db", "store",
 	} {
 		if !seen[name] {
 			t.Errorf("serve flag --%s not registered", name)
+		}
+	}
+}
+
+// TestServeConfigFieldParity walks EVERY webui.Config field via reflection
+// and requires it to be either wired from a serve flag or explicitly
+// allow-listed with a justification — so a new Config field can never go
+// dead on serve the way DailyBudget did before its flag existed, and
+// Metrics did until --health-metrics (2026-11-13 report §e6/§f13 audit).
+func TestServeConfigFieldParity(t *testing.T) {
+	t.Parallel()
+
+	// Field name → why serve does not (need to) set it. Every entry here
+	// is a deliberate non-flag derivation, not an oversight.
+	allowlist := map[string]string{
+		"Heartbeat":     "internal SSE keepalive default (withDefaults); no operator knob",
+		"ReadModelPath": "derived from the deployment (readmodel.PathFor), not a flag",
+		"Pump":          "composed by cmd/tq (composition.NewProjectionRuntime), not a flag",
+	}
+
+	// Field name → the serve flag feeding it. Kept in lockstep with
+	// serveOpts.config() by TestServeFlagParseWiresConfig.
+	wired := map[string]string{
+		"Addr":        "addr",
+		"Poll":        "poll",
+		"Version":     "ldflags version var",
+		"RequestLog":  "verbose",
+		"AuthToken":   "auth-token",
+		"AllowWrites": "allow-writes",
+		"DailyBudget": "daily-budget",
+		"DLQBackoff":  "dlq-backoff",
+		"CrushServer": "crush-server",
+		"AlertURL":    "alert-url",
+		"AlertAPIKey": "alert-api-key",
+		"Metrics":     "health-metrics",
+	}
+
+	configType := reflect.TypeFor[webui.Config]()
+	for i := range configType.NumField() {
+		name := configType.Field(i).Name
+
+		flag, ok := wired[name]
+		if ok {
+			continue
+		}
+
+		if reason, ok := allowlist[name]; ok {
+			if reason == "" {
+				t.Errorf("Config.%s is allow-listed without a justification", name)
+			}
+			continue
+		}
+
+		t.Errorf("webui.Config.%s is unreachable from any serve flag: wire a flag or add a justified allowlist entry (the DailyBudget dead-field class)", name)
+	}
+
+	if t.Failed() {
+		return
+	}
+
+	// The wiring table must name real flags: every non-derived entry's
+	// flag exists on the serve flag set.
+	fs, _ := newServeFlagSet()
+	registered := map[string]bool{}
+	fs.VisitAll(func(f *flag.Flag) { registered[f.Name] = true })
+	for field, flagName := range wired {
+		if flagName == "ldflags version var" {
+			continue
+		}
+		if !registered[flagName] {
+			t.Errorf("wired[%s] names flag --%s which serve does not register", field, flagName)
 		}
 	}
 }

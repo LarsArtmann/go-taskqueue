@@ -4315,6 +4315,7 @@ type serveOpts struct {
 	crushServer *string
 	alertURL    *string
 	alertKey    *string
+	metrics     *bool
 	store       *string
 	db          *string
 }
@@ -4372,6 +4373,11 @@ func newServeFlagSet() (*flag.FlagSet, *serveOpts) {
 		os.Getenv("TQ_PAP_API_KEY"),
 		"PapDashboard API key for --alert-url (Bearer; $TQ_PAP_API_KEY)",
 	)
+	o.metrics = fs.Bool(
+		"health-metrics",
+		false,
+		"expose Prometheus series at /health/metrics (read-only; rides the same security headers + auth gate as every health route; default off)",
+	)
 	o.db = dbFlag(fs)
 	o.store = storeFlag(fs)
 
@@ -4393,6 +4399,7 @@ func (o *serveOpts) config() webui.Config {
 		CrushServer: *o.crushServer,
 		AlertURL:    *o.alertURL,
 		AlertAPIKey: *o.alertKey,
+		Metrics:     *o.metrics,
 	}
 }
 
