@@ -603,7 +603,22 @@ EOF
 		echo "FAIL: batch-anchors rail (want clean=0 bad=1, got $rc2/$rc3)"
 		exit 1
 	fi
-	echo "tick-claims self-test ok (summary format pin + negative counter battery + no-flip/blocked/wide-window/batch-anchors/commit-message rails + unpushed-sha ancestry rail + two-tick fusion rail)"
+	# Row 1731 baseline rail: growth above the accepted baseline fails,
+	# headroom prints the ratchet hint (fixture run warns 8).
+	local rc4=0 rc5=0 out4 out5
+	out4="$(TQ_TICK_CLAIMS_BASELINE=4 TQ_TICK_LIST_CMD="$tmp/listcmd.sh" TQ_TICK_DIFF_CMD="$tmp/diffcmd.sh" TQ_TICK_MSG_CMD="$tmp/msgcmd.sh" TQ_TICK_ANCESTOR_CMD="$tmp/ancmd.sh" TQ_TICK_FUSION_CMD="$tmp/fusioncmd.sh" TQ_TICK_CLAIM_FILES="$files" "$self_abs" 2>&1)" || rc4=$?
+	out5="$(TQ_TICK_CLAIMS_BASELINE=20 TQ_TICK_LIST_CMD="$tmp/listcmd.sh" TQ_TICK_DIFF_CMD="$tmp/diffcmd.sh" TQ_TICK_MSG_CMD="$tmp/msgcmd.sh" TQ_TICK_ANCESTOR_CMD="$tmp/ancmd.sh" TQ_TICK_FUSION_CMD="$tmp/fusioncmd.sh" TQ_TICK_CLAIM_FILES="$files" "$self_abs" 2>&1)" || rc5=$?
+	if [ "$rc4" != "1" ] || ! grep -q 'BASELINE EXCEEDED: 8 warns > accepted baseline 4' <<<"$out4"; then
+		echo "FAIL: baseline rail must fail above the pin (want rc=1 + EXCEEDED line)"
+		printf '%s\n' "$out4"
+		exit 1
+	fi
+	if [ "$rc5" != "0" ] || ! grep -q 'baseline headroom: 8 warns < accepted baseline 20' <<<"$out5"; then
+		echo "FAIL: baseline headroom note missing below the pin (want rc=0)"
+		printf '%s\n' "$out5"
+		exit 1
+	fi
+	echo "tick-claims self-test ok (summary format pin + negative counter battery + no-flip/blocked/wide-window/batch-anchors/commit-message rails + unpushed-sha ancestry rail + two-tick fusion rail + baseline ratchet rail)"
 	exit 0
 }
 
@@ -648,5 +663,18 @@ scan_commit_messages
 scan_two_tick_fusion
 
 echo "tick-claims summary: $oks ok, $warns warned, $skips skipped"
+# Row 1731 accepted-baseline pin: the standing 2026-09/10-era WARNs are
+# accepted rot (renumbered-row cites whose work verifiably landed; the
+# 2026-11-20 sweep spot-checked the class). The baseline is a
+# RATCHET-DOWN-ONLY pin: growth above it fails the gate; shrinking it
+# requires healing warns (fork records) or re-pinning lower.
+TICK_CLAIMS_BASELINE="${TQ_TICK_CLAIMS_BASELINE:-35}"
+if [ "$warns" -gt "$TICK_CLAIMS_BASELINE" ]; then
+	echo "tick-claims BASELINE EXCEEDED: $warns warns > accepted baseline $TICK_CLAIMS_BASELINE — each new WARN is a new class: repair with a fork record or re-pin lower (ratchet-down only)"
+	exit 1
+fi
+if [ "$warns" -lt "$TICK_CLAIMS_BASELINE" ]; then
+	echo "tick-claims baseline headroom: $warns warns < accepted baseline $TICK_CLAIMS_BASELINE — ratchet the pin down to $warns"
+fi
 echo "advisory (WARN-only; cite-the-tick-commit convention, TODO row 1058) — continuing"
 exit 0
