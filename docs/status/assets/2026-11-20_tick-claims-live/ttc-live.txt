@@ -1,0 +1,104 @@
+TICK-CLAIM WARN: docs/status/2026-10-04_00-52_done-prompt-reviewfix-sortchip-httpauth-window.md:78 "row 128 `[x]`" — row 128 is not '- [x]' at 6ca0d998
+  row 128 reads: - [ ] Pin the `?token=`-query auth-failure strike path (bearerToken fallback only pinned on success) + "lockout covers P
+  cite the tick commit (AGENTS.md: tick-claims cite the tick commit) or fix the claim
+TICK-CLAIM WARN: docs/status/2026-10-04_00-52_done-prompt-reviewfix-sortchip-httpauth-window.md:79 "row 129 `[x]`" — row 129 is not '- [x]' at 6ca0d998
+  row 129 reads: - [ ] Decide 401/429 body shape on `tq api`: handlers answer `{error, fix}` JSON but auth failures + lockout use plain-t
+  cite the tick commit (AGENTS.md: tick-claims cite the tick commit) or fix the claim
+TICK-CLAIM WARN: docs/status/2026-10-13_02-13_done-prompt-release-docs-worktree-csp-window.md:17 "row 440 ticked" — row 440 is not '- [x]' at 74247e4a
+  row 440 reads: - [ ] Extract `scripts/smoke/lib.sh` shared smoke helper (WORK dir setup, EXIT trap, FAILED/keep-on-fail flag, prebuilt-
+  cite the tick commit (AGENTS.md: tick-claims cite the tick commit) or fix the claim
+TICK-CLAIM WARN: docs/status/2026-10-15_06-15_done-prompt-window-8-task-harvest.md:131 "row 834 ticked" — row 834 is not '- [x]' at 4d5ee9ae
+  row 834 reads: - [ ] CHANGELOG [Unreleased] entry for the parked-surface provider tag: `tq tasks --parked` rows now prefix "[provider] 
+  cite the tick commit (AGENTS.md: tick-claims cite the tick commit) or fix the claim
+TICK-CLAIM WARN: docs/status/2026-10-25_07-14_done-prompt-window-report-eleventh-dispatch.md:12 "rows 776-778 ticked" — cited tick commit ee6ac2bb flips no '- [x]' row in its TODO_LIST diff
+TICK-CLAIM WARN: docs/status/2026-10-25_07-14_done-prompt-window-report-eleventh-dispatch.md:43 "row 896 ticked" — row 896 is not '- [x]' at e8af721f
+  row 896 reads: - [ ] CI-red triage TODO rows must carry the failing run URL so attribution is verifiable before work — the 2026-10-13
+  cite the tick commit (AGENTS.md: tick-claims cite the tick commit) or fix the claim
+TICK-CLAIM WARN: docs/status/2026-10-25_17-30_nix-job-cures-css-repin-tick-claim-audit.md:31 "row 440 ticked" — row 440 is not '- [x]' at ca45c587
+  row 440 reads: - [ ] dlqfix autopsy results have no webui surface: zero `dlqfix`/`DLQFix` references in internal/webui while internal/e
+  cite the tick commit (AGENTS.md: tick-claims cite the tick commit) or fix the claim
+TICK-CLAIM WARN: docs/status/2026-10-27_08-10_done-prompt-window-report-twelfth-dispatch.md:12 "rows 894/895 ticked" — row 894 is not '- [x]' at b9420350
+  row 894 reads: - [ ] ci-local GOTOOLCHAIN fallback decision: when check-toolchain-pins --print-floor yields an empty floor, ci-local fa
+  cite the tick commit (AGENTS.md: tick-claims cite the tick commit) or fix the claim
+TICK-CLAIM WARN: docs/status/2026-10-27_08-10_done-prompt-window-report-twelfth-dispatch.md:15 "row 896 ticked" — row 896 is not '- [x]' at b9420350
+  row 896 reads: 
+  cite the tick commit (AGENTS.md: tick-claims cite the tick commit) or fix the claim
+TICK-CLAIM WARN: docs/status/2026-10-30_03-35_done-prompt-window-report-twentythird-dispatch.md:67 "row 1218 ticked" — row 1218 is not '- [x]' at 3e964663
+  row 1218 reads: - [ ] Re-word check-status-index.sh's INDEX BLOAT WARNING to name the single ratified digest ritual (README now defines 
+  cite the tick commit (AGENTS.md: tick-claims cite the tick commit) or fix the claim
+TICK-CLAIM WARN: docs/status/2026-10-30_04-54_done-prompt-window-report-twentyfourth-dispatch.md:38 "rows 1037/1218 ticked" — row 1037 is not '- [x]' at 1563db2a
+  row 1037 reads: 
+  cite the tick commit (AGENTS.md: tick-claims cite the tick commit) or fix the claim
+TICK-CLAIM WARN: docs/status/2026-10-31_11-08_v0.4.1-aftermath-ci-green-T10-T19.md:19 "row 143 was already DONE and ticked" — row 143 is not '- [x]' at 3f711802
+  row 143 reads: 
+  cite the tick commit (AGENTS.md: tick-claims cite the tick commit) or fix the claim
+TICK-CLAIM WARN: docs/status/2026-11-04_17-39_docs-health-2026-0x-corpus-sweep.md:251 "row 1157 was ticked" — row 1157 is not '- [x]' at 4f7d205c
+  row 1157 reads: 
+  cite the tick commit (AGENTS.md: tick-claims cite the tick commit) or fix the claim
+TICK-CLAIM WARN: docs/status/2026-11-14_06-36_done-prompt-window-report.md:23 "row 1642 ticked" — row 1642 is not '- [x]' at cbc6ed44
+  row 1642 reads: - [ ] Dedupe the four executor prompt-template paragraphs repeating the "$TQ_RESULT_FILE … write the same one-line JSO
+  cite the tick commit (AGENTS.md: tick-claims cite the tick commit) or fix the claim
+TICK-CLAIM WARN: docs/status/README.md:189 "row 1378 ticked" — row 1378 is not '- [x]' at c862b6ca
+  row 1378 reads: - [ ] Cure the check-gomod-vendor-sync cmd/tq tidy red at HEAD: `go mod tidy` on cmd/tq's replace-free go.mod fails beca
+  cite the tick commit (AGENTS.md: tick-claims cite the tick commit) or fix the claim
+TICK-CLAIM WARN: docs/status/README.md:193 "row 1290 ticked" — row 1290 is not '- [x]' at aa19b7e6
+  row 1290 reads: - [ ] Daemon-side guard: refuse (or WARN+quarantine) zero-byte tracked source files at sweep time — the 11:39 sweep sh
+  cite the tick commit (AGENTS.md: tick-claims cite the tick commit) or fix the claim
+TICK-CLAIM WARN: docs/status/README.md:195 "rows 1251-1253 ticked" — cited tick commit d28202f6 is NOT reachable from HEAD
+  an unpushed/amended sha is a dead cite in the making — push first, or cite a fork record (old→new) — AGENTS.md unpushed-sha convention
+TICK-CLAIM WARN: docs/status/README.md:232 "rows 1221-1223 ticked" — row 1221 is not '- [x]' at 1b5a7825
+  row 1221 reads: - [ ] scripts/heal-daemon-sweep.sh --split mode: when one footer-less daemon sweep folds 2+ distinct task items (aeff148
+  cite the tick commit (AGENTS.md: tick-claims cite the tick commit) or fix the claim
+TICK-CLAIM WARN: docs/status/README.md:239 "rows 1209-1211 ticked" — row 1211 is not '- [x]' at df3ce1c0
+  row 1211 reads: - [ ] Raw sample-count pin: every `secretPatternSamples` entry through `SecretHits` RAW (not post-redaction) must count 
+  cite the tick commit (AGENTS.md: tick-claims cite the tick commit) or fix the claim
+TICK-CLAIM WARN: docs/status/README.md:259 "row 1215 ticked" — row 1215 is not '- [x]' at 4e1e3f35
+  row 1215 reads: - [ ] Gate-receipts convention: ship the ready-made receipt pattern in AGENTS.md (`go test … | tee /tmp/gate.log` then
+  cite the tick commit (AGENTS.md: tick-claims cite the tick commit) or fix the claim
+TICK-CLAIM WARN: docs/status/README.md:284 "row 440 ticked" — row 440 is not '- [x]' at 428dfafd
+  row 440 reads: - [ ] dlqfix autopsy results have no webui surface: zero `dlqfix`/`DLQFix` references in internal/webui while internal/e
+  cite the tick commit (AGENTS.md: tick-claims cite the tick commit) or fix the claim
+TICK-CLAIM WARN: docs/status/README.md:284 "row 143 was already DONE and ticked" — row 143 is not '- [x]' at 428dfafd
+  row 143 reads: - [ ] Extend ci-local transient-retry wrapper to the smokes + add a durable self-test pin for the retry loop (01-46 repo
+  cite the tick commit (AGENTS.md: tick-claims cite the tick commit) or fix the claim
+TICK-CLAIM WARN: docs/status/README.md:318 "rows 233-235 ticked" — row 233 is not '- [x]' at c7e95833
+  row 233 reads: - [ ] Frozen-date fixture sweep: rg scripts/smoke + testdata for hardcoded calendar-date literals, convert to run-time c
+  cite the tick commit (AGENTS.md: tick-claims cite the tick commit) or fix the claim
+TICK-CLAIM WARN: docs/status/README.md:329 "row 440 ticked" — row 440 is not '- [x]' at 428dfafd
+  row 440 reads: - [ ] dlqfix autopsy results have no webui surface: zero `dlqfix`/`DLQFix` references in internal/webui while internal/e
+  cite the tick commit (AGENTS.md: tick-claims cite the tick commit) or fix the claim
+TICK-CLAIM WARN: docs/status/README.md:1057 "row 89 [x]" — row 89 is not '- [x]' at c78c61b6
+  row 89 reads: - [ ] Session E2E dogfood proof: one REAL interactive session through begin→commits→close on this repo with the pool
+  cite the tick commit (AGENTS.md: tick-claims cite the tick commit) or fix the claim
+TICK-CLAIM WARN: docs/status/tasks/2026-09-20_07-07_task-000001a0bd2d1b8972f150b0e7d530c78931.md:21 "row 148 closed `[x]`" — row 148 is not '- [x]' at 2ee8c7e0
+  row 148 reads: - [ ] check-release-docs.sh: extend the `--self-test` pin (the drift=1 mutation row in this section) with a reflow-toler
+  cite the tick commit (AGENTS.md: tick-claims cite the tick commit) or fix the claim
+TICK-CLAIM WARN: docs/status/tasks/2026-09-20_08-43_task-000001a0bd841527f58d252d81b4effaf4aa.md:58 "row 156 `[x]`" — row 156 is not '- [x]' at 2ee8c7e0
+  row 156 reads: 
+  cite the tick commit (AGENTS.md: tick-claims cite the tick commit) or fix the claim
+TICK-CLAIM WARN: docs/status/tasks/2026-09-21_00-27_task-000001a0c0d6f2f74e46e4d524207638cccd.md:48 "row 160 `[x]`" — row 160 is not '- [x]' at 2ee8c7e0
+  row 160 reads: 
+  cite the tick commit (AGENTS.md: tick-claims cite the tick commit) or fix the claim
+TICK-CLAIM WARN: docs/status/tasks/2026-10-01_01-56_task-000001a0f4b46711933c958a92ef00000000.md:176 "row 115 `[x]`" — row 115 is not '- [x]' at e09b3404
+  row 115 reads: - [ ] Add a shared negative-fixture helper (scripts/lib) for check-* gate self-tests: builds a temp tree from a fixture 
+  cite the tick commit (AGENTS.md: tick-claims cite the tick commit) or fix the claim
+TICK-CLAIM WARN: docs/status/tasks/2026-10-01_02-30_task-000001a0f4b46711933c958a92ef00000000.md:21 "row 115 already `[x]`" — row 115 is not '- [x]' at e09b3404
+  row 115 reads: - [ ] Add a shared negative-fixture helper (scripts/lib) for check-* gate self-tests: builds a temp tree from a fixture 
+  cite the tick commit (AGENTS.md: tick-claims cite the tick commit) or fix the claim
+TICK-CLAIM WARN: docs/status/tasks/2026-10-21_03-37_task-000001a15c06ea39a673e6fd63c600000000.md:27 "row 777 `[x]`" — row 777 is not '- [x]' at 68a20cdb
+  row 777 reads: - [ ] Single-source the module canary list (check-gosec.sh vs scripts/for-each-module.sh still two lists, no parity asse
+  cite the tick commit (AGENTS.md: tick-claims cite the tick commit) or fix the claim
+TICK-CLAIM WARN: docs/status/tasks/2026-10-25_06-34_task-000001a171842151c28271acc9a200000000.md:21 "row 896 ticked" — row 896 is not '- [x]' at 3bc6e29c
+  row 896 reads: - [ ] CI-red triage TODO rows must carry the failing run URL so attribution is verifiable before work — the 2026-10-13
+  cite the tick commit (AGENTS.md: tick-claims cite the tick commit) or fix the claim
+TICK-CLAIM WARN: docs/status/tasks/2026-10-26_00-35_task-000001a17566f4a510f2786542d500000000.md:11 "rows 478-480 ticked `[x]`" — cited tick commit 6ca3b0b1 is NOT reachable from HEAD
+  an unpushed/amended sha is a dead cite in the making — push first, or cite a fork record (old→new) — AGENTS.md unpushed-sha convention
+TICK-CLAIM WARN: docs/status/tasks/2026-11-03_05-41_task-000001a19fb137e987e2db942d6d00000000.md:27 "row 1444 ticked" — row 1444 is not '- [x]' at 34152f61
+  row 1444 reads: - [ ] Adoptions-graph tidy gate for examples/embed: a check (or fold into an existing gate) that trips when `go mod tidy
+  cite the tick commit (AGENTS.md: tick-claims cite the tick commit) or fix the claim
+TICK-CLAIM WARN: docs/status/tasks/2026-11-03_06-13_task-000001a19fbef62f653cfc535d6c00000000.md:14 "row 1444 ticked" — row 1444 is not '- [x]' at bda12c53
+  row 1444 reads: - [ ] Adoptions-graph tidy gate for examples/embed: a check (or fold into an existing gate) that trips when `go mod tidy
+  cite the tick commit (AGENTS.md: tick-claims cite the tick commit) or fix the claim
+two-tick fusion summary: 0 flagged, 0 grandfathered
+tick-claims summary: 369 ok, 35 warned, 0 skipped
+advisory (WARN-only; cite-the-tick-commit convention, TODO row 1058) — continuing
