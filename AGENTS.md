@@ -263,6 +263,13 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   AGENTS/TODO_LIST/status-index sweeps print computed rows first; the FIRST
   filter runs against a copy of the real file shape (wrong filter = free
   to print, fatal to run).
+- **Harvested-row dedup is greps-with-receipts, never a claim**: a batch
+  header or closeout saying "deduped" runs domain-noun greps — the finding's
+  SUBJECT words (parked, requeue, verdict…), never the report's vocabulary
+  ("window", "residue") — BOTH directions: new items' nouns vs live rows AND
+  live rows' nouns vs new items; print term + hit count inline;
+  `check-todo-list.sh` WARNs when the receipt is missing. The 57b76be6-era
+  header asserted 13 covering rows with zero greps — claim-without-receipt.
 - **Closeout TICK-AUDIT**: before the FINAL commit of any batch, grep
   TODO_LIST.md for each verbatim batch anchor; finished rows must read
   `- [x]` — landed + unchecked = paid round-trip.
