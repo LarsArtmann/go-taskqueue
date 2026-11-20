@@ -326,6 +326,15 @@ scan_line() {
 		case "$low" in
 		*not* | *never* | *unticked*) continue ;;
 		esac
+		# 2026-11-20 FP cure: a report QUOTING a false claim while
+		# documenting the class ("the false \"row 896 ticked\" claim") is
+		# prose, not a claim — the prefix before the span carries the
+		# falsehood marker the span itself cannot (the span is just
+		# "row N ticked").
+		local prefix="${line:0:off}"
+		case "${prefix,,}" in
+		*false* | *falsehood*) continue ;;
+		esac
 		[[ "$span" =~ ^rows?[[:space:]]([0-9]+)([/-]([0-9]+))? ]] || continue
 		local a="${BASH_REMATCH[1]}" b="${BASH_REMATCH[3]:-}" sep="${BASH_REMATCH[2]:-}"
 		# "rows 32-34" spans the range; "rows 32/34" names two endpoints —
@@ -509,6 +518,7 @@ EOF
 	printf 'report says row 1 ticked, rows 1/3 [x], and rows 1-3 [x]\n' >"$tmp/f1.md"
 	printf 'sha-cited rows 1-2 ticked in aaaaaaaaaaaaaaaa plus row 2 ticked in bbbbbbbbbbbbbbbb\n' >"$tmp/f2.md"
 	printf 'negatives: rows 1-2 unticked, row 3 not ticked, row 4 was UNCHECKED\n' >"$tmp/f3.md"
+	printf 'the false "row 2 ticked" claim predates the guard (2026-11-20 sweep prose, not a claim)\n' >>"$tmp/f3.md"
 	printf 'broken row 1 ticked in deadbeef00\n' >"$tmp/f4.md"
 	printf 'orphan cite: row 1 ticked (1111222233334444)\n' >"$tmp/f7.md"
 	printf 'real-ancestor cite: row 1 ticked (2222333344445555)\n' >"$tmp/f8.md"
