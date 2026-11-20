@@ -26,7 +26,6 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 KEEP_RECEIPTS="${TQ_ROOT_GATE_KEEP_RECEIPTS:-20}"
-self_abs="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 
 . scripts/lib/receipt.sh
 

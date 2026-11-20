@@ -8,11 +8,15 @@
 set -uo pipefail
 
 receipt_rotate() {
-	# receipt_rotate <current-receipt> <keep> <glob>
-	local current="$1" keep="$2" pattern="$3" f
+	# receipt_rotate <current-receipt> <keep> <glob...> — the glob arrives
+	# pre-expanded (unquoted at the call site), so collect all remaining args
+	local current="$1" keep="$2" f
+	shift 2
+	local pattern="$*"
 	local old
 	# shellcheck disable=SC2012 # receipt filenames are machine-generated, never adversarial
-	old="$(ls -1t "$pattern" 2>/dev/null | tail -n +"$((keep + 1))" || true)"
+	# shellcheck disable=SC2086 # $pattern is the pre-expanded glob words, split intentionally
+	old="$(ls -1t $pattern 2>/dev/null | tail -n +"$((keep + 1))" || true)"
 	for f in $old; do
 		[ "$f" = "$current" ] && continue
 		rm -f "$f"
@@ -29,7 +33,7 @@ if [ "${1:-}" = "--self-test" ]; then
 	touch -d '30 minutes ago' "$dir/gate-old2.log"
 	: >"$dir/gate-now.log"
 	# keep=2 over 3 receipts: oldest goes, newest old + current survive
-	receipt_rotate "$dir/gate-now.log" 2 "$dir/gate-*.log"
+	receipt_rotate "$dir/gate-now.log" 2 "$dir"/gate-*.log
 	[ -f "$dir/gate-now.log" ] || {
 		echo "receipt self-test FAIL: current receipt must survive rotation"
 		exit 1
@@ -41,15 +45,15 @@ if [ "${1:-}" = "--self-test" ]; then
 	[ -f "$dir/gate-old2.log" ] || {
 		echo "receipt self-test FAIL: newest old receipt must survive (keep=2)"
 		exit 1
-	fi
+	}
 	# keep=1: everything but the current receipt goes
-	receipt_rotate "$dir/gate-now.log" 1 "$dir/gate-*.log"
+	receipt_rotate "$dir/gate-now.log" 1 "$dir"/gate-*.log
 	if [ -f "$dir/gate-old2.log" ]; then
 		echo "receipt self-test FAIL: only the current receipt should survive keep=1"
 		exit 1
 	fi
 	# current is never its own victim even when it matches the keep boundary
-	receipt_rotate "$dir/gate-now.log" 1 "$dir/gate-*.log"
+	receipt_rotate "$dir/gate-now.log" 1 "$dir"/gate-*.log
 	[ -f "$dir/gate-now.log" ] || {
 		echo "receipt self-test FAIL: current receipt lost at keep boundary"
 		exit 1

@@ -8,6 +8,20 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+# Receipt parity (row 1730): the full battery's output tees to a dated
+# /var/tmp receipt (the root-gate TQ_ROOT_GATE_RECEIPT pattern) so
+# scrollback-citation gaps never apply to this gate. Rotation keeps the
+# newest TQ_CI_LOCAL_KEEP_RECEIPTS (default 20); override
+# TQ_CI_LOCAL_RECEIPT for tests.
+. scripts/lib/receipt.sh
+ci_local_receipt="${TQ_CI_LOCAL_RECEIPT:-/var/tmp/tq-ci-local-$(date +%Y-%m-%d_%H-%M).log}"
+receipt_rotate "$ci_local_receipt" "${TQ_CI_LOCAL_KEEP_RECEIPTS:-20}" "$(dirname "$ci_local_receipt")"/tq-ci-local-*.log
+exec > >(tee "$ci_local_receipt") 2>&1
+echo "ci-local receipt: $ci_local_receipt"
+
+# Receipt-rotation self-test (fleet convention: countable gates pinned)
+bash scripts/lib/receipt.sh --self-test
+
 # encoding/json/v2 needs GOEXPERIMENT=jsonv2 on go 1.26 — do NOT rely on
 # ~/.config/go/env (a fresh machine, a service env or a read-only store
 # symlink can drop it; that exact dependence made CI red while local was
