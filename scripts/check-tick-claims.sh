@@ -328,13 +328,12 @@ scan_line() {
 		esac
 		# 2026-11-20 FP cure: a report QUOTING a false claim while
 		# documenting the class ("the false \"row 896 ticked\" claim") is
-		# prose, not a claim — the prefix before the span carries the
-		# falsehood marker the span itself cannot (the span is just
-		# "row N ticked").
+		# prose, not a claim. Adjacency-scoped: only a span QUOTED directly
+		# after a falsehood marker (prefix ending `false "`) is skipped —
+		# lines that merely mention "false" elsewhere keep their WARNs
+		# (the twelfth-dispatch/README-285 accepted-rot rows stay counted).
 		local prefix="${line:0:off}"
-		case "${prefix,,}" in
-		*false* | *falsehood*) continue ;;
-		esac
+		[[ "$prefix" =~ [Ff]alse[[:space:]]*\"$ ]] && continue
 		[[ "$span" =~ ^rows?[[:space:]]([0-9]+)([/-]([0-9]+))? ]] || continue
 		local a="${BASH_REMATCH[1]}" b="${BASH_REMATCH[3]:-}" sep="${BASH_REMATCH[2]:-}"
 		# "rows 32-34" spans the range; "rows 32/34" names two endpoints —
