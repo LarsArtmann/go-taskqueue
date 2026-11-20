@@ -139,7 +139,14 @@ while i < len(lines):
     first = body[0] if body else ""
     if is_sh_shebang(first):
         print("OK\t" + first)
-    elif any(is_sh_shebang(line) for line in body[1:]):
+    elif first.startswith("#!/bin/sh"):
+        # row 1737: a #!/bin/sh-prefixed first line that fails the
+        # classifier (multi-cluster flags form) execs as "invalid option"
+        # — it claims the sh-stub contract and breaks it, so VIOLATE.
+        print("VIOLATION\t" + first)
+    elif any(line.startswith("#!/bin/sh") for line in body[1:]):
+        # misplaced rail: any #!/bin/sh shape (legal or broken-flags) in
+        # body[1:] is the drift class — the first line owns the shebang.
         print("VIOLATION\t" + first)
     elif first == "" and any(line.startswith("#!") for line in body[1:]):
         print("VIOLATION\t" + first)
