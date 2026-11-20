@@ -70,6 +70,16 @@ step() { printf '\n== %s\n' "$*"; }
 # (2026-10-03 00-08/00-25 §b). Fail HERE as an environment error instead.
 step "host env probe (GOCACHE/GOROOT sanity)"
 echo "disk: $(df -h / | awk 'NR==2{print $4" free on "$6}')"
+# Sixth report e4 (row 1739): four battery runs died into a full tmpfs
+# before any guard existed. Refuse up front when /tmp is under a floor
+# (the build cache and scratch fixtures all land there). Overridable for
+# testing via TQ_TMP_FREE_KB; floor default 2 GiB.
+tmp_free_kb="${TQ_TMP_FREE_KB:-$(df -k /tmp | awk 'NR==2{print $4}')}"
+tmp_floor_kb="${TQ_TMP_FLOOR_KB:-$((2 * 1024 * 1024))}"
+if [ "$tmp_free_kb" -lt "$tmp_floor_kb" ]; then
+	echo "FAIL: /tmp has only $((tmp_free_kb / 1024)) MiB free (floor $((tmp_floor_kb / 1024)) MiB) — the ENOSPC wall class. Free space or export TQ_TMP_FLOOR_KB." >&2
+	exit 1
+fi
 echo "GOCACHE=$(go env GOCACHE)"
 echo "GOROOT=$(go env GOROOT)"
 case "$(go env GOCACHE)" in
