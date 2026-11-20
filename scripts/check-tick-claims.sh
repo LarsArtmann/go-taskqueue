@@ -64,6 +64,30 @@ export LC_ALL=C
 cd "$(dirname "$0")/.." || exit 1
 self_abs="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 
+# Row 1733 (2026-11-20_01-14 closeout §f22): --receipt <path> tees the FULL
+# run (every WARN line + the closing summary) to a receipt file so
+# tick-audit closeouts cite a captured file instead of /tmp scratch or
+# scrollback (same discipline as root-gate/ci-local, shared rotation lib).
+# <path> may be a file or a directory (a dated tq-tick-claims-<ts>.log is
+# generated inside); old siblings rotate (TQ_TICK_RECEIPT_KEEP, default 20).
+if [ "${1:-}" = "--receipt" ]; then
+	[ -n "${2:-}" ] || {
+		echo "usage: $0 --receipt <file-or-dir> [gate args…]" >&2
+		exit 2
+	}
+	. scripts/lib/receipt.sh
+	rpath="$2"
+	shift 2
+	if [ -d "$rpath" ] || [[ "$rpath" == */ ]]; then
+		mkdir -p "$rpath"
+		rpath="$rpath/tq-tick-claims-$(date +%Y-%m-%d_%H-%M).log"
+	fi
+	mkdir -p "$(dirname "$rpath")"
+	receipt_rotate "$rpath" "${TQ_TICK_RECEIPT_KEEP:-20}" "$(dirname "$rpath")"/tq-tick-claims-*.log
+	exec > >(tee "$rpath") 2>&1
+	echo "tick-claims receipt: $rpath"
+fi
+
 declare -A LIST_CACHE=()
 declare -A SPAN_BASE=()
 
@@ -618,7 +642,29 @@ EOF
 		printf '%s\n' "$out5"
 		exit 1
 	fi
-	echo "tick-claims self-test ok (summary format pin + negative counter battery + no-flip/blocked/wide-window/batch-anchors/commit-message rails + unpushed-sha ancestry rail + two-tick fusion rail + baseline ratchet rail)"
+	# Row 1733 --receipt rail: a fixture run through --receipt <dir> leaves
+	# a dated tq-tick-claims-*.log containing the summary line; the header
+	# names the receipt path.
+	local rc6=0 out6 recv
+	recv="$tmp/recv"
+	out6="$(TQ_TICK_LIST_CMD="$tmp/listcmd.sh" TQ_TICK_DIFF_CMD="$tmp/diffcmd.sh" TQ_TICK_MSG_CMD="$tmp/msgcmd.sh" TQ_TICK_ANCESTOR_CMD="$tmp/ancmd.sh" TQ_TICK_FUSION_CMD="$tmp/fusioncmd.sh" TQ_TICK_CLAIM_FILES="$files" "$self_abs" --receipt "$recv" 2>&1)" || rc6=$?
+	local rfile
+	rfile="$(find "$recv" -name 'tq-tick-claims-*.log' -type f | head -1)"
+	if [ "$rc6" != "0" ] || [ -z "$rfile" ] || ! grep -qF 'tick-claims summary: 6 ok, 8 warned, 3 skipped' "$rfile"; then
+		echo "FAIL: --receipt rail (want rc=0 + dated receipt carrying the summary; got rc=$rc6 receipt=${rfile:-none})"
+		printf '%s\n' "$out6"
+		exit 1
+	fi
+	if ! grep -qF 'TICK-CLAIM WARN' "$rfile"; then
+		echo "FAIL: --receipt rail must capture the WARN lines too"
+		exit 1
+	fi
+	if ! grep -qF "tick-claims receipt: $rfile" <<<"$out6"; then
+		echo "FAIL: --receipt header must name the receipt path"
+		printf '%s\n' "$out6"
+		exit 1
+	fi
+	echo "tick-claims self-test ok (summary format pin + negative counter battery + no-flip/blocked/wide-window/batch-anchors/commit-message rails + unpushed-sha ancestry rail + two-tick fusion rail + baseline ratchet rail + receipt rail)"
 	exit 0
 }
 
