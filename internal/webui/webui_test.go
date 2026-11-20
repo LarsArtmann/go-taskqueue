@@ -31,7 +31,6 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/readmodel"
 	"github.com/larsartmann/go-taskqueue/internal/session"
 	"github.com/larsartmann/go-taskqueue/internal/task"
-	"github.com/larsartmann/templ-components/display"
 )
 
 // newTestStore opens a throwaway SQLite store.
@@ -1247,45 +1246,9 @@ func TestBudgetCardRendersFromSnapshot(t *testing.T) {
 	}
 }
 
-// TestBudgetMeterToneAndQuantization pins the meter's server-side classes:
-// the CSP (style-src 'self') forbids inline widths, so the fill is one of
-// twenty 5%-step classes, and the tone thresholds mirror BudgetView.Tone
-// (amber at 75%, red at/over the cap).
-func TestBudgetMeterToneAndQuantization(t *testing.T) {
-	tests := []struct {
-		name  string
-		spent int
-		cap   int
-		fill  string
-		warn  bool
-		over  bool
-	}{
-		{"zero spend shows no fill class", 0, 5, "tq-meter-fill", false, false},
-		{"tiny spend still shows a sliver", 1, 100, "tq-meter-fill tq-meter-fill-5", false, false},
-		{"just under warn", 74, 100, "tq-meter-fill tq-meter-fill-75", false, false},
-		{"at warn", 75, 100, "tq-meter-fill tq-meter-fill-75", true, false},
-		{"over cap clamps to full", 9, 5, "tq-meter-fill tq-meter-fill-100", false, true},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			b := BudgetView{Spent: tt.spent, Cap: tt.cap}
-			if got := budgetMeterFillClass(b); got != tt.fill {
-				t.Errorf("fill = %q, want %q", got, tt.fill)
-			}
-
-			track := budgetMeterClass(b)
-			if tt.warn != strings.Contains(track, "tq-meter-warn") {
-				t.Errorf("track = %q, warn presence = %v", track, tt.warn)
-			}
-
-			if tt.over != strings.Contains(track, "tq-meter-over") {
-				t.Errorf("track = %q, over presence = %v", track, tt.over)
-			}
-		})
-	}
-}
-
+// The meter's tone/quantization table now lives in
+// components_test.go (TestBudgetMeterUnifiesPctFillTone) — one table per
+// (spent, cap) row pinning pct, fill class and tone together.
 // TestParkedSegmentRendersFromSnapshot pins the 16-00 f44 wiring: the
 // nowband meta surfaces the rate-limit-parked count when tasks are parked
 // and stays silent when none are — the "is it dead or just limited?"
@@ -1560,24 +1523,8 @@ func TestBudgetCardAbsentWithoutCap(t *testing.T) {
 	}
 }
 
-func TestBudgetViewTone(t *testing.T) {
-	cases := []struct {
-		cap, spent int
-		want       display.StatTone
-	}{
-		{cap: 15, spent: 2, want: display.StatToneGreen},
-		{cap: 15, spent: 10, want: display.StatToneGreen},
-		{cap: 15, spent: 12, want: display.StatToneYellow},
-		{cap: 15, spent: 15, want: display.StatToneRed},
-		{cap: 15, spent: 20, want: display.StatToneRed},
-	}
-	for _, tc := range cases {
-		if got := (BudgetView{Cap: tc.cap, Spent: tc.spent}).Tone(); got != tc.want {
-			t.Errorf("Tone(cap=%d, spent=%d) = %s, want %s", tc.cap, tc.spent, got, tc.want)
-		}
-	}
-}
-
+// BudgetView.Tone rows live in components_test.go
+// (TestBudgetMeterUnifiesPctFillTone) alongside the pct/fill table.
 func TestReadiness(t *testing.T) {
 	now := time.Now()
 

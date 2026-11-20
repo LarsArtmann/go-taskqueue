@@ -546,3 +546,53 @@ func TestDetailFactsSurfacesFailureEvidence(t *testing.T) {
 		t.Fatalf("agent failed line = %q, want stage+exit evidence", lines[2].Text)
 	}
 }
+
+// TestBudgetMeterUnifiesPctFillTone pins (spent, cap) → (pct, fill class,
+// tone) as ONE table so the meter's width, fill class and semantic color
+// can never drift apart: every row exercises budgetMeterPct,
+// budgetMeterFillClass, budgetMeterClass and BudgetView.Tone together.
+func TestBudgetMeterUnifiesPctFillTone(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name  string
+		spent int
+		cap   int
+		pct   int
+		fill  string
+		track string
+		tone  display.StatTone
+	}{
+		{"zero spend shows no fill", 0, 5, 0, "tq-meter-fill", "tq-meter", display.StatToneGreen},
+		{"tiny spend still shows a sliver", 1, 100, 1, "tq-meter-fill tq-meter-fill-5", "tq-meter", display.StatToneGreen},
+		{"just under warn", 74, 100, 74, "tq-meter-fill tq-meter-fill-75", "tq-meter", display.StatToneGreen},
+		{"at warn", 75, 100, 75, "tq-meter-fill tq-meter-fill-75", "tq-meter tq-meter-warn", display.StatToneYellow},
+		{"over cap clamps to full", 9, 5, 100, "tq-meter-fill tq-meter-fill-100", "tq-meter tq-meter-over", display.StatToneRed},
+		{"two of fifteen stays green", 2, 15, 13, "tq-meter-fill tq-meter-fill-15", "tq-meter", display.StatToneGreen},
+		{"ten of fifteen stays green", 10, 15, 66, "tq-meter-fill tq-meter-fill-65", "tq-meter", display.StatToneGreen},
+		{"twelve of fifteen is warn", 12, 15, 80, "tq-meter-fill tq-meter-fill-80", "tq-meter tq-meter-warn", display.StatToneYellow},
+		{"at cap is red", 15, 15, 100, "tq-meter-fill tq-meter-fill-100", "tq-meter tq-meter-over", display.StatToneRed},
+		{"over cap is red", 20, 15, 100, "tq-meter-fill tq-meter-fill-100", "tq-meter tq-meter-over", display.StatToneRed},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			b := BudgetView{Spent: tc.spent, Cap: tc.cap}
+
+			if got := budgetMeterPct(b); got != tc.pct {
+				t.Errorf("pct = %d, want %d", got, tc.pct)
+			}
+			if got := budgetMeterFillClass(b); got != tc.fill {
+				t.Errorf("fill = %q, want %q", got, tc.fill)
+			}
+			if got := budgetMeterClass(b); got != tc.track {
+				t.Errorf("track = %q, want %q", got, tc.track)
+			}
+			if got := b.Tone(); got != tc.tone {
+				t.Errorf("tone = %v, want %v", got, tc.tone)
+			}
+		})
+	}
+}
