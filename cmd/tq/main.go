@@ -109,7 +109,7 @@ tq cancel TASK_ID [--force] [--reason WHY] [--db PATH]   (--force: cooperative c
                   [--summary TEXT] [--db PATH]   (close every registry
                   session that is quiet and no longer owned by a live crush
                   process; replay-safe via the close dedup keys)
-  tq serve [--addr ADDR] [--auth-token TOKEN] [--db PATH] [--store PATH|DSN] [--poll DUR] [--verbose] [--read-model] [--daily-budget N] [--dlq-backoff DUR] [--crush-server SOCKET] [--alert-url URL]   (--read-model default; =false uses the hand journal tailer)
+  tq serve [--addr ADDR] [--auth-token TOKEN] [--db PATH] [--store PATH|DSN] [--poll DUR] [--verbose] [--read-model] [--daily-budget N] [--dlq-backoff DUR] [--crush-server SOCKET] [--alert-url URL] [--health-metrics]   (--read-model default; =false uses the hand journal tailer)
   tq api [--addr ADDR] --auth-token TOKEN [--db PATH] [--store PATH|DSN] [--read-model]   (write API: POST /api/v1/tasks; --read-model default; repeated bad tokens lock the client IP: 429 + Retry-After)
   tq verdict '<json>'   (agent-facing: record this task's structured result
                   into $TQ_RESULT_FILE; validates JSON, no database access)
