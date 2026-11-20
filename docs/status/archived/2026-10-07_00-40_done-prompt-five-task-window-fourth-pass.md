@@ -1,5 +1,7 @@
 # Done-prompt status report — 2026-10-07 00:40 CEST (fourth pass)
 
+> **DUPLICATE — ARCHIVED 2026-11-20** (2026-11 monthly digest sweep, task 000001a1f7087efd6bd4d26d35cf00000000): verify-only re-dispatch pass over the window fully reported by the canonical `docs/status/2026-10-06_02-02_done-prompt-five-task-window-negation-pin-backendtags-dependabot-receiptfix.md`; zero unchecked boxes, no rows minted. Whole-file disposition per the ratified archive-sweep convention.
+
 **Window:** the same five completed agent tasks as the 02-02, 02-35, and 02-40 done-prompt passes (2026-10-05 ~04:10 → 2026-10-06 ~01:00): archive-evidence negation carve-out, check-verify in-situ flake-heal pin, backend-tag v0.2.0 verification, Dependabot full-tree coverage, review-fix receipt 17→16.
 **Method:** all five closeout reports read FIRST (04-10, 04-55, 00-23, 00-44, 00-59), then re-verified against the live tree at HEAD `664f2340` (build rc=0; check-todo-list rc=0; check-dead-sha-refs rc=0, 263 baselined / 0 new; check-status-index rc=0; check-doc-refs rc=0) and the journal. **This is the FOURTH dispatch over the same window** — the strongest runtime vindication yet of the done-preflight gate that landed mid-pass (§e1); this pass adds no new claims about the window's work beyond what the three prior passes established, and its value is (1) fresh HEAD receipts, (2) the post-window delta inventory (§e), and (3) two evidence-backed TODO ticks (§f).
 

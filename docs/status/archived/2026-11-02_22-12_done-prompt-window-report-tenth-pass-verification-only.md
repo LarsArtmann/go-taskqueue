@@ -1,5 +1,7 @@
 # Done-prompt window report — tenth pass, verification-only
 
+> **DUPLICATE — ARCHIVED 2026-11-20** (2026-11 monthly digest sweep, task 000001a1f7087efd6bd4d26d35cf00000000): verify-only re-dispatch pass over the window fully reported by the canonical `docs/status/2026-11-02_12-26_done-prompt-window-report-twentysixth-dispatch.md`; zero unchecked boxes, no rows minted. Whole-file disposition per the ratified archive-sweep convention.
+
 **Window under report (pass written 2026-11-02 22:12):** the SAME 17-task window,
 first dispatched 2026-10-30 05:31 and closing 2026-10-31 04:18 (13 a)-g) closeouts
 + 3 free-completed reviewer tickets + the push-master task). **Honest framing

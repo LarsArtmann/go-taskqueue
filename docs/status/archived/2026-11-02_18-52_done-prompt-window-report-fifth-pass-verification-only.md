@@ -1,5 +1,7 @@
 # Done-prompt window report — FIFTH pass over the window, verification-only (2026-11-02 18:52)
 
+> **DUPLICATE — ARCHIVED 2026-11-20** (2026-11 monthly digest sweep, task 000001a1f7087efd6bd4d26d35cf00000000): verify-only re-dispatch pass over the window fully reported by the canonical `docs/status/2026-11-02_12-26_done-prompt-window-report-twentysixth-dispatch.md`; zero unchecked boxes, no rows minted. Whole-file disposition per the ratified archive-sweep convention.
+
 **Window under report:** 17 tasks, 2026-10-30 05:31 → 2026-10-31 04:21.
 **Honest framing first:** this is the FIFTH done-prompt pass over this exact
 window in one day — the twenty-sixth (12:26), twenty-seventh (17:16),

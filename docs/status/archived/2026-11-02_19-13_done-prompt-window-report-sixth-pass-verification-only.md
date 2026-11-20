@@ -1,5 +1,7 @@
 # Done-prompt window report — sixth pass, verification-only
 
+> **DUPLICATE — ARCHIVED 2026-11-20** (2026-11 monthly digest sweep, task 000001a1f7087efd6bd4d26d35cf00000000): verify-only re-dispatch pass over the window fully reported by the canonical `docs/status/2026-11-02_12-26_done-prompt-window-report-twentysixth-dispatch.md`; zero unchecked boxes, no rows minted. Whole-file disposition per the ratified archive-sweep convention.
+
 **Date**: 2026-11-02 19:13 (clock-read, not guessed)
 **Window**: the same 17-task window as the 26th/27th/28th dispatches + the 18:52 fifth pass (task IDs `000001a18b…`, `000001a18f208e533…`), completed 2026-10-30 05:31 → 2026-10-31 04:18.
 **Method**: verification-only re-pass, per the standing dispatch-time window-report dedup row ("if a same-window report exists at a later HEAD, run a verification-only pass … instead of a full pass"). No re-derivation: the four prior reports + the window's 14 closeout reports remain the canonical reading; this pass re-greps, re-verifies commits at HEAD, and reads the journal for band drift.

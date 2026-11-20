@@ -1,5 +1,7 @@
 # Done-prompt window 8 — re-dispatch verdict report (2026-10-16 06-43)
 
+> **DUPLICATE — ARCHIVED 2026-11-20** (2026-11 monthly digest sweep, task 000001a1f7087efd6bd4d26d35cf00000000): verify-only re-dispatch pass over the window fully reported by the canonical `docs/status/2026-10-15_06-15_done-prompt-window-8-task-harvest.md`; zero unchecked boxes, no rows minted. Whole-file disposition per the ratified archive-sweep convention.
+
 Task `000001a13db764ad71e3417244d800000000`, **attempt 5**. The window (the
 same eight harvest tasks as the 06-15 report) was already fully reported by
 **attempt 1 of this very task**:

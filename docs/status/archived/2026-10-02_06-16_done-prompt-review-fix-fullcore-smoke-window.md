@@ -1,5 +1,7 @@
 # Done-prompt status report — review-fix / fullcore / smoke-forensics window
 
+> **ARCHIVED 2026-11-20** (2026-11 monthly digest sweep, task 000001a1f7087efd6bd4d26d35cf00000000): fully-resolved — per-item triage: §f routed to TODO_LIST harvest; §g routed (BLOCKED row) + superseded (row DONE 2026-11-13).
+
 **Written:** 2026-10-02 06:16 CEST · **Window:** 2026-09-26 06:05 → 2026-10-01 06:39 (five tasks)
 **Tasks closed this window:**
 

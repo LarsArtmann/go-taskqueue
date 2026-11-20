@@ -1,5 +1,7 @@
 # Done-Prompt Status Report — Five-Task Window, THIRD DISPATCH RE-CLOSE (2026-10-17 20-45 CEST)
 
+> **DUPLICATE — ARCHIVED 2026-11-20** (2026-11 monthly digest sweep, task 000001a1f7087efd6bd4d26d35cf00000000): verify-only re-dispatch pass over the window fully reported by the canonical `docs/status/2026-10-17_20-31_done-prompt-five-task-window-redispatch-reclose.md`; zero unchecked boxes, no rows minted. Whole-file disposition per the ratified archive-sweep convention.
+
 **Done-prompt task:** `000001a14af06a6f409c9d455a7100000000` — THIRD dispatch of this id.
 **Predecessor reports (authoritative detail):** `docs/status/2026-10-17_19-54_done-prompt-five-task-window-ci-parity-depsweep-artdupl.md` (first dispatch, full window derivation) and `docs/status/2026-10-17_20-31_done-prompt-five-task-window-redispatch-reclose.md` (second dispatch, resume path). This pass re-verifies their load-bearing claims at current HEAD `2eba816f` and records the delta since the 20-31 close (`d4c78425`).
 **Window covered:** 2026-10-15 05:59 → 2026-10-17 19:35 CEST (five COMPLETED tasks).
