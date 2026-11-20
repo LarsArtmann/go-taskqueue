@@ -46,6 +46,10 @@ if [ "${1:-}" = "--self-test" ]; then
 	# f45 policy pin: flags after the interpreter are a LEGAL first line
 	# (kernel passes the remainder as one interpreter argument)
 	printf 'cat >"$STUB" <<EOF\n#!/bin/sh -e\nexit 0\nEOF\n' >"$tmp/flagenok.sh"
+	# row 1728: the flags POSITIVE fixture's paired REJECT shape — a flags
+	# shebang misplaced into body[1:] must still VIOLATE via is_sh_shebang
+	# (the classifier applies to both the first-line OK and misplaced paths)
+	printf 'cat >"$STUB" <<EOF\nset -eu\n#!/bin/sh -e\nexit 0\nEOF\n' >"$tmp/misplacedflags.sh"
 	# <<- heredoc: TAB-stripped body + TAB-indented closing delimiter must
 	# still terminate and count the tab-stripped #!/bin/sh as first line (f23)
 	printf 'main() {\n\tcat >"$STUB" <<-EOF\n\t#!/bin/sh\n\texit 0\n\tEOF\n}\n' >"$tmp/dash.sh"
@@ -55,13 +59,13 @@ if [ "${1:-}" = "--self-test" ]; then
 		echo "stub-shebang self-test FAIL: negative battery rc=$rc (want 1): $out"
 		exit 1
 	}
-	for shape in "$tmp/blank.sh" "$tmp/misplaced.sh" "$tmp/blankpy.sh"; do
+	for shape in "$tmp/blank.sh" "$tmp/misplaced.sh" "$tmp/blankpy.sh" "$tmp/misplacedflags.sh"; do
 		grep -qF "$shape" <<<"$out" || {
 			echo "stub-shebang self-test FAIL: FAIL line does not name $shape: $out"
 			exit 1
 		}
 	done
-	grep -qF "4 stub heredoc ok / 7 checked" <<<"$out" || {
+	grep -qF "4 stub heredoc ok / 8 checked" <<<"$out" || {
 		echo "stub-shebang self-test FAIL: summary shape wrong: $out"
 		exit 1
 	}
@@ -74,7 +78,7 @@ if [ "${1:-}" = "--self-test" ]; then
 		echo "stub-shebang self-test FAIL: green summary wrong: $out"
 		exit 1
 	}
-	echo "stub-shebang self-test ok (summary pin + blank-first-line x2 + misplaced-shebang negatives + non-stub/non-sh exclusions + comment-line opener exclusion + <<- tab-stripped delimiter + flags-after-interpreter legal)"
+	echo "stub-shebang self-test ok (summary pin + blank-first-line x2 + misplaced-shebang negatives incl. flags-form + non-stub/non-sh exclusions + comment-line opener exclusion + <<- tab-stripped delimiter + flags-after-interpreter legal)"
 	exit 0
 fi
 
