@@ -5,7 +5,7 @@ Projects-aware task queue / worker pool for Go — see README.md.
 **STATUS: v0.4.2 pushed; supersession local; concurrent agents** — re-read files,
 re-run tests; uncommitted changes: read, judge, build on, never revert (size: TestAgentsDocSizeGuard)
 
-**MAJOR OPEN PROBLEMS**: [dispatch prompting + batch granularity](docs/problems/major-prompting-and-batching.md) — shipped v0.3.4.
+
 
 **READER ROUTE — your lanes only**: executors → §Payload contracts +
 §Conventions; review/dlqfix/status → §Conventions + §Operational contracts; gate
@@ -136,10 +136,10 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   `$TQ_RESULT_FILE` (file > stdout, last-wins); prompts bake the `--file` rails
   (verdict + ask — routed bash tools see only SERVER env, crush#4210; never
   drop). `-H` sans CRUSH_CLIENT_SERVER=1 is silently LOCAL.
-- **channels plan** (unbuilt; 0.97+ crush met): `tq mcp` pushes work via
+- **channels plan** (unbuilt; crush≥0.97 met): `tq mcp` pushes work via
   `notifications/claude/channel`; `channel_reply` replaces the file scrape;
-  plan `docs/planning/2026-10-16_01-11_TQ-MCP-CHANNELS-DESIGN-INPUT.md`;
-  bootstrap: `channel_enabled`.
+  plan doc 2026-10-16_01-11_TQ-MCP-CHANNELS-DESIGN-INPUT; bootstrap
+  `channel_enabled`.
 - **Calibration dataset**: every paid run appends ONE `CalibrationRow`
   (raw verdict-channel body + `Verify`/`Attestation` join keys + derived
   outcome counts + session usage) to `$TQ_LOG_DIR/calibration.jsonl`
@@ -235,10 +235,10 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   build+vet, check-dead-sha-refs, date-named report) + one fresh delta;
   expensive gates inherit a same-HEAD report; nested-module claims
   need in-module `GOWORK=off` tests; root-parsed-file closeouts cite
-  ROOT build+vet+test -race rc. Re-dispatch: `scripts/redispatch-brief.sh`
-  (stamp partial-landed rows: `--stamp-residue`, dry-run first); rc TO A FILE (no PIPESTATUS); dated DONE re-verified note; `-v` + PASS
+  ROOT rc. Re-dispatch: `scripts/redispatch-brief.sh`
+  (dry-run first; `--stamp-residue`); rc TO A FILE (no PIPESTATUS); `-v` + PASS
   COUNT for conform `-run`. **Premise-check first**: RUN a batch item's
-  premise gate BEFORE planning (a stale premise burned a window).
+  premise gate BEFORE planning.
   **Observe-first for pinning**: CAPTURE live output and pin what was
   observed — assertion-first pinning burned three windows.- **Gate receipts**: a report's "N ok / M fail" count is `grep -c '^ok:'`
   over a CAPTURED gate-output file — never counted in context or from a
@@ -263,18 +263,16 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   AGENTS/TODO_LIST/status-index sweeps print computed rows first; the FIRST
   filter runs against a copy of the real file shape (wrong filter = free
   to print, fatal to run).
-- **Harvested-row dedup is greps-with-receipts, never a claim**: a batch
-  header or closeout saying "deduped" runs domain-noun greps — the finding's
-  SUBJECT words (parked, requeue, verdict…), never the report's vocabulary
-  ("window", "residue") — BOTH directions: new items' nouns vs live rows AND
-  live rows' nouns vs new items; print term + hit count inline;
-  `check-todo-list.sh` WARNs when the receipt is missing. The 57b76be6-era
-  header asserted 13 covering rows with zero greps — claim-without-receipt.
+- **Harvested-row dedup is greps-with-receipts**: a "deduped" claim runs
+  domain-noun greps (the finding's SUBJECT words, not the report's
+  vocabulary) BOTH directions — new nouns vs live rows AND live nouns vs
+  the new row — printing term + hit count; `check-todo-list.sh` WARNs
+  without a receipt (57b76be6 header: 13 rows claimed, zero greps).
 - **Closeout TICK-AUDIT**: before the FINAL commit of any batch, grep
   TODO_LIST.md for each verbatim batch anchor; finished rows must read
   `- [x]` — landed + unchecked = paid round-trip.
 - **Tick-claims cite the tick commit**: non-report ticks cite the tick
-  commit; WARN gate `check-tick-claims.sh` (WARNs on non-HEAD-ancestor tick cites — never cite an UNPUSHED sha without
+  commit; WARN gate `check-tick-claims.sh` (non-HEAD-ancestor cites WARN — never cite an UNPUSHED sha without
   an `old→new` fork record; amending orphans it, 02-56 class).
 - **O14 CHANGELOG policy**: `[Unreleased]` carries OPERATOR-VISIBLE changes
   only — repo-internal tooling and non-operator rows go in the `### Internal`
@@ -297,8 +295,7 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   re-dispatch dedup scans footer-bearing commits only — prompt-const work
   in a footer-less chore sweep is invisible to it.
   `scripts/check-prompt-const-folds.sh` (e0b1fc4f) catches the fold AFTER
-  it lands; never tick a prompt-content row off
-  the guard's existence alone.
+  it lands; never tick a prompt-content row off the guard alone.
 - Tab-bearing insertions go through python-heredoc replace — free-text
   edit glues tabs into comments as literal `\t`.
 - Pure-Go deps only (`CGO_ENABLED=0`); Go 1.26+ idioms deliberate
@@ -346,11 +343,10 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   non-contiguous spans; a PARENT-naming refusal (foreign footer BELOW an
   exactly-mine span) = terminator shape — run its `--from`;
   tail-runs `scripts/check-footer-attribution.sh
-  <id>` (span commits must carry trailer-parseable footers; `--self-test`;
-  run standalone after ANY later rebuild); fallback = amend the unpushed
-  HEAD once `git show --stat` proves it mine. Full DAG rebuild (dates
-  byte-exact, footer only on `--mine`): `scripts/rebuild-lineage.sh <id>
-  --mine 2,3` (`--self-test`).
+  <id>` (`--self-test`; run standalone after ANY later rebuild);
+  fallback = amend the unpushed HEAD once `git show --stat` proves it mine.
+  Full DAG rebuild (byte-exact dates, footer only on `--mine`):
+  `scripts/rebuild-lineage.sh <id> --mine 2,3` (`--self-test`).
 - **TestExactlyOnceUnderConcurrency is load-flaky** and
   **TestSelfManagingLoop is load-flaky** (build storms at clean parents):
   rerun before attributing; ride KNOWN_FLAKY (lib/verify-retry.sh).
@@ -393,13 +389,13 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 - **VendorHash drift**: after a go.mod change run
   `nix build .#checks.x86_64-linux.vendor-hash` and copy `got:` into flake.nix.
 - **New module + unpushed tag = replace in EVERY graph loader**: a fresh
-  module's real-tag unpushed require 404s the proxy wherever a consumer
-  graph loads without a local replace — add to root, every facade/internal
-  loader, cmd/tq/go.work, AND examples/embed.
+  module's unpushed-tag require 404s the proxy — add the replace to root,
+  every facade/internal loader, cmd/tq/go.work, AND examples/embed.
 - **readmodel schema drift crash-loops the fold** (planned tables get no
   column migration; converge snapshots divergent homes aside): quarantine
   `<db>.readmodel.db*` + restart.
-- **History policy**: NEVER reword/amend/rebase PUSHED commits; no force-push.
+- **History policy**: NEVER reword/amend/rebase PUSHED commits
+  (force-push denied by the bash guard).
 - **Kernel ETXTBSY**: fresh-binary execve intermittently fails — exec via
   `execWithTransientRetry`.
 - **templ-components sibling pins**: a pseudo-version in a dep's root go.mod
