@@ -50,6 +50,11 @@ if [ "${1:-}" = "--self-test" ]; then
 	# shebang misplaced into body[1:] must still VIOLATE via is_sh_shebang
 	# (the classifier applies to both the first-line OK and misplaced paths)
 	printf 'cat >"$STUB" <<EOF\nset -eu\n#!/bin/sh -e\nexit 0\nEOF\n' >"$tmp/misplacedflags.sh"
+	# row 1737: a MULTI-CLUSTER flags line ("-e -x" — one kernel arg with a
+	# space, execs as "invalid option" — verified live) must REJECT on the
+	# first-line path too
+	printf 'cat >"$STUB" <<EOF\n#!/bin/sh -e -x\nexit 0\nEOF\n' >"$tmp/multicluster.sh"
+	printf 'cat >"$STUB" <<EOF\nset -eu\n#!/bin/sh -e -x\nexit 0\nEOF\n' >"$tmp/misplacedmulticluster.sh"
 	# <<- heredoc: TAB-stripped body + TAB-indented closing delimiter must
 	# still terminate and count the tab-stripped #!/bin/sh as first line (f23)
 	printf 'main() {\n\tcat >"$STUB" <<-EOF\n\t#!/bin/sh\n\texit 0\n\tEOF\n}\n' >"$tmp/dash.sh"
@@ -59,13 +64,13 @@ if [ "${1:-}" = "--self-test" ]; then
 		echo "stub-shebang self-test FAIL: negative battery rc=$rc (want 1): $out"
 		exit 1
 	}
-	for shape in "$tmp/blank.sh" "$tmp/misplaced.sh" "$tmp/blankpy.sh" "$tmp/misplacedflags.sh"; do
+	for shape in "$tmp/blank.sh" "$tmp/misplaced.sh" "$tmp/blankpy.sh" "$tmp/misplacedflags.sh" "$tmp/multicluster.sh" "$tmp/misplacedmulticluster.sh"; do
 		grep -qF "$shape" <<<"$out" || {
 			echo "stub-shebang self-test FAIL: FAIL line does not name $shape: $out"
 			exit 1
 		}
 	done
-	grep -qF "4 stub heredoc ok / 8 checked" <<<"$out" || {
+	grep -qF "4 stub heredoc ok / 10 checked" <<<"$out" || {
 		echo "stub-shebang self-test FAIL: summary shape wrong: $out"
 		exit 1
 	}
@@ -78,7 +83,7 @@ if [ "${1:-}" = "--self-test" ]; then
 		echo "stub-shebang self-test FAIL: green summary wrong: $out"
 		exit 1
 	}
-	echo "stub-shebang self-test ok (summary pin + blank-first-line x2 + misplaced-shebang negatives incl. flags-form + non-stub/non-sh exclusions + comment-line opener exclusion + <<- tab-stripped delimiter + flags-after-interpreter legal)"
+	echo "stub-shebang self-test ok (summary pin + blank-first-line x2 + misplaced-shebang negatives incl. flags-form + multi-cluster flags-form reject x2 (row 1737) + non-stub/non-sh exclusions + comment-line opener exclusion + <<- tab-stripped delimiter + flags-after-interpreter legal)"
 	exit 0
 fi
 
@@ -100,7 +105,14 @@ for f in $scope; do
 import re, sys
 
 def is_sh_shebang(line):
-    return line == "#!/bin/sh" or re.match(r"^#!/bin/sh( +-[A-Za-z]+)+$", line) is not None
+    # row 1737 (2026-11-20_01-14 closeout §g1): the kernel hands the
+    # interpreter AT MOST ONE argument — everything after the first space
+    # in the shebang line arrives as a single string. A MULTI-CLUSTER flag
+    # line ("#!/bin/sh -e -x") therefore execs as sh "-e -x" → "invalid
+    # option" (verified live on this host, dash) — the single-cluster form
+    # ("-e", "-ex") is the only legal flags shape, so the classifier
+    # accepts ONE flag cluster, never a space-separated series.
+    return line == "#!/bin/sh" or re.match(r"^#!/bin/sh +-[A-Za-z]+$", line) is not None
 
 path = sys.argv[1]
 start_re = re.compile(r"<<-?[ \t]*([\"']?)([A-Za-z_][A-Za-z0-9_]*)\1")
