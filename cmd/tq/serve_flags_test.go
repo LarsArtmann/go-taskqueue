@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"reflect"
 	"testing"
 	"time"
 
@@ -131,8 +132,7 @@ func TestServeConfigFieldParity(t *testing.T) {
 	for i := range configType.NumField() {
 		name := configType.Field(i).Name
 
-		flag, ok := wired[name]
-		if ok {
+		if _, ok := wired[name]; ok {
 			continue
 		}
 
