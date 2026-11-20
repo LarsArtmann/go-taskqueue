@@ -647,7 +647,7 @@ EOF
 	# names the receipt path.
 	local rc6=0 out6 recv
 	recv="$tmp/recv"
-	out6="$(TQ_TICK_LIST_CMD="$tmp/listcmd.sh" TQ_TICK_DIFF_CMD="$tmp/diffcmd.sh" TQ_TICK_MSG_CMD="$tmp/msgcmd.sh" TQ_TICK_ANCESTOR_CMD="$tmp/ancmd.sh" TQ_TICK_FUSION_CMD="$tmp/fusioncmd.sh" TQ_TICK_CLAIM_FILES="$files" "$self_abs" --receipt "$recv" 2>&1)" || rc6=$?
+	out6="$(TQ_TICK_LIST_CMD="$tmp/listcmd.sh" TQ_TICK_DIFF_CMD="$tmp/diffcmd.sh" TQ_TICK_MSG_CMD="$tmp/msgcmd.sh" TQ_TICK_ANCESTOR_CMD="$tmp/ancmd.sh" TQ_TICK_FUSION_CMD="$tmp/fusioncmd.sh" TQ_TICK_CLAIM_FILES="$files" "$self_abs" --receipt "$recv/" 2>&1)" || rc6=$?
 	local rfile
 	rfile="$(find "$recv" -name 'tq-tick-claims-*.log' -type f | head -1)"
 	if [ "$rc6" != "0" ] || [ -z "$rfile" ] || ! grep -qF 'tick-claims summary: 6 ok, 8 warned, 3 skipped' "$rfile"; then
