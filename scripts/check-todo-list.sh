@@ -40,7 +40,7 @@ self_test() {
 			failc=$((failc + 1))
 			return
 		fi
-		if [ -z "$needle" ] && printf '%s\n' "$out" | grep -qE 'UNBLOCKED-OWNER-GATED|DONE-ANNOTATION-UNCHECKED|DAMAGED-CHECKBOX|DOUBLE-CHECKBOX|STALE-BATCH-HEADER'; then
+		if [ -z "$needle" ] && printf '%s\n' "$out" | grep -qE 'UNBLOCKED-OWNER-GATED|DONE-ANNOTATION-UNCHECKED|DAMAGED-CHECKBOX|DOUBLE-CHECKBOX|STALE-BATCH-HEADER|DEDUP-CLAIM-NO-RECEIPT'; then
 			echo "FAIL: $desc (expected quiet, got a warning)"
 			printf '%s\n' "$out" | sed 's/^/    /'
 			failc=$((failc + 1))
@@ -70,6 +70,15 @@ self_test() {
 	assert "determine phrasing stays quiet (row 1727 pin)" 0 "TODO_LIST gate ok" "- [ ] determine why the window verified without ticking the row"
 	assert "summary line pinned format" 0 "todo-list summary: 0 advisory warn(s), 0 structural violation class(es) — advisory warnings do not fail the gate" "- [ ] Another plain row"
 
+	# Dedup-claim receipt rail (2026-11-07 closeout §f4): bare
+	# "deduped against live rows" claims WARN; a same-line term=N receipt
+	# (or hits=N) stays quiet.
+	assert "bare dedup claim warns without failing (dedup-receipt rail)" 0 "DEDUP-CLAIM-NO-RECEIPT" "## Batch (2026-11-07; deduped against live rows)
+- [ ] open row"
+	assert "dedup claim with term=N receipt stays quiet" 0 "TODO_LIST gate ok" "## Batch (2026-11-07; deduped against live rows: parked=23, verdict=14)
+- [ ] open row"
+	assert "dedup claim with hits=N receipt stays quiet" 0 "TODO_LIST gate ok" "- [ ] row deduped against existing rows, hits:12 total"
+
 	# Row 1735 stale-batch-header rail: an aged dated section header with
 	# open rows and neither landed SHAs nor a no-work marker warns; SHAs,
 	# no-work markers, drained sections, fresh headers, and dateless
@@ -90,7 +99,7 @@ self_test() {
 - [ ] open row one"
 
 	rm -rf "$dir" 2>/dev/null || true
-	echo "todo-list self-test ok ($okc ok / $failc fail) — advisory/structural exit semantics + 977 fixture set + 1735 stale-header battery"
+	echo "todo-list self-test ok ($okc ok / $failc fail) — advisory/structural exit semantics + 977 fixture set + 1735 stale-header battery + dedup-receipt rail"
 	[ "$failc" -eq 0 ] || exit 1
 }
 
@@ -221,6 +230,19 @@ if [ -n "$stale_headers" ]; then
 		fi
 	done <<<"$stale_headers"
 fi
+
+	# Dedup-claim receipt rail (2026-11-07 closeout §f4): a line claiming
+	# "deduped against live rows" without an inline grep receipt (term=N
+	# hit counts on the same line) is a claim-without-receipt — the
+	# 57b76be6-era batch header asserted 13 covering rows with zero greps.
+	# Receipt shape: `term=N` tokens or `hits=N`; anything else WARNs.
+	dedup_claims="$(grep -niE 'deduped against' "$todo" | grep -vE '[A-Za-z][A-Za-z-]*=[0-9]+|hits?[=:][0-9]+' || true)"
+	if [ -n "$dedup_claims" ]; then
+		echo "DEDUP-CLAIM-NO-RECEIPT (advisory WARN): deduped-against-rows claims without an inline grep receipt (term=N hit counts) on the same line:"
+		printf '%s\n' "$dedup_claims"
+		echo "  -> append the receipt (term=hit-count pairs) or run the domain-noun greps (AGENTS §Conventions: greps-with-receipts)"
+		while IFS= read -r _; do warns=$((warns + 1)); done <<<"$dedup_claims"
+	fi
 
 echo "todo-list summary: $warns advisory warn(s), $fail structural violation class(es) — advisory warnings do not fail the gate"
 if [ "$fail" = 0 ]; then
