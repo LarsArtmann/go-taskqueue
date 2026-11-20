@@ -60,6 +60,7 @@ signal (`exec.ExitError`, code −1).
 | `status-rewind.sh`        | status sweeper rewind-replay done-guard       |
 | `status-loop.sh`          | status sweeper turn                           |
 | `webui.sh`                | serve dashboard + SSE                         |
+| `budget-meter.sh`         | `serve --daily-budget N` live budget meter    |
 | `worktree.sh`             | `--worktrees` agent branches                  |
 
 ## `crush-server-route.sh` — the L1 client/server seam's wire legs (2026-11-01)
