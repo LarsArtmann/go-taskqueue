@@ -40,7 +40,7 @@ self_test() {
 			failc=$((failc + 1))
 			return
 		fi
-		if [ -z "$needle" ] && printf '%s\n' "$out" | grep -qE 'UNBLOCKED-OWNER-GATED|DONE-ANNOTATION-UNCHECKED|DAMAGED-CHECKBOX|DOUBLE-CHECKBOX'; then
+		if [ -z "$needle" ] && printf '%s\n' "$out" | grep -qE 'UNBLOCKED-OWNER-GATED|DONE-ANNOTATION-UNCHECKED|DAMAGED-CHECKBOX|DOUBLE-CHECKBOX|STALE-BATCH-HEADER'; then
 			echo "FAIL: $desc (expected quiet, got a warning)"
 			printf '%s\n' "$out" | sed 's/^/    /'
 			failc=$((failc + 1))
@@ -70,8 +70,27 @@ self_test() {
 	assert "determine phrasing stays quiet (row 1727 pin)" 0 "TODO_LIST gate ok" "- [ ] determine why the window verified without ticking the row"
 	assert "summary line pinned format" 0 "todo-list summary: 0 advisory warn(s), 0 structural violation class(es) — advisory warnings do not fail the gate" "- [ ] Another plain row"
 
+	# Row 1735 stale-batch-header rail: an aged dated section header with
+	# open rows and neither landed SHAs nor a no-work marker warns; SHAs,
+	# no-work markers, drained sections, fresh headers, and dateless
+	# headers stay quiet.
+	local oldd
+	oldd="$(date -d '30 days ago' +%F)"
+	assert "aged sha-less header with open rows warns (row 1735)" 0 "STALE-BATCH-HEADER" "## Old batch ($oldd; source: x.md)
+- [ ] open row one"
+	assert "aged header with landed SHAs stays quiet (row 1735)" 0 "TODO_LIST gate ok" "## Old batch ($oldd; landed: abc1234, def5678)
+- [ ] open row one"
+	assert "aged header with a no-work marker stays quiet (row 1735)" 0 "TODO_LIST gate ok" "## Old batch ($oldd; no work left — drained)
+- [ ] open row one"
+	assert "aged header with zero open rows stays quiet (row 1735)" 0 "TODO_LIST gate ok" "## Old batch ($oldd; source: x.md)
+- [x] done row one"
+	assert "fresh header stays quiet (row 1735)" 0 "TODO_LIST gate ok" "## Fresh batch ($(date +%F); source: x.md)
+- [ ] open row one"
+	assert "dateless header stays quiet (row 1735)" 0 "TODO_LIST gate ok" "## Timeless section
+- [ ] open row one"
+
 	rm -rf "$dir" 2>/dev/null || true
-	echo "todo-list self-test ok ($okc ok / $failc fail) — advisory/structural exit semantics + 977 fixture set"
+	echo "todo-list self-test ok ($okc ok / $failc fail) — advisory/structural exit semantics + 977 fixture set + 1735 stale-header battery"
 	[ "$failc" -eq 0 ] || exit 1
 }
 
@@ -162,6 +181,45 @@ if [ -n "$glued" ]; then
 	echo "GLUED-CHECKBOX: checkbox NOT at line start (a second row is glued onto the previous line; split it into its own '- [ ] ' line):"
 	printf '%s\n' "$glued"
 	fail=1
+fi
+
+# Advisory WARN (row 1735, 2026-11-20_01-14 closeout §f48): a BATCH
+# section header older than N days (TQ_TODO_HEADER_MAX_AGE_DAYS, default 7)
+# that carries neither landed commit SHAs (the f28 hand-annotation class:
+# tick-claim citability) nor a no-work marker, AND still has open rows
+# under it, is an unannotated batch. Aged drained sections (zero open
+# rows) stay quiet — nothing left to cite. WARN-only.
+header_age_days="${TQ_TODO_HEADER_MAX_AGE_DAYS:-7}"
+now_epoch="$(date +%s)"
+stale_headers="$(awk -v now="$now_epoch" '
+	/^## /{
+		if (sect != "" && open_rows > 0) printf "%s\t%s\t%d\t%d\t%d\n", slineno, sdate, has_sha, nowork, open_rows
+		sect = $0; slineno = NR; sdate = ""; has_sha = 0; nowork = 0; open_rows = 0
+		if (match($0, /[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/)) sdate = substr($0, RSTART, 10)
+		if ($0 ~ /[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]/) has_sha = 1
+		if (tolower($0) ~ /no work|nothing|no-op|superseded|drained|fully ticked|all rows/) nowork = 1
+		next
+	}
+	sect != "" && /^- \[ \]/ { open_rows++ }
+	END {
+		if (sect != "" && open_rows > 0) printf "%s\t%s\t%d\t%d\t%d\n", slineno, sdate, has_sha, nowork, open_rows
+	}
+' "$todo")"
+if [ -n "$stale_headers" ]; then
+	while IFS=$'\t' read -r hline hdate has_sha nowork open_rows; do
+		[ -n "$hdate" ] || continue
+		[ "$has_sha" = "0" ] || continue
+		[ "$nowork" = "0" ] || continue
+		if h_epoch="$(date -d "$hdate" +%s 2>/dev/null)"; then
+			age=$(((now_epoch - h_epoch) / 86400))
+			if [ "$age" -gt "$header_age_days" ]; then
+				echo "STALE-BATCH-HEADER (advisory WARN): section header at line $hline dated $hdate ($age days old) carries neither landed SHAs nor a no-work marker but still has $open_rows open row(s):"
+				sed -n "${hline}p" "$todo" | cut -c1-160
+				echo "  -> annotate the header with the landed commit SHAs (tick-claim citability) or a no-work marker"
+				warns=$((warns + 1))
+			fi
+		fi
+	done <<<"$stale_headers"
 fi
 
 echo "todo-list summary: $warns advisory warn(s), $fail structural violation class(es) — advisory warnings do not fail the gate"
