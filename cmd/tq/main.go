@@ -4298,68 +4298,115 @@ func (p *projectionPump) Run(ctx context.Context, notify func(cursor int64)) err
 	}
 }
 
-func cmdServe(args []string) error {
+// serveOpts holds every cmdServe flag's parsed value; newServeFlagSet
+// registers them and config folds them into the webui.Config — one seam,
+// so a flag-name or field-name drift is a compile error and a parse test
+// (serve_flags_test.go) pins the whole wiring.
+type serveOpts struct {
+	addr        *string
+	poll        *time.Duration
+	verbose     *bool
+	authToken   *string
+	allowWrites *bool
+	readModel   *bool
+	dlqBackoff  *time.Duration
+	configPath  *string
+	dailyBudget *int
+	crushServer *string
+	alertURL    *string
+	alertKey    *string
+	store       *string
+	db          *string
+}
+
+// newServeFlagSet builds the serve flag set with every flag registered
+// exactly as cmdServe has always presented them (defaults include the
+// env fallbacks).
+func newServeFlagSet() (*flag.FlagSet, *serveOpts) {
 	fs := flag.NewFlagSet("serve", flag.ExitOnError)
-	addr := fs.String("addr", webui.DefaultAddr, "listen address (default: localhost only)")
-	poll := fs.Duration("poll", webui.DefaultPoll, "journal tail interval")
-	verbose := fs.Bool("verbose", false, "log every HTTP request (method, path, status, duration) to stderr")
-	authToken := fs.String(
+	o := &serveOpts{}
+	o.addr = fs.String("addr", webui.DefaultAddr, "listen address (default: localhost only)")
+	o.poll = fs.Duration("poll", webui.DefaultPoll, "journal tail interval")
+	o.verbose = fs.Bool("verbose", false, "log every HTTP request (method, path, status, duration) to stderr")
+	o.authToken = fs.String(
 		"auth-token",
 		os.Getenv("TQ_SERVE_TOKEN"),
 		"require this token on every request (Authorization: Bearer or ?token=); required for non-loopback --addr (env $TQ_SERVE_TOKEN)",
 	)
-	allowWrites := fs.Bool(
+	o.allowWrites = fs.Bool(
 		"allow-writes",
 		os.Getenv("TQ_SERVE_WRITES") == "1",
 		"enable admin actions in the dashboard (cancel pending/running, rescue dead; env $TQ_SERVE_WRITES=1); CSRF-guarded, and non-loopback binds still require --auth-token",
 	)
-	readModel := readModelFlag(
+	o.readModel = readModelFlag(
 		fs,
 		"serve the aggregate reads and live notifications from the ADR-0019 S3 metaengine projection (<db>.readmodel.db); default ON — --read-model=false falls back to the hand journal tailer (row-rich views stay store-backed either way)",
 	)
-	dlqBackoff := fs.Duration(
+	o.dlqBackoff = fs.Duration(
 		"dlq-backoff",
 		0,
 		"surface repos in poisoned-repo DLQ backoff on the dashboard (nowband chip + panel above the dead-letter queue), mirroring `tq pool-health`; defaults to the pool config file's dlq-backoff (see --config), else 0 = off",
 	)
-	configPath := fs.String(
+	o.configPath = fs.String(
 		"config",
 		os.Getenv("TQ_POOL_CONFIG"),
 		"pool config file whose dlq-backoff seeds the --dlq-backoff default (other keys are ignored; $TQ_POOL_CONFIG; falls back to the bootstrap default ~/.config/tq/pool.conf when it exists)",
 	)
-	dailyBudget := fs.Int(
+	o.dailyBudget = fs.Int(
 		"daily-budget",
 		0,
 		"daily agent-task cap: when set, the dashboard renders the live budget meter (spent today vs cap) in the stats nowband; 0 = meter hidden",
 	)
-	crushServer := fs.String(
+	o.crushServer = fs.String(
 		"crush-server",
 		"",
 		"unix socket of a running `crush server` to light the live-agents pane (L2 observability, default OFF): /agents/live streams distilled tool events from routed runs into an append-only pane (race-attach with reconnect); can share the agent-pool --crush-server socket; empty = pane hidden and /agents/live serves 503 (docs/planning/2026-10-30_04-43_crush-client-server-relations.md §L2)",
 	)
-	alertURL := fs.String(
+	o.alertURL = fs.String(
 		"alert-url",
 		os.Getenv("TQ_PAP_URL"),
 		"PapDashboard base URL: health status transitions (store down, wedged fold, fold-follower demotion, recovery) raise/resolve alerts there — the same deployment the agent pool's --alert-url targets ($TQ_PAP_URL)",
 	)
-	alertKey := fs.String(
+	o.alertKey = fs.String(
 		"alert-api-key",
 		os.Getenv("TQ_PAP_API_KEY"),
 		"PapDashboard API key for --alert-url (Bearer; $TQ_PAP_API_KEY)",
 	)
+	o.db = dbFlag(fs)
+	o.store = storeFlag(fs)
 
-	db := dbFlag(fs)
+	return fs, o
+}
 
-	storeVal := storeFlag(fs)
+// config folds the parsed serve flags into the webui.Config; Version
+// rides the package-level version var like before.
+func (o *serveOpts) config() webui.Config {
+	return webui.Config{
+		Addr:        *o.addr,
+		Poll:        *o.poll,
+		Version:     version,
+		RequestLog:  *o.verbose,
+		AuthToken:   *o.authToken,
+		AllowWrites: *o.allowWrites,
+		DailyBudget: *o.dailyBudget,
+		DLQBackoff:  *o.dlqBackoff,
+		CrushServer: *o.crushServer,
+		AlertURL:    *o.alertURL,
+		AlertAPIKey: *o.alertKey,
+	}
+}
+
+func cmdServe(args []string) error {
+	fs, opts := newServeFlagSet()
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 
-	if err := applyPoolHealthConfigDefault(*configPath, fs, dlqBackoff); err != nil {
+	if err := applyPoolHealthConfigDefault(*opts.configPath, fs, opts.dlqBackoff); err != nil {
 		return err
 	}
 
-	deployment, err := resolveDeployment(*storeVal, *db, *readModel)
+	deployment, err := resolveDeployment(*opts.store, *opts.db, *opts.readModel)
 	if err != nil {
 		return err
 	}
@@ -4370,21 +4417,9 @@ func cmdServe(args []string) error {
 
 	var demoted bool
 
-	cfg := webui.Config{
-		Addr:        *addr,
-		Poll:        *poll,
-		Version:     version,
-		RequestLog:  *verbose,
-		AuthToken:   *authToken,
-		AllowWrites: *allowWrites,
-		DailyBudget: *dailyBudget,
-		DLQBackoff:  *dlqBackoff,
-		CrushServer: *crushServer,
-		AlertURL:    *alertURL,
-		AlertAPIKey: *alertKey,
-	}
+	cfg := opts.config()
 
-	if *readModel {
+	if *opts.readModel {
 		rt, rtErr := composition.NewProjectionRuntime(context.Background(), store, deployment)
 		if rtErr != nil {
 			_ = store.Close()
@@ -4421,7 +4456,7 @@ func cmdServe(args []string) error {
 	// per surface; agent-pool keeps its own first-exit semantics).
 	var sys *system.System
 
-	if *readModel {
+	if *opts.readModel {
 		composed, err := composition.New(context.Background(), deployment)
 		if err != nil {
 			return err
@@ -4446,15 +4481,15 @@ func cmdServe(args []string) error {
 
 	if demoted {
 		server.MarkFoldFollower()
-		fmt.Fprintf(os.Stderr, "%s%s%s\n", webui.BannerPrefix, *addr, webui.BannerFoldFollowerSuffix)
+		fmt.Fprintf(os.Stderr, "%s%s%s\n", webui.BannerPrefix, *opts.addr, webui.BannerFoldFollowerSuffix)
 	}
 
 	g.Go("http", func(ctx context.Context) error { return server.Run(ctx) })
 
-	if *allowWrites {
-		fmt.Fprintf(os.Stderr, "%s%s%s\n", webui.BannerPrefix, *addr, webui.BannerWritesSuffix)
+	if *opts.allowWrites {
+		fmt.Fprintf(os.Stderr, "%s%s%s\n", webui.BannerPrefix, *opts.addr, webui.BannerWritesSuffix)
 	} else {
-		fmt.Fprintf(os.Stderr, "%s%s%s\n", webui.BannerPrefix, *addr, webui.BannerReadOnlySuffix)
+		fmt.Fprintf(os.Stderr, "%s%s%s\n", webui.BannerPrefix, *opts.addr, webui.BannerReadOnlySuffix)
 	}
 
 	return g.Run()
