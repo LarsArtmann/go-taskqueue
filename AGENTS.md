@@ -320,6 +320,10 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   lacks host tools).
 - Generated `*_templ.go` + minified `app.css` COMMITTED; after template
   edits run `templ generate` + `nix run .#webui-css` (REPO ROOT).
+  Generator skew: the HOST PATH `templ` (v0.3.1123) ≠ go.mod/floor
+  (v0.3.1100, flake templCliOverride pin) — generate INSIDE the nix
+  shell; `scripts/check-templ-header.sh` (ci-local) rejects committed
+  `// templ: version:` headers that drift from go.mod.
 - Web UI uses templ-components (guard-pinned; table
   internal/webui/ADOPTION.md); REJECTED display.Eyebrow,
   KanbanBoard, errorpage, icons.Render.

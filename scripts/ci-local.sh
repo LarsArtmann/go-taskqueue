@@ -181,6 +181,14 @@ step "stub-shebang gate (exec-format-error class pin)"
 ./scripts/check-stub-shebang.sh --self-test
 ./scripts/check-stub-shebang.sh
 
+# templ header gate (check-templ-header): every committed *_templ.go header
+# version must equal go.mod's templ — the host PATH templ (0.3.1123) skews
+# against the flake's templCliOverride pin (0.3.1100), so a generate run
+# outside the nix shell plants skewed headers (2026-11-13 report §e5).
+step "templ header gate (generator/runtime skew pin)"
+./scripts/check-templ-header.sh --self-test
+./scripts/check-templ-header.sh
+
 # AGENTS.md byte budget at gate time (check-agents-size): derives its budget
 # from the cmd/tq TestAgentsDocSizeGuard const (single source of truth — no
 # twin drift) and prints the top sections to prune, so a red trip is a
