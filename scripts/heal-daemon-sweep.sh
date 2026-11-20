@@ -244,7 +244,7 @@ check_rails() {
 					echo "  $(git log -1 --oneline "$c") carries a different Task-Queue-ID footer"
 					shown=$((shown + 1))
 				else
-					echo "  …$(( ${#blockers[@]} - 5 )) more"
+					echo "  …$((${#blockers[@]} - 5)) more"
 					break
 				fi
 			done

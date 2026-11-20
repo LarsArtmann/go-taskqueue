@@ -833,7 +833,8 @@ func TestPrintPoolHealthCgroupMemoryEvents(t *testing.T) {
 	// The counter is cumulative since unit start: ANY nonzero max means
 	// the deployed ceiling throttled an allocation, so even a small count
 	// carries the WARN note — only the exact zero is quiet.
-	if out := buf.String(); !strings.Contains(out, "WARN: 4 allocation throttle hit(s)") || strings.Contains(out, "oom_kill") {
+	if out := buf.String(); !strings.Contains(out, "WARN: 4 allocation throttle hit(s)") ||
+		strings.Contains(out, "oom_kill") {
 		t.Fatalf("throttled render %q must warn and lack oom_kill", out)
 	}
 

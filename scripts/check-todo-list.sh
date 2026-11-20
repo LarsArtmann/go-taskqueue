@@ -231,18 +231,18 @@ if [ -n "$stale_headers" ]; then
 	done <<<"$stale_headers"
 fi
 
-	# Dedup-claim receipt rail (2026-11-07 closeout §f4): a line claiming
-	# "deduped against live rows" without an inline grep receipt (term=N
-	# hit counts on the same line) is a claim-without-receipt — the
-	# 57b76be6-era batch header asserted 13 covering rows with zero greps.
-	# Receipt shape: `term=N` tokens or `hits=N`; anything else WARNs.
-	dedup_claims="$(grep -niE 'deduped against' "$todo" | grep -vE '[A-Za-z][A-Za-z-]*=[0-9]+|hits?[=:][0-9]+' || true)"
-	if [ -n "$dedup_claims" ]; then
-		echo "DEDUP-CLAIM-NO-RECEIPT (advisory WARN): deduped-against-rows claims without an inline grep receipt (term=N hit counts) on the same line:"
-		printf '%s\n' "$dedup_claims"
-		echo "  -> append the receipt (term=hit-count pairs) or run the domain-noun greps (AGENTS §Conventions: greps-with-receipts)"
-		while IFS= read -r _; do warns=$((warns + 1)); done <<<"$dedup_claims"
-	fi
+# Dedup-claim receipt rail (2026-11-07 closeout §f4): a line claiming
+# "deduped against live rows" without an inline grep receipt (term=N
+# hit counts on the same line) is a claim-without-receipt — the
+# 57b76be6-era batch header asserted 13 covering rows with zero greps.
+# Receipt shape: `term=N` tokens or `hits=N`; anything else WARNs.
+dedup_claims="$(grep -niE 'deduped against' "$todo" | grep -vE '[A-Za-z][A-Za-z-]*=[0-9]+|hits?[=:][0-9]+' || true)"
+if [ -n "$dedup_claims" ]; then
+	echo "DEDUP-CLAIM-NO-RECEIPT (advisory WARN): deduped-against-rows claims without an inline grep receipt (term=N hit counts) on the same line:"
+	printf '%s\n' "$dedup_claims"
+	echo "  -> append the receipt (term=hit-count pairs) or run the domain-noun greps (AGENTS §Conventions: greps-with-receipts)"
+	while IFS= read -r _; do warns=$((warns + 1)); done <<<"$dedup_claims"
+fi
 
 echo "todo-list summary: $warns advisory warn(s), $fail structural violation class(es) — advisory warnings do not fail the gate"
 if [ "$fail" = 0 ]; then

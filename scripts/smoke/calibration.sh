@@ -54,7 +54,7 @@ git -C "$REPO" commit -qm "seed"
 
 echo "== stub agent: completes the turn, records a verdict"
 STUB="$TMP/stub-agent"
-cat >"$STUB" <<EOF  # pins: calibration write-path stub — one turn, one raw verdict JSON via TQ_RESULT_FILE
+cat >"$STUB" <<EOF # pins: calibration write-path stub — one turn, one raw verdict JSON via TQ_RESULT_FILE
 #!/bin/sh
 prompt=""
 prev=""

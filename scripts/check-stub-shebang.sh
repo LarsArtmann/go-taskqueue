@@ -58,7 +58,7 @@ if [ "${1:-}" = "--self-test" ]; then
 	# <<- heredoc: TAB-stripped body + TAB-indented closing delimiter must
 	# still terminate and count the tab-stripped #!/bin/sh as first line (f23)
 	printf 'main() {\n\tcat >"$STUB" <<-EOF\n\t#!/bin/sh\n\texit 0\n\tEOF\n}\n' >"$tmp/dash.sh"
-	
+
 	out="$(TQ_STUB_SHEBANG_SCOPE="$tmp/*.sh" "$self_abs" 2>&1)" && rc=0 || rc=$?
 	[ "$rc" -eq 1 ] || {
 		echo "stub-shebang self-test FAIL: negative battery rc=$rc (want 1): $out"
@@ -101,7 +101,8 @@ for f in $scope; do
 		[ "$kind" = "VIOLATION" ] || continue
 		echo "FAIL: $f heredoc body does not start with an #!/bin/sh shebang (first body line: ${first:-<blank>}) — the exec-format-error class (2026-11-18 sixth window §e2: a blank first heredoc line fork/exec-failed every run while the script looked right)" >&2
 		viol=$((viol + 1))
-	done < <(python3 - "$f" <<'PYEOF'
+	done < <(
+		python3 - "$f" <<'PYEOF'
 import re, sys
 
 def is_sh_shebang(line):

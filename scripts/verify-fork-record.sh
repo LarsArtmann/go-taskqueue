@@ -52,13 +52,22 @@ reachable_from_head() {
 
 verify_pair() {
 	local old=$1 new=$2
-	is_commit "$old" || { printf 'not-a-commit(old)\n'; return 1; }
-	is_commit "$new" || { printf 'not-a-commit(new)\n'; return 1; }
+	is_commit "$old" || {
+		printf 'not-a-commit(old)\n'
+		return 1
+	}
+	is_commit "$new" || {
+		printf 'not-a-commit(new)\n'
+		return 1
+	}
 	if reachable_from_head "$old"; then
 		printf 'old-reachable\n'
 		return 1
 	fi
-	reachable_from_head "$new" || { printf 'new-unreachable\n'; return 1; }
+	reachable_from_head "$new" || {
+		printf 'new-unreachable\n'
+		return 1
+	}
 	local po pn
 	po=$(patch_id "$old")
 	pn=$(patch_id "$new")
@@ -115,17 +124,23 @@ self_test() {
 	git -C "$tmp" commit -q --amend -m "D reworded"
 
 	local rc reason
-	reason=$(verify_pair "$old_amend" "$new_amend"); rc=$?
+	reason=$(verify_pair "$old_amend" "$new_amend")
+	rc=$?
 	check "amend pair verifies (patch survives reword)" 0 "$rc" patch-id "$reason"
-	reason=$(verify_pair "$old_pick" "$new_pick"); rc=$?
+	reason=$(verify_pair "$old_pick" "$new_pick")
+	rc=$?
 	check "cherry-pick pair verifies via patch-id" 0 "$rc" patch-id "$reason"
-	reason=$(verify_pair "$old_amend" "$new_pick"); rc=$?
+	reason=$(verify_pair "$old_amend" "$new_pick")
+	rc=$?
 	check "unrelated pair refused" 1 "$rc" no-evidence "$reason"
-	reason=$(verify_pair "$(git -C "$tmp" rev-parse 'HEAD^{tree}')" "$new_amend"); rc=$?
+	reason=$(verify_pair "$(git -C "$tmp" rev-parse 'HEAD^{tree}')" "$new_amend")
+	rc=$?
 	check "non-commit old refused" 1 "$rc" 'not-a-commit(old)' "$reason"
-	reason=$(verify_pair "$new_amend" "$(git -C "$tmp" rev-parse HEAD)"); rc=$?
+	reason=$(verify_pair "$new_amend" "$(git -C "$tmp" rev-parse HEAD)")
+	rc=$?
 	check "reachable old refused" 1 "$rc" old-reachable "$reason"
-	reason=$(verify_pair "$old_pick" "$mid"); rc=$?
+	reason=$(verify_pair "$old_pick" "$mid")
+	rc=$?
 	check "dangling new refused" 1 "$rc" new-unreachable "$reason"
 
 	printf 'verify-fork-record self-test: %d ok, %d fail\n' "$ok" "$fail"

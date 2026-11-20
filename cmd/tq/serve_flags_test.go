@@ -129,8 +129,8 @@ func TestServeConfigFieldParity(t *testing.T) {
 	}
 
 	configType := reflect.TypeFor[webui.Config]()
-	for i := range configType.NumField() {
-		name := configType.Field(i).Name
+	for field := range configType.Fields() {
+		name := field.Name
 
 		if _, ok := wired[name]; ok {
 			continue
@@ -143,7 +143,10 @@ func TestServeConfigFieldParity(t *testing.T) {
 			continue
 		}
 
-		t.Errorf("webui.Config.%s is unreachable from any serve flag: wire a flag or add a justified allowlist entry (the DailyBudget dead-field class)", name)
+		t.Errorf(
+			"webui.Config.%s is unreachable from any serve flag: wire a flag or add a justified allowlist entry (the DailyBudget dead-field class)",
+			name,
+		)
 	}
 
 	if t.Failed() {
