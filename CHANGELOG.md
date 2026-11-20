@@ -12,7 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   meter (`budget today spent/cap` + fill bar) when the operator passes the
   cap — previously the meter only existed behind the agent pool's own
   flag. The meter element is exposed to assistive tech
-  (`role="meter"`, `aria-valuemin/max/now`).
+  (`role="meter"`, `aria-valuemin`/`aria-valuemax`/`aria-valuenow`).
 - **Network-outage park + session-resuming retries** (observed
   2026-11-17: a DNS outage minted a fresh crush session per attempt per
   task — 24+ sessions in minutes — then dead-lettered everything into
