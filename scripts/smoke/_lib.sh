@@ -24,6 +24,40 @@ new_repo() {
 
 run_in() { (cd "$1" && "${@:2}"); }
 
+# Scratch-serve helpers (2026-11-13 done-prompt report §e/§f3): boot a tq
+# serve dashboard over a scratch journal and wait for readiness, so new
+# serve smoke legs cost only their asserts. scratch_serve starts `serve`
+# with the caller's args in the background, redirecting to the given log,
+# and sets SERVE_PID; wait_dashboard polls the log for the readiness line;
+# stop_serve tears the server down. All three take explicit paths — no
+# hidden globals beyond SERVE_PID.
+free_port() {
+	python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1])'
+}
+
+scratch_serve() {
+	local bin="$1" log="$2"
+	shift 2
+	"$bin" serve "$@" >"$log" 2>&1 &
+	SERVE_PID=$!
+}
+
+wait_dashboard() {
+	local log="$1"
+	for _ in $(seq 1 50); do
+		grep -q "dashboard on" "$log" 2>/dev/null && return 0
+		sleep 0.1
+	done
+	fail "tq serve never logged 'dashboard on' (log: $log)"
+}
+
+stop_serve() {
+	if [ -n "${SERVE_PID:-}" ]; then
+		kill "$SERVE_PID" 2>/dev/null || true
+		SERVE_PID=""
+	fi
+}
+
 # --self-test: pins the factory contract (fail exits 1, pass prints
 # "ok: …", new_repo yields an init-committed repo with identity, run_in
 # executes in the repo dir). Defined after the helpers it exercises.
@@ -37,9 +71,24 @@ if [ "${1:-}" = "--self-test" ]; then
 	git -C "$r" log -1 --format=%s | grep -qx init || fail "new_repo repo lacks the init commit"
 	git -C "$r" config user.name | grep -qx smoke || fail "new_repo repo lacks smoke identity"
 	run_in "$r" git rev-parse --verify HEAD >/dev/null || fail "run_in did not execute in the repo dir"
+	fake=$(mktemp "$WORK/fake-tq.XXXXXX")
+	printf '#!/usr/bin/env bash\nsleep 0.3\necho "dashboard on 127.0.0.1:9"\nsleep 30\n' >"$fake"
+	chmod +x "$fake"
+	scratch_serve "$fake" "$WORK/serve.log" --addr "127.0.0.1:0"
+	[ -n "$SERVE_PID" ] || fail "scratch_serve did not set SERVE_PID"
+	wait_dashboard "$WORK/serve.log" || fail "wait_dashboard missed the readiness line"
+	port=$(free_port)
+	[ "$port" -ge 1024 ] && [ "$port" -le 65535 ] || fail "free_port returned $port outside the ephemeral range"
+	spid=$SERVE_PID
+	stop_serve
+	[ -z "$SERVE_PID" ] || fail "stop_serve did not clear SERVE_PID"
+	if kill -0 "$spid" 2>/dev/null; then
+		fail "stop_serve left the server alive"
+	fi
+	pass "scratch-serve helpers boot/wait/stop pinned"
 	if (fail "intentional") >/dev/null 2>&1; then
 		fail "fail() did not exit nonzero"
 	fi
-	echo "smoke _lib.sh self-test ok: fail/pass/new_repo/run_in contract pinned"
+	echo "smoke _lib.sh self-test ok: fail/pass/new_repo/run_in + free_port/scratch_serve/wait_dashboard/stop_serve contract pinned"
 	exit 0
 fi
