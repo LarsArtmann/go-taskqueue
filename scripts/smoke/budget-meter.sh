@@ -12,6 +12,9 @@ cd "$(dirname "$0")/../.."
 REPO_ROOT="$(pwd)"
 
 TMP="$(mktemp -d)"
+WORK="$TMP"
+# shellcheck source=_lib.sh
+source "$(dirname "$0")/_lib.sh"
 SMOKE_FAILED=""
 fail_smoke() {
 	SMOKE_FAILED=1
@@ -23,7 +26,7 @@ fail_smoke() {
 	exit 1
 }
 cleanup() {
-	[ -n "${SERVE_PID:-}" ] && kill "$SERVE_PID" 2>/dev/null || true
+	stop_serve
 	if [ -n "$SMOKE_FAILED" ] || [ "${BUDGET_SMOKE_KEEP:-}" = "1" ]; then
 		echo "TMP kept for autopsy: $TMP" >&2
 		return
@@ -31,14 +34,6 @@ cleanup() {
 	rm -rf "$TMP"
 }
 trap cleanup EXIT
-
-wait_dashboard() {
-	for _ in $(seq 1 50); do
-		grep -q "dashboard on" "$TMP/serve.log" 2>/dev/null && return 0
-		sleep 0.1
-	done
-	fail_smoke "tq serve never logged 'dashboard on'"
-}
 
 if [ -n "${TQ_BIN:-}" ]; then
 	echo "== using prebuilt tq: $TQ_BIN"
@@ -52,13 +47,15 @@ fi
 CAP=3
 export TQ_DB="$TMP/tasks.db"
 
-PORT="${BUDGET_SMOKE_PORT:-$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1])')}"
+PORT="${BUDGET_SMOKE_PORT:-$(free_port)}"
 
 echo "== serve with --daily-budget $CAP (hand tailer: the meter reads the store either way)"
-"$TMP/tq" serve --addr "127.0.0.1:$PORT" --daily-budget "$CAP" --read-model=false >"$TMP/serve.log" 2>&1 &
-SERVE_PID=$!
+scratch_serve "$TMP/tq" "$TMP/serve.log" --addr "127.0.0.1:$PORT" --daily-budget "$CAP" --read-model=false
 
-wait_dashboard
+# fail_smoke vs _lib fail(): the smoke's wrapper prints the serve-log tail
+# before exiting, so readiness calls it explicitly instead of wait_dashboard's
+# bare fail.
+wait_dashboard "$TMP/serve.log" || fail_smoke "tq serve never logged 'dashboard on'"
 
 echo "== enqueue $CAP tasks (each enqueue is one spent fact)"
 for i in 1 2 3; do
