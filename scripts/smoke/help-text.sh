@@ -74,6 +74,29 @@ out="$("$TQ" dlq -h 2>&1)" || {
 }
 check_help "tq dlq" "$out"
 
+# Pin the tq serve flag LIST (2026-11-13 done-prompt report f7): flag drift
+# (a flag added, removed, or renamed on the serve surface — e.g. the
+# --health-metrics class that shipped parity-test-only) must fail this
+# smoke, not just the unit test. Exact-set comparison, both directions.
+out="$("$TQ" serve -h 2>&1)" || {
+	echo "FAIL: tq serve -h failed"
+	exit 1
+}
+expected_serve_flags="addr alert-api-key alert-url allow-writes auth-token config crush-server daily-budget db dlq-backoff health-metrics poll read-model store verbose"
+actual_serve_flags="$(grep -Eo '^ +-[a-z-]+' <<<"$out" | sed -E 's/^ +-//' | sort -u | tr '\n' ' ' | sed 's/ $//')"
+for flag in $expected_serve_flags; do
+	grep -qw -- "$flag" <<<"$actual_serve_flags" || {
+		echo "FAIL: tq serve -h is missing the expected -$flag flag line"
+		failed=1
+	}
+done
+for flag in $actual_serve_flags; do
+	grep -qw -- "$flag" <<<"$expected_serve_flags" || {
+		echo "FAIL: tq serve -h carries a flag -$flag missing from the pinned list (update scripts/smoke/help-text.sh)"
+		failed=1
+	}
+done
+
 # The per-subcommand help is where agents and humans actually read flags:
 # the silent-cap fixes (--count and --json-envelope) must appear on the
 # tasks surface, not just in the source.
