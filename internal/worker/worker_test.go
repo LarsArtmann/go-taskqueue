@@ -892,6 +892,7 @@ func TestNetworkOutageRequeuesWithoutAttemptBurn(t *testing.T) {
 		switch f.Type {
 		case journal.Requeued:
 			requeued = true
+
 			if !strings.Contains(string(f.Detail), `"class":"network"`) {
 				t.Errorf("requeue fact detail lacks network class: %s", f.Detail)
 			}

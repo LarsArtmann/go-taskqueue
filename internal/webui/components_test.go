@@ -564,15 +564,55 @@ func TestBudgetMeterUnifiesPctFillTone(t *testing.T) {
 		tone  display.StatTone
 	}{
 		{"zero spend shows no fill", 0, 5, 0, "tq-meter-fill", "tq-meter", display.StatToneGreen},
-		{"tiny spend still shows a sliver", 1, 100, 1, "tq-meter-fill tq-meter-fill-5", "tq-meter", display.StatToneGreen},
+		{
+			"tiny spend still shows a sliver",
+			1,
+			100,
+			1,
+			"tq-meter-fill tq-meter-fill-5",
+			"tq-meter",
+			display.StatToneGreen,
+		},
 		{"just under warn", 74, 100, 74, "tq-meter-fill tq-meter-fill-75", "tq-meter", display.StatToneGreen},
 		{"at warn", 75, 100, 75, "tq-meter-fill tq-meter-fill-75", "tq-meter tq-meter-warn", display.StatToneYellow},
-		{"over cap clamps to full", 9, 5, 100, "tq-meter-fill tq-meter-fill-100", "tq-meter tq-meter-over", display.StatToneRed},
+		{
+			"over cap clamps to full",
+			9,
+			5,
+			100,
+			"tq-meter-fill tq-meter-fill-100",
+			"tq-meter tq-meter-over",
+			display.StatToneRed,
+		},
 		{"two of fifteen stays green", 2, 15, 13, "tq-meter-fill tq-meter-fill-15", "tq-meter", display.StatToneGreen},
 		{"ten of fifteen stays green", 10, 15, 66, "tq-meter-fill tq-meter-fill-65", "tq-meter", display.StatToneGreen},
-		{"twelve of fifteen is warn", 12, 15, 80, "tq-meter-fill tq-meter-fill-80", "tq-meter tq-meter-warn", display.StatToneYellow},
-		{"at cap is red", 15, 15, 100, "tq-meter-fill tq-meter-fill-100", "tq-meter tq-meter-over", display.StatToneRed},
-		{"over cap is red", 20, 15, 100, "tq-meter-fill tq-meter-fill-100", "tq-meter tq-meter-over", display.StatToneRed},
+		{
+			"twelve of fifteen is warn",
+			12,
+			15,
+			80,
+			"tq-meter-fill tq-meter-fill-80",
+			"tq-meter tq-meter-warn",
+			display.StatToneYellow,
+		},
+		{
+			"at cap is red",
+			15,
+			15,
+			100,
+			"tq-meter-fill tq-meter-fill-100",
+			"tq-meter tq-meter-over",
+			display.StatToneRed,
+		},
+		{
+			"over cap is red",
+			20,
+			15,
+			100,
+			"tq-meter-fill tq-meter-fill-100",
+			"tq-meter tq-meter-over",
+			display.StatToneRed,
+		},
 	}
 
 	for _, tc := range cases {
@@ -584,12 +624,15 @@ func TestBudgetMeterUnifiesPctFillTone(t *testing.T) {
 			if got := budgetMeterPct(b); got != tc.pct {
 				t.Errorf("pct = %d, want %d", got, tc.pct)
 			}
+
 			if got := budgetMeterFillClass(b); got != tc.fill {
 				t.Errorf("fill = %q, want %q", got, tc.fill)
 			}
+
 			if got := budgetMeterClass(b); got != tc.track {
 				t.Errorf("track = %q, want %q", got, tc.track)
 			}
+
 			if got := b.Tone(); got != tc.tone {
 				t.Errorf("tone = %v, want %v", got, tc.tone)
 			}

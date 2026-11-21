@@ -240,6 +240,7 @@ func restoreOnConvergeFailure(path, backupPath string) {
 
 	if err := os.Rename(tmp, path); err != nil {
 		_ = os.Remove(tmp)
+
 		slog.Error("migration: restore: rename into place failed", "path", path, "err", err)
 
 		return

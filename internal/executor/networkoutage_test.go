@@ -38,7 +38,11 @@ WARN  Provider request failed, retrying status_code=502 title="bad gateway" mess
 			err:  "retry error: bad gateway: upstream unreachable: dial tcp: lookup api.z.ai: Temporary failure in name resolution",
 			want: true,
 		},
-		{name: "no such host", out: "Get \"https://api.example.com/v1\": dial tcp: lookup api.example.com: no such host", want: true},
+		{
+			name: "no such host",
+			out:  "Get \"https://api.example.com/v1\": dial tcp: lookup api.example.com: no such host",
+			want: true,
+		},
 		{name: "network unreachable", err: "dial tcp 1.2.3.4:443: connect: network is unreachable", want: true},
 		{name: "no route to host", err: "dial tcp 1.2.3.4:443: connect: no route to host", want: true},
 		{name: "marker casing varies", out: "WARN Temporary Failure In Name Resolution", want: true},

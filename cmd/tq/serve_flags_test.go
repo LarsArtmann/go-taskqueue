@@ -21,6 +21,7 @@ func TestServeFlagParseWiresConfig(t *testing.T) {
 	t.Setenv("TQ_POOL_CONFIG", "")
 
 	fs, opts := newServeFlagSet()
+
 	err := fs.Parse([]string{
 		"--addr", "127.0.0.1:9999",
 		"--poll", "2s",
@@ -61,6 +62,7 @@ func TestServeFlagParseWiresConfig(t *testing.T) {
 	if *opts.readModel {
 		t.Error("read-model = true, want the parsed --read-model=false")
 	}
+
 	if *opts.store != "/tmp/q.db" {
 		t.Errorf("store = %q, want /tmp/q.db", *opts.store)
 	}
@@ -70,6 +72,7 @@ func TestServeFlagParseWiresConfig(t *testing.T) {
 	if err := fs0.Parse(nil); err != nil {
 		t.Fatalf("parse defaults: %v", err)
 	}
+
 	if got := opts0.config().DailyBudget; got != 0 {
 		t.Errorf("default DailyBudget = %d, want 0 (meter hidden)", got)
 	}
@@ -82,6 +85,7 @@ func TestServeFlagsRegistered(t *testing.T) {
 
 	fs, _ := newServeFlagSet()
 	seen := map[string]bool{}
+
 	fs.VisitAll(func(f *flag.Flag) { seen[f.Name] = true })
 
 	for _, name := range []string{
@@ -140,6 +144,7 @@ func TestServeConfigFieldParity(t *testing.T) {
 			if reason == "" {
 				t.Errorf("Config.%s is allow-listed without a justification", name)
 			}
+
 			continue
 		}
 
@@ -157,11 +162,14 @@ func TestServeConfigFieldParity(t *testing.T) {
 	// flag exists on the serve flag set.
 	fs, _ := newServeFlagSet()
 	registered := map[string]bool{}
+
 	fs.VisitAll(func(f *flag.Flag) { registered[f.Name] = true })
+
 	for field, flagName := range wired {
 		if flagName == "ldflags version var" {
 			continue
 		}
+
 		if !registered[flagName] {
 			t.Errorf("wired[%s] names flag --%s which serve does not register", field, flagName)
 		}

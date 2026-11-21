@@ -1233,6 +1233,7 @@ func (e *AgentExecutor) runCloseoutTurn(
 			Cause: fmt.Errorf("agent closeout failed: %w: %s", err, tailBytes(buf.Bytes(), 8192)),
 		}
 		ne.ResumeCloseout = true
+
 		e.closeoutPending.Store(id.String(), closeoutPending{repoDir: repoDir, session: session})
 
 		return ne

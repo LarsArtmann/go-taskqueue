@@ -995,7 +995,16 @@ func (p *Pool) execute(ctx context.Context, t task.Task, claim queue.Claim) {
 		delay, streak := p.preflightDelay(t.ID)
 
 		if err := p.persistOutcome(terminalCtx, t.ID, func(c context.Context) error {
-			return p.store.Requeue(c, t.ID, claim, netErr.Error(), delay, netErr.ResumeCloseout, queue.RequeueClassNetwork, "")
+			return p.store.Requeue(
+				c,
+				t.ID,
+				claim,
+				netErr.Error(),
+				delay,
+				netErr.ResumeCloseout,
+				queue.RequeueClassNetwork,
+				"",
+			)
 		}); err != nil {
 			p.log.Error("network-outage requeue failed", "task", t.ID, "err", err)
 		} else {
@@ -1011,7 +1020,9 @@ func (p *Pool) execute(ctx context.Context, t task.Task, claim queue.Claim) {
 				attrs = append(attrs, "resume", "closeout")
 			}
 
-			p.log.Warn("network unreachable during agent run; requeued without attempt burn (retry resumes the same session)", attrs...)
+			p.log.Warn(
+				"network unreachable during agent run; requeued without attempt burn (retry resumes the same session)",
+				attrs...)
 		}
 
 		return

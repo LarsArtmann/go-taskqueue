@@ -1235,6 +1235,7 @@ func TestBudgetCardRendersFromSnapshot(t *testing.T) {
 	// divergence between fill and now must not silently flip.
 	over := data
 	over.Budget = &BudgetView{Spent: 9, Cap: 5}
+
 	overStats := renderComponent(context.Background(), StatusCards(over))
 	for _, want := range []string{
 		`aria-valuemax="5"`, `aria-valuenow="9"`,
