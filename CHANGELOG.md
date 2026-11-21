@@ -128,6 +128,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   now carry the OPTIONAL `Failure` half; absence still means completion,
   per the additive-growth contract.)
 
+- **Budget meter announces "N of M" to assistive tech**: the dashboard's
+  daily-budget meter now carries `aria-valuetext` (e.g. "2 of 5"), so
+  screen readers with uneven `role="meter"` support still announce the
+  spend in human phrasing — mirroring the visible readout, raw over cap
+  included ("9 of 5").
+
 ### Fixed
 
 ### Internal
