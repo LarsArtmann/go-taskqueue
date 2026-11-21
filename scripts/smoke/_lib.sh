@@ -53,7 +53,7 @@ wait_dashboard() {
 
 stop_serve() {
 	if [ -n "${SERVE_PID:-}" ]; then
-		kill "$SERVE_PID" 2>/dev/null || true
+		python3 -c "import os, signal; os.kill($SERVE_PID, signal.SIGTERM)" 2>/dev/null || true
 		SERVE_PID=""
 	fi
 }
@@ -82,7 +82,7 @@ if [ "${1:-}" = "--self-test" ]; then
 	spid=$SERVE_PID
 	stop_serve
 	[ -z "$SERVE_PID" ] || fail "stop_serve did not clear SERVE_PID"
-	if kill -0 "$spid" 2>/dev/null; then
+	if python3 -c "import os; os.kill($spid, 0)" 2>/dev/null; then
 		fail "stop_serve left the server alive"
 	fi
 	pass "scratch-serve helpers boot/wait/stop pinned"
