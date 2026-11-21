@@ -31,11 +31,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   outage windows: tasks park instead of dead-lettering, and one task
   costs one session, not one per attempt.)
 
-- **Prometheus metrics for the health dashboard** (`tq serve` with the
-  metrics flag): the exposition at `/health/metrics` rides the same
+- **Prometheus metrics for the health dashboard** (`tq serve
+  --health-metrics`): the exposition at `/health/metrics` rides the same
   token gate + security headers as every other health route. Default
-  OFF (the deliberate min-surface posture); the config seam is wired,
-  the cmd/tq flag lands when a pool opts in.
+  OFF (the deliberate min-surface posture); the config seam and the
+  cmd/tq flag are both wired — a parity test refuses any future
+  unwired `webui.Config` field.
 
 - **Receipt verdict as an evidence-stage filter term** (`tq dlq
   --evidence-stage verify-ok` / `verify-mismatch`, webui evidence filter

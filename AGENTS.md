@@ -244,7 +244,7 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   over a CAPTURED gate-output file — never counted in context or from a
   summary line.
 - **Fleet convention — countable gate summaries are PINNED, not
-  advisory**: every countable sibling gate (check-script-syntax, check-go-mods, check-dead-exports, check-guard-wiring, gosec)
+  advisory**: every countable sibling gate (check-script-syntax, check-go-mods, check-dead-exports, check-guard-wiring, check-stub-shebang, check-tick-claims, gosec)
   carries `--self-test` pinning its summary format + a negative-path
   counter battery via an env hook; wired into ci-local; new gates too.
 - **Crush PreToolUse hooks** (`scripts/hooks/`, `--self-test`):
