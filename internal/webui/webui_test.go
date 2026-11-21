@@ -1220,6 +1220,7 @@ func TestBudgetCardRendersFromSnapshot(t *testing.T) {
 		"tq-meter", "tq-meter-fill-40",
 		`role="meter"`, `aria-label="daily budget spent"`,
 		`aria-valuemin="0"`, `aria-valuemax="5"`, `aria-valuenow="2"`,
+		`aria-valuetext="2 of 5"`,
 	} {
 		if !strings.Contains(stats, want) {
 			t.Errorf("budget meter missing %q", want)
@@ -1239,6 +1240,7 @@ func TestBudgetCardRendersFromSnapshot(t *testing.T) {
 	overStats := renderComponent(context.Background(), StatusCards(over))
 	for _, want := range []string{
 		`aria-valuemax="5"`, `aria-valuenow="9"`,
+		`aria-valuetext="9 of 5"`,
 		"tq-meter-fill-100", "tq-meter-over",
 	} {
 		if !strings.Contains(overStats, want) {
