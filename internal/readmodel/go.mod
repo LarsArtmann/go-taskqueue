@@ -5,8 +5,8 @@ go 1.27.4
 require (
 	github.com/larsartmann/go-cqrs-lite/event/v4 v4.15.2
 	github.com/larsartmann/go-cqrs-lite/id/v4 v4.7.5
-	github.com/larsartmann/go-cqrs-lite/metaengine/sqliteengine/v4 v4.8.0
-	github.com/larsartmann/go-cqrs-lite/metaengine/v4 v4.23.0
+	github.com/larsartmann/go-cqrs-lite/metaengine/sqliteengine/v4 v4.9.1
+	github.com/larsartmann/go-cqrs-lite/metaengine/v4 v4.24.0
 	github.com/larsartmann/go-cqrs-lite/projection/v4 v4.4.2
 	github.com/larsartmann/go-cqrs-lite/projectionhost/v4 v4.7.1
 	github.com/larsartmann/go-cqrs-lite/record/v4 v4.6.2
@@ -19,7 +19,7 @@ require (
 	github.com/larsartmann/go-taskqueue/internal/retryx v0.4.2
 	github.com/larsartmann/go-taskqueue/internal/task v0.4.2
 	github.com/oklog/ulid/v2 v2.1.2
-	modernc.org/sqlite v1.61.1
+	modernc.org/sqlite v1.62.0
 )
 
 require (
