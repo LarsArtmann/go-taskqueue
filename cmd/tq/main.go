@@ -4384,9 +4384,10 @@ func newServeFlagSet() (*flag.FlagSet, *serveOpts) {
 	return fs, o
 }
 
-// config folds the parsed serve flags into the webui.Config; Version
-// rides the package-level version var like before.
-func (o *serveOpts) config() webui.Config {
+// config folds the parsed serve flags into the webui.Config; the version
+// is passed in so the fold stays pure and testable with an arbitrary
+// version (2026-11-13 report §f29).
+func (o *serveOpts) config(version string) webui.Config {
 	return webui.Config{
 		Addr:        *o.addr,
 		Poll:        *o.poll,
@@ -4424,7 +4425,7 @@ func cmdServe(args []string) error {
 
 	var demoted bool
 
-	cfg := opts.config()
+	cfg := opts.config(version)
 
 	if *opts.readModel {
 		rt, rtErr := composition.NewProjectionRuntime(context.Background(), store, deployment)

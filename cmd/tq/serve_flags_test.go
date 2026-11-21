@@ -40,7 +40,15 @@ func TestServeFlagParseWiresConfig(t *testing.T) {
 		t.Fatalf("parse: %v", err)
 	}
 
-	cfg := opts.config()
+	cfg := opts.config(version)
+
+	// Purity pin (2026-11-13 report §f29): the fold takes the version as
+	// a param, so an ARBITRARY version flows through — a fold that reads
+	// the package var instead would fail this.
+	const arbitrary = "9.9.9-test"
+	if cfg.Version != version || opts.config(arbitrary).Version != arbitrary {
+		t.Errorf("config fold ignores its version param: cfg.Version = %q", cfg.Version)
+	}
 
 	want := webui.Config{
 		Addr:        "127.0.0.1:9999",
@@ -73,7 +81,7 @@ func TestServeFlagParseWiresConfig(t *testing.T) {
 		t.Fatalf("parse defaults: %v", err)
 	}
 
-	if got := opts0.config().DailyBudget; got != 0 {
+	if got := opts0.config(version).DailyBudget; got != 0 {
 		t.Errorf("default DailyBudget = %d, want 0 (meter hidden)", got)
 	}
 }
