@@ -4323,7 +4323,7 @@ func TaskDetail(data DashboardData, t task.Task, facts []journalFactView, prov p
 		}
 		ctx = templ.InitializeContext(ctx)
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 322, "<div class=\"mx-auto w-full max-w-4xl space-y-6 px-4 py-8 sm:px-6 lg:px-8\"><a class=\"font-mono text-xs uppercase tracking-[0.18em] text-gray-500 underline-offset-4 hover:text-blue-600 hover:underline dark:text-gray-400 dark:hover:text-blue-400\" href=\"/\">← back to dashboard</a><div id=\"frag-detail\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 322, "<div class=\"mx-auto w-full max-w-4xl space-y-6 px-4 py-8 sm:px-6 lg:px-8\"><a class=\"font-mono text-xs text-gray-500 underline-offset-4 hover:text-blue-600 hover:underline dark:text-gray-400 dark:hover:text-blue-400\" href=\"/\">← back to dashboard</a><div id=\"frag-detail\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
