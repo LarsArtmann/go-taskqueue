@@ -164,7 +164,7 @@
     }
     if (!badge) {
       badge = document.createElement("span");
-      badge.setAttribute("class", "tq-feed-chip tq-feed-burst");
+      badge.setAttribute("class", "tq-feed-burst");
       badge.setAttribute("aria-live", "polite");
       var chips = el.querySelector(".tq-feed-chips");
       if (chips) chips.appendChild(badge);

@@ -514,6 +514,7 @@ test("feed burst badge counts lines added since the pre-swap last line", () => {
 	app.swapIn(el, { html: feedHTML(["a", "b", "c", "d"], 0) });
 	const badge = el.querySelector(".tq-feed-burst");
 	eq(badge.textContent, "2 new facts", "burst badge counts new lines");
+	eq(badge.getAttribute("class"), "tq-feed-burst", "badge carries its own ephemeral class, not the chip pill");
 	eq(badge.getAttribute("aria-live"), "polite", "badge announces politely");
 	doc.body.childNodes = doc.body.childNodes.filter((c) => c !== el);
 });
