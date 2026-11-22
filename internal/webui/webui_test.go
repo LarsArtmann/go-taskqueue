@@ -896,7 +896,8 @@ func TestResultUsageRendersOnDetailPage(t *testing.T) {
 	srv.Handler().
 		ServeHTTP(rec, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/task/"+msgsOnly.ID.String(), nil))
 
-	if body := rec.Body.String(); !strings.Contains(body, "5 messages") {
+	if body := rec.Body.String(); !strings.Contains(body, `<span class="font-mono">5</span>`) ||
+		!strings.Contains(body, " messages") {
 		t.Errorf("message-count-only status task rendered no usage line")
 	}
 
@@ -956,7 +957,11 @@ func TestResultUsageRendersOnDetailPage(t *testing.T) {
 	body = rec.Body.String()
 	for _, want := range []string{
 		"agent run", "1 commits",
-		"54000 prompt + 2100 completion tokens · $0.1200 derived session cost · 42 messages",
+		`<span class="font-mono">54000</span>`,
+		`<span class="font-mono">2100</span>`,
+		`<span class="font-mono">$0.1200</span>`,
+		`<span class="font-mono">42</span>`,
+		"derived session cost",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("agent detail page missing %q", want)
@@ -992,7 +997,10 @@ func TestResultUsageRendersOnDetailPage(t *testing.T) {
 	body = rec.Body.String()
 	for _, want := range []string{
 		"agent review", "review: approve", "sound change",
-		"900 prompt + 0 completion tokens · $0.0200 derived session cost · 4 messages",
+		`<span class="font-mono">900</span>`,
+		`<span class="font-mono">$0.0200</span>`,
+		`<span class="font-mono">4</span>`,
+		"derived session cost",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("review detail page missing %q", want)
