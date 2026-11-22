@@ -547,7 +547,8 @@ test("feed burst badge clears on a zero-new swap", () => {
 	doc.body.childNodes = doc.body.childNodes.filter((c) => c !== el);
 });
 
-test("pause-on-hover: a hovered feed is not re-pinned by a burst", () => {	const el = feedFixture(["a", "b"]);
+test("pause-on-hover: a hovered feed is not re-pinned by a burst", () => {
+	const el = feedFixture(["a", "b"]);
 	const pane = el.querySelector(".journal-scroll");
 	pane.scrollTop = 600; /* atBottom per stub geometry (1000-500-24) */
 	el.hovered = true;
@@ -556,6 +557,30 @@ test("pause-on-hover: a hovered feed is not re-pinned by a burst", () => {	const
 	el.hovered = false;
 	app.swapIn(el, { html: feedHTML(["a", "b", "c"], 2) });
 	eq(el.querySelector(".journal-scroll").scrollTop, 1000, "unhovered burst resumes the tail pin");
+	doc.body.childNodes = doc.body.childNodes.filter((c) => c !== el);
+});
+
+test("pause-on-hover: hovered bursts accumulate and resurface on un-hover", () => {
+	const el = feedFixture(["a", "b"]);
+	el.hovered = true;
+	app.swapIn(el, { html: feedHTML(["a", "b", "c"], 0) });
+	let badge = el.querySelector(".tq-feed-burst");
+	eq(badge.textContent, "1 new facts", "hovered burst still shows its own count");
+	app.swapIn(el, { html: feedHTML(["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"], 3) });
+	el._fire("mouseleave");
+	badge = el.querySelector(".tq-feed-burst");
+	eq(badge.textContent, "12 new while paused", "un-hover resurfaces the accumulated total");
+	el.hovered = false;
+	app.swapIn(el, { html: feedHTML(["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"], 3) });
+	eq(el.querySelector(".tq-feed-burst"), null, "next unhovered zero-new swap clears the badge");
+	doc.body.childNodes = doc.body.childNodes.filter((c) => c !== el);
+});
+
+test("pause-on-hover: un-hover without hovered bursts leaves no badge", () => {
+	const el = feedFixture(["a", "b"]);
+	app.swapIn(el, { html: feedHTML(["a", "b"], 0) });
+	el._fire("mouseleave");
+	eq(el.querySelector(".tq-feed-burst"), null, "no accumulation, no badge");
 	doc.body.childNodes = doc.body.childNodes.filter((c) => c !== el);
 });
 
