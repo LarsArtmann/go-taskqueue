@@ -526,6 +526,12 @@ templ Board(data DashboardData) {
 // status-filtered table view when the column is truncated. Within the lane,
 // the ADR-0015 priority band is the secondary grouping (hot above machine
 // above backlog) whenever the cards span more than one band.
+// DESIGN NOTE (design-pass §f18, 2026-11-22): a lane's card list is capped
+// at max-h-96 (24rem, ~10 compact cards) with internal overflow-y scroll —
+// a bloated lane grows its own scrollbar instead of stretching the whole
+// board row and pushing sibling lanes below the fold. The true count and the
+// "+N older" escape hatch stay OUTSIDE the scroll box, so the lane header
+// and the exit into the filtered table view never scroll away.
 templ boardColumn(data DashboardData, col BoardColumn) {
 	<li class="w-64 min-w-52 snap-start max-md:w-56 max-md:min-w-44" data-status={ string(col.Status) } aria-label={ string(col.Status) + " column" }>
 		<div class={ "border-t-2 pt-2 " + statusAccentClass(col.Status) }>
@@ -547,30 +553,34 @@ templ boardColumn(data DashboardData, col BoardColumn) {
 
 // boardColumnGroups renders a lane's cards: a single list when the cards sit
 // in one band (labels would be noise), otherwise one labeled band section in
-// claim order.
+// claim order. The whole groups body sits under the lane's max-h-96 scroll
+// cap (design-pass §f18) — overscroll is contained so a scroll at the lane
+// edge never chains into the board's horizontal pan.
 templ boardColumnGroups(data DashboardData, col BoardColumn, groups []BoardBandGroup) {
-	if len(groups) <= 1 {
-		<ul class="mt-3 space-y-2">
-			if len(col.Tasks) == 0 {
-				<li class="rounded-md border border-dashed border-gray-200 px-3 py-4 text-center font-mono text-xs text-gray-400 dark:border-gray-800 dark:text-gray-500">empty</li>
-			} else {
-				for _, t := range col.Tasks {
-					@boardCard(data, t)
-				}
-			}
-		</ul>
-	} else {
-		for _, g := range groups {
-			<div class="mt-3">
-				<div class="tq-label">{ string(g.Band) }</div>
-				<ul class="mt-1 space-y-2">
-					for _, t := range g.Tasks {
+	<div class="max-h-96 overflow-y-auto overscroll-contain">
+		if len(groups) <= 1 {
+			<ul class="mt-3 space-y-2">
+				if len(col.Tasks) == 0 {
+					<li class="rounded-md border border-dashed border-gray-200 px-3 py-4 text-center font-mono text-xs text-gray-400 dark:border-gray-800 dark:text-gray-500">empty</li>
+				} else {
+					for _, t := range col.Tasks {
 						@boardCard(data, t)
 					}
-				</ul>
-			</div>
+				}
+			</ul>
+		} else {
+			for _, g := range groups {
+				<div class="mt-3">
+					<div class="tq-label">{ string(g.Band) }</div>
+					<ul class="mt-1 space-y-2">
+						for _, t := range g.Tasks {
+							@boardCard(data, t)
+						}
+					</ul>
+				</div>
+			}
 		}
-	}
+	</div>
 }
 
 // the status-relevant detail — readiness countdown while pending, lease
