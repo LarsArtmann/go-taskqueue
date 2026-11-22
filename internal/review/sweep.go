@@ -510,10 +510,13 @@ func fixPrompt(payload executor.ReviewPayload, finding executor.ReviewFinding) s
 		"A code reviewer rejected your earlier work on this task and filed one finding. Fix this finding.\n\n",
 	)
 	b.WriteString("## Original task\n\n" + original + "\n\n")
-	b.WriteString("## Reviewer finding (" + finding.Severity + ")\n\n" + strings.TrimSpace(finding.Title) + "\n\n")
+	b.WriteString(
+		"## Reviewer finding (" + finding.Severity + ")\n\n" +
+			executor.LinkifyFindingCites(strings.TrimSpace(finding.Title), payload.ReviewedTask) + "\n\n",
+	)
 
 	if detail := strings.TrimSpace(finding.Detail); detail != "" {
-		b.WriteString(detail + "\n\n")
+		b.WriteString(executor.LinkifyFindingCites(detail, payload.ReviewedTask) + "\n\n")
 	}
 
 	if anchor := strings.TrimSpace(finding.Anchor); anchor != "" {

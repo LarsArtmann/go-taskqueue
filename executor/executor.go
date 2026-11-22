@@ -165,6 +165,11 @@ const (
 // unscoped-gofmt artifact (the vendor-gofmt death class).
 var IsGateArtifactDeath = internalexecutor.IsGateArtifactDeath
 
+// LinkifyFindingCites rewrites verbatim `#finding-N` citations in a minted
+// prompt into `/task/<taskID>#finding-N` anchor links, so the receiving
+// fixer lands on the exact finding row of the reviewed task's detail page.
+var LinkifyFindingCites = internalexecutor.LinkifyFindingCites
+
 // Verify-gate death classes stamped into FailureEvidence.VerifyStage (see
 // verifyDeathStage).
 const (

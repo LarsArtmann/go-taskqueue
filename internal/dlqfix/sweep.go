@@ -224,7 +224,7 @@ func (s *Sweeper) mintAutopsy(ctx context.Context, fact journal.Fact, stats *Swe
 		Repo:                      agentPayload.Repo,
 		DeadTask:                  t.ID.String(),
 		DeadType:                  t.Type,
-		Work:                      agentPayload.Prompt,
+		Work: executor.LinkifyFindingCites(agentPayload.Prompt, t.ID.String()),
 		Failure:                   s.lastFailureEvidence(ctx, t.ID),
 		LastError:                 t.LastError,
 		Attempts:                  t.Attempts,
