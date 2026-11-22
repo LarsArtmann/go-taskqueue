@@ -1028,6 +1028,26 @@ kbd {
   color: var(--color-gray-100);
 }
 
+/* WebKit's search clear button (design-pass §f20): the ✕ inside the
+   filter's type="search" field ships a baked-in light chrome that reads as
+   a dark smudge on the dark hull. Neutralize it to a quiet gray that
+   tracks the theme; the -webkit-appearance reset also unpins WebKit's
+   fixed size so it scales with the input's text. */
+input[type="search"]::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 1em;
+  width: 1em;
+  background-color: var(--color-gray-400);
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='currentColor'><path fill-rule='evenodd' d='M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z' clip-rule='evenodd'/></svg>") center / contain no-repeat;
+  mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='currentColor'><path fill-rule='evenodd' d='M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z' clip-rule='evenodd'/></svg>") center / contain no-repeat;
+  cursor: pointer;
+}
+
+.dark input[type="search"]::-webkit-search-cancel-button {
+  background-color: var(--color-gray-500);
+}
+
 .tq-action-form button {
   font-family: var(--font-mono);
   font-size: 0.7rem;
