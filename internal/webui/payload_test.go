@@ -195,8 +195,8 @@ func TestPayloadViewStatus(t *testing.T) {
 	}
 
 	wantWindow := []statusWindowEntry{
-		{TaskID: "task-a", Report: "docs/status/tasks/2026-09-14_10-00_task-a.md"},
-		{TaskID: "task-b"},
+		{TaskID: "task-a", Report: "docs/status/tasks/2026-09-14_10-00_task-a.md", Relation: windowRelationWindow},
+		{TaskID: "task-b", Relation: windowRelationWindow},
 	}
 	if !reflect.DeepEqual(pv.Window, wantWindow) {
 		t.Errorf("window = %v, want task id + pinned report per entry", pv.Window)
