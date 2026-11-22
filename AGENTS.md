@@ -136,10 +136,11 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   `$TQ_RESULT_FILE` (file > stdout, last-wins); prompts bake the `--file` rails
   (verdict + ask — routed bash tools see only SERVER env, crush#4210; never
   drop). `-H` sans CRUSH_CLIENT_SERVER=1 is silently LOCAL.
-- **channels plan** (unbuilt; crush≥0.97 met): `tq mcp` pushes work via
+- **channels plan** (unbuilt; contract TAG-verified v0.102.0, 2026-11-23;
+  `mcp add --channel` official): `tq mcp` pushes work via
   `notifications/claude/channel`; `channel_reply` replaces the file scrape;
-  plan doc 2026-10-16_01-11_TQ-MCP-CHANNELS-DESIGN-INPUT; bootstrap
-  `channel_enabled`.
+  docs: 2026-10-16_01-11 plan (bootstrap `channel_enabled`) +
+  2026-11-23_00-32.
 - **Calibration dataset**: every paid run appends ONE `CalibrationRow`
   (raw verdict-channel body + `Verify`/`Attestation` join keys + derived
   outcome counts + session usage) to `$TQ_LOG_DIR/calibration.jsonl`
