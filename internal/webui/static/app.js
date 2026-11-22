@@ -132,23 +132,26 @@
 
   /* Per-burst feed highlight (design-pass §f25): a fact-feed swap that
      added lines surfaces "N new facts" as a chip in the filter-chips row
-     instead of only the last line settling in. The count compares the
-     new tail against the pre-swap last line's full text (timestamp +
-     type + task id); when the whole window shifted past it, the window
-     size is the honest lower bound. The badge is server-free and clears
+     instead of only the last line settling in. The count is EXACT: every
+     line carries data-seq (the fact's journal seq), so the count is the
+     seq gap between the pre-swap and post-swap tails — a full window
+     shift counts every fact that streamed in, not just the window size.
+     When the pre-swap tail has no seq (or seqs regress), the window
+     size stays the honest fallback. The badge is server-free and clears
      on the next zero-new swap. */
-  function feedLastLineText(el) {
-    var lines = el.querySelectorAll("[data-fact-type]");
-    return lines.length ? lines[lines.length - 1].textContent : "";
-  }
-
-  function feedBurstCount(el, prevLastLine) {
+  function feedLastSeq(el) {
     var lines = el.querySelectorAll("[data-fact-type]");
     if (!lines.length) return 0;
-    if (prevLastLine) {
-      for (var i = 0; i < lines.length; i++) {
-        if (lines[i].textContent === prevLastLine) return lines.length - i - 1;
-      }
+    var seq = parseInt(lines[lines.length - 1].getAttribute("data-seq"), 10);
+    return isNaN(seq) ? 0 : seq;
+  }
+
+  function feedBurstCount(el, prevSeq) {
+    var lines = el.querySelectorAll("[data-fact-type]");
+    if (!lines.length) return 0;
+    if (prevSeq > 0) {
+      var seq = parseInt(lines[lines.length - 1].getAttribute("data-seq"), 10);
+      if (!isNaN(seq) && seq >= prevSeq) return seq - prevSeq;
     }
     return lines.length;
   }
@@ -172,11 +175,11 @@
 
   function swapIn(el, frag) {
     var isFeed = el.id === "frag-feed";
-    var prevLastLine = isFeed ? feedLastLineText(el) : "";
+    var prevSeq = isFeed ? feedLastSeq(el) : 0;
     var st = captureState(el);
     el.innerHTML = frag.html;
     restoreState(el, st);
-    if (isFeed) showFeedBurst(el, feedBurstCount(el, prevLastLine));
+    if (isFeed) showFeedBurst(el, feedBurstCount(el, prevSeq));
     updateBoardAffordance();
     applyFeedFilter();
   }

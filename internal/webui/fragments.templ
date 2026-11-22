@@ -504,7 +504,7 @@ templ FactFeed(data DashboardData) {
 		<div class="journal-scroll rounded-lg border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
 			<div class="tc-log text-start border-y-0 py-3 font-mono text-[0.8125rem] leading-relaxed text-gray-600 dark:text-gray-400" aria-label="journal fact tail">
 				for _, fact := range data.Facts {
-					<div class={ templ.Classes("tc-log-line tc-log-line-still", templ.KV("tq-fact-cancelled", fact.Type == journal.Cancelled)) } data-fact-type={ string(fact.Type) }>
+					<div class={ templ.Classes("tc-log-line tc-log-line-still", templ.KV("tq-fact-cancelled", fact.Type == journal.Cancelled)) } data-fact-type={ string(fact.Type) } data-seq={ strconv.FormatInt(fact.Seq, 10) }>
 						<span class="me-3 text-gray-400 dark:text-gray-500">{ factTimestamp(data.Now, fact.Time) }</span>
 						<span class={ "me-2 inline-block min-w-12 font-medium " + factToneClass(factTone(fact.Type)) }>{ string(fact.Type) }</span>
 						<a
