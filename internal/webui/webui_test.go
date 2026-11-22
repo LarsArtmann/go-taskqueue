@@ -720,7 +720,7 @@ func TestAgentResultBadgeAndCard(t *testing.T) {
 		ServeHTTP(rec, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/task/"+ag.ID.String(), nil))
 
 	body := rec.Body.String()
-	for _, want := range []string{"agent run", "2 commits", "derived session cost", `class="mt-2 font-mono text-xs`} {
+	for _, want := range []string{"agent run", "2 commits", "derived session cost", `class="mt-2 text-xs`, `<span class="font-mono">`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("detail page missing %q", want)
 		}
@@ -831,7 +831,11 @@ func TestResultUsageRendersOnDetailPage(t *testing.T) {
 	body := rec.Body.String()
 	for _, want := range []string{
 		"ai scoring", "2 verdicts",
-		"1200 prompt + 340 completion tokens · $0.0042 derived session cost · 7 messages",
+		`<span class="font-mono">1200</span>`,
+		`<span class="font-mono">340</span>`,
+		`<span class="font-mono">$0.0042</span>`,
+		`<span class="font-mono">7</span>`,
+		"derived session cost",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("prioritize detail page missing %q", want)
@@ -863,10 +867,9 @@ func TestResultUsageRendersOnDetailPage(t *testing.T) {
 	srv.Handler().
 		ServeHTTP(rec, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/task/"+st.ID.String(), nil))
 
-	if body := rec.Body.String(); !strings.Contains(
-		body,
-		"10 prompt + 0 completion tokens · $0.0100 derived session cost · 3 messages",
-	) {
+	if body := rec.Body.String(); !strings.Contains(body, `<span class="font-mono">10</span>`) ||
+		!strings.Contains(body, `<span class="font-mono">$0.0100</span>`) ||
+		!strings.Contains(body, `<span class="font-mono">3</span>`) {
 		t.Errorf("status detail page missing the usage line")
 	}
 
