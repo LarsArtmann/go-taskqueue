@@ -531,10 +531,10 @@ test("feed burst count is exact across a full window shift via data-seq", () => 
 
 test("feed burst badge clears on a zero-new swap", () => {
 	const el = feedFixture(["a", "b"]);
-	app.swapIn(el, { html: feedHTML(["x", "y"], 0) });
+	app.swapIn(el, { html: feedHTML(["x", "y"], 8) });
 	const badge = el.querySelector(".tq-feed-burst");
-	eq(badge.textContent, "2 new facts", "window shifted: seq gap counts both");
-	app.swapIn(el, { html: feedHTML(["x", "y"], 2) });
+	eq(badge.textContent, "8 new facts", "window shifted: seq gap counts both");
+	app.swapIn(el, { html: feedHTML(["x", "y"], 8) });
 	eq(el.querySelector(".tq-feed-burst"), null, "zero-new swap clears the badge");
 	doc.body.childNodes = doc.body.childNodes.filter((c) => c !== el);
 });
@@ -547,7 +547,7 @@ test("pause-on-hover: a hovered feed is not re-pinned by a burst", () => {
 	app.swapIn(el, { html: feedHTML(["a", "b", "c"]) });
 	eq(el.querySelector(".journal-scroll").scrollTop, 600, "hovered burst restores position, withholds the pin");
 	el.hovered = false;
-	app.swapIn(el, { html: feedHTML(["a", "b", "c"]) });
+	app.swapIn(el, { html: feedHTML(["a", "b", "c"], 2) });
 	eq(el.querySelector(".journal-scroll").scrollTop, 1000, "unhovered burst resumes the tail pin");
 	doc.body.childNodes = doc.body.childNodes.filter((c) => c !== el);
 });
