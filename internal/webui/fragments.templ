@@ -527,7 +527,7 @@ templ Board(data DashboardData) {
 // the ADR-0015 priority band is the secondary grouping (hot above machine
 // above backlog) whenever the cards span more than one band.
 templ boardColumn(data DashboardData, col BoardColumn) {
-	<li class="w-64 min-w-52 snap-start" data-status={ string(col.Status) } aria-label={ string(col.Status) + " column" }>
+	<li class="w-64 min-w-52 snap-start max-md:w-56 max-md:min-w-44" data-status={ string(col.Status) } aria-label={ string(col.Status) + " column" }>
 		<div class={ "border-t-2 pt-2 " + statusAccentClass(col.Status) }>
 			<div class="flex items-baseline justify-between gap-2">
 				<span class="font-mono text-xs font-medium text-gray-700 dark:text-gray-300">{ string(col.Status) }</span>
@@ -679,7 +679,7 @@ templ FilterBar(data DashboardData) {
 			placeholder="evidence: all"
 			value={ data.Filter.Evidence }
 			title="comma-separated terms with !-negation, e.g. gate-env,!gate-slow"
-			class={ inputClass + " min-h-7 font-mono text-xs" }
+			class={ inputClass + " min-h-7 min-w-0 flex-1 basis-full font-mono text-xs sm:basis-0" }
 		/>
 		<datalist id="evidence-terms">
 			for _, stage := range evidenceStageChoices() {

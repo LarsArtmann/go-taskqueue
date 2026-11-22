@@ -614,6 +614,15 @@ kbd {
   .tq-nowband-meta {
     width: 100%;
     margin-inline-start: 0;
+    /* Chips and the budget meter wrap onto their own lines at 375px
+       (design-pass §f14) instead of squeezing the meter beside a full
+       chip row. */
+    flex-wrap: wrap;
+    gap: 0.35rem 1.25rem;
+  }
+
+  .tq-nowband-meta .card-budget {
+    flex-wrap: wrap;
   }
 }
 
