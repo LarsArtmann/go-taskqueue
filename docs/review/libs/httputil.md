@@ -10,7 +10,7 @@
 
 **Latest:** v1.9.0 (local checkout /home/lars/projects/httputil; NEW since the 11-11 refresh — tag commit 0e62158, 2026-11-14; re-verified 2026-11-22 by `git -C /home/lars/projects/httputil tag -l | grep -c '^v'` → 30 root tags, newest v1.9.0; checkout HEAD is 34dbf05 2026-11-21 = v1.9.0-24-g34dbf05 — chores/docs plus an unreleased endpoints Accept-line fix since the tag)
 
-**Prior coverage:** AGENTS.md §Relation to other projects records the decision — updated 2026-11-09 to drop the stale "proprietary" reason: "go-health-dashboard (MIT): ADOPTED — /health inside the token gate …; **httputil** NOT adopted (MIT v1.5.0+; fleet verdicts: docs/review/libs/, 2026-11-09 — … server_timing trial KEEP)". The MIT relicense is checkout fact (LICENSE; owner decision 2026-10-09, checkout AGENTS.md:327, CHANGELOG [1.5.0]), and AGENTS.md no longer misstates it; the conclusion stands on overlap grounds alone (§3).
+**Prior coverage:** AGENTS.md §Relation to other projects records the decision — updated 2026-11-09 to drop the stale "proprietary" reason: "go-health-dashboard (MIT): ADOPTED — /health inside the token gate …; **httputil** NOT adopted (MIT v1.5.0+; fleet verdicts: docs/review/libs/, 2026-11-09 — … server_timing trial KEEP)". The MIT relicense is checkout fact (LICENSE; owner decision 2026-10-09, checkout AGENTS.md:348, CHANGELOG [1.5.0]), and AGENTS.md no longer misstates it; the conclusion stands on overlap grounds alone (§3).
 
 **Reviewed:** 2026-11-08 by reading /home/lars/projects/httputil/{README.md,go.mod,LICENSE,AGENTS.md}, plus internal/webui/{webui,auth,requestlog}.go, internal/httpapi/httpapi.go, internal/httpauth/httpauth.go, internal/lockout/lockout.go.
 

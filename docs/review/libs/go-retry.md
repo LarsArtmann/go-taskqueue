@@ -54,7 +54,7 @@ All three pass struct literals whose optional hooks are unset by design — sinc
 ```go
 // agent.go:1268 — current code, the F2 recommendation as-written
 func execWithTransientRetry[T any](run func() (T, error)) (T, error) {
-	return retry.DoWithValue[T](context.Background(), retry.Config{ //nolint:exhaustruct // optional hooks unset
+	return retry.DoWithValue[T](context.Background(), retry.Config{
 		MaxAttempts:  3,
 		InitialDelay: 50 * time.Millisecond,
 		MaxDelay:     100 * time.Millisecond,

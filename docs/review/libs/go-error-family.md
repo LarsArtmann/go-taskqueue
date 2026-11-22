@@ -1,6 +1,6 @@
 # go-error-family — Library Utilization Review
 
-**Verdict:** ADOPTED — low (2.5/12 capability rows leveraged; was 1.5/12 before the 2026-11-09 landing) — two load-bearing seams now: the readmodel fold → cqrs-lite dead-letter gate AND the executor's typed refusals classified into the shared taxonomy; the rest of the repo still runs parallel hand-rolled taxonomies.
+**Verdict:** ADOPTED — low (3.5/12 capability rows leveraged; was 1.5/12 before the 2026-11-09 landing, 2.5/12 before T07) — two load-bearing seams now: the readmodel fold → cqrs-lite dead-letter gate AND the executor's typed refusals classified into the shared taxonomy, plus the T07 store-busy classifier; the rest of the repo still runs parallel hand-rolled taxonomies.
 
 **2026-11-12 refresh:** F3 LANDED — the store-busy classifier registers in worker init (pareto T07) with a pin test; F2-second-half RULED OUT (the WrapOnce collapse would break the domain-type classification — see F2); score re-derived 21 → 29. Cites re-verified against HEAD by grep.
 **2026-11-11 refresh:** F2 PARTIALLY landed — `PermanentError` and `PreflightError` now implement `ErrorFamily()`/`ErrorCode()` into the SHARED taxonomy (internal/executor/executor.go:53-54, 94-95 — exactly the finding's first half, "fleet review f8"), with `errorfamily.Classify`/`IsRetryable` pins at internal/executor/executor_test.go:178-200. Score re-derived: 13 → 21. Call-site inventory grew 8 → 14 occurrences; §1/§2 cites re-verified against HEAD 2026-11-11 by grep; checkout now `v0.12.0-8-g5beae0e`, still pinned v0.12.0 = latest tag.
@@ -38,7 +38,7 @@ All 21 references (10 production + 11 test; verified 2026-11-22 by the grep belo
 | internal/worker/worker.go | 490-495 | `RegisterClassifier` (store-busy → Transient) | T07 landing 2026-11-12 — worker init classifies the SQLITE_BUSY family for ANY consumer at the source |
 | internal/worker/busy_classify_test.go | 20-26 | `Classify` ×2 (direct + wrapped) | T07 pin: both classify Transient via the registered classifier |
 
-The runtime classifier is NOT in this repo: the readmodel's fold errors flow into vendored go-cqrs-lite, whose projection host gates retries on `errorfamily.IsRetryable` (vendor/github.com/larsartmann/go-cqrs-lite/projectionhost/v4/worker.go:281 — "Unclassified errors stay retryable (IsRetryable fails open)"). tq mints the family; the platform consumes it. No registry, no classifiers, no stdlib defaults, no HTTP/CLI/logging boundary use anywhere.
+The runtime classifier is NOT in this repo: the readmodel's fold errors flow into vendored go-cqrs-lite, whose projection host gates retries on `errorfamily.IsRetryable` (vendor/github.com/larsartmann/go-cqrs-lite/projectionhost/v4/worker.go:281 — "Unclassified errors stay retryable (IsRetryable fails open)"). tq mints the family; the platform consumes it. The one in-repo classifier is the worker-init store-busy registration (T07, table above); no registry scoping, no stdlib defaults, no HTTP/CLI/logging boundary use anywhere.
 
 ## 2. Capability inventory
 
@@ -74,7 +74,7 @@ The runtime classifier is NOT in this repo: the readmodel's fold errors flow int
 
 **F6 — CLI exit codes hardcoded.** lib: `ExitCode(err)` derives BSD sysexits codes from family (checkout classify.go). repo: cmd/tq/main.go:129,170,175,208 hardcode 1/2. Adopting `ExitCode` would distinguish EX_TEMPFAIL (75) from usage (2) — but it is a CLI behavior change (scripts may pin rc=1) and out of scope for this review's recommendation; recorded as an option, not a defect.
 
-**F7 — Test helpers skipped.** lib: `errorfamilytest.AssertRetryable/AssertFamily/...` (checkout errorfamilytest/). repo: host_test.go:403-405 hand-rolls the assertion. One-line swap, zero risk.
+**F7 — Test helpers skipped.** lib: `errorfamilytest.AssertRetryable/AssertFamily/...` (checkout errorfamilytest/). repo: host_test.go:403-405, executor_test.go:178-200, and busy_classify_test.go:20-26 hand-roll the assertion (7 sites, recounted 2026-11-22). One-line swap, zero risk.
 
 **F8 — The erraudit gate does NOT force any of this.** The gate runs `--enforce-go-error-family` (scripts/check-erraudit.sh:44), which per `erraudit lint --help` "flags stdlib error constructors as violations". Verified 2026-11-08 by probing the installed build (`erraudit --version` → 5c841cf) on a scratch module containing bare `errors.New`, `fmt.Errorf` (both plain and `%w`), and `errors.Join` under `--max`: zero stdlib_constructor findings — the rule is inert for these shapes in this build. Consequence: family adoption is entirely convention; the 91 `errors.AsType` sites (re-counted 2026-11-22; AGENTS.md "Go 1.26+ idioms") and the single `//nolint:legacyerrors` site (executor_test.go:160) are the only error-discipline surfaces the gate actually pins.
 
