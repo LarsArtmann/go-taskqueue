@@ -852,7 +852,7 @@ templ reviewFindings(res executor.ReviewResult) {
 			</ul>
 		}
 		if !sessionUsageEmpty(res.SessionCostUSD, res.SessionPromptTokens, res.SessionCompletionTokens, res.SessionMessageCount) {
-			<p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{ sessionUsageText(res.SessionCostUSD, res.SessionPromptTokens, res.SessionCompletionTokens, res.SessionMessageCount) }</p>
+			@sessionUsageLine(res.SessionCostUSD, res.SessionPromptTokens, res.SessionCompletionTokens, res.SessionMessageCount)
 		}
 		@fullOutputLine(res.LogPath)
 	}
@@ -888,11 +888,20 @@ templ agentResultCard(res executor.AgentResult) {
 }
 
 // sessionUsageLine renders the derived session usage (cost, tokens,
-// messages) once for all three result cards: machine values read in the
-// mono vocabulary (operator-stance audit F3), not a proportional-font
-// afterthought per card.
+// messages) once for all result cards: the two-voice split applied
+// deliberately (design-pass §f28) — numbers are machine values and read
+// in the mono vocabulary, the connective prose stays sans (operator-stance
+// audit F3: not a proportional-font afterthought per card).
 templ sessionUsageLine(costUSD float64, promptTokens, completionTokens int64, messages int) {
-	<p class="mt-2 font-mono text-xs text-gray-500 dark:text-gray-400">{ sessionUsageText(costUSD, promptTokens, completionTokens, messages) }</p>
+	<p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+		for _, seg := range sessionUsageSegments(costUSD, promptTokens, completionTokens, messages) {
+			if seg.Mono {
+				<span class="font-mono">{ seg.Text }</span>
+			} else {
+				{ seg.Text }
+			}
+		}
+	</p>
 }
 
 // statusReportCard renders the status loop's outcome: where the report

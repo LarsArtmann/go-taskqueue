@@ -639,3 +639,33 @@ func TestBudgetMeterUnifiesPctFillTone(t *testing.T) {
 		})
 	}
 }
+
+// TestSessionUsageLineTwoVoice pins the usage line's two-voice split
+// (design-pass §f28): every number segment renders in a font-mono span,
+// the connective prose stays outside spans — applied deliberately, not
+// inherited.
+func TestSessionUsageLineTwoVoice(t *testing.T) {
+	t.Parallel()
+
+	html := renderComponent(context.Background(),
+		sessionUsageLine(0.0123, 1234, 567, 8))
+	for _, want := range []string{
+		`<span class="font-mono">1234</span>`,
+		`<span class="font-mono">567</span>`,
+		`<span class="font-mono">$0.0123</span>`,
+		`<span class="font-mono">8</span>`,
+		` prompt + `,
+		` completion tokens · `,
+		` derived session cost`,
+		` messages`,
+	} {
+		if !strings.Contains(html, want) {
+			t.Fatalf("sessionUsageLine missing %q", want)
+		}
+	}
+
+	solo := renderComponent(context.Background(), sessionUsageLine(0, 0, 0, 3))
+	if !strings.Contains(solo, `<span class="font-mono">3</span> messages`) {
+		t.Fatalf("message-only usage line lost the mono count: %q", solo)
+	}
+}

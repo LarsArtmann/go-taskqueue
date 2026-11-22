@@ -281,22 +281,43 @@ func sessionUsageEmpty(costUSD float64, promptTokens, completionTokens int64, me
 	return costUSD == 0 && promptTokens == 0 && completionTokens == 0 && messages == 0
 }
 
-// sessionUsageText renders the derived session usage the result types share
-// (same json keys by the budget projection's drift pin): tokens first, then
-// cost, then the message count as a suffix — the message count alone when it
-// is the only extracted signal.
-func sessionUsageText(costUSD float64, promptTokens, completionTokens int64, messages int) string {
+// usageSegment is one piece of the derived-session-usage line: the
+// two-voice split (design-pass §f28) renders Mono segments in the mono
+// vocabulary and prose segments in the sans body voice.
+type usageSegment struct {
+	Text string
+	Mono bool
+}
+
+// sessionUsageSegments renders the derived session usage the result types
+// share (same json keys by the budget projection's drift pin): tokens
+// first, then cost, then the message count as a suffix — the message
+// count alone when it is the only extracted signal. Numbers are machine
+// values and go mono; the connective prose stays sans.
+func sessionUsageSegments(costUSD float64, promptTokens, completionTokens int64, messages int) []usageSegment {
 	if promptTokens == 0 && completionTokens == 0 && costUSD == 0 {
-		return formatInt(messages) + " messages"
+		return []usageSegment{
+			{Text: formatInt(messages), Mono: true},
+			{Text: " messages"},
+		}
 	}
 
-	text := fmt.Sprintf("%s prompt + %s completion tokens · $%.4f derived session cost",
-		formatInt(int(promptTokens)), formatInt(int(completionTokens)), costUSD)
+	segs := []usageSegment{
+		{Text: formatInt(int(promptTokens)), Mono: true},
+		{Text: " prompt + "},
+		{Text: formatInt(int(completionTokens)), Mono: true},
+		{Text: " completion tokens · "},
+		{Text: fmt.Sprintf("$%.4f", costUSD), Mono: true},
+		{Text: " derived session cost"},
+	}
 	if messages > 0 {
-		text += " · " + formatInt(messages) + " messages"
+		segs = append(segs,
+			usageSegment{Text: " · "},
+			usageSegment{Text: formatInt(messages), Mono: true},
+			usageSegment{Text: " messages"},
+		)
 	}
-
-	return text
+	return segs
 }
 
 // findingSeverityType maps a review finding's severity hint onto the badge
