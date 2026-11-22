@@ -476,3 +476,155 @@ func TestPayloadSectionStatusWindowReports(t *testing.T) {
 		t.Error("entry without a report must render no report path in the strip")
 	}
 }
+
+// TestWindowGroupsPartition pins the §f29 grouping helpers: clusters form
+// in encounter order (stable), a legacy empty relation normalizes to
+// window, and the flat strip's label is the one shared relation when
+// entries agree (the neutral window name when they don't).
+func TestWindowGroupsPartition(t *testing.T) {
+	t.Parallel()
+
+	mixed := []statusWindowEntry{
+		{TaskID: "w1", Relation: windowRelationWindow},
+		{TaskID: "w2"},
+		{TaskID: "f1", Relation: windowRelationFix},
+		{TaskID: "f2", Relation: windowRelationFix},
+		{TaskID: "w3", Relation: windowRelationWindow},
+	}
+
+	groups := windowGroups(mixed)
+	if len(groups) != 3 {
+		t.Fatalf("groups = %+v, want 3 clusters in encounter order", groups)
+	}
+
+	if groups[0].Relation != windowRelationWindow || len(groups[0].Entries) != 2 {
+		t.Errorf("first cluster = %+v, want window x2", groups[0])
+	}
+
+	if groups[1].Relation != windowRelationFix || len(groups[1].Entries) != 2 {
+		t.Errorf("second cluster = %+v, want fix x2 (empty relation normalized)", groups[1])
+	}
+
+	if groups[2].Relation != windowRelationWindow || len(groups[2].Entries) != 1 {
+		t.Errorf("third cluster = %+v, want the trailing window entry split back out", groups[2])
+	}
+
+	if got := windowRowLabel(mixed); got != windowRelationWindow {
+		t.Errorf("row label for mixed relations = %q, want the neutral %q", got, windowRelationWindow)
+	}
+
+	if got := windowRowLabel(mixed[:2]); got != windowRelationWindow {
+		t.Errorf("row label for uniform window strip = %q, want %q", got, windowRelationWindow)
+	}
+}
+
+// TestPayloadSectionWindowGrouping pins the §f29 render split: a window
+// strip of 4+ entries renders relation-labeled clusters (relation·count
+// chips instead of the flat row label) — an unlabeled wall of short IDs is
+// exactly what a pathological status window becomes — while 3 or fewer
+// keeps the flat "window" strip untouched.
+func TestPayloadSectionWindowGrouping(t *testing.T) {
+	t.Parallel()
+
+	render := func(t *testing.T, completed string) string {
+		t.Helper()
+
+		payload := `{"repo":"/repos/demo","project":"demo","completed":[` + completed + `]}`
+		tk := task.Task{Type: executor.TaskTypeStatus, Payload: jsontext.Value(payload)}
+
+		var buf bytes.Buffer
+		if err := payloadSection(tk, payloadViewFor(tk)).Render(context.Background(), &buf); err != nil {
+			t.Fatalf("payloadSection render: %v", err)
+		}
+
+		return buf.String()
+	}
+
+	entry := func(id string) string {
+		return `{"task_id":"` + id + `","item":"x"}`
+	}
+
+	t.Run("four entries group by relation", func(t *testing.T) {
+		t.Parallel()
+
+		html := render(t, entry("w1")+","+entry("w2")+","+entry("w3")+","+entry("w4"))
+
+		if !strings.Contains(html, ">"+windowRelationWindow+"·4<") {
+			t.Errorf("grouped strip missing the window·4 cluster chip: %s", html)
+		}
+
+		for _, id := range []string{"w1", "w2", "w3", "w4"} {
+			if !strings.Contains(html, `href="/task/`+id+`"`) {
+				t.Errorf("grouped strip lost the %s link", id)
+			}
+		}
+
+		if strings.Contains(html, ">window</span><span class=\"tq-payload-window-links\">") {
+			t.Error("grouped strip must drop the flat row label")
+		}
+	})
+
+	t.Run("three entries keep the flat strip", func(t *testing.T) {
+		t.Parallel()
+
+		html := render(t, entry("w1")+","+entry("w2")+","+entry("w3"))
+
+		if !strings.Contains(html, ">window</span><span class=\"tq-payload-window-links\">") {
+			t.Errorf("flat strip missing the window row label: %s", html)
+		}
+
+		if strings.Contains(html, "window·3") {
+			t.Errorf("three entries must not group: %s", html)
+		}
+	})
+}
+
+// TestPayloadViewDLQFix pins the autopsy payload's projection: the dead
+// task renders as the window row's fix relation (the one §f29 relation a
+// status payload never carries), the Work excerpt leads, and the raw JSON
+// blob the kind degraded to before the projection existed stays one click
+// away.
+func TestPayloadViewDLQFix(t *testing.T) {
+	t.Parallel()
+
+	payload := `{"repo":"/repos/demo","dead_task":"dead-0001","dead_type":"agent",` +
+		`"work":"Fix the flaky sse drain test\n\nDetails follow.","attempts":3,"timeout_minutes":30}`
+	tk := task.Task{Type: executor.TaskTypeDLQFix, Payload: jsontext.Value(payload)}
+	pv := payloadViewFor(tk)
+
+	if pv.Kind != payloadDlqfix {
+		t.Fatalf("kind = %q, want %q", pv.Kind, payloadDlqfix)
+	}
+
+	if pv.Lede != "Fix the flaky sse drain test" {
+		t.Errorf("lede = %q, want the Work excerpt's first line", pv.Lede)
+	}
+
+	var deadLinked bool
+
+	for _, f := range pv.Fields {
+		if f.Label == "dead task" && f.Href == "/task/dead-0001" {
+			deadLinked = true
+		}
+	}
+
+	if !deadLinked {
+		t.Error("dead task must link to its detail page")
+	}
+
+	if len(pv.Window) != 1 || pv.Window[0].TaskID != "dead-0001" || pv.Window[0].Relation != windowRelationFix {
+		t.Errorf("window = %+v, want the dead task as the fix relation", pv.Window)
+	}
+
+	var buf bytes.Buffer
+	if err := payloadSection(tk, payloadViewFor(tk)).Render(context.Background(), &buf); err != nil {
+		t.Fatalf("payloadSection render: %v", err)
+	}
+
+	html := buf.String()
+	for _, marker := range []string{"payload · dlqfix", `href="/task/dead-0001"`, ">fix<", "Fix the flaky sse drain test", "raw payload"} {
+		if !strings.Contains(html, marker) {
+			t.Errorf("rendered autopsy section missing %q: %s", marker, html)
+		}
+	}
+}
