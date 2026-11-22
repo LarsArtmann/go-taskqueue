@@ -29,8 +29,8 @@
 #   - multi-file tail (fails in session shells)
 #   - chained single `&` (backgrounds the wrong span)
 #   - bare \d/\t in grep patterns without -P/-F (literal d/t)
-#   - root go build/test/vet while internal-module dirs are dirty and
-#     vendor/ is stale (root builds read vendor/)
+#   - `go mod vendor` (vendor/ is deleted 2026-11-23; re-planting re-opens
+#     the stale-tree class root builds silently read)
 #   - GOCACHE resolving into /nix/store (ENOSPC death)
 #   - nested-module go commands missing GOEXPERIMENT=jsonv2 GOWORK=off
 #   - nix build/run/flake with untracked files (flakes see tracked only)
@@ -215,7 +215,8 @@ if [ "${1:-}" = "--self-test" ]; then
 	rcase ctx:'run_in_background' 'chained single & advisory' 'sleep 1 & sleep 2 & wait'
 	rcase silent 'redirect forms are not background operators' 'go test ./... 2>&1 | tee /tmp/a.log 2>&1 | tail -1'
 	rcase ctx:'[[:digit:]]' 'bare \d advisory' "grep -E '\\d+' f"
-	CRUSH_CWD="$tmp/dirtyrepo" CRUSH_PROJECT_DIR="$tmp/dirtyrepo" rcase ctx:'go mod vendor' 'stale vendor advisory' 'go test ./...'
+	rcase ctx:'vendor' 'go mod vendor re-plant advisory' 'go mod vendor'
+	rcase silent 'go test in dirty repo is silent post-vendor-removal' 'go test ./...'
 	GOCACHE="$tmp/poisoncache" rcase ctx:'/tmp/go-build-cache' 'poisoned GOCACHE advisory' 'go build ./...'
 	CRUSH_CWD="$tmp/nest/internal/queue" rcase ctx:'GOWORK=off' 'nested-module advisory' 'go test ./...'
 	CRUSH_CWD="$tmp/dirtyrepo" CRUSH_PROJECT_DIR="$tmp/dirtyrepo" rcase ctx:'git add' 'nix untracked-files advisory' 'nix build .#test'
@@ -605,10 +606,8 @@ if uses_posix_regex && ! has_pcre_or_fixed_grep && printf '%s' "$sanitized" | gr
 	adv ere-bracket-class "POSIX ERE: \\d and \\t match literal 'd'/'t' — use [[:digit:]]/[[:space:]] classes or grep -P (2026-10-27 silent-skip incident)."
 fi
 
-if has_go_tool_cmd && [ -n "${CRUSH_PROJECT_DIR:-}" ] && [ "${CRUSH_CWD:-}" = "$CRUSH_PROJECT_DIR" ] &&
-	! printf '%s' "$cmd" | grep -q 'go mod vendor' &&
-	[ -n "$(git -C "$CRUSH_PROJECT_DIR" status --porcelain -- internal task journal queue executor worker cmd 2>/dev/null | head -1)" ]; then
-	adv stale-vendor "root go build/test reads vendor/ and internal-module dirs have uncommitted changes — run 'go mod vendor' first (check-gomod-vendor-sync.sh gates this)."
+if printf '%s' "$cmd" | grep -Eq 'go[[:space:]]+mod[[:space:]]+vendor'; then
+	adv vendor-replant "vendor/ is DELETED (2026-11-23) — 'go mod vendor' re-plants the gitignored stale-tree class root builds silently read (AGENTS.md Known Issues). Dep-bump hygiene is per-module tidy; check-gomod-sync.sh gates it."
 fi
 
 go_cache_hazard() {

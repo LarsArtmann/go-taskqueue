@@ -138,6 +138,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Internal
 
+- **Deleted the local `vendor/` tree and retired its drift gate leg**
+  (2026-11-23): `vendor/` was a gitignored 167 MB local-only tree that
+  root builds silently read (`-mod=vendor`) — every internal-module
+  change needed a `go mod vendor` follow-up or builds died on stale
+  vendoring. The tree is gone permanently (never re-plant; `go mod
+  vendor` now draws a tq-bash-guard advisory) and
+  `scripts/check-gomod-vendor-sync.sh` is renamed
+  `scripts/check-gomod-sync.sh` with the vendor leg removed: per-module
+  tidy drift detection, cmd/tq cqrs parity (now REQUIRED to report its
+  ok-line), and the lint-leak go.sum scan all stay. Env hooks renamed
+  (`GOMOD_SYNC_SELF_TEST`/`GOMOD_SYNC_OFF`/`TQ_GOMOD_SYNC_EXTRA_SUMS`).
+  No operator-visible behavior change.
 - Re-enabled the templ-freshness regenerate-and-diff gate (disabled
   red-by-construction 2026-11-17): go-nix-helpers `templCliPackage`
   oracle override consumed via a flake.lock bump, oracle pinned to

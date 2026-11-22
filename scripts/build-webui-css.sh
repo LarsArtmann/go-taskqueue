@@ -18,16 +18,14 @@ cd "$(dirname "$0")/.."
 
 # go.mod requires go >= 1.27.1; hosts pinning GOTOOLCHAIN=local on an older
 # toolchain (a nix-run env) would silently fail the go list resolution below
-# and fall into the vendor fallback, which never carries templates/. Honor
-# an explicit override, otherwise let go pick the module's toolchain.
+# and exit at the cannot-resolve error. Honor an explicit override,
+# otherwise let go pick the module's toolchain.
 export GOTOOLCHAIN="${GOTOOLCHAIN:-auto}"
 
 # Module dir resolution: `go list -m` resolves Dir as EMPTY for a module
 # whose source is not extracted yet (cold module cache — the CI runner has
-# none), and as EMPTY when a (git-ignored) vendor/ directory flips go into
-# vendor mode — hence -mod=mod throughout, plus a download warm-up for the
-# two out-of-repo sources before the list, and a vendored-source fallback
-# when the network is unavailable (offline sandbox).
+# none) — hence -mod=mod throughout, plus a download warm-up for the
+# two out-of-repo sources before the list.
 #
 # The resolution runs in a THROWAWAY module under /tmp, never in the repo:
 # -mod=mod makes `go list -m` materialize the whole module graph into the
@@ -55,12 +53,8 @@ module_dir() {
 	local dir
 	dir="$(resolve_module_dir "$1")"
 
-	if [ -z "$dir" ] && [ -d "vendor/$1" ]; then
-		dir="$(pwd)/vendor/$1"
-	fi
-
 	if [ -z "$dir" ]; then
-		echo "cannot resolve module dir for $1 (no cache, no vendor/)" >&2
+		echo "cannot resolve module dir for $1 (cold module cache, no network?)" >&2
 		exit 1
 	fi
 

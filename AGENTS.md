@@ -357,8 +357,8 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   format yields empty; chained `&` backgrounds the wrong span; `kill` cannot
   signal LIVE pids (rc=2) — python3 `os.kill`. POSIX ERE: `\t` in a grep
   bracket class is a literal `t` — use `[[:space:]]`/`[[:alnum:]]`, never `\t`/`\d`.
-- **Root builds auto-use `vendor/`** — internal/ changes need `go mod vendor`
-  first; dep bumps also per-module tidy (`check-gomod-vendor-sync.sh`).
+- **vendor/ deleted 2026-11-23 — NEVER `go mod vendor`** (re-plants the
+  stale-tree class); dep-bump tidy gate: `check-gomod-sync.sh`.
 - **GOEXPERIMENT/GOTOOLCHAIN**: ci-local exports jsonv2; CI setup-go + go.mod
   floors + flake tarball PINNED IN LOCKSTEP (1.27.4); NEVER lower a `go`
   directive (`check-go-mods.sh`).

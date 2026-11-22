@@ -1,25 +1,25 @@
 #!/usr/bin/env bash
-# Dep-bump drift gate: vendor/ and per-module go.mod/go.sum must be in sync
-# with the module graph. The 2026-10-07 03:12 dep bump (b886a677) landed
-# without `go mod vendor` or the 15 tree-wide `go mod tidy` follow-ups,
-# costing a multi-hour red window — this gate fails the NEXT bump at gate
-# time instead of at the next consumer build.
+# Dep-bump drift gate: per-module go.mod/go.sum must be tidy against the
+# module graph. The 2026-10-07 03:12 dep bump (b886a677) landed without
+# the 15 tree-wide `go mod tidy` follow-ups, costing a multi-hour red
+# window — this gate fails the NEXT bump at gate time instead of at the
+# next consumer build.
 #
 # Method (content-based, mtime-free — git checkout rewrites mtimes so
-# timestamps lie): regenerate (go mod vendor / go mod tidy) and require
-# zero change. Tracked files (go.mod/go.sum): empty scoped git status.
-# vendor/ is GITIGNORED (.gitignore:64) — git status is structurally
-# blind to it — so its anchor is a content hash of the tree compared
-# across the regeneration boundary. An ABSENT tree (fresh CI checkout —
-# vendor/ never lands in git) is not drift: nothing stale exists to
-# detect, the regeneration IS the heal. An out-of-sync tree is BOTH
-# detected and healed by the same run: the files on disk are correct
-# afterwards and only need staging.
+# timestamps lie): regenerate (go mod tidy) and require zero change
+# (empty scoped git status on the module's go.mod/go.sum; a missing
+# go.sum is drift too — `git diff` alone misses untracked files). An
+# out-of-sync tree is BOTH detected and healed by the same run: the
+# files on disk are correct afterwards and only need staging.
+#
+# The historical vendor/ drift leg is RETIRED (2026-11-23): vendor/ was
+# a gitignored local tree the gate regenerated via `go mod vendor`; it
+# is deleted permanently (AGENTS.md Known Issues) — never re-plant it.
 #
 # Modes:
-#   ./scripts/check-gomod-vendor-sync.sh            gate the real repo
-#   VENDOR_SYNC_SELF_TEST=1 ./scripts/check-…       pin drift detection
-#   VENDOR_SYNC_OFF=1                              skip (network-tolerant escape)
+#   ./scripts/check-gomod-sync.sh                   gate the real repo
+#   GOMOD_SYNC_SELF_TEST=1 ./scripts/check-…        pin drift detection
+#   GOMOD_SYNC_OFF=1                                skip (network-tolerant escape)
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -46,21 +46,9 @@ detect_drift() {
 	echo "FAIL: $label DRIFTED — regenerated files differ from the committed tree:" >&2
 	printf '%s\n' "$out" | sed 's/^/  /' >&2
 	echo "  The regeneration above already healed the tree: review + stage the diff." >&2
-	echo "  (dep-bump class of 2026-10-07 03:12: bump without go mod vendor / tidy;" >&2
+	echo "  (dep-bump class of 2026-10-07 03:12: bump without per-module tidy;" >&2
 	echo "  if a concurrent agent landed a bump mid-gate, let it commit and re-run.)" >&2
 	return 1
-}
-
-# Deterministic content hash over the vendor tree. vendor/ is gitignored,
-# so git status can never report it (verified 2026-10-07: a mutated
-# vendor/modules.txt yields an EMPTY scoped status) — the gate compares
-# this hash across the regeneration boundary instead.
-vendor_tree_hash() {
-	if [ ! -d vendor ]; then
-		printf 'absent\n'
-		return 0
-	fi
-	find vendor -type f -print0 | sort -z | xargs -0 -r sha256sum | sha256sum | cut -d' ' -f1
 }
 
 # cmd/tq is replace-free (ADR-0017): it consumes the internal modules'
@@ -191,27 +179,26 @@ lint_leak_scan() {
 }
 
 self_test() {
-	local tmp rc h1 h2 blind drift_out parity_out
+	local tmp rc drift_out parity_out
 	tmp="$(mktemp -d)"
 	trap 'rm -rf "$tmp"' RETURN
 	git init -q "$tmp/repo"
-	mkdir -p "$tmp/repo/sub" "$tmp/repo/vendor"
+	mkdir -p "$tmp/repo/sub"
 	printf 'module test\n\ngo 1.27\n' >"$tmp/repo/go.mod"
-	printf '# vendor/modules.txt\n# test test\n' >"$tmp/repo/vendor/modules.txt"
 	printf 'module sub\n\ngo 1.27\n' >"$tmp/repo/sub/go.mod"
-	# Mirror the real repo: vendor/ is gitignored — git never sees it.
+	# Mirror the real repo .gitignore: vendor/ stays a listed ignore even
+	# though the tree is deleted — a re-plant must never become trackable.
 	printf 'vendor/\n' >"$tmp/repo/.gitignore"
 	git -C "$tmp/repo" add -A
 	# A committed HEAD makes "in sync" mean clean-vs-HEAD, exactly like the
 	# real repo at gate time (edit → commit → battery convention).
 	git -C "$tmp/repo" -c user.email=t@t -c user.name=t commit -qm init
 
-	# Case 1: untouched tree → tracked scopes pass; vendor hash captured.
+	# Case 1: untouched tree → tracked scopes pass.
 	if ! (cd "$tmp/repo" && detect_drift "root go.mod/go.sum" go.mod go.sum); then
 		echo "SELF-TEST FAIL: in-sync tree reported as drifted" >&2
 		return 1
 	fi
-	h1="$(cd "$tmp/repo" && vendor_tree_hash)"
 	if ! (cd "$tmp/repo" && detect_drift "sub tidy" sub/go.mod sub/go.sum); then
 		echo "SELF-TEST FAIL: in-sync sub-module reported as drifted" >&2
 		return 1
@@ -237,52 +224,7 @@ self_test() {
 		return 1
 	fi
 
-	# Case 4: the blindness pin — a drifted gitignored vendor tree is
-	# INVISIBLE to git status (empty scoped status) yet MOVES the content
-	# hash; git-status anchoring would have waved it through.
-	printf '# drifted\n' >>"$tmp/repo/vendor/modules.txt"
-	blind="$(cd "$tmp/repo" && git status --porcelain -- vendor/)"
-	if [ -n "$blind" ]; then
-		echo "SELF-TEST FAIL: fixture no longer gitignores vendor/ (git status saw it)" >&2
-		return 1
-	fi
-	h2="$(cd "$tmp/repo" && vendor_tree_hash)"
-	if [ "$h1" = "$h2" ]; then
-		echo "SELF-TEST FAIL: drifted vendor tree did not move the content hash" >&2
-		return 1
-	fi
-
-	# Case 5: absent vendor tree at gate start (fresh CI checkout) must
-	# PASS — the regeneration creates the tree, there is nothing stale to
-	# detect (CI run 37593760430: before=absent failed every fresh run).
-	rm -rf "$tmp/repo/vendor"
-	printf 'module test\n\ngo 1.27\n' >"$tmp/repo/go.mod"
-	case5="$(cd "$tmp/repo" && root_vendor_in_sync)" || {
-		echo "SELF-TEST FAIL: absent vendor tree at start reported as drift" >&2
-		return 1
-	}
-	case "$case5" in
-	*"absent at start"*) ;;
-	*)
-		echo "SELF-TEST FAIL: absent-start run did not take the absent branch: $case5" >&2
-		return 1
-		;;
-	esac
-	# Case 6: the tree Case 5 generated must re-run in sync (idempotent
-	# regeneration — before is now a real hash, stable across the boundary).
-	case6="$(cd "$tmp/repo" && root_vendor_in_sync)" || {
-		echo "SELF-TEST FAIL: freshly generated vendor tree reported as drift on re-run" >&2
-		return 1
-	}
-	case "$case6" in
-	*"in sync (content hash"*) ;;
-	*)
-		echo "SELF-TEST FAIL: re-run did not report the generated tree in sync: $case6" >&2
-		return 1
-		;;
-	esac
-
-	# Case 7: cmd/tq cqrs parity — a lagging cmd/tq pin must FAIL, an
+	# Case 4: cmd/tq cqrs parity — a lagging cmd/tq pin must FAIL, an
 	# at-parity pin must pass (2026-10-15 parity-sweep §e2 class). Canary
 	# (expect-branch contract): the FAIL must name the lag, not rc-only.
 	mkdir -p "$tmp/repo/internal/dep" "$tmp/repo/cmd"
@@ -305,7 +247,7 @@ self_test() {
 		return 1
 	fi
 
-	# Case 8: lint-leak class (CI 41877954180) — a go.sum carrying foreign
+	# Case 5: lint-leak class (CI 41877954180) — a go.sum carrying foreign
 	# lint-toolchain entries must FAIL with the lint-leak canary; a clean
 	# go.sum and an absent file must pass (absent go.sum is legal pre-tidy).
 	printf '4d63.com/gochecknoglobals v0.2.2 h1:xxx=\ncodeberg.org/x/y v1.0.0 h1:yyy=\ngithub.com/golangci/golangci-lint v1.64.8 h1:zzz=\n' >"$tmp/repo/sub/go.sum"
@@ -324,7 +266,7 @@ self_test() {
 		return 1
 	fi
 
-	# Case 9: allowlist — an allowlisted module+domain row passes the scan;
+	# Case 6: allowlist — an allowlisted module+domain row passes the scan;
 	# the same entry under a NON-allowlisted module, and a non-matching
 	# domain under the allowlisted module, still fail.
 	local saved_allow=("${lint_leak_allowlist[@]+"${lint_leak_allowlist[@]}"}")
@@ -346,7 +288,7 @@ self_test() {
 	fi
 	lint_leak_allowlist=("${saved_allow[@]+"${saved_allow[@]}"}")
 
-	# Case 10: go.work.sum coverage — foreign entries there are the same
+	# Case 7: go.work.sum coverage — foreign entries there are the same
 	# leak class (cmd/tq/go.work.sum carried golangci's graph; deletion
 	# regenerates nothing — verified 2026-11-12); the heal message must
 	# name the delete-and-regenerate path, not tidy or go work sync.
@@ -357,21 +299,21 @@ self_test() {
 		return 1
 	fi
 
-	# Case 11: end-to-end — the injected leak fixture flows through the
-	# REAL gate path (TQ_VENDOR_SYNC_EXTRA_SUMS -> the main lint-leak
+	# Case 8: end-to-end — the injected leak fixture flows through the
+	# REAL gate path (TQ_GOMOD_SYNC_EXTRA_SUMS -> the main lint-leak
 	# scan line; the TQ_GOMODS_EXTRA_MODS pattern), rc=1 with the
 	# fixture path named.
 	fx_sum="$tmp/repo/leak-fixture.go.sum"
 	printf '4d63.com/gochecknoglobals v0.2.2 h1:e2e=\n' >"$fx_sum"
 	local self_abs e2e_out e2e_rc=0
 	self_abs="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
-	e2e_out="$(TQ_VENDOR_SYNC_EXTRA_SUMS="$fx_sum" "$self_abs" 2>&1)" || e2e_rc=$?
+	e2e_out="$(TQ_GOMOD_SYNC_EXTRA_SUMS="$fx_sum" "$self_abs" 2>&1)" || e2e_rc=$?
 	if [ "$e2e_rc" -ne 1 ] || [[ "$e2e_out" != *"lint-leak in $fx_sum"* ]]; then
 		echo "SELF-TEST FAIL: e2e leak fixture NOT detected through the gate path (rc=$e2e_rc, out tail: $(printf '%s' "$e2e_out" | tail -3))" >&2
 		return 1
 	fi
 
-	echo "self-test ok: sync/drift detection pinned (tracked scopes + ignored-vendor hash anchor + absent-start + cqrs parity + lint-leak class + allowlist + work-sum + e2e hook)"
+	echo "self-test ok: sync/drift detection pinned (tracked scopes + cqrs parity + lint-leak class + allowlist + work-sum + e2e hook)"
 	return 0
 }
 
@@ -403,20 +345,17 @@ root_vendor_in_sync() {
 	echo "ok: root vendor/ in sync (content hash $after)"
 }
 
-if [ "${VENDOR_SYNC_SELF_TEST:-0}" = 1 ] || [ "${1:-}" = "--self-test" ]; then
+if [ "${GOMOD_SYNC_SELF_TEST:-0}" = 1 ] || [ "${1:-}" = "--self-test" ]; then
 	self_test
 	exit $?
 fi
 
-if [ "${VENDOR_SYNC_OFF:-0}" = 1 ]; then
+if [ "${GOMOD_SYNC_OFF:-0}" = 1 ]; then
 	echo "SKIP: VENDOR_SYNC_OFF=1 (network-tolerant escape)"
 	exit 0
 fi
 
 fail=0
-
-root_vendor_in_sync || fail=1
-detect_drift "root go.mod/go.sum (go mod vendor)" go.mod go.sum || fail=1
 
 # Per-module: go.mod/go.sum must be tidy (b886a677 class: 15 files across
 # modules needed tidy after the bump). cmd/tq sits outside
@@ -451,15 +390,27 @@ done
 # go.work.sum coverage (2026-11-12): foreign entries there are the leak
 # class — cmd/tq/go.work.sum carried golangci's graph and deleting it
 # regenerates nothing (verified). Scanned like go.sums; heal = delete +
-# workspace regen. TQ_VENDOR_SYNC_EXTRA_SUMS: self-test hook appending
+# workspace regen. TQ_GOMOD_SYNC_EXTRA_SUMS: self-test hook appending
 # fixture go.sum paths to this scan (the check-go-mods
 # TQ_GOMODS_EXTRA_MODS pattern).
 lint_leak_scan go.sum cmd/tq/go.sum cmd/tq/go.work.sum \
-	${TQ_VENDOR_SYNC_EXTRA_SUMS:-} \
+	${TQ_GOMOD_SYNC_EXTRA_SUMS:-} \
 	"$(for m in $mods; do echo "$m/go.sum"; done)" || fail=1
-cmdtq_cqrs_parity || fail=1
+
+# The parity check must prove it ran (row 1076): an unwired or
+# future-removed call fails the run instead of passing silently.
+parity_out="$(cmdtq_cqrs_parity 2>&1)" && parity_rc=0 || parity_rc=$?
+printf '%s\n' "$parity_out"
+case "$parity_out" in
+*"cmd/tq cqrs pins in parity"*) ;;
+*)
+	echo "FAIL: cmd/tq cqrs parity produced no ok-line (unwired or removed check)" >&2
+	fail=1
+	;;
+esac
+[ "$parity_rc" -eq 0 ] || fail=1
 
 if [ "$fail" -eq 0 ]; then
-	echo "vendor-sync summary: root vendor + all module tidies in sync"
+	echo "gomod-sync summary: all module tidies in sync (+ cmd/tq cqrs parity + lint-leak scan)"
 fi
 exit $fail

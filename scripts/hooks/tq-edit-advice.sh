@@ -159,7 +159,7 @@ CHANGELOG.md)
 	note="CHANGELOG is append-only; [Unreleased] carries OPERATOR-VISIBLE changes only — repo-internal rows go under '### Internal'; behavior changes get an explicit '(BEHAVIOR CHANGE ...)' flag (O14, check-release-docs.sh)."
 	;;
 go.mod)
-	note="go.mod: NEVER lower the 'go' directive (check-go-mods.sh); a bumped directive requires 'go work edit -go=<ver>' on cmd/tq/go.work in the same change; per-module tidy + vendor sync follow (check-gomod-vendor-sync.sh)."
+	note="go.mod: NEVER lower the 'go' directive (check-go-mods.sh); a bumped directive requires 'go work edit -go=<ver>' on cmd/tq/go.work in the same change; per-module tidy follows (check-gomod-sync.sh). NEVER run 'go mod vendor' — vendor/ is deleted (2026-11-23)."
 	;;
 esac
 

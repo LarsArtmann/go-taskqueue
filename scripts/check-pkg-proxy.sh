@@ -50,8 +50,10 @@ skipped=0
 
 for mod in "${mods[@]}"; do
 	label="$mod@$version"
-	# -mod=readonly: the root vendor/ dir would otherwise make `go list -m`
-	# refuse to hit the network ("can't determine available versions").
+	# -mod=readonly: the proxy probe must never mutate go.mod/go.sum
+	# (ambient GOFLAGS=-mod=mod is the lint-leak writer class); it
+	# historically also defeated vendor-mode network refusal, retired
+	# with vendor/ (2026-11-23).
 	if ! go list -m -versions -mod=readonly "$mod" 2>/dev/null | tr ' ' '\n' | grep -qx "${version#v}" &&
 		! go list -m -versions -mod=readonly "$mod" 2>/dev/null | tr ' ' '\n' | grep -qx "$version"; then
 		# go list prints bare versions (0.3.0); some toolchains print v-prefixed.

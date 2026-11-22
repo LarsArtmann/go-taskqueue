@@ -22,11 +22,12 @@ tq_proxy_poke() {
 }
 
 tq_proxy_lists() {
-	# -mod=readonly: from the repo root the vendor/ dir would otherwise make
-	# `go list -m` refuse the network query ("can't determine available
-	# versions") and every release would die as proxy lag — the same class
-	# check-pkg-proxy.sh fixed (2026-10-31, v0.4.1: 5/5 lag-die while the
-	# proxy listed the version all along).
+	# -mod=readonly: the proxy probe must never mutate go.mod/go.sum
+	# (ambient GOFLAGS=-mod=mod is the lint-leak writer class, CI
+	# 41877954180). It historically also defeated the gitignored vendor/
+	# tree's vendor-mode network refusal — retired with vendor/ (2026-11-23);
+	# the 2026-10-31 v0.4.1 lag-die class it fixed stays the reason the
+	# probe exists.
 	GOFLAGS='' go list -m -versions -mod=readonly "$1" 2>/dev/null | tr ' ' '\n' | grep -qx "$2"
 }
 

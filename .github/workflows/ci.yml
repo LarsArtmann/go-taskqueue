@@ -85,17 +85,17 @@ jobs:
         # Parity with scripts/ci-local.sh — makes the next toolchain bump
         # one edit + one red gate instead of four hand-synced sources.
         run: ./scripts/check-toolchain-pins.sh
-      - name: Dep-bump drift (vendor + per-module tidy vs committed tree)
-        # Parity with scripts/ci-local.sh — catches the bump-without-vendor
+      - name: Dep-bump drift (per-module tidy vs committed tree)
+        # Parity with scripts/ci-local.sh — catches the bump-without-tidy
         # class (2026-10-07 03:12) at CI time instead of the next consumer.
-        run: ./scripts/check-gomod-vendor-sync.sh
+        run: ./scripts/check-gomod-sync.sh
       - name: Facade parity (ADR-0016)
         # Parity with scripts/ci-local.sh — the checker owns the rules.
         run: ./scripts/check-facade-parity.sh
       - name: Gofmt
-        # Scope to non-vendor files exactly like ci-local.sh: the
-        # dep-bump drift gate generates vendor/ earlier in this job, and
-        # vendored upstream code predates the current gofmt.
+        # Seatbelt filter exactly like ci-local.sh: a re-planted
+        # (gitignored) vendor/ tree must never enter the gate; vendored
+        # upstream code predates the current gofmt.
         run: test -z "$(gofmt -l . | grep -v '^vendor/')" || (gofmt -l . | grep -v '^vendor/' && exit 1)
       - name: erraudit gate self-test (lint run enforced by ci-local)
         # HARD gate (owner ruling 2026-10-27, wiring ruled 2026-10-28):
