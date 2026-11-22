@@ -1,12 +1,14 @@
 # httputil/endpoints — Library Utilization Review
 
-**Verdict:** NOT ADOPTED — KEEP OUT — four httpapi routes and a webui that already keeps its route table as data don't need a self-describing `/endpoints` listing from a one-tag module (endpoints/v0.1.0 is still the only tag, and still the newest tag in the whole httputil checkout, as of 2026-11-11).
+**Verdict:** NOT ADOPTED — KEEP OUT — four httpapi routes and a webui that already keeps its route table as data don't need a self-describing `/endpoints` listing from a one-tag module (endpoints/v0.1.0 is still the only tag of its train as of 2026-11-22; it is no longer the newest tag in the whole httputil checkout — root v1.9.0, 2026-11-14, is newer).
+
+> **2026-11-22 refresh:** verdict unchanged; one factual anchor corrected. endpoints/v0.1.0 (2026-11-06) is still the ONLY tag of its train (re-checked 2026-11-22: `git tag -l 'endpoints/*'` → single tag), but the 11-11 claim that it was "the newest tag overall in the checkout" is now FALSE — the root module cut v1.9.0 on 2026-11-14 (`git tag -l | sort -V | tail -1` → v1.9.0). New library-side fact that STRENGTHENS the maturity cost: a real negotiation bug surfaced after the tag — the listing honored only the FIRST `Accept` header line; the fix (combinedAccept, root CHANGELOG [Unreleased]; commit b785f40 "fix: negotiate the endpoints listing across all Accept header lines") is in the checkout working tree (3 references in endpoints/endpoints.go) but NOT in the v0.1.0 tag (0 references in `git show endpoints/v0.1.0:endpoints/endpoints.go`) — the tagged artifact ships the first-line-only bug. tq side re-verified at HEAD 1c8219e6: still unimported (go.mod + import greps → no output); route tables drifted again — `routeBindings()` now webui.go:293–313, `healthBindings()` 319–352, `writeBindings()` 357–371, guardrail note webui.go:288–292 + security_test.go:19; httpapi's four routes are now httpapi.go:195–198 (4 `mux.HandleFunc` lines, counted). endpoints README cites re-anchored (negotiation README:72–79 — the multi-line-combining sentence at :79 describes the UNRELEASED fix; concurrency 81–83; security notes 85–89).
 
 > **2026-11-11 refresh:** all claims re-verified; verdict unchanged. The module remains unimported (go.mod + import greps → no output, re-run 2026-11-11). webui.go shifted under the 2026-11-09 server_timing trial, so the route-table cites moved: `routeBindings()` now webui.go:286–306, `healthBindings()` 312–332, `writeBindings()` 334–351, guardrail note webui.go:281–285 + security_test.go:19. httpapi's four routes are byte-identical (httpapi.go:193–201). endpoints README cites re-anchored (its sections moved: negotiation now README:79, concurrency 81–83, security notes 85–89).
 
-**Pinned:** none (not a dependency; verified 2026-11-08 by `grep -rn 'httputil/endpoints' --include=go.mod . | grep -v vendor` → no output, same for import greps; re-run 2026-11-11 — still no output)
+**Pinned:** none (not a dependency; verified 2026-11-08 by `grep -rn 'httputil/endpoints' --include=go.mod . | grep -v vendor` → no output, same for import greps; re-run 2026-11-22 — still no output)
 
-**Latest:** endpoints/v0.1.0 (local checkout /home/lars/projects/httputil/endpoints, checked 2026-11-08; re-verified 2026-11-11 — still the only endpoints tag AND the newest tag overall in the checkout: `git -C /home/lars/projects/httputil tag -l | sort -V | tail -1` → endpoints/v0.1.0)
+**Latest:** endpoints/v0.1.0 (local checkout /home/lars/projects/httputil/endpoints, checked 2026-11-08; re-verified 2026-11-22 — still the only endpoints tag, but NO LONGER the newest tag overall: `git -C /home/lars/projects/httputil tag -l | sort -V | tail -1` → v1.9.0, cut 2026-11-14)
 
 **Prior coverage:** none (third member of the httputil family; root module reviewed at docs/review/libs/httputil.md — KEEP OUT; server_timing reviewed at docs/review/libs/httputil-server-timing.md — WORTH A TRIAL)
 
@@ -14,19 +16,19 @@
 
 ## 1. Where the need exists today
 
-The module is a `Registry` that mounts each route on a stdlib `*http.ServeMux` AND records it, then serves `GET /endpoints` — JSON for curl, HTML table for browsers, chosen by RFC 9110 proactive negotiation (`Vary: Accept`, `Cache-Control: no-store`); zero dependencies, wiring errors are values not panics (endpoints/README.md:7–11, 21–49; negotiation details README:72–79; API at endpoints.go:93–195 — function list re-verified 2026-11-11).
+The module is a `Registry` that mounts each route on a stdlib `*http.ServeMux` AND records it, then serves `GET /endpoints` — JSON for curl, HTML table for browsers, chosen by RFC 9110 proactive negotiation (`Vary: Accept`, `Cache-Control: no-store`); zero dependencies, wiring errors are values not panics (endpoints/README.md:7–11, 21–49; negotiation details README:72–79; API at endpoints.go:93–195 — function list re-verified 2026-11-22; the unexported `combinedAccept` helper at endpoints.go:200 is the unreleased multi-Accept fix).
 
-The need it would fill — a listing that "can never drift from what is actually served" (README:7) — maps onto:
+The need it would fill — a listing that "can never drift from what is actually served" (README:9) — maps onto:
 
-- **internal/httpapi**: exactly four routes registered inline (internal/httpapi/httpapi.go:193–201: POST /api/v1/tasks, POST /api/v1/errors, GET /api/v1/stats, GET /api/v1/healthz), documented once in docs/adr/0008-http-api.md:22–24 and the `tq api` usage text (cmd/tq/main.go usage block).
-- **internal/webui**: route tables ALREADY exist as data — `routeBindings()` (webui.go:286–306), `healthBindings()` (webui.go:312–332), `writeBindings()` (webui.go:334–351; cites re-anchored 2026-11-11 — was 239–259/265–283/288–302 before the server_timing trial landed) — kept as data specifically so the ADR-0003 read-only guardrail test (`TestRoutesAreReadOnly`, security_test.go:19; design note webui.go:281–285) can prove no mutating handler is registered. The dashboard therefore already has the registry pattern, minus the HTTP listing.
+- **internal/httpapi**: exactly four routes registered inline (internal/httpapi/httpapi.go:195–198: POST /api/v1/tasks, POST /api/v1/errors, GET /api/v1/stats, GET /api/v1/healthz — counted at HEAD 1c8219e6), documented once in docs/adr/0008-http-api.md:22–24 and the `tq api` usage text (cmd/tq/main.go usage block).
+- **internal/webui**: route tables ALREADY exist as data — `routeBindings()` (webui.go:293–313), `healthBindings()` (webui.go:319–352), `writeBindings()` (webui.go:357–371; cites re-anchored 2026-11-22 — was 286–306/312–332/334–351 at the 11-11 refresh, 239–259/265–283/288–302 before the server_timing trial) — kept as data specifically so the ADR-0003 read-only guardrail test (`TestRoutesAreReadOnly`, security_test.go:19; design note webui.go:288–292) can prove no mutating handler is registered. The dashboard therefore already has the registry pattern, minus the HTTP listing.
 
 ## 2. Capability inventory (fit)
 
 | Capability | Status | Evidence |
 | --- | --- | --- |
-| Single-declaration route mount + record | 🟡 partial overlap | webui's `routeBindings` slice is the same pattern, test-driven (webui.go:286–306); httpapi's 4 inline routes are small enough to see at a glance |
-| Self-describing `GET /endpoints` (JSON/HTML negotiated) | 🔴 MISSING-BUT-RELEVANT (marginal: 4 routes, documented in ADR-0008) | httpapi.go:193–201 |
+| Single-declaration route mount + record | 🟡 partial overlap | webui's `routeBindings` slice is the same pattern, test-driven (webui.go:293–313); httpapi's 4 inline routes are small enough to see at a glance |
+| Self-describing `GET /endpoints` (JSON/HTML negotiated) | 🔴 MISSING-BUT-RELEVANT (marginal: 4 routes, documented in ADR-0008) | httpapi.go:195–198 |
 | Drift-proof listing (mount IS the record) | ⚪ N/A (ADR-0008 is the accepted source of truth for the machine API) | docs/adr/0008-http-api.md |
 | Concurrent-safe registry | ⚪ N/A (routes registered once at startup in both tq surfaces) | endpoints/README.md:81–83 |
 | CSP-safe HTML listing | ⚪ N/A (nothing to render) | README:88 |
@@ -34,7 +36,7 @@ The need it would fill — a listing that "can never drift from what is actually
 ## 3. Findings (buy vs cost)
 
 1. **Buy:** machine-discoverable API surface — a producer could `curl /endpoints` instead of reading ADR-0008; zero deps; `Vary: Accept` + `no-store` handled correctly out of the box (README:79).
-2. **Cost (dominant):** maturity. One tag (endpoints/v0.1.0, cut 2026-11-06 — two days before the 2026-11-08 review; tag commit 02e6591 "docs: mark the endpoints first-release items resolved"; still the ONLY tag, re-checked 2026-11-11). The repo's own AGENTS.md:327 calls the endpoints pkg.go.dev page brand new ("the `endpoints` page arrives with its first tag"). Adopting a v0.1.0 router-shape dependency into a surface whose routes are security-relevant is premature.
+2. **Cost (dominant):** maturity. One tag (endpoints/v0.1.0, cut 2026-11-06; tag commit 02e6591 "docs: mark the endpoints first-release items resolved"; still the ONLY tag, re-checked 2026-11-22) — and the tag is now demonstrably behind the code: the multi-Accept-line negotiation fix (combinedAccept) exists only in [Unreleased] (root CHANGELOG; commit b785f40), so the tagged artifact carries the first-line-only bug found in live use. The repo's own AGENTS.md:348 calls the endpoints pkg.go.dev page brand new ("the `endpoints` page arrives with its first tag"). Adopting a v0.1.0 router-shape dependency into a surface whose routes are security-relevant is premature.
 3. **Cost:** their README's own security note — "the listing documents your attack surface" (README:87). tq's httpapi is token-mandatory precisely because it writes (httpapi.go:1–8, 72–74); adding a route whose whole purpose is to enumerate that surface behind the token gate buys nothing for attackers-resistance-neutral visibility, and the webui (the surface with many routes) is a browser dashboard that already links its own pages.
 4. **Cost:** a second source of truth. ADR-0008 documents the API contract including deferred designs (fencing tokens, consumer groups — docs/status/archived/2026-09-08 M22 note); an auto-generated listing cannot record that context, so drift moves from "ADR vs code" to "ADR vs listing vs code".
 5. **Adoption site if it ever happens** (httpapi only):
@@ -60,11 +62,11 @@ The library solves a real problem — `*http.ServeMux` cannot enumerate its patt
 
 ## 5. Maturity + version currency
 
-Latest endpoints/v0.1.0 — the only tag (checked 2026-11-08; re-verified 2026-11-11: `git -C /home/lars/projects/httputil tag -l 'endpoints/*'` → single tag, and `sort -V | tail -1` over all tags returns it — nothing newer was cut since 2026-11-06). Tag commit 02e6591, 2026-11-06; module MIT from creation (checkout AGENTS.md:327: "endpoints MIT from creation 2026-11-06"; LICENSE head re-checked 2026-11-11). Zero dependencies (endpoints/go.mod — no require block, verified 2026-11-11). Test coverage in the checkout is real (fuzz_test.go, bench_test.go, qvalue corpus) but the public API surface is one release old — now five days without a second tag.
+Latest endpoints/v0.1.0 — the only tag of its train (checked 2026-11-08; re-verified 2026-11-22: `git -C /home/lars/projects/httputil tag -l 'endpoints/*'` → single tag; nothing newer was cut since 2026-11-06 — now 16 days). Tag commit 02e6591, 2026-11-06; module MIT from creation (checkout AGENTS.md:348: "endpoints MIT from creation 2026-11-06"; LICENSE head re-checked 2026-11-22). Zero dependencies (endpoints/go.mod — module + go directive only, verified 2026-11-22). Test coverage in the checkout is real (fuzz_test.go, bench_test.go, qvalue corpus) but the public API surface is one release old — and the [Unreleased] multi-Accept fix shows the released artifact already lags the working tree.
 
 ## 6. Conclusion
 
-Keep out and revisit when either (a) the module has a 0.2+/1.0 track record, or (b) `tq api` grows past a handful of routes and a self-describing listing beats ADR-0008 for onboarding producers. Neither condition holds today (re-checked 2026-11-11: still one tag, still four routes at httpapi.go:193–201).
+Keep out and revisit when either (a) the module has a 0.2+/1.0 track record, or (b) `tq api` grows past a handful of routes and a self-describing listing beats ADR-0008 for onboarding producers. Neither condition holds today (re-checked 2026-11-22: still one tag — now shipping behind the working tree — and still four routes at httpapi.go:195–198).
 
 ## How to verify
 
@@ -72,9 +74,11 @@ Keep out and revisit when either (a) the module has a 0.2+/1.0 track record, or 
 cd /home/lars/projects/go-taskqueue
 grep -rn 'httputil/endpoints' --include=go.mod . | grep -v vendor       # → no output
 grep -rn 'httputil/endpoints' --include='*.go' . | grep -v vendor       # → no output
-sed -n '193,201p' internal/httpapi/httpapi.go                           # the entire machine-API route table
-sed -n '281,306p' internal/webui/webui.go                               # webui already keeps routes as data
+sed -n '195,198p' internal/httpapi/httpapi.go                           # the entire machine-API route table (4 HandleFunc lines)
+sed -n '288,313p' internal/webui/webui.go                              # webui already keeps routes as data
 git -C /home/lars/projects/httputil tag -l 'endpoints/*'                # endpoints/v0.1.0 (single tag)
 git -C /home/lars/projects/httputil log -1 --format='%h %ad %s' --date=short endpoints/v0.1.0^{commit}
+git -C /home/lars/projects/httputil show endpoints/v0.1.0:endpoints/endpoints.go | grep -c combinedAccept   # → 0 (Accept-line bug still in the tag)
+grep -c combinedAccept /home/lars/projects/httputil/endpoints/endpoints.go                                  # → 3 (fix unreleased)
 head -3 /home/lars/projects/httputil/endpoints/LICENSE                  # MIT
 ```
