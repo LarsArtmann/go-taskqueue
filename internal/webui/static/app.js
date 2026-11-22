@@ -108,7 +108,14 @@
     });
     var scrolls = el.querySelectorAll(".journal-scroll");
     for (var i = 0; i < scrolls.length && i < st.scrolls.length; i++) {
-      if (st.scrolls[i].atBottom) scrolls[i].scrollTop = scrolls[i].scrollHeight;
+      /* Feed pause-on-hover (design-pass §f26): while the operator's
+         cursor is over the fragment, a burst must not re-pin the tail —
+         the reading position is restored, the pin is withheld; the next
+         un-hovered burst resumes the ladder. The check keys on the
+         fragment container (it survives the swap; the scroll pane does
+         not). */
+      var hovered = el.matches && el.matches(":hover");
+      if (st.scrolls[i].atBottom && !hovered) scrolls[i].scrollTop = scrolls[i].scrollHeight;
       else scrolls[i].scrollTop = st.scrolls[i].top;
     }
     if (st.focus) {

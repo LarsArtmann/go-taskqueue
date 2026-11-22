@@ -166,6 +166,7 @@ class El {
 }
 
 function matchTok(el, tok) {
+	if (tok === ":hover") return !!el.hovered;
 	const m = tok.match(
 		/^(?:([a-zA-Z][\w-]*))?(?:#([\w-]+))?(?:\.([\w-]+))?(?:\[([-\w]+)(?:=(["']?)([^\]]*)\5)?\])?$/,
 	);
@@ -525,6 +526,19 @@ test("feed burst badge clears on a zero-new swap", () => {
 	eq(badge.textContent, "2 new facts", "window shifted: window-size lower bound");
 	app.swapIn(el, { html: feedHTML(["x", "y"]) });
 	eq(el.querySelector(".tq-feed-burst"), null, "zero-new swap clears the badge");
+	doc.body.childNodes = doc.body.childNodes.filter((c) => c !== el);
+});
+
+test("pause-on-hover: a hovered feed is not re-pinned by a burst", () => {
+	const el = feedFixture(["a", "b"]);
+	const pane = el.querySelector(".journal-scroll");
+	pane.scrollTop = 600; /* atBottom per stub geometry (1000-500-24) */
+	el.hovered = true;
+	app.swapIn(el, { html: feedHTML(["a", "b", "c"]) });
+	eq(el.querySelector(".journal-scroll").scrollTop, 600, "hovered burst restores position, withholds the pin");
+	el.hovered = false;
+	app.swapIn(el, { html: feedHTML(["a", "b", "c"]) });
+	eq(el.querySelector(".journal-scroll").scrollTop, 1000, "unhovered burst resumes the tail pin");
 	doc.body.childNodes = doc.body.childNodes.filter((c) => c !== el);
 });
 
