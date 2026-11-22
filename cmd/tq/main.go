@@ -695,7 +695,11 @@ func newWorkerFlagSet() (*flag.FlagSet, *workerOpts) {
 		false,
 		"never run two tasks of the same project at once across ALL pools sharing this DB (enable it on every pool)",
 	)
-	o.projectsDir = fs.String("projects-dir", defaultProjectsDir(), "root dir for relative repo names in agent payloads")
+	o.projectsDir = fs.String(
+		"projects-dir",
+		defaultProjectsDir(),
+		"root dir for relative repo names in agent payloads",
+	)
 	o.alertURL = fs.String(
 		"alert-url",
 		os.Getenv("TQ_PAP_URL"),

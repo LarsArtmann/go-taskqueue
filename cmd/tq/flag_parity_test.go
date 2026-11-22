@@ -86,6 +86,7 @@ func TestWorkerConfigFieldParity(t *testing.T) {
 	// FlagSet dropped fails here.
 	fs, _ := newWorkerFlagSet()
 	registered := map[string]bool{}
+
 	fs.VisitAll(func(f *flag.Flag) { registered[f.Name] = true })
 
 	if len(registered) == 0 {
@@ -243,13 +244,19 @@ func TestAgentPoolOptionsFieldParity(t *testing.T) {
 
 	for _, flagName := range wired {
 		if !slices.Contains(registeredAgentPoolFlags, flagName) {
-			t.Errorf("wired names flag --%s which the pinned agent-pool list does not carry (parseAgentPoolOptions drift?)", flagName)
+			t.Errorf(
+				"wired names flag --%s which the pinned agent-pool list does not carry (parseAgentPoolOptions drift?)",
+				flagName,
+			)
 		}
 	}
 
 	for flagName := range flagsWithoutField {
 		if !slices.Contains(registeredAgentPoolFlags, flagName) {
-			t.Errorf("flagsWithoutField names flag --%s which the pinned agent-pool list does not carry (parseAgentPoolOptions drift?)", flagName)
+			t.Errorf(
+				"flagsWithoutField names flag --%s which the pinned agent-pool list does not carry (parseAgentPoolOptions drift?)",
+				flagName,
+			)
 		}
 	}
 
@@ -260,12 +267,15 @@ func TestAgentPoolOptionsFieldParity(t *testing.T) {
 
 	for _, flagName := range registeredAgentPoolFlags {
 		wiredFlag := false
+
 		for _, wf := range wired {
 			if wf == flagName {
 				wiredFlag = true
+
 				break
 			}
 		}
+
 		if wiredFlag {
 			continue
 		}
@@ -302,17 +312,20 @@ func TestAPIFlagSurfaceParity(t *testing.T) {
 
 	for flagName, consumer := range consumed {
 		if consumer == "" {
-			t.Errorf("consumed[%s] is empty: name the cmdAPI consumer or move the flag out (dead-flag audit, §f10)", flagName)
+			t.Errorf(
+				"consumed[%s] is empty: name the cmdAPI consumer or move the flag out (dead-flag audit, §f10)",
+				flagName,
+			)
 		}
 	}
+
 	_ = consumed
 
 	// httpapi.Server fields are unexported runtime state, never CLI
-	// config; asserting the constructor signature keeps this honest: a
-	// future Config-struct introduction must extend this test (walk the
-	// struct, drop the comment) rather than silently bypassing the audit.
-	constructor := reflect.TypeFor[func(queue.Store, string, *slog.Logger) (*httpapi.Server, error)]()
-	if constructor.NumIn() != 3 {
-		t.Errorf("httpapi.New signature changed: re-run the §f10 audit for the api surface (walk the new config struct here)")
-	}
+	// config; this assignment pins the LIVE httpapi.New signature (a
+	// reflect.TypeFor type literal would assert only itself, never the
+	// constructor): a future Config-struct introduction must extend this
+	// test (walk the struct, drop the comment) rather than silently
+	// bypassing the audit.
+	var _ func(queue.Store, string, *slog.Logger) (*httpapi.Server, error) = httpapi.New
 }

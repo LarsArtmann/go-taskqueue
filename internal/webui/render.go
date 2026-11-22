@@ -1188,6 +1188,7 @@ func faultCopy(dead int) string {
 	if dead == 1 {
 		return "1 task dead — inspect the dead-letter queue"
 	}
+
 	return formatInt(dead) + " tasks dead — inspect the dead-letter queue"
 }
 
