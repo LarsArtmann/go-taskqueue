@@ -32,6 +32,15 @@ class ClassList {
 	contains(c) {
 		return this._set().has(c);
 	}
+	toggle(c, force) {
+		const s = this._set();
+		const has = s.has(c);
+		const want = force === undefined ? !has : !!force;
+		if (want) s.add(c);
+		else s.delete(c);
+		this._store(s);
+		return want;
+	}
 }
 
 class El {
@@ -430,6 +439,53 @@ test("expanded error cells re-applied by data-short through the swap", () => {
 test("gateway: TQ_WEBUIJS_FAIL=1 forces a failing test (gate self-test hook)", () => {
 	if (process.env.TQ_WEBUIJS_FAIL === "1")
 		throw new Error("intentional failure for gate self-test");
+});
+
+test("feed filter hides non-matching lines and flags the active chip", () => {
+	const el = fragEl(
+		'<div class="tq-feed-chips">' +
+			'<button type="button" class="tq-feed-chip" data-feed-type="" aria-pressed="false">all</button>' +
+			'<button type="button" class="tq-feed-chip" data-feed-type="task.claimed" aria-pressed="false">task.claimed</button>' +
+			'<button type="button" class="tq-feed-chip" data-feed-type="task.completed" aria-pressed="false">task.completed</button>' +
+			"</div>" +
+			'<div class="journal-scroll"><div data-fact-type="task.claimed">c</div><div data-fact-type="task.completed">d</div></div>',
+		"frag-feed",
+	);
+	app.setFeedFilter("task.claimed");
+	eq(el.querySelector('[data-fact-type="task.claimed"]').hidden, false, "matching line stays visible");
+	eq(el.querySelector('[data-fact-type="task.completed"]').hidden, true, "non-matching line hides");
+	eq(el.querySelector('[data-feed-type="task.claimed"]').classList.contains("tq-feed-chip-active"), true, "active chip flagged");
+	eq(el.querySelector('[data-feed-type="task.claimed"]').getAttribute("aria-pressed"), "true", "aria-pressed follows");
+	/* reset through the "all" chip */
+	app.setFeedFilter("");
+	eq(el.querySelector('[data-fact-type="task.completed"]').hidden, false, "reset shows every line");
+	eq(el.querySelector('[data-feed-type=""]').classList.contains("tq-feed-chip-active"), true, "all chip owns the reset");
+	app.setFeedFilter("");
+	doc.body.childNodes = doc.body.childNodes.filter((c) => c !== el);
+});
+
+test("feed filter re-applies after an SSE swap of frag-feed", () => {
+	const el = fragEl(
+		'<div class="journal-scroll"><div data-fact-type="task.claimed">c</div></div>',
+		"frag-feed",
+	);
+	app.setFeedFilter("task.completed");
+	apply({
+		id: "frag-feed",
+		html:
+			'<div class="tq-feed-chips"><button type="button" class="tq-feed-chip" data-feed-type="" aria-pressed="false">all</button><button type="button" class="tq-feed-chip" data-feed-type="task.completed" aria-pressed="false">task.completed</button></div>' +
+			'<div class="journal-scroll"><div data-fact-type="task.claimed">c</div><div data-fact-type="task.completed">d</div></div>',
+	});
+	eq(el.querySelector('[data-fact-type="task.claimed"]').hidden, true, "fresh line filtered by persisted selection");
+	eq(el.querySelector('[data-feed-type="task.completed"]').classList.contains("tq-feed-chip-active"), true, "fresh chip re-flagged");
+	app.setFeedFilter("");
+	doc.body.childNodes = doc.body.childNodes.filter((c) => c !== el);
+});
+
+test("feed filter tolerates a missing feed and dead sessionStorage", () => {
+	app.applyFeedFilter(); /* no frag-feed on the stub page: no throw */
+	app.setFeedFilter("task.claimed");
+	app.setFeedFilter("");
 });
 
 if (failed > 0) process.exitCode = 1;

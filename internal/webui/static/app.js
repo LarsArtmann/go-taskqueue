@@ -605,6 +605,8 @@
       flushPendingSwap: flushPendingSwap,
       flushGraceMs: FLUSH_GRACE_MS,
       startAgentPane: startAgentPane,
+      applyFeedFilter: applyFeedFilter,
+      setFeedFilter: setFeedFilter,
     };
   }
   if (typeof module === "undefined") startAgentPane(EventSource);

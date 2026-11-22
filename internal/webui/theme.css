@@ -1217,6 +1217,49 @@ input[type="search"]::-webkit-search-cancel-button {
   border-color: var(--color-red-700);
 }
 
+/* Fact-feed type-filter chips (design-pass §f24): the terminal-label
+   language in pill form — quiet hairlines until a chip owns the filter,
+   then the hull ground inverts it. app.js toggles -active and
+   aria-pressed; hiding is per-line, never a server round-trip. */
+.tq-feed-chip {
+  border: 1px solid var(--color-gray-300);
+  border-radius: 9999px;
+  padding: 0.05rem 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  line-height: 1.4;
+  color: var(--color-gray-500);
+  background: transparent;
+  cursor: pointer;
+}
+
+.tq-feed-chip:hover {
+  border-color: var(--color-gray-400);
+  color: var(--color-gray-700);
+}
+
+.tq-feed-chip-active {
+  border-color: var(--color-gray-700);
+  background: var(--color-gray-800);
+  color: var(--color-gray-100);
+}
+
+.dark .tq-feed-chip {
+  border-color: var(--color-gray-700);
+  color: var(--color-gray-400);
+}
+
+.dark .tq-feed-chip:hover {
+  border-color: var(--color-gray-500);
+  color: var(--color-gray-200);
+}
+
+.dark .tq-feed-chip-active {
+  border-color: var(--color-gray-400);
+  background: var(--color-gray-100);
+  color: var(--color-gray-900);
+}
+
 /* ---------------------------------------------------------------------------
  * Fact feed: the newest line lands with a 240ms settle (a burst is an
  * event; the eye should find it). Scrollback lines share the class, so
