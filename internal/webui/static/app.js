@@ -85,13 +85,6 @@
 
   function restoreState(el, st) {
     el.querySelectorAll("details").forEach(function (d) {
-      var key = d.getAttribute("data-state-key");
-      if (!key) {
-        var s = d.querySelector("summary");
-        key = s ? s.textContent.trim() : d.id || d.className;
-      }
-      if (st.details[key]) d.open = true;
-    });
     el.querySelectorAll("[data-error]").forEach(function (c) {
       var short = c.getAttribute("data-short") || "";
       if (st.expanded[short] && c.getAttribute("data-expanded") !== "1") {
@@ -108,6 +101,11 @@
     });
     var scrolls = el.querySelectorAll(".journal-scroll");
     for (var i = 0; i < scrolls.length && i < st.scrolls.length; i++) {
+      /* Feed pause-on-hover (design-pass §f26): while the operator's
+         cursor is over a scroll pane, a burst must not move it — no
+         re-pin, no reset; the next un-hovered burst resumes the tail
+         ladder. */
+      if (scrolls[i].matches && scrolls[i].matches(":hover")) continue;
       if (st.scrolls[i].atBottom) scrolls[i].scrollTop = scrolls[i].scrollHeight;
       else scrolls[i].scrollTop = st.scrolls[i].top;
     }
@@ -123,10 +121,53 @@
     }
   }
 
+  /* Per-burst feed highlight (design-pass §f25): a fact-feed swap that
+     added lines surfaces "N new facts" as a chip in the filter-chips row
+     instead of only the last line settling in. The count compares the
+     new tail against the pre-swap last line's full text (timestamp +
+     type + task id); when the whole window shifted past it, the window
+     size is the honest lower bound. The badge is server-free and clears
+     on the next zero-new swap. */
+  function feedLastLineText(el) {
+    var lines = el.querySelectorAll("[data-fact-type]");
+    return lines.length ? lines[lines.length - 1].textContent : "";
+  }
+
+  function feedBurstCount(el, prevLastLine) {
+    var lines = el.querySelectorAll("[data-fact-type]");
+    if (!lines.length) return 0;
+    if (prevLastLine) {
+      for (var i = 0; i < lines.length; i++) {
+        if (lines[i].textContent === prevLastLine) return lines.length - i - 1;
+      }
+    }
+    return lines.length;
+  }
+
+  function showFeedBurst(el, count) {
+    var badge = el.querySelector(".tq-feed-burst");
+    if (count <= 0) {
+      if (badge && badge.parentNode) badge.parentNode.removeChild(badge);
+      return;
+    }
+    if (!badge) {
+      badge = document.createElement("span");
+      badge.className = "tq-feed-chip tq-feed-burst";
+      badge.setAttribute("aria-live", "polite");
+      var chips = el.querySelector(".tq-feed-chips");
+      if (chips) chips.appendChild(badge);
+      else el.insertBefore(badge, el.firstChild);
+    }
+    badge.textContent = count + " new facts";
+  }
+
   function swapIn(el, frag) {
+    var isFeed = el.id === "frag-feed";
+    var prevLastLine = isFeed ? feedLastLineText(el) : "";
     var st = captureState(el);
     el.innerHTML = frag.html;
     restoreState(el, st);
+    if (isFeed) showFeedBurst(el, feedBurstCount(el, prevLastLine));
     updateBoardAffordance();
     applyFeedFilter();
   }
@@ -607,6 +648,8 @@
       startAgentPane: startAgentPane,
       applyFeedFilter: applyFeedFilter,
       setFeedFilter: setFeedFilter,
+      showFeedBurst: showFeedBurst,
+      feedBurstCount: feedBurstCount,
     };
   }
   if (typeof module === "undefined") startAgentPane(EventSource);
