@@ -238,6 +238,17 @@ h3,
   .journal-scroll {
     border: 1px solid canvastext;
   }
+
+  /* The budget meter is color-only in normal rendering; forced-colors mode
+     strips the fill tint, so give the track a structural border and the
+     fill a system color (design-pass §f15). */
+  .tq-meter {
+    border: 1px solid canvastext;
+  }
+
+  .tq-meter-fill {
+    background-color: canvastext;
+  }
 }
 
 @media (prefers-contrast: more) {

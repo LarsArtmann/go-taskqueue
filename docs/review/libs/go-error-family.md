@@ -5,9 +5,11 @@
 **2026-11-12 refresh:** F3 LANDED — the store-busy classifier registers in worker init (pareto T07) with a pin test; F2-second-half RULED OUT (the WrapOnce collapse would break the domain-type classification — see F2); score re-derived 21 → 29. Cites re-verified against HEAD by grep.
 **2026-11-11 refresh:** F2 PARTIALLY landed — `PermanentError` and `PreflightError` now implement `ErrorFamily()`/`ErrorCode()` into the SHARED taxonomy (internal/executor/executor.go:53-54, 94-95 — exactly the finding's first half, "fleet review f8"), with `errorfamily.Classify`/`IsRetryable` pins at internal/executor/executor_test.go:178-200. Score re-derived: 13 → 21. Call-site inventory grew 8 → 14 occurrences; §1/§2 cites re-verified against HEAD 2026-11-11 by grep; checkout now `v0.12.0-8-g5beae0e`, still pinned v0.12.0 = latest tag.
 
-**Pinned:** v0.12.0 — direct requires: `go.mod:109` (root/app layer), `internal/readmodel/go.mod:13`; `// indirect` in 16 more modules (via go-retry + go-cqrs-lite). Verified 2026-11-08 by `grep -rn 'go-error-family' --include=go.mod . | grep -v vendor`.
+> **2026-11-22 refresh:** library-side drift is CI-only (4 auto-commits since 5beae0e: lockfiles, lint v2.13.2→v2.15.0 + wrapcheck sigs, website deps — no API; checkout now `v0.12.0-12-g898004e`, 2026-11-15, [Unreleased] carries the CI entry only; latest tag still v0.12.0). tq-side at HEAD 1c8219e6: the F2 pattern did NOT extend to the new `executor.NetworkOutageError` (internal/executor/networkoutage.go:64-86, commit 792c43ed 2026-11-17) — it has `Error()`/`Unwrap()` but no `ErrorFamily()`/`ErrorCode()`, and the worker consumes it via bespoke `errors.AsType[*executor.NetworkOutageError]` checks (worker.go:312, 980), the same deliberately-outside shape as `RateLimitError`; Permanent/Preflight stay the only family-classified domain types (executor.go:53-54, 94-95 — re-verified). T07's worker-init registration still present (worker.go:489-497, call at :490) with pins at busy_classify_test.go:20-26. Ref count grew 14 → 21 (the T07 init + busy pins); `errors.AsType` sites 88 → 91; join sites moved (main.go:4363 → :4482, plus a NEW join at agent.go:797); os.Exit sites 128,168,173,194 → 129,170,175,208. No row status moved — score re-derived unchanged: 29 (inputs below). Cites re-verified against HEAD 1c8219e6 by grep.
 
-**Latest:** v0.12.0 (local checkout /home/lars/projects/go-error-family, re-checked 2026-11-11 by `git -C … describe --tags` → `v0.12.0-8-g5beae0e`; Unreleased section empty).
+**Pinned:** v0.12.0 — direct requires: `go.mod:109` (root/app layer), `internal/readmodel/go.mod:13`; `// indirect` in 14 more modules (via go-retry + go-cqrs-lite; re-counted 2026-11-22). Verified 2026-11-22 by `grep -rn 'go-error-family' --include=go.mod . | grep -v vendor`.
+
+**Latest:** v0.12.0 (local checkout /home/lars/projects/go-error-family, re-checked 2026-11-22 by `git -C … describe --tags` → `v0.12.0-12-g898004e`; Unreleased holds one CI-only Changed entry — lint pins + wrapcheck ignore-sigs, no API).
 
 **Prior coverage:** none (first libs-review report).
 
@@ -15,7 +17,7 @@
 
 ## 1. Usage inventory
 
-All 14 call sites (verified 2026-11-11 by the grep above; no other use):
+All 21 references (10 production + 11 test; verified 2026-11-22 by the grep below; no other use):
 
 | File | Line | Call | Role |
 | --- | --- | --- | --- |
@@ -33,6 +35,8 @@ All 14 call sites (verified 2026-11-11 by the grep above; no other use):
 | internal/executor/executor_test.go | 182 | `IsRetryable(perm)` | pins permanent → non-retryable through the lib's own predicate |
 | internal/executor/executor_test.go | 196 | `Classify(pre) == Transient` | pins the preflight refusal's family |
 | internal/executor/executor_test.go | 200 | `!IsRetryable(pre)` negation guard | pins preflight IS retryable |
+| internal/worker/worker.go | 490-495 | `RegisterClassifier` (store-busy → Transient) | T07 landing 2026-11-12 — worker init classifies the SQLITE_BUSY family for ANY consumer at the source |
+| internal/worker/busy_classify_test.go | 20-26 | `Classify` ×2 (direct + wrapped) | T07 pin: both classify Transient via the registered classifier |
 
 The runtime classifier is NOT in this repo: the readmodel's fold errors flow into vendored go-cqrs-lite, whose projection host gates retries on `errorfamily.IsRetryable` (vendor/github.com/larsartmann/go-cqrs-lite/projectionhost/v4/worker.go:281 — "Unclassified errors stay retryable (IsRetryable fails open)"). tq mints the family; the platform consumes it. No registry, no classifiers, no stdlib defaults, no HTTP/CLI/logging boundary use anywhere.
 
@@ -41,16 +45,16 @@ The runtime classifier is NOT in this repo: the readmodel's fold errors flow int
 | Capability | Status | Evidence |
 | --- | --- | --- |
 | Family constructors (`New*`/`Wrap*`) with stable codes | 🟢 FULL | 5 production sites, 5 stable `readmodel.*` codes (§1) |
-| Boundary classification (`Classify`/`IsRetryable`/`Code`) | 🟡 PARTIAL | runtime consumer is vendored cqrs-lite (worker.go:281); in-repo now 6 pin sites (host_test.go:403 + executor_test.go:178-200) but production code still never calls Classify directly |
-| Multi-error worst-severity (`errors.Join` + `Classify`) | 🔴 MISSED | 7 join sites (runactor.go:157-174, cmd/tq/main.go:4363) render raw; never classified |
-| Domain error types implementing the six interfaces | 🟢 FULL | `PermanentError`→Rejection (executor.go:53-54) + `PreflightError`→Transient (executor.go:94-95) — F2's first half landed 2026-11-09; cqrs-lite's gate and go-retry's default predicate classify executor refusals without bespoke checks |
+| Boundary classification (`Classify`/`IsRetryable`/`Code`) | 🟡 PARTIAL | runtime consumer is vendored cqrs-lite (worker.go:281); in-repo now 10 pin refs (host_test.go:403 + executor_test.go:178-200 + busy_classify_test.go:20-26) but production code still never calls Classify directly — the T07 landing registers a classifier (worker.go:490) rather than calling the API |
+| Multi-error worst-severity (`errors.Join` + `Classify`) | 🔴 MISSED | 6 join expressions (internal/executor/agent.go:797 — new since 11-12, runactor.go:157-174, cmd/tq/main.go:4482) render raw; never classified |
+| Domain error types implementing the six interfaces | 🟢 FULL | `PermanentError`→Rejection (executor.go:53-54) + `PreflightError`→Transient (executor.go:94-95) — F2's first half landed 2026-11-09; cqrs-lite's gate and go-retry's default predicate classify executor refusals without bespoke checks. NOT extended to the two parking classes by design: `RateLimitError` (ratelimit.go:21-48) and the 2026-11-17 `NetworkOutageError` (networkoutage.go:64-86) carry `Error()`/`Unwrap()` only — they are requeue/park signals consumed by `errors.AsType` (worker.go:312, 980), not retryability verdicts |
 | Sentinel registration (`RegisterClassification`) | 🔴 MISSED | `internal/task/errors.go:7-14` sentinels unregistered |
 | Dynamic classifiers (`RegisterClassifier`) | 🟢 FULL | landed 2026-11-12 (pareto T07): worker init registers the store-busy classifier (internal/worker/worker.go, `errorfamily.RegisterClassifier` → `isTransientStoreBusy` — the driver-agnostic predicate is retained DELIBERATELY, not a string-sniff leftover: promoting modernc `*sqlite.Error` would couple worker to the driver); pinned by `TestStoreBusyClassifierRegistered` (busy_classify_test.go) |
 | `WrapOnce` idempotent wrap | 🔵 REJECTED BY DESIGN (2026-11-12) | the hand-rolled `Permanent` guard is the DOMAIN analog: `WrapOnce` collapses onto the library's `*Error`, but `PermanentError` is tq's domain type — a swap would make `ClassifyFailure`'s `AsType[*PermanentError]` miss every fresh wrap and degrade the whole class to TRANSIENT (classify.go:46), break the `"permanent: "` prefix + identity no-op pins (executor_test.go:144-165) |
-| `errorfamilytest` assertions | 🔴 MISSED | host_test.go:403-405 + executor_test.go:178-200 hand-roll `AssertRetryable`/`AssertFamily`'s job |
-| Exit codes (`ExitCode`/`ExitCoder`) | 🔴 MISSED | cmd/tq/main.go:128,168,173,194 hardcode `os.Exit(1/2)` |
+| `errorfamilytest` assertions | 🔴 MISSED | 7 hand-rolled family assertions (executor_test.go:178-200, host_test.go:403-405, busy_classify_test.go:20-26) hand-roll `AssertRetryable`/`AssertFamily`'s job |
+| Exit codes (`ExitCode`/`ExitCoder`) | 🔴 MISSED | cmd/tq/main.go:129,170,175,208 hardcode `os.Exit(1/2)` |
 | HTTP boundary (`HTTPStatus`/`HTTPHandler`/`WithHTTPStatus`) | 🔴 MISSED | internal/httpapi hand-maps statuses (httpapi.go:333,351,385,409,421); family never read |
-| `LogError` structured logging | 🔴 MISSED | slog calls hand-pack err fields (e.g. worker.go:406) |
+| `LogError` structured logging | 🔴 MISSED | slog calls hand-pack err fields (e.g. worker.go:429) |
 | Registry scoping (`NewRegistry`/`Clone`) | ⚪ N/A | single-process CLI/service; the only classifier consumer (cqrs-lite host) uses the default registry |
 | `RegisterStdlibDefaults` | ⚪ N/A | fold only needs the terminal classes it mints explicitly (Corruption/Rejection); fail-open Transient for everything else is the wanted restart semantics |
 | `HandleError` CLI pipeline + templates | ⚪ N/A | tq's CLI error UX is its own evidence-rich rendering (`tq show` failure sections); What/Why/Fix stderr output is a different product contract |
@@ -62,50 +66,52 @@ The runtime classifier is NOT in this repo: the readmodel's fold errors flow int
 
 **F2 — `Permanent` re-implements `WrapOnce` — FIRST HALF RESOLVED (2026-11-09, "fleet review f8").** lib: `WrapOnce(err, family, code, msg)` is the idempotent boundary wrap (checkout constructors.go; FEATURES "Error Construction"). repo: the finding's recommended methods LANDED — `PermanentError.ErrorFamily() → Rejection` + `ErrorCode() "executor.permanent"` (internal/executor/executor.go:53-54) and `PreflightError.ErrorFamily() → Transient` + `"executor.preflight"` (executor.go:94-95) — so cqrs-lite's dead-letter gate and go-retry's default predicate now classify executor refusals without bespoke checks, pinned by executor_test.go:178-200 (`Classify` + `IsRetryable` both directions). NOT taken — and RULED OUT 2026-11-12 (repair-verify-deepen T18 verification): `WrapOnce` collapses onto the library's `*errorfamily.Error`, while `PermanentError` is the domain type every consumer keys on — `ClassifyFailure` (classify.go:46) detects permanence via `AsType[*PermanentError]`, the double-wrap pin (executor_test.go:144-165) pins the identity no-op + `"permanent: "` prefix, and the domain guard already implements the same three clauses (nil passthrough, already-wrapped no-op, wrap) for the domain type. Swapping the guard onto `WrapOnce` would silently degrade every permanent refusal to the transient retry ladder. The wrap-construction path stays bespoke BY DESIGN; DirtyTree keeps its bolt-on. Impact: none — the family methods answer "is this retryable?" everywhere that matters.
 
-**F3 — Store-busy string sniffing is a classifier's job.** lib: `RegisterClassifier(func(error) (Family, bool))` exists precisely for dynamic third-party errors (checkout registry.go; README "Classifiers"). repo: worker.go:442-450 `isTransientStoreBusy` does `strings.Contains(msg, "SQLITE_BUSY" \|\| "database is locked")` (now also extended 517 BUSY_SNAPSHOT) — and go-retry then consumes that predicate (worker.go:404). Registering a classifier for the sqlite/postgres busy error shapes would make `errorfamily.IsRetryable` correct at every future call site, not just this one.
+**F3 — ~~Store-busy string sniffing is a classifier's job~~ LANDED (pareto T07, 2026-11-12; re-verified 2026-11-22).** lib: `RegisterClassifier(func(error) (Family, bool))` exists precisely for dynamic third-party errors (checkout registry.go; README "Classifiers"). repo: the worker init (internal/worker/worker.go:489-497) now registers `isTransientStoreBusy` (worker.go:472-483, the `strings.Contains(msg, "SQLITE_BUSY" || "database is locked")` sniff incl. extended 517 BUSY_SNAPSHOT) as a classifier returning Transient, so `errorfamily.IsRetryable` is correct at every future call site, not just go-retry's (worker.go:426 still consumes the narrow predicate directly — the registration comment explains why: Classify's fail-open default must never widen the retry class). Pinned by `TestStoreBusyClassifierRegistered` + the direct/wrapped Transient pins (busy_classify_test.go:16, 20-26).
 
 **F4 — Task sentinels are invisible to the family.** lib: `RegisterClassification(sentinel, family)` maps stable sentinels (checkout classify.go). repo: internal/task/errors.go:7-14 (`ErrNotFound`, `ErrLeaseNotHeld`, `ErrDuplicateID`, `ErrInvalidTransition`) are plain `errors.New`; watermark.go:116 `PermanentOutcome` hand-lists two of them with `errors.Is`. Registration would express the same table once and classify any sentinel that ever crosses a family-aware boundary.
 
 **F5 — HTTP boundary unused where an HTTP API exists.** lib: `HTTPStatus(err)`/`HTTPHandler(fn)` map family→status and write leak-safe JSON (checkout http.go). repo: internal/httpapi hand-maps every status (httpapi.go:333,351,385,409,421); its poison test (httpapi_test.go:854) mints family errors the API itself could never act on. Impact: modest — the API's handlers are success-shaped; the win is uniformity if error-returning handlers grow.
 
-**F6 — CLI exit codes hardcoded.** lib: `ExitCode(err)` derives BSD sysexits codes from family (checkout classify.go). repo: cmd/tq/main.go:128,168,173,194 hardcode 1/2. Adopting `ExitCode` would distinguish EX_TEMPFAIL (75) from usage (2) — but it is a CLI behavior change (scripts may pin rc=1) and out of scope for this review's recommendation; recorded as an option, not a defect.
+**F6 — CLI exit codes hardcoded.** lib: `ExitCode(err)` derives BSD sysexits codes from family (checkout classify.go). repo: cmd/tq/main.go:129,170,175,208 hardcode 1/2. Adopting `ExitCode` would distinguish EX_TEMPFAIL (75) from usage (2) — but it is a CLI behavior change (scripts may pin rc=1) and out of scope for this review's recommendation; recorded as an option, not a defect.
 
 **F7 — Test helpers skipped.** lib: `errorfamilytest.AssertRetryable/AssertFamily/...` (checkout errorfamilytest/). repo: host_test.go:403-405 hand-rolls the assertion. One-line swap, zero risk.
 
-**F8 — The erraudit gate does NOT force any of this.** The gate runs `--enforce-go-error-family` (scripts/check-erraudit.sh:44), which per `erraudit lint --help` "flags stdlib error constructors as violations". Verified 2026-11-08 by probing the installed build (`erraudit --version` → 5c841cf) on a scratch module containing bare `errors.New`, `fmt.Errorf` (both plain and `%w`), and `errors.Join` under `--max`: zero stdlib_constructor findings — the rule is inert for these shapes in this build. Consequence: family adoption is entirely convention; the 88 `errors.AsType` sites (re-counted 2026-11-11; AGENTS.md "Go 1.26+ idioms") and the single `//nolint:legacyerrors` site (executor_test.go:160) are the only error-discipline surfaces the gate actually pins.
+**F8 — The erraudit gate does NOT force any of this.** The gate runs `--enforce-go-error-family` (scripts/check-erraudit.sh:44), which per `erraudit lint --help` "flags stdlib error constructors as violations". Verified 2026-11-08 by probing the installed build (`erraudit --version` → 5c841cf) on a scratch module containing bare `errors.New`, `fmt.Errorf` (both plain and `%w`), and `errors.Join` under `--max`: zero stdlib_constructor findings — the rule is inert for these shapes in this build. Consequence: family adoption is entirely convention; the 91 `errors.AsType` sites (re-counted 2026-11-22; AGENTS.md "Go 1.26+ idioms") and the single `//nolint:legacyerrors` site (executor_test.go:160) are the only error-discipline surfaces the gate actually pins.
 
 ## 4. Score + top opportunities
 
-Inputs (re-derived 2026-11-12): N=15 rows, N/A=3, A=12. FULL=3 (family constructors; domain error types; the store-busy classifier — T07), PARTIAL=1 (0.5), MISSED=8, MISUSED=0 → Σ=3.5.
-Score = round(100 × 3.5/12) = **29 — low** (21 before T07; 13 before the executor landing).
+Inputs (re-derived 2026-11-22 against HEAD 1c8219e6): N=15 rows, ⚪ N/A=3, 🔵 REJECTED-BY-DESIGN=1 carried in A at 0 (prior convention, kept) → A=12. FULL=3 (family constructors; domain error types; the store-busy classifier — T07), PARTIAL=1 (0.5), MISSED=7, MISUSED=0 → Σ=3.5.
+Score = round(100 × 3.5/12) = **29 — low** (unchanged since the T07 landing; 21 before T07; 13 before the executor landing).
 
-Top opportunities, in value order: (1) F3 — classifier for store-busy, deleting the string sniff (landed 2026-11-12, T07); (2) F7 — `errorfamilytest` swap (now 10 hand-rolled pin sites). F2-second-half is RULED OUT (see F2 — WrapOnce would break the domain-type classification); F5/F6 are optional and behavior-visible.
+Top opportunities, in value order: (1) F7 — `errorfamilytest` swap (7 hand-rolled family assertions, recounted 2026-11-22). F3 landed 2026-11-12 (T07); F2-second-half is RULED OUT (see F2 — WrapOnce would break the domain-type classification); F5/F6 are optional and behavior-visible.
 
 ## 5. Version currency + risk
 
-Pinned v0.12.0 == latest tag (checkout ahead of tag by 8 commits, `v0.12.0-8-g5beae0e`, Unreleased empty) — no action. v0.12.0 (2026-10-14, CHANGELOG) fixes nil-receiver `(*Error).Unwrap` (defensive only for typed-nil forwards; tq has no such site). Risk notes: the module declares `go 1.27` (checkout go.mod:3) while tq modules are `go 1.27.3` — compatible; the go-retry CHANGELOG records an incident where an error-family minor bump dragged a consumer's go pin (v0.9.0 "Fixed"), so treat error-family bumps as pin-sensitive in every module graph loader (AGENTS.md "New module + unpushed tag").
+Pinned v0.12.0 == latest tag (checkout ahead of tag by 12 commits, `v0.12.0-12-g898004e` re-checked 2026-11-22; the 4 new commits since the 11-11 refresh are lockfile/CI/website chores — [Unreleased] carries only the CI lint entry) — no action. v0.12.0 (2026-10-14, CHANGELOG) fixes nil-receiver `(*Error).Unwrap` (defensive only for typed-nil forwards; tq has no such site). Risk notes: the module declares `go 1.27` (checkout go.mod:3) while tq's root is `go 1.27.4` (root go.mod:3, re-read 2026-11-22) — compatible; the go-retry CHANGELOG records an incident where an error-family minor bump dragged a consumer's go pin (v0.9.0 "Fixed"), so treat error-family bumps as pin-sensitive in every module graph loader (AGENTS.md "New module + unpushed tag").
 
 ## 6. Conclusion
 
-Adopted, now at TWO seams: the readmodel fold's corruption/rejection minting that drives cqrs-lite's dead-letter gate, and (since 2026-11-09) the executor's typed refusals classified into the shared taxonomy so the platform's gate and go-retry's default predicate both understand them. Everywhere else the repo still answers the same questions (retryable? whose fault? what status?) with private machinery (`Permanent`'s hand-rolled wrap, string sniffs, hardcoded exits). The score moved 13 → 21 with the executor landing; the fix list stays short and mechanical — F3/F7 are the highest-value remaining swaps.
+Adopted, now at TWO seams: the readmodel fold's corruption/rejection minting that drives cqrs-lite's dead-letter gate, and (since 2026-11-09) the executor's typed refusals classified into the shared taxonomy so the platform's gate and go-retry's default predicate both understand them — plus (since 2026-11-12, T07) the worker-init classifier that classifies store-busy at the source. Everywhere else the repo still answers the same questions (retryable? whose fault? what status?) with private machinery (`Permanent`'s hand-rolled wrap, bespoke `AsType` parking classes like the 2026-11-17 `NetworkOutageError`, hardcoded exits). The score moved 13 → 21 → 29 across the two landings and held at 29 in the 2026-11-22 re-derivation; the fix list stays short and mechanical — F7 is the highest-value remaining swap.
 
 ## How to verify
 
 ```bash
 cd /home/lars/projects/go-taskqueue
-grep -rn 'errorfamily\.' --include='*.go' . | grep -v '^./vendor/'        # → exactly the 14 sites in §1
-grep -rn 'go-error-family' --include=go.mod . | grep -v vendor            # → pinned versions + direct/indirect
-git -C /home/lars/projects/go-error-family describe --tags                # → v0.12.0-8-g5beae0e
+grep -rn 'errorfamily\.' --include='*.go' . | grep -v '^./vendor/'        # → exactly the 21 refs in §1 (10 production + 11 test)
+grep -rn 'go-error-family' --include=go.mod . | grep -v vendor            # → pinned versions + direct/indirect (14 indirect)
+git -C /home/lars/projects/go-error-family describe --tags                # → v0.12.0-12-g898004e
 sed -n '281p' vendor/github.com/larsartmann/go-cqrs-lite/projectionhost/v4/worker.go  # IsRetryable DLQ gate
 sed -n '253,258p' internal/readmodel/events.go                            # WrapCorruption #1
 sed -n '51,56p;92,96p' internal/executor/executor.go                       # family methods (2026-11-09 landing)
 sed -n '176,202p' internal/executor/executor_test.go                       # Classify/IsRetryable pins
-sed -n '442,450p' internal/worker/worker.go                               # string-sniff predicate
+sed -n '472,483p;489,497p' internal/worker/worker.go                       # string-sniff predicate + T07 init registration
 sed -n '64,74p' internal/executor/executor.go                             # Permanent + hand-rolled WrapOnce (uncollapsed)
 sed -n '7,14p' internal/task/errors.go                                    # unregistered sentinels
 sed -n '44p' scripts/check-erraudit.sh                                    # --enforce-go-error-family wiring
-grep -rn 'errors.AsType' --include='*.go' . | grep -v '^./vendor/' | wc -l # → 88
+grep -rn 'errors.AsType' --include='*.go' . | grep -v '^./vendor/' | wc -l # → 91
 grep -rn 'nolint:legacyerrors' --include='*.go' . | grep -v '^./vendor/'  # → executor_test.go:160 only
+sed -n '64,86p' internal/executor/networkoutage.go                        # 2026-11-17 parking class WITHOUT family methods
+grep -n 'NetworkOutageError' internal/worker/worker.go                    # → 312, 980 (bespoke AsType consumers)
 # F8 probe (scratch dir; remove after): module with bare errors.New/fmt.Errorf/errors.Join,
 # then: erraudit lint ./... --max   → zero stdlib_constructor findings on build 5c841cf
 ```
