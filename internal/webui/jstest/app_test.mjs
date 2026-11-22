@@ -108,6 +108,12 @@ class El {
 		else this.childNodes.splice(i, 0, c);
 		return c;
 	}
+	removeChild(c) {
+		const i = this.childNodes.indexOf(c);
+		if (i >= 0) this.childNodes.splice(i, 1);
+		c.parentNode = null;
+		return c;
+	}
 	get firstChild() {
 		return this.childNodes[0] || null;
 	}
@@ -486,6 +492,40 @@ test("feed filter tolerates a missing feed and dead sessionStorage", () => {
 	app.applyFeedFilter(); /* no frag-feed on the stub page: no throw */
 	app.setFeedFilter("task.claimed");
 	app.setFeedFilter("");
+});
+
+function feedHTML(types) {
+	return (
+		'<div class="tq-feed-chips"><button type="button" class="tq-feed-chip" data-feed-type="">all</button></div>' +
+		'<div class="journal-scroll">' +
+		types.map((t) => `<div data-fact-type="${t}">${t} tail</div>`).join("") +
+		"</div>"
+	);
+}
+
+function feedFixture(types) {
+	const el = fragEl(feedHTML(types), "frag-feed");
+	return el;
+}
+
+test("feed burst badge counts lines added since the pre-swap last line", () => {
+	const el = feedFixture(["a", "b"]);
+	app.swapIn(el, { html: feedHTML(["a", "b", "c", "d"]) });
+	const badge = el.querySelector(".tq-feed-burst");
+	eq(badge.textContent, "2 new facts", "burst badge counts new lines");
+	eq(badge.classList.contains("tq-feed-chip"), true, "badge rides the chip styling");
+	eq(badge.getAttribute("aria-live"), "polite", "badge announces politely");
+	doc.body.childNodes = doc.body.childNodes.filter((c) => c !== el);
+});
+
+test("feed burst badge clears on a zero-new swap", () => {
+	const el = feedFixture(["a", "b"]);
+	app.swapIn(el, { html: feedHTML(["x", "y"]) });
+	const badge = el.querySelector(".tq-feed-burst");
+	eq(badge.textContent, "2 new facts", "window shifted: window-size lower bound");
+	app.swapIn(el, { html: feedHTML(["x", "y"]) });
+	eq(el.querySelector(".tq-feed-burst"), null, "zero-new swap clears the badge");
+	doc.body.childNodes = doc.body.childNodes.filter((c) => c !== el);
 });
 
 if (failed > 0) process.exitCode = 1;

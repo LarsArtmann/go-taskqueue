@@ -85,6 +85,13 @@
 
   function restoreState(el, st) {
     el.querySelectorAll("details").forEach(function (d) {
+      var key = d.getAttribute("data-state-key");
+      if (!key) {
+        var s = d.querySelector("summary");
+        key = s ? s.textContent.trim() : d.id || d.className;
+      }
+      if (st.details[key]) d.open = true;
+    });
     el.querySelectorAll("[data-error]").forEach(function (c) {
       var short = c.getAttribute("data-short") || "";
       if (st.expanded[short] && c.getAttribute("data-expanded") !== "1") {
@@ -101,11 +108,6 @@
     });
     var scrolls = el.querySelectorAll(".journal-scroll");
     for (var i = 0; i < scrolls.length && i < st.scrolls.length; i++) {
-      /* Feed pause-on-hover (design-pass §f26): while the operator's
-         cursor is over a scroll pane, a burst must not move it — no
-         re-pin, no reset; the next un-hovered burst resumes the tail
-         ladder. */
-      if (scrolls[i].matches && scrolls[i].matches(":hover")) continue;
       if (st.scrolls[i].atBottom) scrolls[i].scrollTop = scrolls[i].scrollHeight;
       else scrolls[i].scrollTop = st.scrolls[i].top;
     }
@@ -152,7 +154,7 @@
     }
     if (!badge) {
       badge = document.createElement("span");
-      badge.className = "tq-feed-chip tq-feed-burst";
+      badge.setAttribute("class", "tq-feed-chip tq-feed-burst");
       badge.setAttribute("aria-live", "polite");
       var chips = el.querySelector(".tq-feed-chips");
       if (chips) chips.appendChild(badge);
