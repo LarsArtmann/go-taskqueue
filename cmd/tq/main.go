@@ -645,54 +645,91 @@ func buildAgentConveniencePayload(f payloadFlags) (json.RawMessage, error) {
 	return raw, nil
 }
 
-func cmdWorker(args []string) error {
+// workerOpts holds every cmdWorker flag's parsed value; newWorkerFlagSet
+// registers them — one seam, so flag_parity_test derives the registered
+// worker surface from the real FlagSet instead of a hand list.
+type workerOpts struct {
+	conc            *int
+	poll            *time.Duration
+	lease           *time.Duration
+	timeout         *time.Duration
+	owner           *string
+	agents          *bool
+	yolo            *bool
+	reresolveVerify *bool
+	exclusive       *bool
+	projectsDir     *string
+	alertURL        *string
+	alertKey        *string
+	alertPoll       *time.Duration
+	once            *bool
+	redact          *bool
+	db              *string
+	store           *string
+}
+
+// newWorkerFlagSet builds the worker flag set with every flag registered
+// exactly as cmdWorker has always presented them (defaults include the
+// env fallbacks).
+func newWorkerFlagSet() (*flag.FlagSet, *workerOpts) {
 	fs := flag.NewFlagSet("worker", flag.ExitOnError)
-	conc := fs.Int("concurrency", 2, "parallel executions")
-	poll := fs.Duration("poll", 250*time.Millisecond, "idle poll interval")
-	lease := fs.Duration("lease", 2*time.Minute, "claim lease length")
-	timeout := fs.Duration("task-timeout", 10*time.Minute, "per-task timeout (use e.g. 45m with --agents)")
-	owner := fs.String("owner", "", "lease owner identity")
-	agents := fs.Bool(
+	o := &workerOpts{}
+	o.conc = fs.Int("concurrency", 2, "parallel executions")
+	o.poll = fs.Duration("poll", 250*time.Millisecond, "idle poll interval")
+	o.lease = fs.Duration("lease", 2*time.Minute, "claim lease length")
+	o.timeout = fs.Duration("task-timeout", 10*time.Minute, "per-task timeout (use e.g. 45m with --agents)")
+	o.owner = fs.String("owner", "", "lease owner identity")
+	o.agents = fs.Bool(
 		"agents",
 		false,
 		"enable the 'agent' executor: runs a headless AI agent (crush) per task — OPT-IN",
 	)
-	yolo := fs.Bool("yolo", false, "with --agents: agents auto-accept all permissions (operator decision)")
-	reresolveVerify := fs.Bool(
+	o.yolo = fs.Bool("yolo", false, "with --agents: agents auto-accept all permissions (operator decision)")
+	o.reresolveVerify = fs.Bool(
 		"reresolve-verify",
 		false,
 		"with --agents: ignore each payload's enqueue-time verify pin and resolve the gate at claim time (.tq-verify file, then auto-detect) — a verify-contract change can no longer fire stale pins at queued tasks",
 	)
-	exclusive := fs.Bool(
+	o.exclusive = fs.Bool(
 		"project-exclusive",
 		false,
 		"never run two tasks of the same project at once across ALL pools sharing this DB (enable it on every pool)",
 	)
-	projectsDir := fs.String("projects-dir", defaultProjectsDir(), "root dir for relative repo names in agent payloads")
-	alertURL := fs.String(
+	o.projectsDir = fs.String("projects-dir", defaultProjectsDir(), "root dir for relative repo names in agent payloads")
+	o.alertURL = fs.String(
 		"alert-url",
 		os.Getenv("TQ_PAP_URL"),
 		"PapDashboard base URL: dead-lettered tasks raise alerts there (e.g. http://localhost:8080)",
 	)
-	alertKey := fs.String("alert-api-key", os.Getenv("TQ_PAP_API_KEY"), "PapDashboard API key (Bearer)")
-	alertPoll := fs.Duration("alert-poll", 5*time.Second, "journal tail interval for alert forwarding")
-	once := fs.Bool(
+	o.alertKey = fs.String("alert-api-key", os.Getenv("TQ_PAP_API_KEY"), "PapDashboard API key (Bearer)")
+	o.alertPoll = fs.Duration("alert-poll", 5*time.Second, "journal tail interval for alert forwarding")
+	o.once = fs.Bool(
 		"once",
 		false,
 		"run until the claimable queue is drained, then exit (scripts/tests; parity with agent-pool --once)",
 	)
-	redact := fs.Bool(
+	o.redact = fs.Bool(
 		"redact",
 		os.Getenv("TQ_REDACT") != "false",
 		"mask provider-token-shaped secrets in output tails before they reach facts, logs and sidecars ($TQ_REDACT; --redact=false keeps raw output for debugging)",
 	)
+	o.db = dbFlag(fs)
+	o.store = storeFlag(fs)
 
-	db := dbFlag(fs)
+	return fs, o
+}
 
-	storeVal := storeFlag(fs)
+func cmdWorker(args []string) error {
+	fs, o := newWorkerFlagSet()
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
+
+	conc, poll, lease, timeout := o.conc, o.poll, o.lease, o.timeout
+	owner, agents, yolo, reresolveVerify := o.owner, o.agents, o.yolo, o.reresolveVerify
+	exclusive, projectsDir := o.exclusive, o.projectsDir
+	alertURL, alertKey, alertPoll := o.alertURL, o.alertKey, o.alertPoll
+	once, redact, db, storeVal := o.once, o.redact, o.db, o.store
 
 	// The executor's redaction pass reads the env at execution time; the
 	// flag must reach it regardless of how it was set (parity with TQ_LOG_DIR).

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"log/slog"
 	"reflect"
 	"slices"
@@ -75,17 +76,24 @@ func TestWorkerConfigFieldParity(t *testing.T) {
 	}
 
 	// The wiring table must not name flags worker does not register: the
-	// worker flag surface is pinned by scripts/smoke/help-text.sh, so the
-	// set below is the same five names.
-	registeredWorkerFlags := []string{
-		"addr", "auth-token", "read-model", "db", "store", "concurrency", "poll",
-		"lease", "task-timeout", "owner", "agents", "yolo", "reresolve-verify",
-		"project-exclusive", "projects-dir", "alert-url", "alert-api-key",
-		"alert-poll", "once", "redact",
+	// registered surface is DERIVED from the real worker FlagSet (the
+	// newWorkerFlagSet seam in main.go), not a hand list —
+	// scripts/smoke/help-text.sh pins only the serve surface (`tq worker
+	// -h` there passes a bare exit check), so a hand worker list here was
+	// validated against nothing (2026-11-22 parity-test review finding).
+	// A flag added, removed, or renamed in newWorkerFlagSet flows into
+	// the derived set automatically; a wired entry naming a flag the
+	// FlagSet dropped fails here.
+	fs, _ := newWorkerFlagSet()
+	registered := map[string]bool{}
+	fs.VisitAll(func(f *flag.Flag) { registered[f.Name] = true })
+
+	if len(registered) == 0 {
+		t.Fatal("newWorkerFlagSet registered no flags: the worker seam drifted")
 	}
 
 	for field, flagName := range wired {
-		if !slices.Contains(registeredWorkerFlags, flagName) {
+		if !registered[flagName] {
 			t.Errorf("wired[%s] names flag --%s which tq worker does not register", field, flagName)
 		}
 	}
