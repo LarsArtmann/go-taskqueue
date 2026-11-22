@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"log/slog"
+	"maps"
 	"reflect"
 	"slices"
 	"testing"
@@ -219,28 +220,23 @@ func TestAgentPoolOptionsFieldParity(t *testing.T) {
 		return
 	}
 
-	// The pinned agent-pool flag surface (`tq agent-pool -h` at the time
-	// of the §f10 sweep). Adding or removing a flag in
-	// parseAgentPoolOptions must update this list consciously — that is
-	// the both-directions drift tripwire.
-	registeredAgentPoolFlags := []string{
-		"alert-api-key", "alert-poll", "alert-url", "allow-dirty", "batch-items",
-		"budget-cmd", "concurrency", "config", "cqa-owner", "cqa-token", "cqa-url",
-		"crush-server", "daily-budget", "daily-cost-cap", "db", "dead-pool-ticks",
-		"dep-sweep", "dep-sweep-bin", "dep-sweep-dir", "dep-sweep-interval",
-		"dep-sweep-push", "dep-sweep-unreleased", "discovery-addr", "dlq-backoff",
-		"dlq-fix", "docs-gates", "docs-gates-bin", "docs-gates-interval",
-		"docs-gates-repos", "done-preflight", "effort-budget", "interval", "jev",
-		"jev-api-key", "jev-model", "lease", "log-dir", "log-dir-max-age",
-		"log-dir-max-bytes", "max-concurrent-agents", "max-pending-per-repo",
-		"max-per-tick", "model", "once", "owner", "owner-session-hold",
-		"owner-session-park", "poll", "prioritize", "priority-from",
-		"project-exclusive", "projects-dir", "prune-stale", "redact",
-		"repo-interval", "repos", "repo-timeout", "reprioritize",
-		"reresolve-verify", "review", "review-autofix", "starvation-after",
-		"status-every", "status-min-interval", "store", "task-closeout",
-		"task-timeout", "worktrees", "yolo",
+	// The registered surface is DERIVED from the real agent-pool FlagSet
+	// (the newAgentPoolFlagSet seam parseAgentPoolOptions itself rides),
+	// not a hand list — the same dynamic method as the serve parity test
+	// above. A flag added, removed, or renamed in the registration flows
+	// into the both-directions check automatically; dropping the FlagSet
+	// fails here.
+	fs, _ := newAgentPoolFlagSet()
+
+	registeredAgentPoolFlagsSet := map[string]bool{}
+
+	fs.VisitAll(func(f *flag.Flag) { registeredAgentPoolFlagsSet[f.Name] = true })
+
+	if len(registeredAgentPoolFlagsSet) == 0 {
+		t.Fatal("newAgentPoolFlagSet registered no flags: the agent-pool seam drifted")
 	}
+
+	registeredAgentPoolFlags := slices.Sorted(maps.Keys(registeredAgentPoolFlagsSet))
 
 	for _, flagName := range wired {
 		if !slices.Contains(registeredAgentPoolFlags, flagName) {

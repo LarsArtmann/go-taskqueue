@@ -109,311 +109,399 @@ type agentPoolOptions struct {
 // fork (2026-11-03).
 const batchTimeoutPerItem = harvest.DefaultBatchTimeoutMinutes * time.Minute
 
-func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
+// agentPoolFlagVals carries the parsed pointers of the agent-pool flag
+// set: ONE registration point (newAgentPoolFlagSet) feeds both
+// parseAgentPoolOptions and the flag-parity tripwire, so the test's
+// registered-flag list is DERIVED from the real surface, never pinned.
+type agentPoolFlagVals struct {
+	projectsDir       *string
+	repos             *string
+	interval          *time.Duration
+	discoveryAddr     *string
+	conc              *int
+	poll              *time.Duration
+	lease             *time.Duration
+	timeout           *time.Duration
+	owner             *string
+	yolo              *bool
+	reresolveVerify   *bool
+	maxPerTick        *int
+	effortBudget      *int
+	jev               *bool
+	jevModel          *string
+	jevAPIKey         *string
+	batchItems        *int
+	priorityFrom      *string
+	maxPending        *int
+	allowDirty        *bool
+	model             *string
+	once              *bool
+	pruneStale        *bool
+	reprioritize      *bool
+	exclusive         *bool
+	dailyBudget       *int
+	dailyCostCap      *float64
+	budgetCmd         *string
+	repoInterval      *string
+	dlqBackoff        *time.Duration
+	cqaURL            *string
+	cqaOwner          *string
+	cqaToken          *string
+	doReview          *bool
+	dlqFix            *bool
+	donePreflight     *bool
+	ownerSessPark     *bool
+	ownerSessHold     *time.Duration
+	worktrees         *bool
+	crushServer       *string
+	prioritize        *bool
+	depSweep          *bool
+	depSweepBin       *string
+	depSweepDir       *string
+	depSweepEvery     *time.Duration
+	depSweepPush      *bool
+	depSweepUnrel     *bool
+	docsGates         *bool
+	docsGatesBin      *string
+	docsGatesRepos    *string
+	docsGatesEvery    *time.Duration
+	alertURL          *string
+	alertKey          *string
+	alertPoll         *time.Duration
+	starvationAfter   *time.Duration
+	deadPoolTicks     *int
+	repoTimeout       *string
+	maxAgents         *int
+	reviewAutofix     *bool
+	statusEvery       *int
+	statusMinInterval *time.Duration
+	closeout          *bool
+	logDir            *string
+	logDirMaxAge      *time.Duration
+	logDirMaxBytes    *int64
+	redact            *bool
+	configPath        *string
+	db                *string
+	storeVal          *string
+}
+
+// newAgentPoolFlagSet defines the full `tq agent-pool` flag surface:
+// the single registration point parseAgentPoolOptions parses with.
+func newAgentPoolFlagSet() (*flag.FlagSet, *agentPoolFlagVals) {
 	fs := flag.NewFlagSet("agent-pool", flag.ExitOnError)
-	projectsDir := fs.String(
+	v := &agentPoolFlagVals{}
+	v.projectsDir = fs.String(
 		"projects-dir",
 		defaultProjectsDir(),
 		"dir containing repos (default $TQ_PROJECTS_DIR or ~/projects)",
 	)
-	repos := fs.String(
+	v.repos = fs.String(
 		"repos",
 		"",
 		"comma-separated repo dirs; bare names resolve against --projects-dir, never the working directory (overrides --projects-dir)",
 	)
-	interval := fs.Duration("interval", 5*time.Minute, "harvest cadence")
-	discoveryAddr := fs.String(
+	v.interval = fs.Duration("interval", 5*time.Minute, "harvest cadence")
+	v.discoveryAddr = fs.String(
 		"discovery-addr",
 		os.Getenv("TQ_DISCOVERY_ADDR"),
 		"project-discovery-daemon endpoint for repo discovery INSTEAD of the local scan each tick: unix socket (/run/project-discovery/daemon.sock, unix:// ok) or host:port; unreachable daemon = warning + local scan fallback; also subscribes the daemon's /v1/watch SSE stream so repo changes harvest within seconds instead of waiting --interval ($TQ_DISCOVERY_ADDR)",
 	)
-	conc := fs.Int("concurrency", 1, "parallel agents (repos are paced: one in-flight backlog item per repo)")
-	poll := fs.Duration("poll", 500*time.Millisecond, "idle poll interval")
-	lease := fs.Duration("lease", 5*time.Minute, "claim lease length (agents are slow; heartbeats keep it alive)")
-	timeout := fs.Duration(
+	v.conc = fs.Int("concurrency", 1, "parallel agents (repos are paced: one in-flight backlog item per repo)")
+	v.poll = fs.Duration("poll", 500*time.Millisecond, "idle poll interval")
+	v.lease = fs.Duration("lease", 5*time.Minute, "claim lease length (agents are slow; heartbeats keep it alive)")
+	v.timeout = fs.Duration(
 		"task-timeout",
 		45*time.Minute,
 		"per-agent timeout (agent run + verify); when unset it scales with --batch-items (30m per member, 45m floor) so per-member batch payload timeouts are not truncated mid-run — set it explicitly to pin",
 	)
-	owner := fs.String("owner", "", "lease owner identity")
-	yolo := fs.Bool(
+	v.owner = fs.String("owner", "", "lease owner identity")
+	v.yolo = fs.Bool(
 		"yolo",
 		false,
 		"agents auto-accept all permissions — required for unattended pools whose items need writes/commits",
 	)
-	reresolveVerify := fs.Bool(
+	v.reresolveVerify = fs.Bool(
 		"reresolve-verify",
 		false,
 		"ignore each payload's enqueue-time verify pin and resolve the gate at claim time (.tq-verify file, then auto-detect): a verify-contract change can no longer fire stale pins at queued tasks (tq doctor --hygiene audits the pins)",
 	)
-	maxPerTick := fs.Int(
+	v.maxPerTick = fs.Int(
 		"max-per-tick",
 		harvest.DefaultMaxPerTick,
 		"max new agent tasks per harvest tick (cost throttle)",
 	)
-	effortBudget := fs.Int(
+	v.effortBudget = fs.Int(
 		"effort-budget",
 		0,
 		"cap the summed per-item effort estimates of one batched run, in minutes (0 = batch-items x 30m — exactly the count cap under flat estimates; with --jev the estimates size runs: a 3-hour item ships alone, small items pack together)",
 	)
-	jev := fs.Bool(
+	v.jev = fs.Bool(
 		"jev",
 		false,
 		"effort-aware batching via TypeSafe Jev (default OFF): every harvested item is scored once against a 5-level effort rubric and cached (<db>.effort.json, model-stamped); estimates size runs and may only RAISE payload timeouts; any API failure falls back to flat per-item sizing; WARNING: item texts, section headings, repo name and repo purpose are sent to the TypeSafe API (default https://api.typesafe.ai)",
 	)
-	jevModel := fs.String(
+	v.jevModel = fs.String(
 		"jev-model",
 		os.Getenv("TQ_JEV_MODEL"),
 		"jev: TypeSafe model alias (default jev-latest; $TQ_JEV_MODEL)",
 	)
-	jevAPIKey := fs.String(
+	v.jevAPIKey = fs.String(
 		"jev-api-key",
 		os.Getenv("TYPESAFE_API_KEY"),
 		"jev: TypeSafe API key (Bearer; $TYPESAFE_API_KEY)",
 	)
-	batchItems := fs.Int(
+	v.batchItems = fs.Int(
 		"batch-items",
 		5,
 		"group up to this many open TODO_LIST items of one section into ONE agent task (one session works them in order; grouping is section-scoped: a done/blocked/known item between fresh ones no longer forks a batch): fewer cold sessions, more done per provider window; a batch counts as ONE task against --max-per-tick and the daily budget (per-item cost is amortized — raise the gates consciously); payload timeouts scale per item and the unset --task-timeout default scales with this flag; default 5 since 2026-11-03 (3 2026-10-11..2026-11-03, the micro-batch waste fix); 0/1 = off",
 	)
-	priorityFrom := fs.String(
+	v.priorityFrom = fs.String(
 		"priority-from",
 		"",
 		`resolve harvested priorities from each repo's .config/metadata.yaml importance (0-100, default 50) plus keyword bumps, clamped to the backlog band; "importance" enables, empty keeps flat priority 0 (markers and hot promotion apply either way; ADR-0015)`,
 	)
-	maxPending := fs.Int(
+	v.maxPending = fs.Int(
 		"max-pending-per-repo",
 		0,
 		"cap how many PENDING tasks one repo may hold in the queue (0 = legacy: any pending/running task holds the repo); the queue becomes the working set, TODO_LIST.md the warehouse",
 	)
-	allowDirty := fs.Bool("allow-dirty", false, "let agents run in repos with uncommitted changes (default: refuse)")
-	model := fs.String(
+	v.allowDirty = fs.Bool("allow-dirty", false, "let agents run in repos with uncommitted changes (default: refuse)")
+	v.model = fs.String(
 		"model",
 		"",
 		"RETIRED: the pool refuses this flag — a payload-level model resets crush's reasoning effort; pin model + effort per repo via tq bootstrap (the .crushrc managed block)",
 	)
-	once := fs.Bool("once", false, "run one harvest tick, drain the queue, then exit (cron/timer-friendly)")
-	pruneStale := fs.Bool(
+	v.once = fs.Bool("once", false, "run one harvest tick, drain the queue, then exit (cron/timer-friendly)")
+	v.pruneStale = fs.Bool(
 		"prune-stale",
 		true,
 		"one zombie sweep before the first harvest tick: cancel PENDING tasks whose TODO_LIST item is now [x] or gone from the file, so a relaunch never inherits stale work (--prune-stale=false to skip)",
 	)
-	reprioritize := fs.Bool(
+	v.reprioritize = fs.Bool(
 		"reprioritize",
 		true,
 		"one priority sweep before the first harvest tick: re-resolve PENDING task priorities from current TODO_LIST markers and (with --priority-from importance) repo metadata; value-idempotent, hot/machine bands protected (--reprioritize=false to skip)",
 	)
-	exclusive := fs.Bool(
+	v.exclusive = fs.Bool(
 		"project-exclusive",
 		false,
 		"never run two tasks of the same project at once across ALL pools sharing this DB (enable it on every pool)",
 	)
-	dailyBudget := fs.Int(
+	v.dailyBudget = fs.Int(
 		"daily-budget",
 		0,
 		"max agent tasks enqueued per calendar day across all repos (0 = unlimited)",
 	)
-	dailyCostCap := fs.Float64(
+	v.dailyCostCap = fs.Float64(
 		"daily-cost-cap",
 		0,
 		"cap today's derived agent spend in USD beside the count cap (0 = off): summed from completed runs' session usage, so it stops FURTHER spend once observed spend crosses it; pairs with --daily-budget so cheap days are not starved by a count ceiling (docs/adr/0023-cost-budget-beside-count-cap.md)",
 	)
-	budgetCmd := fs.String(
+	v.budgetCmd = fs.String(
 		"budget-cmd",
 		"",
 		"checked before each harvest tick: exit 0 = within budget, non-zero skips the tick (output is the reason)",
 	)
-	repoInterval := fs.String(
+	v.repoInterval = fs.String(
 		"repo-interval",
 		"",
 		"per-repo minimum gap between new enqueues: name=duration,comma-separated (e.g. big-repo=1h,tiny=5m)",
 	)
-	dlqBackoff := fs.Duration(
+	v.dlqBackoff = fs.Duration(
 		"dlq-backoff",
 		0,
 		"pause harvesting a repo whose recent work is all dead-lettered for this long (0 = off, e.g. 30m)",
 	)
-	cqaURL := fs.String(
+	v.cqaURL = fs.String(
 		"cqa-url",
 		os.Getenv("CQA_URL"),
 		"Code-Quality-Agent API base URL: latest scans' fixable findings become fix tasks each tick",
 	)
-	cqaOwner := fs.String("cqa-owner", os.Getenv("CQA_OWNER_ID"), "CQA owner ID for the projects listing")
-	cqaToken := fs.String("cqa-token", os.Getenv("CQA_TOKEN"), "CQA bearer token")
-	doReview := fs.Bool(
+	v.cqaOwner = fs.String("cqa-owner", os.Getenv("CQA_OWNER_ID"), "CQA owner ID for the projects listing")
+	v.cqaToken = fs.String("cqa-token", os.Getenv("CQA_TOKEN"), "CQA bearer token")
+	v.doReview = fs.Bool(
 		"review",
 		false,
 		"agent reviews: each completed agent task gets ONE review by a second agent (reviews are never reviewed)",
 	)
-	dlqFix := fs.Bool(
+	v.dlqFix = fs.Bool(
 		"dlq-fix",
 		false,
 		"DLQ autopsies: each dead-lettered AGENT task gets ONE autopsy task by a second agent; a fixed verdict rescues the original, a wontfix verdict dismisses it with the recorded reason (autopsies are never autopsied)",
 	)
-	donePreflight := fs.Bool(
+	v.donePreflight = fs.Bool(
 		"done-preflight",
 		true,
 		"claim-time done gate (default ON): before an agent runs, check the repo for proof the task's work already landed (Task-Queue-ID footer commits, todo item now [x]/gone, fix-ticket rejected-SHA cured, closeout report exists); a done task completes with zero agent spend — kills the re-fire and minted-pre-landing classes (row 34: minted pre-commit, executed 20m after the landing; disable only with a reason)",
 	)
-	ownerSessPark := fs.Bool(
+	v.ownerSessPark = fs.Bool(
 		"owner-session-park",
 		true,
 		"two-writer policy (default ON): while an owner crush session is live inside a harvested repo (the session registry pinged within the freshness window), that repo's PENDING tasks park for --owner-session-hold instead of claiming into the owner's live worktree — claim/conflict/requeue churn becomes a visible, expiring park that burns no attempt",
 	)
-	ownerSessHold := fs.Duration(
+	v.ownerSessHold = fs.Duration(
 		"owner-session-hold",
 		15*time.Minute,
 		"owner-session-park: park horizon per tick; parks lapse on their own once the session goes quiet (no unpark sweep)",
 	)
-	worktrees := fs.Bool(
+	v.worktrees = fs.Bool(
 		"worktrees",
 		false,
 		"worktree-per-agent delivery (default OFF): every agent task runs in a linked checkout on branch tq/<task-id> forked from HEAD — the human's WIP never parks the pool and N tasks of one repo can coexist; committed rails required (.crushrc/.tq-verify uncommitted = permanent refusal); the branch is the delivery until auto-merge lands (worktree-per-agent design, docs/planning/archived/2026-09-12_worktree-per-agent-design.md)",
 	)
-	crushServer := fs.String(
+	v.crushServer = fs.String(
 		"crush-server",
 		"",
 		"route every agent run through a shared crush server on this unix socket (L1 client-server seam, default OFF): the pool starts `crush server --host unix://<socket>` as a lifecycle actor and every run becomes a thin client (args add -H <socket>, env adds CRUSH_CLIENT_SERVER=1); empty = today's in-process runs; rollback = unset the flag (docs/planning/2026-10-30_04-43_crush-client-server-relations.md §L1)",
 	)
-	prioritize := fs.Bool(
+	v.prioritize = fs.Bool(
 		"prioritize",
 		false,
 		"AI batch scorer: when a repo holds unscored backlog items in the queue, mint ONE prioritize task per repo whose verdicts cache scores and re-rank the pending tasks (marker > AI > keyword precedence, hot/machine bands protected; budget-guarded like every mint)",
 	)
-	depSweep := fs.Bool(
+	v.depSweep = fs.Bool(
 		"dep-sweep",
 		false,
 		"dependency upgrade sweep: pull the project-dependency-graph release-overview plan and mint deterministic depbump tasks (stale builds release, consumers bump exact pins, plan DAG becomes task deps; majors and never-released modules are skipped to the log — migration is agent/human work)",
 	)
-	depSweepBin := fs.String(
+	v.depSweepBin = fs.String(
 		"dep-sweep-bin",
 		"project-dependency-graph",
 		"dep-sweep: planner binary (PATH name or absolute)",
 	)
-	depSweepDir := fs.String("dep-sweep-dir", "", "dep-sweep: projects dir the planner scans (default: --projects-dir)")
-	depSweepEvery := fs.Duration(
+	v.depSweepDir = fs.String("dep-sweep-dir", "", "dep-sweep: projects dir the planner scans (default: --projects-dir)")
+	v.depSweepEvery = fs.Duration(
 		"dep-sweep-interval",
 		15*time.Minute,
 		"dep-sweep: re-plan interval (dedup makes shorter intervals free)",
 	)
-	depSweepPush := fs.Bool(
+	v.depSweepPush = fs.Bool(
 		"dep-sweep-push",
 		false,
 		"dep-sweep: release tasks also push master+tag (what unblocks consumer bumps via the module proxy); default tags locally and a human pushes",
 	)
-	depSweepUnrel := fs.Bool(
+	v.depSweepUnrel = fs.Bool(
 		"dep-sweep-unreleased",
 		false,
 		"dep-sweep: also release modules whose only work is unreleased feature commits (version decisions from commit analysis; default off)",
 	)
-	docsGates := fs.Bool(
+	v.docsGates = fs.Bool(
 		"docs-gates",
 		false,
 		"docs-gates bridge sweeper: run `docs-gates run <repo> --json` per listed repo on a timer and mint ONE agent fix task per FAIL gate (dedup docs-gates:<repo>:<gate> makes repeats free; journal watermark cursor docsgates-bridge checkpoints each fully-successful pass)",
 	)
-	docsGatesBin := fs.String(
+	v.docsGatesBin = fs.String(
 		"docs-gates-bin",
 		"docs-gates",
 		"docs-gates: gate binary (PATH name or absolute)",
 	)
-	docsGatesRepos := fs.String(
+	v.docsGatesRepos = fs.String(
 		"docs-gates-repos",
 		"",
 		"docs-gates: comma-separated repo names assessed every interval; each resolves against --projects-dir (required with --docs-gates)",
 	)
-	docsGatesEvery := fs.Duration(
+	v.docsGatesEvery = fs.Duration(
 		"docs-gates-interval",
 		30*time.Minute,
 		"docs-gates: sweep interval (dedup makes shorter intervals free)",
 	)
-	alertURL := fs.String(
+	v.alertURL = fs.String(
 		"alert-url",
 		os.Getenv("TQ_PAP_URL"),
 		"PapDashboard base URL: dead-lettered tasks and budget exhaustion raise alerts there (e.g. http://localhost:8080)",
 	)
-	alertKey := fs.String("alert-api-key", os.Getenv("TQ_PAP_API_KEY"), "PapDashboard API key (Bearer)")
-	alertPoll := fs.Duration("alert-poll", 5*time.Second, "journal tail interval for alert forwarding")
-	starvationAfter := fs.Duration(
+	v.alertKey = fs.String("alert-api-key", os.Getenv("TQ_PAP_API_KEY"), "PapDashboard API key (Bearer)")
+	v.alertPoll = fs.Duration("alert-poll", 5*time.Second, "journal tail interval for alert forwarding")
+	v.starvationAfter = fs.Duration(
 		"starvation-after",
 		0,
 		"starvation alarm: raise a PapDashboard alert (and WARN log) when the OLDEST pending task has waited longer than this despite the aging bonus — the backlog outgrows the drain; back under the threshold resolves it (0 = off, e.g. 24h)",
 	)
-	deadPoolTicks := fs.Int(
+	v.deadPoolTicks = fs.Int(
 		"dead-pool-ticks",
 		3,
 		"dead-pool detection: raise a PapDashboard alert (and WARN log) when EVERY watched repo scan-fails this many consecutive harvest ticks; the first tick with a readable repo resolves it (0 = off)",
 	)
-	repoTimeout := fs.String(
+	v.repoTimeout = fs.String(
 		"repo-timeout",
 		"",
 		"per-repo agent-task timeout ladder: name=duration,comma-separated (e.g. big-repo=60m,tiny=10m; pinned into harvested payloads, repos without an entry keep the 30m default)",
 	)
-	maxAgents := fs.Int(
+	v.maxAgents = fs.Int(
 		"max-concurrent-agents",
 		0,
 		"cap agent processes MACHINE-WIDE across every tq pool on this host via slot files (0 = uncapped)",
 	)
-	reviewAutofix := fs.Bool(
+	v.reviewAutofix = fs.Bool(
 		"review-autofix",
 		false,
 		"with --review: a request_changes verdict mints an agent fix task per finding (loop bounded by the budget guard)",
 	)
-	statusEvery := fs.Int(
+	v.statusEvery = fs.Int(
 		"status-every",
 		0,
 		"automated done-prompt: every N completed agent tasks per project mint one status task that writes a docs/status report and appends next items to TODO_LIST.md (0 = off)",
 	)
-	statusMinInterval := fs.Duration(
+	v.statusMinInterval = fs.Duration(
 		"status-min-interval",
 		24*time.Hour,
 		"per-project floor between two automated status reports (2026-10-11 ceremony cut: --status-every alone minted 213 reports in one repo; the completion window still accumulates, so the next report after the floor covers everything; 0 = no floor)",
 	)
-	closeout := fs.Bool(
+	v.closeout = fs.Bool(
 		"task-closeout",
 		false,
 		"every agent task gets a second conversation turn: the brutal self-review + status report prompt (executor.DefaultCloseoutPrompt), answered by the same agent session before verify runs",
 	)
-	logDir := fs.String(
+	v.logDir = fs.String(
 		"log-dir",
 		os.Getenv("TQ_LOG_DIR"),
 		"write full agent + verify output sidecars to DIR/<task-id>.log ($TQ_LOG_DIR; empty = off — result detail keeps only a tail). WARNING: sidecars are PLAINTEXT — provider-token-shaped secrets are redacted (--redact) but repo paths and prompt content remain",
 	)
-	logDirMaxAge := fs.Duration(
+	v.logDirMaxAge = fs.Duration(
 		"log-dir-max-age",
 		0,
 		"sweep sidecar logs older than this age from --log-dir each tick (e.g. 168h = 7d; 0 = keep forever; $TQ_LOG_DIR_MAX_AGE)",
 	)
-	logDirMaxBytes := fs.Int64(
+	v.logDirMaxBytes = fs.Int64(
 		"log-dir-max-bytes",
 		0,
 		"cap the total size of sidecar logs in --log-dir: oldest *.log files are deleted each tick until the total fits (e.g. 5368709120 = 5GiB; 0 = uncapped; $TQ_LOG_DIR_MAX_BYTES)",
 	)
-	redact := fs.Bool(
+	v.redact = fs.Bool(
 		"redact",
 		os.Getenv("TQ_REDACT") != "false",
 		"mask provider-token-shaped secrets in output tails before they reach facts, logs and sidecars ($TQ_REDACT; --redact=false keeps raw output for debugging)",
 	)
-	configPath := fs.String(
+	v.configPath = fs.String(
 		"config",
 		os.Getenv("TQ_POOL_CONFIG"),
 		"key=value settings file applied to flags not given on the command line (precedence: flag > env > file; $TQ_POOL_CONFIG)",
 	)
 
-	db := dbFlag(fs)
+	v.db = dbFlag(fs)
 
-	storeVal := storeFlag(fs)
+	v.storeVal = storeFlag(fs)
+
+	return fs, v
+}
+
+func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
+	fs, v := newAgentPoolFlagSet()
+	if err := fs.Parse(args); err != nil {
+		return agentPoolOptions{}, err
+	}
 	if err := fs.Parse(args); err != nil {
 		return agentPoolOptions{}, err
 	}
 
 	// Context-explosion guard: a batch shares one session — beyond ~10
 	// items the history dwarfs the work and the run dies on the ceiling.
-	if *batchItems > 10 {
-		return agentPoolOptions{}, fmt.Errorf("--batch-items: want 0..10, got %d", *batchItems)
+	if *v.batchItems > 10 {
+		return agentPoolOptions{}, fmt.Errorf("--batch-items: want 0..10, got %d", *v.batchItems)
 	}
 
-	if *configPath != "" {
-		if err := applyPoolConfigFile(fs, *configPath); err != nil {
+	if *v.configPath != "" {
+		if err := applyPoolConfigFile(fs, *v.configPath); err != nil {
 			return agentPoolOptions{}, err
 		}
 	}
@@ -432,23 +520,23 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 		}
 	})
 
-	if !timeoutExplicit && *batchItems > 1 {
-		scaled := time.Duration(*batchItems) * batchTimeoutPerItem
+	if !timeoutExplicit && *v.batchItems > 1 {
+		scaled := time.Duration(*v.batchItems) * batchTimeoutPerItem
 
 		// Effort mode can grant a run more than the count ceiling: an
 		// explicit --effort-budget fills runs to it, and a Jev-estimated
 		// monster item may ask its full clamp alone — cover both so the
 		// worker ceiling never truncates what effort sizing granted.
-		if *effortBudget > 0 {
-			scaled = max(scaled, time.Duration(*effortBudget)*time.Minute)
+		if *v.effortBudget > 0 {
+			scaled = max(scaled, time.Duration(*v.effortBudget)*time.Minute)
 		}
 
-		if *jev {
+		if *v.jev {
 			scaled = max(scaled, harvest.MaxEffortMinutes*time.Minute)
 		}
 
-		if scaled > *timeout {
-			*timeout = scaled
+		if scaled > *v.timeout {
+			*v.timeout = scaled
 		}
 	}
 
@@ -457,7 +545,7 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 	// xhigh) — a payload-level model makes the executor pass `crush run -m`,
 	// which RESETS the reasoning effort to the provider default. Checked
 	// AFTER the config file so a `model =` line there dies the same death.
-	if *model != "" {
+	if *v.model != "" {
 		return agentPoolOptions{}, errors.New(
 			"agent-pool: --model is retired: a payload-level model resets crush's reasoning effort to the provider default; pin model + effort per repo via the .crushrc managed block instead (tq bootstrap --model <provider/model> [--reasoning xhigh])",
 		)
@@ -465,112 +553,112 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 
 	// The sidecar writer reads the env at execution time; a --log-dir (or
 	// config-file log-dir) must reach it regardless of how it was set.
-	if *logDir != "" {
+	if *v.logDir != "" {
 		// Create it up front: the first sidecar sweep would otherwise
 		// warn (and a sidecar write could fail) when the dir is new.
-		if err := os.MkdirAll(*logDir, 0o755); err != nil {
+		if err := os.MkdirAll(*v.logDir, 0o755); err != nil {
 			return agentPoolOptions{}, fmt.Errorf("log dir: %w", err)
 		}
 
-		_ = os.Setenv("TQ_LOG_DIR", *logDir)
+		_ = os.Setenv("TQ_LOG_DIR", *v.logDir)
 	}
 
 	// Same for the secrets-in-logs pass: the executor reads TQ_REDACT at
 	// execution time, so the flag mirrors into the env (flag > env).
-	_ = os.Setenv("TQ_REDACT", strconv.FormatBool(*redact))
+	_ = os.Setenv("TQ_REDACT", strconv.FormatBool(*v.redact))
 
-	if envAge := os.Getenv("TQ_LOG_DIR_MAX_AGE"); envAge != "" && *logDirMaxAge == 0 {
+	if envAge := os.Getenv("TQ_LOG_DIR_MAX_AGE"); envAge != "" && *v.logDirMaxAge == 0 {
 		if parsed, err := time.ParseDuration(envAge); err == nil {
-			*logDirMaxAge = parsed
+			*v.logDirMaxAge = parsed
 		}
 	}
 
-	if envBytes := os.Getenv("TQ_LOG_DIR_MAX_BYTES"); envBytes != "" && *logDirMaxBytes == 0 {
+	if envBytes := os.Getenv("TQ_LOG_DIR_MAX_BYTES"); envBytes != "" && *v.logDirMaxBytes == 0 {
 		if parsed, err := strconv.ParseInt(envBytes, 10, 64); err == nil {
-			*logDirMaxBytes = parsed
+			*v.logDirMaxBytes = parsed
 		}
 	}
 
-	if *projectsDir == "" && *repos == "" {
+	if *v.projectsDir == "" && *v.repos == "" {
 		return agentPoolOptions{}, errors.New("no repos: pass --repos or --projects-dir (or set $TQ_PROJECTS_DIR)")
 	}
 
 	// Fully-absolute --repos entries never touch the projects dir, so a
 	// risky (or default) projects root must not block the run.
-	if *repos == "" || !allReposAbsolute(*repos) {
-		if err := checkProjectsDir(*projectsDir); err != nil {
+	if *v.repos == "" || !allReposAbsolute(*v.repos) {
+		if err := checkProjectsDir(*v.projectsDir); err != nil {
 			return agentPoolOptions{}, err
 		}
 	}
 
 	return agentPoolOptions{
-		db:              *db,
-		store:           *storeVal,
-		projectsDir:     *projectsDir,
-		repos:           *repos,
-		interval:        *interval,
-		discoveryAddr:   *discoveryAddr,
-		conc:            *conc,
-		poll:            *poll,
-		lease:           *lease,
-		timeout:         *timeout,
-		owner:           *owner,
-		yolo:            *yolo,
-		reresolveVerify: *reresolveVerify,
-		maxPerTick:      *maxPerTick,
-		batchItems:      *batchItems,
-		effortBudget:    *effortBudget,
-		jev:             *jev,
-		jevModel:        *jevModel,
-		jevAPIKey:       *jevAPIKey,
-		priorityFrom:    *priorityFrom,
-		maxPending:      *maxPending,
-		allowDirty:      *allowDirty,
-		model:           *model,
-		once:            *once,
-		pruneStale:      *pruneStale,
-		reprioritize:    *reprioritize,
-		exclusive:       *exclusive,
-		dailyBudget:     *dailyBudget,
-		dailyCostCap:    *dailyCostCap,
-		budgetCmd:       *budgetCmd,
-		repoInterval:    *repoInterval,
-		dlqBackoff:      *dlqBackoff,
-		cqaURL:          *cqaURL,
-		cqaOwner:        *cqaOwner,
-		cqaToken:        *cqaToken,
-		doReview:        *doReview,
-		dlqFix:          *dlqFix,
-		donePreflight:   *donePreflight,
-		prioritize:      *prioritize,
-		depSweep:        *depSweep,
-		depSweepBin:     *depSweepBin,
-		depSweepDir:     *depSweepDir,
-		depSweepEvery:   *depSweepEvery,
-		depSweepPush:    *depSweepPush,
-		depSweepUnrel:   *depSweepUnrel,
-		docsGates:       *docsGates,
-		docsGatesBin:    *docsGatesBin,
-		docsGatesRepos:  *docsGatesRepos,
-		docsGatesEvery:  *docsGatesEvery,
-		alertURL:        *alertURL,
-		alertKey:        *alertKey,
-		alertPoll:       *alertPoll,
-		deadPoolTicks:   *deadPoolTicks,
-		starveAfter:     *starvationAfter,
-		repoTimeout:     *repoTimeout,
-		maxAgents:       *maxAgents,
-		reviewAutofix:   *reviewAutofix,
-		statusEvery:     *statusEvery,
-		statusMinGap:    *statusMinInterval,
-		closeout:        *closeout,
-		logDir:          *logDir,
-		logDirMaxAge:    *logDirMaxAge,
-		logDirMaxBytes:  *logDirMaxBytes,
-		ownerSessPark:   *ownerSessPark,
-		ownerSessHold:   *ownerSessHold,
-		worktrees:       *worktrees,
-		crushServer:     *crushServer,
+		db:              *v.db,
+		store:           *v.storeVal,
+		projectsDir:     *v.projectsDir,
+		repos:           *v.repos,
+		interval:        *v.interval,
+		discoveryAddr:   *v.discoveryAddr,
+		conc:            *v.conc,
+		poll:            *v.poll,
+		lease:           *v.lease,
+		timeout:         *v.timeout,
+		owner:           *v.owner,
+		yolo:            *v.yolo,
+		reresolveVerify: *v.reresolveVerify,
+		maxPerTick:      *v.maxPerTick,
+		batchItems:      *v.batchItems,
+		effortBudget:    *v.effortBudget,
+		jev:             *v.jev,
+		jevModel:        *v.jevModel,
+		jevAPIKey:       *v.jevAPIKey,
+		priorityFrom:    *v.priorityFrom,
+		maxPending:      *v.maxPending,
+		allowDirty:      *v.allowDirty,
+		model:           *v.model,
+		once:            *v.once,
+		pruneStale:      *v.pruneStale,
+		reprioritize:    *v.reprioritize,
+		exclusive:       *v.exclusive,
+		dailyBudget:     *v.dailyBudget,
+		dailyCostCap:    *v.dailyCostCap,
+		budgetCmd:       *v.budgetCmd,
+		repoInterval:    *v.repoInterval,
+		dlqBackoff:      *v.dlqBackoff,
+		cqaURL:          *v.cqaURL,
+		cqaOwner:        *v.cqaOwner,
+		cqaToken:        *v.cqaToken,
+		doReview:        *v.doReview,
+		dlqFix:          *v.dlqFix,
+		donePreflight:   *v.donePreflight,
+		prioritize:      *v.prioritize,
+		depSweep:        *v.depSweep,
+		depSweepBin:     *v.depSweepBin,
+		depSweepDir:     *v.depSweepDir,
+		depSweepEvery:   *v.depSweepEvery,
+		depSweepPush:    *v.depSweepPush,
+		depSweepUnrel:   *v.depSweepUnrel,
+		docsGates:       *v.docsGates,
+		docsGatesBin:    *v.docsGatesBin,
+		docsGatesRepos:  *v.docsGatesRepos,
+		docsGatesEvery:  *v.docsGatesEvery,
+		alertURL:        *v.alertURL,
+		alertKey:        *v.alertKey,
+		alertPoll:       *v.alertPoll,
+		deadPoolTicks:   *v.deadPoolTicks,
+		starveAfter:     *v.starvationAfter,
+		repoTimeout:     *v.repoTimeout,
+		maxAgents:       *v.maxAgents,
+		reviewAutofix:   *v.reviewAutofix,
+		statusEvery:     *v.statusEvery,
+		statusMinGap:    *v.statusMinInterval,
+		closeout:        *v.closeout,
+		logDir:          *v.logDir,
+		logDirMaxAge:    *v.logDirMaxAge,
+		logDirMaxBytes:  *v.logDirMaxBytes,
+		ownerSessPark:   *v.ownerSessPark,
+		ownerSessHold:   *v.ownerSessHold,
+		worktrees:       *v.worktrees,
+		crushServer:     *v.crushServer,
 	}, nil
 }
 
