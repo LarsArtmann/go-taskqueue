@@ -33,6 +33,7 @@ const (
 	payloadReview payloadKind = "review"
 	payloadStatus payloadKind = "status"
 	payloadSh     payloadKind = "sh"
+	payloadDlqfix payloadKind = "dlqfix"
 	payloadRaw    payloadKind = "raw"
 )
 
@@ -54,7 +55,27 @@ type payloadField struct {
 type statusWindowEntry struct {
 	TaskID string
 	Report string
+	// Relation names the link's connection to this task (design-pass
+	// §f29): window (a completed task the status report covers), review
+	// (the task a review examined), fix (the dead task an autopsy
+	// diagnoses). Empty means window — the only relation that existed
+	// before the label did; the grouping helpers normalize it.
+	Relation string
 }
+
+// The relation vocabulary of the payload's window row. Review tasks keep
+// their reviewed-task grid field (one link never triggers the grouping),
+// so windowRelationReview documents the vocabulary rather than wiring it.
+const (
+	windowRelationWindow = "window"
+	windowRelationReview = "review"
+	windowRelationFix    = "fix"
+)
+
+// windowGroupsWhenOver marks the length past which the window row stops
+// being a flat strip and groups by relation (design-pass §f29): a
+// pathological window otherwise renders an unlabeled wall of short IDs.
+const windowGroupsWhenOver = 3
 
 // payloadView is the typed projection of one task payload: the task's actual
 // content first (work item, or shell command), the executor contract as a
@@ -112,6 +133,10 @@ func payloadViewFor(t task.Task) payloadView {
 		}
 	case executor.TaskTypeStatus:
 		if view.fromStatus(string(t.Payload)) {
+			return view
+		}
+	case executor.TaskTypeDLQFix:
+		if view.fromDlqfix(string(t.Payload)) {
 			return view
 		}
 	case "sh":
@@ -249,7 +274,7 @@ func (v *payloadView) fromStatus(raw string) bool {
 		)
 
 		for _, c := range sp.Completed {
-			v.Window = append(v.Window, statusWindowEntry{TaskID: c.TaskID, Report: c.Report})
+			v.Window = append(v.Window, statusWindowEntry{TaskID: c.TaskID, Report: c.Report, Relation: windowRelationWindow})
 		}
 	}
 
@@ -266,6 +291,90 @@ func (v *payloadView) fromStatus(raw string) bool {
 	}
 
 	return true
+}
+
+// fromDlqfix builds the autopsy projection (repo + dead task anchor the
+// contract). The dead task renders as the window row's fix relation — an
+// autopsy's one outbound link — instead of the raw JSON blob dlqfix
+// payloads degraded to before the payload kinds grew one.
+func (v *payloadView) fromDlqfix(raw string) bool {
+	var dp executor.DLQFixPayload
+	if err := json.Unmarshal([]byte(raw), &dp); err != nil || dp.Repo == "" || dp.DeadTask == "" {
+		return false
+	}
+
+	v.Kind = payloadDlqfix
+	v.Lede = executor.Excerpt(dp.Work)
+	v.Fields = append(v.Fields,
+		payloadField{Label: "repo", Value: dp.Repo},
+		payloadField{Label: "dead task", Value: shortIDTail(dp.DeadTask), Href: "/task/" + dp.DeadTask},
+	)
+
+	if dp.DeadType != "" {
+		v.Fields = append(v.Fields, payloadField{Label: "dead type", Value: dp.DeadType})
+	}
+
+	if dp.Attempts > 0 {
+		v.Fields = append(v.Fields, payloadField{Label: "attempts", Value: fmt.Sprintf("%d", dp.Attempts)})
+	}
+
+	if dp.TimeoutMinutes != 0 {
+		v.Fields = append(v.Fields, payloadField{Label: "timeout", Value: fmt.Sprintf("%d min", dp.TimeoutMinutes)})
+	}
+
+	v.Window = append(v.Window, statusWindowEntry{TaskID: dp.DeadTask, Relation: windowRelationFix})
+
+	return true
+}
+
+// windowRowLabel is the flat strip's label: the one relation when every
+// entry shares it, else the row's neutral window name.
+func windowRowLabel(entries []statusWindowEntry) string {
+	first := windowEntryRelation(entries[0])
+	for _, e := range entries[1:] {
+		if windowEntryRelation(e) != first {
+			return windowRelationWindow
+		}
+	}
+
+	return first
+}
+
+// windowEntryRelation normalizes a legacy entry's empty relation to
+// window.
+func windowEntryRelation(e statusWindowEntry) string {
+	if e.Relation == "" {
+		return windowRelationWindow
+	}
+
+	return e.Relation
+}
+
+// windowGroup is one relation-labeled cluster of the window row: the >3
+// rendering (design-pass §f29) so a long strip still says WHAT each
+// cluster of links is.
+type windowGroup struct {
+	Relation string
+	Entries  []statusWindowEntry
+}
+
+// windowGroups partitions entries into per-relation clusters in encounter
+// order (stable: status windows arrive oldest→newest). Only used when the
+// strip is long enough to need labels.
+func windowGroups(entries []statusWindowEntry) []windowGroup {
+	var groups []windowGroup
+
+	for _, e := range entries {
+		relation := windowEntryRelation(e)
+		if n := len(groups) - 1; n >= 0 && groups[n].Relation == relation {
+			groups[n].Entries = append(groups[n].Entries, e)
+			continue
+		}
+
+		groups = append(groups, windowGroup{Relation: relation, Entries: []statusWindowEntry{e}})
+	}
+
+	return groups
 }
 
 // prettyJSON pretty-prints s when it parses as a JSON object or array;
