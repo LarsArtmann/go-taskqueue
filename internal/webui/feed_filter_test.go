@@ -60,7 +60,9 @@ func TestFactFeedChipsMarkup(t *testing.T) {
 // TestReviewFindingsAnchorsMarkup pins the review-findings permalink
 // contract (design-pass §f27): each rendered finding row carries a
 // stable #finding-N id (1-based, order = render order) so fix prompts
-// and reviews can cite positions.
+// and reviews can cite positions. The scroll margin clears the sticky
+// topbar (pageHeader h-14 = 3.5rem) with breathing room:
+// scroll-mt-20 = 5rem = 80px (measured 2026-11-22 against layout.templ).
 func TestReviewFindingsAnchorsMarkup(t *testing.T) {
 	t.Parallel()
 
@@ -73,7 +75,7 @@ func TestReviewFindingsAnchorsMarkup(t *testing.T) {
 	for _, want := range []string{
 		`id="finding-1"`,
 		`id="finding-2"`,
-		`scroll-mt-4`,
+		`scroll-mt-20`,
 	} {
 		if !strings.Contains(html, want) {
 			t.Fatalf("reviewFindings markup missing %q", want)

@@ -4683,7 +4683,7 @@ func reviewFindings(res executor.ReviewResult) templ.Component {
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 341, "\" class=\"flex flex-wrap items-baseline gap-x-3 gap-y-1 scroll-mt-4\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 341, "\" class=\"flex flex-wrap items-baseline gap-x-3 gap-y-1 scroll-mt-20\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
