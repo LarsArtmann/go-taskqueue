@@ -157,11 +157,16 @@
   }
 
   function showFeedBurst(el, count) {
-    var badge = el.querySelector(".tq-feed-burst");
     if (count <= 0) {
+      var badge = el.querySelector(".tq-feed-burst");
       if (badge && badge.parentNode) badge.parentNode.removeChild(badge);
       return;
     }
+    ensureFeedBadge(el).textContent = count + " new facts";
+  }
+
+  function ensureFeedBadge(el) {
+    var badge = el.querySelector(".tq-feed-burst");
     if (!badge) {
       badge = document.createElement("span");
       badge.setAttribute("class", "tq-feed-burst");
@@ -170,7 +175,28 @@
       if (chips) chips.appendChild(badge);
       else el.insertBefore(badge, el.firstChild);
     }
-    badge.textContent = count + " new facts";
+    return badge;
+  }
+
+  /* Pause-on-hover burst pairing (design-pass §f26/§f4): while the feed
+     is hovered the tail pin is withheld; the burst count no longer just
+     evaporates — each hovered burst accumulates, and un-hovering
+     resurfaces the total as "N new while paused" instead of silently
+     resuming the tail ladder. The next unhovered swap takes the badge
+     over: its own count, or the zero-new clear. */
+  var feedHoverNew = 0;
+
+  function wireFeedPause(el) {
+    if (el.getAttribute("data-feed-pause-wired")) return;
+    el.setAttribute("data-feed-pause-wired", "1");
+    el.addEventListener("mouseenter", function () {
+      feedHoverNew = 0;
+    });
+    el.addEventListener("mouseleave", function () {
+      if (feedHoverNew <= 0) return;
+      ensureFeedBadge(el).textContent = feedHoverNew + " new while paused";
+      feedHoverNew = 0;
+    });
   }
 
   function swapIn(el, frag) {
@@ -179,7 +205,12 @@
     var st = captureState(el);
     el.innerHTML = frag.html;
     restoreState(el, st);
-    if (isFeed) showFeedBurst(el, feedBurstCount(el, prevSeq));
+    if (isFeed) {
+      var burst = feedBurstCount(el, prevSeq);
+      showFeedBurst(el, burst);
+      if (burst > 0 && el.matches && el.matches(":hover")) feedHoverNew += burst;
+      wireFeedPause(el);
+    }
     updateBoardAffordance();
     applyFeedFilter();
   }

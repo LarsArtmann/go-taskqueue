@@ -121,6 +121,13 @@ class El {
 		for (let p = n; p; p = p.parentNode) if (p === this) return true;
 		return false;
 	}
+	addEventListener(type, fn) {
+		this._listeners = this._listeners || {};
+		(this._listeners[type] = this._listeners[type] || []).push(fn);
+	}
+	_fire(type) {
+		for (const fn of (this._listeners && this._listeners[type]) || []) fn();
+	}
 	setAttribute(k, v) {
 		this.attributes.set(k, String(v));
 		if (k === "class") this.classList = new ClassList(this);
@@ -540,8 +547,7 @@ test("feed burst badge clears on a zero-new swap", () => {
 	doc.body.childNodes = doc.body.childNodes.filter((c) => c !== el);
 });
 
-test("pause-on-hover: a hovered feed is not re-pinned by a burst", () => {
-	const el = feedFixture(["a", "b"]);
+test("pause-on-hover: a hovered feed is not re-pinned by a burst", () => {	const el = feedFixture(["a", "b"]);
 	const pane = el.querySelector(".journal-scroll");
 	pane.scrollTop = 600; /* atBottom per stub geometry (1000-500-24) */
 	el.hovered = true;
