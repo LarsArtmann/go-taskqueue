@@ -128,6 +128,7 @@
     el.innerHTML = frag.html;
     restoreState(el, st);
     updateBoardAffordance();
+    applyFeedFilter();
   }
 
   /* Board scroll affordance: the edge fade (theme.css .board-overflow) is
@@ -227,6 +228,54 @@
     if (!cell) return;
     toggleErrorCell(cell);
   });
+
+  /* Fact-feed type filter (design-pass §f24): the chips row filters the
+     feed lines client-side — the journal never learns about it. The
+     selection persists across SSE swaps via sessionStorage and is
+     re-applied after every fragment swap; "all" (data-feed-type="") is
+     the reset. Lines carry data-fact-type, chips carry data-feed-type. */
+  var feedFilter = "";
+  try {
+    feedFilter = sessionStorage.getItem("tq-feed-filter") || "";
+  } catch (err) {
+    feedFilter = "";
+  }
+
+  function applyFeedFilter() {
+    var feed = document.getElementById("frag-feed");
+    if (!feed) return;
+    var lines = feed.querySelectorAll("[data-fact-type]");
+    for (var i = 0; i < lines.length; i++) {
+      lines[i].hidden =
+        feedFilter !== "" &&
+        lines[i].getAttribute("data-fact-type") !== feedFilter;
+    }
+    var chips = feed.querySelectorAll("[data-feed-type]");
+    for (var j = 0; j < chips.length; j++) {
+      var active = chips[j].getAttribute("data-feed-type") === feedFilter;
+      chips[j].classList.toggle("tq-feed-chip-active", active);
+      chips[j].setAttribute("aria-pressed", active ? "true" : "false");
+    }
+  }
+
+  function setFeedFilter(type) {
+    feedFilter = type;
+    try {
+      sessionStorage.setItem("tq-feed-filter", type);
+    } catch (err) {
+      /* storage unavailable (private mode): filter stays session-local */
+    }
+    applyFeedFilter();
+  }
+
+  document.addEventListener("click", function (e) {
+    var chip = e.target.closest ? e.target.closest("[data-feed-type]") : null;
+    if (!chip) return;
+    setFeedFilter(chip.getAttribute("data-feed-type"));
+  });
+
+  document.addEventListener("DOMContentLoaded", applyFeedFilter);
+  applyFeedFilter();
 
   document.addEventListener("keydown", function (e) {
     if (e.key !== "Enter" && e.key !== " ") return;

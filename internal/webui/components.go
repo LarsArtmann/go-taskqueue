@@ -312,6 +312,20 @@ func findingSeverityType(severity string) display.BadgeType {
 	}
 }
 
+// factTypes lists the distinct fact types present in a feed window, in
+// first-seen order — the filter chips' row (design-pass §f24).
+func factTypes(facts []journal.Fact) []string {
+	seen := make(map[journal.FactType]bool)
+	var out []string
+	for _, f := range facts {
+		if !seen[f.Type] {
+			seen[f.Type] = true
+			out = append(out, string(f.Type))
+		}
+	}
+	return out
+}
+
 // factTone maps a fact type onto the journal pane's tone colors.
 func factTone(t journal.FactType) display.ScrollbackTone {
 	switch t {

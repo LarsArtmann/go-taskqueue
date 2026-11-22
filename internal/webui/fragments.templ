@@ -472,7 +472,11 @@ templ deadRows(data DashboardData) {
 // journal itself, terminal-style. Newest facts land at the bottom. Each
 // line's task id links to the detail page — a thin custom variant of the
 // library Scrollback (which renders plain text lines only); the classes
-// mirror its markup so the visual language stays one.
+// mirror its markup so the visual language stays one. Above the tail sits
+// the type-filter chip row (design-pass §f24): one chip per distinct type
+// in the window, client-side only — app.js hides non-matching lines and
+// re-applies the persisted selection after every SSE swap; the journal
+// itself never learns about the filter.
 templ FactFeed(data DashboardData) {
 	if len(data.Facts) == 0 {
 		@display.EmptyState(display.EmptyStateProps{
@@ -481,10 +485,26 @@ templ FactFeed(data DashboardData) {
 			Icon:        icons.CircleStack,
 		})
 	} else {
+		<div class="tq-feed-chips flex flex-wrap items-center gap-1.5 px-1 pb-2" role="group" aria-label="filter facts by type">
+			<button
+				type="button"
+				class="tq-feed-chip"
+				data-feed-type=""
+				aria-pressed="false"
+			>all</button>
+			for _, ft := range factTypes(data.Facts) {
+				<button
+					type="button"
+					class="tq-feed-chip"
+					data-feed-type={ ft }
+					aria-pressed="false"
+				>{ ft }</button>
+			}
+		</div>
 		<div class="journal-scroll rounded-lg border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
 			<div class="tc-log text-start border-y-0 py-3 font-mono text-[0.8125rem] leading-relaxed text-gray-600 dark:text-gray-400" aria-label="journal fact tail">
 				for _, fact := range data.Facts {
-					<div class={ templ.Classes("tc-log-line tc-log-line-still", templ.KV("tq-fact-cancelled", fact.Type == journal.Cancelled)) }>
+					<div class={ templ.Classes("tc-log-line tc-log-line-still", templ.KV("tq-fact-cancelled", fact.Type == journal.Cancelled)) } data-fact-type={ string(fact.Type) }>
 						<span class="me-3 text-gray-400 dark:text-gray-500">{ factTimestamp(data.Now, fact.Time) }</span>
 						<span class={ "me-2 inline-block min-w-12 font-medium " + factToneClass(factTone(fact.Type)) }>{ string(fact.Type) }</span>
 						<a
