@@ -490,9 +490,6 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 	if err := fs.Parse(args); err != nil {
 		return agentPoolOptions{}, err
 	}
-	if err := fs.Parse(args); err != nil {
-		return agentPoolOptions{}, err
-	}
 
 	// Context-explosion guard: a batch shares one session — beyond ~10
 	// items the history dwarfs the work and the run dies on the ceiling.
