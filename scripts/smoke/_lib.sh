@@ -30,7 +30,9 @@ run_in() { (cd "$1" && "${@:2}"); }
 # with the caller's args in the background, redirecting to the given log,
 # and sets SERVE_PID; wait_dashboard polls the log for the readiness line;
 # stop_serve tears the server down. All three take explicit paths — no
-# hidden globals beyond SERVE_PID.
+# hidden globals beyond SERVE_PID. wait_dashboard RETURNS nonzero on
+# timeout (it never exits); callers decide how to fail, so a smoke can
+# print its own evidence (serve-log tail) via its wrapper first.
 free_port() {
 	python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1])'
 }
@@ -48,7 +50,8 @@ wait_dashboard() {
 		grep -q "dashboard on" "$log" 2>/dev/null && return 0
 		sleep 0.1
 	done
-	fail "tq serve never logged 'dashboard on' (log: $log)"
+	echo "FAIL: tq serve never logged 'dashboard on' (log: $log)" >&2
+	return 1
 }
 
 stop_serve() {

@@ -52,9 +52,8 @@ PORT="${BUDGET_SMOKE_PORT:-$(free_port)}"
 echo "== serve with --daily-budget $CAP (hand tailer: the meter reads the store either way)"
 scratch_serve "$TMP/tq" "$TMP/serve.log" --addr "127.0.0.1:$PORT" --daily-budget "$CAP" --read-model=false
 
-# fail_smoke vs _lib fail(): the smoke's wrapper prints the serve-log tail
-# before exiting, so readiness calls it explicitly instead of wait_dashboard's
-# bare fail.
+# wait_dashboard returns nonzero on timeout without exiting, so the smoke's
+# fail_smoke wrapper runs and prints the serve-log tail before exiting.
 wait_dashboard "$TMP/serve.log" || fail_smoke "tq serve never logged 'dashboard on'"
 
 echo "== enqueue $CAP tasks (each enqueue is one spent fact)"
