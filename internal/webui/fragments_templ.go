@@ -3284,14 +3284,14 @@ func boardColumn(data DashboardData, col BoardColumn) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 234, "\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 234, "\" title=\"opens the filtered table view\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var168 string
 			templ_7745c5c3_Var168, templ_7745c5c3_Err = templ.JoinStringErrs("+" + formatInt(col.Truncated) + " older")
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 542, Col: 47}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 543, Col: 47}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var168))
 			if templ_7745c5c3_Err != nil {
@@ -3361,7 +3361,7 @@ func boardColumnGroups(data DashboardData, col BoardColumn, groups []BoardBandGr
 				var templ_7745c5c3_Var170 string
 				templ_7745c5c3_Var170, templ_7745c5c3_Err = templ.JoinStringErrs(string(g.Band))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 564, Col: 42}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 565, Col: 42}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var170))
 				if templ_7745c5c3_Err != nil {
@@ -3452,7 +3452,7 @@ func boardCard(data DashboardData, t task.Task) templ.Component {
 		var templ_7745c5c3_Var174 string
 		templ_7745c5c3_Var174, templ_7745c5c3_Err = templruntime.NewAttributeExpression(templ.URL("/task/" + t.ID.String())).ResolveURL(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 585, Col: 46}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 586, Col: 46}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var174)
 		if templ_7745c5c3_Err != nil {
@@ -3465,7 +3465,7 @@ func boardCard(data DashboardData, t task.Task) templ.Component {
 		var templ_7745c5c3_Var175 string
 		templ_7745c5c3_Var175, templ_7745c5c3_Err = templruntime.NewAttributeExpression(t.ID.String()).Resolve(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 586, Col: 25}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 587, Col: 25}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var175)
 		if templ_7745c5c3_Err != nil {
@@ -3478,7 +3478,7 @@ func boardCard(data DashboardData, t task.Task) templ.Component {
 		var templ_7745c5c3_Var176 string
 		templ_7745c5c3_Var176, templ_7745c5c3_Err = templ.JoinStringErrs(shortID(t.ID))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 587, Col: 19}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 588, Col: 19}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var176))
 		if templ_7745c5c3_Err != nil {
@@ -3491,7 +3491,7 @@ func boardCard(data DashboardData, t task.Task) templ.Component {
 		var templ_7745c5c3_Var177 string
 		templ_7745c5c3_Var177, templ_7745c5c3_Err = templruntime.NewAttributeExpression(fmt.Sprintf("%d", t.CreatedAt.UnixMilli())).Resolve(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 588, Col: 121}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 589, Col: 121}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var177)
 		if templ_7745c5c3_Err != nil {
@@ -3504,7 +3504,7 @@ func boardCard(data DashboardData, t task.Task) templ.Component {
 		var templ_7745c5c3_Var178 string
 		templ_7745c5c3_Var178, templ_7745c5c3_Err = templruntime.NewAttributeExpression(t.CreatedAt.Format(timeFormat)).Resolve(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 588, Col: 162}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 589, Col: 162}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var178)
 		if templ_7745c5c3_Err != nil {
@@ -3517,7 +3517,7 @@ func boardCard(data DashboardData, t task.Task) templ.Component {
 		var templ_7745c5c3_Var179 string
 		templ_7745c5c3_Var179, templ_7745c5c3_Err = templ.JoinStringErrs(timeAgo(data.Now, t.CreatedAt))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 588, Col: 197}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 589, Col: 197}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var179))
 		if templ_7745c5c3_Err != nil {
@@ -3535,7 +3535,7 @@ func boardCard(data DashboardData, t task.Task) templ.Component {
 			var templ_7745c5c3_Var180 string
 			templ_7745c5c3_Var180, templ_7745c5c3_Err = templruntime.NewAttributeExpression(templ.URL("/project/" + t.Project)).ResolveURL(ctx)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 592, Col: 126}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 593, Col: 126}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var180)
 			if templ_7745c5c3_Err != nil {
@@ -3548,7 +3548,7 @@ func boardCard(data DashboardData, t task.Task) templ.Component {
 			var templ_7745c5c3_Var181 string
 			templ_7745c5c3_Var181, templ_7745c5c3_Err = templ.JoinStringErrs(t.Project)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 592, Col: 140}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 593, Col: 140}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var181))
 			if templ_7745c5c3_Err != nil {
@@ -3566,7 +3566,7 @@ func boardCard(data DashboardData, t task.Task) templ.Component {
 		var templ_7745c5c3_Var182 string
 		templ_7745c5c3_Var182, templ_7745c5c3_Err = templ.JoinStringErrs(t.Type)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 594, Col: 77}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 595, Col: 77}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var182))
 		if templ_7745c5c3_Err != nil {
@@ -3584,7 +3584,7 @@ func boardCard(data DashboardData, t task.Task) templ.Component {
 			var templ_7745c5c3_Var183 string
 			templ_7745c5c3_Var183, templ_7745c5c3_Err = templ.JoinStringErrs(r)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 597, Col: 75}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 598, Col: 75}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var183))
 			if templ_7745c5c3_Err != nil {
@@ -3603,7 +3603,7 @@ func boardCard(data DashboardData, t task.Task) templ.Component {
 			var templ_7745c5c3_Var184 string
 			templ_7745c5c3_Var184, templ_7745c5c3_Err = templruntime.NewAttributeExpression(t.LeaseOwner).Resolve(ctx)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 600, Col: 101}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 601, Col: 101}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var184)
 			if templ_7745c5c3_Err != nil {
@@ -3616,7 +3616,7 @@ func boardCard(data DashboardData, t task.Task) templ.Component {
 			var templ_7745c5c3_Var185 string
 			templ_7745c5c3_Var185, templ_7745c5c3_Err = templ.JoinStringErrs(t.LeaseOwner)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 600, Col: 118}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 601, Col: 118}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var185))
 			if templ_7745c5c3_Err != nil {
@@ -3635,7 +3635,7 @@ func boardCard(data DashboardData, t task.Task) templ.Component {
 			var templ_7745c5c3_Var186 string
 			templ_7745c5c3_Var186, templ_7745c5c3_Err = templ.JoinStringErrs(formatInt(t.Attempts))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 604, Col: 83}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 605, Col: 83}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var186))
 			if templ_7745c5c3_Err != nil {
@@ -3648,7 +3648,7 @@ func boardCard(data DashboardData, t task.Task) templ.Component {
 			var templ_7745c5c3_Var187 string
 			templ_7745c5c3_Var187, templ_7745c5c3_Err = templ.JoinStringErrs(formatInt(t.MaxAttempts))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 604, Col: 112}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 605, Col: 112}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var187))
 			if templ_7745c5c3_Err != nil {
@@ -3666,7 +3666,7 @@ func boardCard(data DashboardData, t task.Task) templ.Component {
 				var templ_7745c5c3_Var188 string
 				templ_7745c5c3_Var188, templ_7745c5c3_Err = templruntime.NewAttributeExpression(t.LastError).Resolve(ctx)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 606, Col: 80}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 607, Col: 80}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var188)
 				if templ_7745c5c3_Err != nil {
@@ -3679,7 +3679,7 @@ func boardCard(data DashboardData, t task.Task) templ.Component {
 				var templ_7745c5c3_Var189 string
 				templ_7745c5c3_Var189, templ_7745c5c3_Err = templ.JoinStringErrs(truncate(t.LastError, errorPreviewLen))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 606, Col: 123}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 607, Col: 123}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var189))
 				if templ_7745c5c3_Err != nil {
@@ -3733,7 +3733,7 @@ func FilterBar(data DashboardData) templ.Component {
 			var templ_7745c5c3_Var191 string
 			templ_7745c5c3_Var191, templ_7745c5c3_Err = templruntime.NewAttributeExpression(viewBoard).Resolve(ctx)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 617, Col: 53}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 618, Col: 53}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var191)
 			if templ_7745c5c3_Err != nil {
@@ -3752,7 +3752,7 @@ func FilterBar(data DashboardData) templ.Component {
 			var templ_7745c5c3_Var192 string
 			templ_7745c5c3_Var192, templ_7745c5c3_Err = templruntime.NewAttributeExpression(data.Filter.Sort).Resolve(ctx)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 620, Col: 60}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 621, Col: 60}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var192)
 			if templ_7745c5c3_Err != nil {
@@ -3810,7 +3810,7 @@ func FilterBar(data DashboardData) templ.Component {
 			var templ_7745c5c3_Var193 string
 			templ_7745c5c3_Var193, templ_7745c5c3_Err = templruntime.NewAttributeExpression(data.Filter.Query).Resolve(ctx)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 645, Col: 28}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 646, Col: 28}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var193)
 			if templ_7745c5c3_Err != nil {
@@ -3901,7 +3901,7 @@ func FilterBar(data DashboardData) templ.Component {
 				var templ_7745c5c3_Var198 string
 				templ_7745c5c3_Var198, templ_7745c5c3_Err = templruntime.NewAttributeExpression(string(st)).Resolve(ctx)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 652, Col: 31}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 653, Col: 31}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var198)
 				if templ_7745c5c3_Err != nil {
@@ -3982,7 +3982,7 @@ func FilterBar(data DashboardData) templ.Component {
 			var templ_7745c5c3_Var202 string
 			templ_7745c5c3_Var202, templ_7745c5c3_Err = templruntime.NewAttributeExpression(string(queue.BandBacklog)).Resolve(ctx)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 657, Col: 45}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 658, Col: 45}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var202)
 			if templ_7745c5c3_Err != nil {
@@ -4005,7 +4005,7 @@ func FilterBar(data DashboardData) templ.Component {
 			var templ_7745c5c3_Var203 string
 			templ_7745c5c3_Var203, templ_7745c5c3_Err = templruntime.NewAttributeExpression(string(queue.BandHot)).Resolve(ctx)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 658, Col: 41}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 659, Col: 41}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var203)
 			if templ_7745c5c3_Err != nil {
@@ -4028,7 +4028,7 @@ func FilterBar(data DashboardData) templ.Component {
 			var templ_7745c5c3_Var204 string
 			templ_7745c5c3_Var204, templ_7745c5c3_Err = templruntime.NewAttributeExpression(string(queue.BandMachine)).Resolve(ctx)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 659, Col: 45}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 660, Col: 45}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var204)
 			if templ_7745c5c3_Err != nil {
@@ -4083,7 +4083,7 @@ func FilterBar(data DashboardData) templ.Component {
 			var templ_7745c5c3_Var205 string
 			templ_7745c5c3_Var205, templ_7745c5c3_Err = templruntime.NewAttributeExpression(data.Filter.Evidence).Resolve(ctx)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 679, Col: 31}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 680, Col: 31}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var205)
 			if templ_7745c5c3_Err != nil {
@@ -4093,7 +4093,7 @@ func FilterBar(data DashboardData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var206 = []any{inputClass + " min-h-7 font-mono text-xs"}
+			var templ_7745c5c3_Var206 = []any{inputClass + " min-h-7 min-w-0 flex-1 basis-full font-mono text-xs sm:basis-0"}
 			templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_ElementWriter, templ_7745c5c3_Var206...)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
@@ -4133,7 +4133,7 @@ func FilterBar(data DashboardData) templ.Component {
 			var templ_7745c5c3_Var208 string
 			templ_7745c5c3_Var208, templ_7745c5c3_Err = templruntime.NewAttributeExpression(stage).Resolve(ctx)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 685, Col: 25}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 686, Col: 25}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var208)
 			if templ_7745c5c3_Err != nil {
@@ -4178,7 +4178,7 @@ func filterChip(kind, value, clearHref string) templ.Component {
 		var templ_7745c5c3_Var210 string
 		templ_7745c5c3_Var210, templ_7745c5c3_Err = templ.JoinStringErrs(kind)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 695, Col: 55}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 696, Col: 55}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var210))
 		if templ_7745c5c3_Err != nil {
@@ -4191,7 +4191,7 @@ func filterChip(kind, value, clearHref string) templ.Component {
 		var templ_7745c5c3_Var211 string
 		templ_7745c5c3_Var211, templ_7745c5c3_Err = templ.JoinStringErrs(value)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 696, Col: 9}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 697, Col: 9}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var211))
 		if templ_7745c5c3_Err != nil {
@@ -4204,7 +4204,7 @@ func filterChip(kind, value, clearHref string) templ.Component {
 		var templ_7745c5c3_Var212 string
 		templ_7745c5c3_Var212, templ_7745c5c3_Err = templruntime.NewAttributeExpression("clear " + kind + " filter").Resolve(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 697, Col: 129}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 698, Col: 129}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var212)
 		if templ_7745c5c3_Err != nil {
@@ -4217,7 +4217,7 @@ func filterChip(kind, value, clearHref string) templ.Component {
 		var templ_7745c5c3_Var213 string
 		templ_7745c5c3_Var213, templ_7745c5c3_Err = templruntime.NewAttributeExpression(templ.URL(clearHref)).ResolveURL(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 697, Col: 159}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 698, Col: 159}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var213)
 		if templ_7745c5c3_Err != nil {
@@ -4378,7 +4378,7 @@ func taskDetailCard(data DashboardData, t task.Task) templ.Component {
 		var templ_7745c5c3_Var218 string
 		templ_7745c5c3_Var218, templ_7745c5c3_Err = templruntime.NewAttributeExpression(t.ID.String()).Resolve(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 750, Col: 100}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 751, Col: 100}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var218)
 		if templ_7745c5c3_Err != nil {
@@ -4391,7 +4391,7 @@ func taskDetailCard(data DashboardData, t task.Task) templ.Component {
 		var templ_7745c5c3_Var219 string
 		templ_7745c5c3_Var219, templ_7745c5c3_Err = templ.JoinStringErrs(shortID(t.ID))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 750, Col: 118}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 751, Col: 118}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var219))
 		if templ_7745c5c3_Err != nil {
@@ -4416,7 +4416,7 @@ func taskDetailCard(data DashboardData, t task.Task) templ.Component {
 		var templ_7745c5c3_Var220 string
 		templ_7745c5c3_Var220, templ_7745c5c3_Err = templ.JoinStringErrs(t.ID.String())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 757, Col: 116}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 758, Col: 116}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var220))
 		if templ_7745c5c3_Err != nil {
@@ -4562,7 +4562,7 @@ func reviewFindings(res executor.ReviewResult) templ.Component {
 				var templ_7745c5c3_Var224 string
 				templ_7745c5c3_Var224, templ_7745c5c3_Err = templ.JoinStringErrs(res.Summary)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 804, Col: 68}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 805, Col: 68}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var224))
 				if templ_7745c5c3_Err != nil {
@@ -4605,7 +4605,7 @@ func reviewFindings(res executor.ReviewResult) templ.Component {
 					var templ_7745c5c3_Var225 string
 					templ_7745c5c3_Var225, templ_7745c5c3_Err = templ.JoinStringErrs(finding.Title)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 815, Col: 85}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 816, Col: 85}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var225))
 					if templ_7745c5c3_Err != nil {
@@ -4623,7 +4623,7 @@ func reviewFindings(res executor.ReviewResult) templ.Component {
 						var templ_7745c5c3_Var226 string
 						templ_7745c5c3_Var226, templ_7745c5c3_Err = templ.JoinStringErrs(finding.Detail)
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 817, Col: 78}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 818, Col: 78}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var226))
 						if templ_7745c5c3_Err != nil {
@@ -4656,7 +4656,7 @@ func reviewFindings(res executor.ReviewResult) templ.Component {
 				var templ_7745c5c3_Var227 string
 				templ_7745c5c3_Var227, templ_7745c5c3_Err = templ.JoinStringErrs(sessionUsageText(res.SessionCostUSD, res.SessionPromptTokens, res.SessionCompletionTokens, res.SessionMessageCount))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 824, Col: 177}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 825, Col: 177}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var227))
 				if templ_7745c5c3_Err != nil {
@@ -4714,7 +4714,7 @@ func fullOutputLine(logPath string) templ.Component {
 			var templ_7745c5c3_Var229 string
 			templ_7745c5c3_Var229, templ_7745c5c3_Err = templ.JoinStringErrs(logPath)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 836, Col: 129}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 837, Col: 129}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var229))
 			if templ_7745c5c3_Err != nil {
@@ -4796,7 +4796,7 @@ func agentResultCard(res executor.AgentResult) templ.Component {
 				var templ_7745c5c3_Var232 string
 				templ_7745c5c3_Var232, templ_7745c5c3_Err = templ.JoinStringErrs(res.Branch)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 854, Col: 133}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 855, Col: 133}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var232))
 				if templ_7745c5c3_Err != nil {
@@ -4809,7 +4809,7 @@ func agentResultCard(res executor.AgentResult) templ.Component {
 				var templ_7745c5c3_Var233 string
 				templ_7745c5c3_Var233, templ_7745c5c3_Err = templ.JoinStringErrs(res.WorktreeDir)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 854, Col: 205}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 855, Col: 205}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var233))
 				if templ_7745c5c3_Err != nil {
@@ -4858,7 +4858,7 @@ func sessionUsageLine(costUSD float64, promptTokens, completionTokens int64, mes
 		var templ_7745c5c3_Var235 string
 		templ_7745c5c3_Var235, templ_7745c5c3_Err = templ.JoinStringErrs(sessionUsageText(costUSD, promptTokens, completionTokens, messages))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 864, Col: 137}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 865, Col: 137}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var235))
 		if templ_7745c5c3_Err != nil {
@@ -4919,7 +4919,7 @@ func statusReportCard(res executor.StatusResult) templ.Component {
 			var templ_7745c5c3_Var238 string
 			templ_7745c5c3_Var238, templ_7745c5c3_Err = templ.JoinStringErrs(res.Report)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 874, Col: 90}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 875, Col: 90}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var238))
 			if templ_7745c5c3_Err != nil {
@@ -5211,7 +5211,7 @@ func retryStrip(trail []retryReason) templ.Component {
 				var templ_7745c5c3_Var245 string
 				templ_7745c5c3_Var245, templ_7745c5c3_Err = templ.JoinStringErrs(formatInt(r.Count))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 960, Col: 58}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 961, Col: 58}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var245))
 				if templ_7745c5c3_Err != nil {
@@ -5224,7 +5224,7 @@ func retryStrip(trail []retryReason) templ.Component {
 				var templ_7745c5c3_Var246 string
 				templ_7745c5c3_Var246, templ_7745c5c3_Err = templruntime.NewAttributeExpression(r.Reason).Resolve(ctx)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 961, Col: 53}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 962, Col: 53}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var246)
 				if templ_7745c5c3_Err != nil {
@@ -5237,7 +5237,7 @@ func retryStrip(trail []retryReason) templ.Component {
 				var templ_7745c5c3_Var247 string
 				templ_7745c5c3_Var247, templ_7745c5c3_Err = templ.JoinStringErrs(r.Reason)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 961, Col: 66}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 962, Col: 66}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var247))
 				if templ_7745c5c3_Err != nil {
@@ -5324,7 +5324,7 @@ func payloadPreWithCopy(preClass, text string) templ.Component {
 		var templ_7745c5c3_Var251 string
 		templ_7745c5c3_Var251, templ_7745c5c3_Err = templ.JoinStringErrs(text)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 973, Col: 52}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 974, Col: 52}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var251))
 		if templ_7745c5c3_Err != nil {
@@ -5393,7 +5393,7 @@ func payloadSection(t task.Task, pv payloadView) templ.Component {
 				var templ_7745c5c3_Var253 string
 				templ_7745c5c3_Var253, templ_7745c5c3_Err = templ.JoinStringErrs(pv.Lede)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 993, Col: 40}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 994, Col: 40}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var253))
 				if templ_7745c5c3_Err != nil {
@@ -5413,7 +5413,7 @@ func payloadSection(t task.Task, pv payloadView) templ.Component {
 			var templ_7745c5c3_Var254 string
 			templ_7745c5c3_Var254, templ_7745c5c3_Err = templ.JoinStringErrs(pv.Note)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 997, Col: 39}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 998, Col: 39}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var254))
 			if templ_7745c5c3_Err != nil {
@@ -5437,7 +5437,7 @@ func payloadSection(t task.Task, pv payloadView) templ.Component {
 				var templ_7745c5c3_Var255 string
 				templ_7745c5c3_Var255, templ_7745c5c3_Err = templruntime.NewAttributeExpression(templ.URL("/task/" + entry.TaskID)).ResolveURL(ctx)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 1006, Col: 48}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 1007, Col: 48}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var255)
 				if templ_7745c5c3_Err != nil {
@@ -5450,7 +5450,7 @@ func payloadSection(t task.Task, pv payloadView) templ.Component {
 				var templ_7745c5c3_Var256 string
 				templ_7745c5c3_Var256, templ_7745c5c3_Err = templruntime.NewAttributeExpression(entry.TaskID).Resolve(ctx)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 1007, Col: 27}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 1008, Col: 27}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var256)
 				if templ_7745c5c3_Err != nil {
@@ -5463,7 +5463,7 @@ func payloadSection(t task.Task, pv payloadView) templ.Component {
 				var templ_7745c5c3_Var257 string
 				templ_7745c5c3_Var257, templ_7745c5c3_Err = templ.JoinStringErrs(shortIDTail(entry.TaskID))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 1008, Col: 34}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 1009, Col: 34}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var257))
 				if templ_7745c5c3_Err != nil {
@@ -5481,7 +5481,7 @@ func payloadSection(t task.Task, pv payloadView) templ.Component {
 					var templ_7745c5c3_Var258 string
 					templ_7745c5c3_Var258, templ_7745c5c3_Err = templ.JoinStringErrs(entry.Report)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 1013, Col: 22}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 1014, Col: 22}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var258))
 					if templ_7745c5c3_Err != nil {
@@ -5511,7 +5511,7 @@ func payloadSection(t task.Task, pv payloadView) templ.Component {
 				var templ_7745c5c3_Var259 string
 				templ_7745c5c3_Var259, templ_7745c5c3_Err = templ.JoinStringErrs(f.Label)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 1022, Col: 18}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 1023, Col: 18}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var259))
 				if templ_7745c5c3_Err != nil {
@@ -5529,7 +5529,7 @@ func payloadSection(t task.Task, pv payloadView) templ.Component {
 					var templ_7745c5c3_Var260 string
 					templ_7745c5c3_Var260, templ_7745c5c3_Err = templruntime.NewAttributeExpression(templ.URL(f.Href)).ResolveURL(ctx)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 1025, Col: 68}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 1026, Col: 68}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var260)
 					if templ_7745c5c3_Err != nil {
@@ -5542,7 +5542,7 @@ func payloadSection(t task.Task, pv payloadView) templ.Component {
 					var templ_7745c5c3_Var261 string
 					templ_7745c5c3_Var261, templ_7745c5c3_Err = templ.JoinStringErrs(f.Value)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 1025, Col: 80}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 1026, Col: 80}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var261))
 					if templ_7745c5c3_Err != nil {
@@ -5560,7 +5560,7 @@ func payloadSection(t task.Task, pv payloadView) templ.Component {
 					var templ_7745c5c3_Var262 string
 					templ_7745c5c3_Var262, templ_7745c5c3_Err = templ.JoinStringErrs(f.Value)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 1027, Col: 40}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 1028, Col: 40}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var262))
 					if templ_7745c5c3_Err != nil {
@@ -5589,7 +5589,7 @@ func payloadSection(t task.Task, pv payloadView) templ.Component {
 			var templ_7745c5c3_Var263 string
 			templ_7745c5c3_Var263, templ_7745c5c3_Err = templ.JoinStringErrs(pv.Prompt)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 1036, Col: 43}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webui/fragments.templ`, Line: 1037, Col: 43}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var263))
 			if templ_7745c5c3_Err != nil {
