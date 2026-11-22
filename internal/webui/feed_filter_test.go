@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 )
 
@@ -53,5 +54,32 @@ func TestFactFeedChipsMarkup(t *testing.T) {
 		if !strings.Contains(html, want) {
 			t.Fatalf("FactFeed markup missing %q", want)
 		}
+	}
+}
+
+// TestReviewFindingsAnchorsMarkup pins the review-findings permalink
+// contract (design-pass §f27): each rendered finding row carries a
+// stable #finding-N id (1-based, order = render order) so fix prompts
+// and reviews can cite positions.
+func TestReviewFindingsAnchorsMarkup(t *testing.T) {
+	t.Parallel()
+
+	html := renderComponent(context.Background(), reviewFindings(executor.ReviewResult{
+		Findings: []executor.ReviewFinding{
+			{Title: "first", Severity: "high"},
+			{Title: "second"},
+		},
+	}))
+	for _, want := range []string{
+		`id="finding-1"`,
+		`id="finding-2"`,
+		`scroll-mt-4`,
+	} {
+		if !strings.Contains(html, want) {
+			t.Fatalf("reviewFindings markup missing %q", want)
+		}
+	}
+	if strings.Contains(html, `id="finding-3"`) {
+		t.Fatal("reviewFindings minted an id past the findings list")
 	}
 }

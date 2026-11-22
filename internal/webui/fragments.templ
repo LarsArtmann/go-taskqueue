@@ -838,8 +838,8 @@ templ reviewFindings(res executor.ReviewResult) {
 			<p class="text-sm text-gray-500 dark:text-gray-400">no findings recorded</p>
 		} else {
 			<ul class="space-y-2">
-				for _, finding := range res.Findings {
-					<li class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+				for i, finding := range res.Findings {
+					<li id={ "finding-" + strconv.Itoa(i+1) } class="flex flex-wrap items-baseline gap-x-3 gap-y-1 scroll-mt-4">
 						if finding.Severity != "" {
 							@display.Badge(display.BadgeProps{Text: finding.Severity, Type: findingSeverityType(finding.Severity), Size: display.BadgeSizeSM})
 						}
