@@ -387,6 +387,18 @@ kbd {
   color: var(--color-gray-200);
 }
 
+/* Keyboard focus mirrors the hover affordance (design-pass §f12): the same
+   background tint plus a visible focus ring that does not shift layout. */
+.tq-seg:focus-visible {
+  background: color-mix(in srgb, var(--color-gray-100) 7%, transparent);
+  outline: 2px solid var(--color-blue-400);
+  outline-offset: -2px;
+}
+
+.tq-seg:focus-visible .tq-seg-label {
+  color: var(--color-gray-200);
+}
+
 /* Running: the signal color, alive when something is actually working. */
 .tq-seg.card-running .tq-seg-num {
   color: var(--color-blue-400);

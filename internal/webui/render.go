@@ -1182,6 +1182,15 @@ func formatInt(n int) string {
 	return strconv.Itoa(n)
 }
 
+// faultCopy renders the tq-fault strip's dead-letter copy with natural
+// singular/plural (design-pass §f16).
+func faultCopy(dead int) string {
+	if dead == 1 {
+		return "1 task dead — inspect the dead-letter queue"
+	}
+	return formatInt(dead) + " tasks dead — inspect the dead-letter queue"
+}
+
 func truncate(text string, limit int) string {
 	text = strings.Join(strings.Fields(text), " ")
 	if len(text) <= limit {
