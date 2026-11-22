@@ -1,7 +1,36 @@
 /* webui-live-contract unit harness (docs/webui-live-contract.md):
    exercises the app.js swap-guard + state re-apply over a minimal DOM stub
    — no browser, no external deps. Run via scripts/check-webui-js.sh.
-   TQ_WEBUIJS_FAIL=1 forces one failing test (gate --self-test hook). */
+   TQ_WEBUIJS_FAIL=1 forces one failing test (gate --self-test hook).
+
+   Fidelity boundary — where this stub diverges from a real DOM. Harness
+   work must know these before trusting a pass:
+
+   - matches() is a hand-rolled approximator, not a selector engine: it
+     accepts only simple comma-separated tokens (tag / #id / .class /
+     [attr] / [attr=v]); no descendant combinators, no :has(). The one
+     pseudo-class it knows, :hover, is answered by the el.hovered
+     PROPERTY that tests set manually (2026-11-22 pause-on-hover work):
+     a real browser derives hover from pointer position, applies it to
+     ancestor chains, and updates it continuously — the stub pins one
+     static answer.
+   - removeChild() silently ignores a child it doesn't own (a real DOM
+     throws NotFoundError) and still nulls the child's parentNode; it
+     fires no mutation events. The feed badge removal and the feed cap
+     trim (app.js) rely on the lenient form.
+   - No layout engine: scrollTop is free-set state, scrollHeight/
+     clientHeight are constants (1000/500), scrollWidth is undefined —
+     overflow-sensitive behavior (board affordance, journal-scroll pin)
+     only sees what a test explicitly pins. "atBottom" in the stub is
+     scrollTop + clientHeight >= scrollHeight - 24 with those constants.
+   - Events are synchronous and argument-less (_fire calls the listener
+     with no Event object), never bubble, and there is no dispatch
+     machinery: delegation tests assert listener registration, tests
+     trigger handlers by calling el._fire(type) directly.
+   - innerHTML parses a small HTML subset (no entity decoding, no
+     implicit close, self-closing only for the VOID set); text nodes are
+     stored as {text}. Fragment markup must stay inside that subset for
+     a pass to mean anything. */
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 
