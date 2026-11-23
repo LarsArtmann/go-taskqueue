@@ -165,7 +165,11 @@ awk -v v="## [$VERSION]" '
 [ -s /tmp/tq-release-notes.md ] || die "CHANGELOG section for $VERSION is empty"
 
 step "flake.nix version sync (tq version reports it)"
-flake_ver="$(sed -n 's/^[[:space:]]*version = "\(.*\)";$/\1/p' flake.nix | head -1)"
+# Anchor past the go-taskqueue pname line: the templ override's own
+# `version` attr sits earlier in flake.nix and must never satisfy this check
+# (same first-match trap the version-sync flake check + check-version-agreement.sh
+# hit 2026-11-23).
+flake_ver="$(sed -n '/pname = "go-taskqueue";/,$s/^[[:space:]]*version = "\(.*\)";$/\1/p' flake.nix | head -1)"
 [ "$flake_ver" = "${VERSION#v}" ] || die "flake.nix version ($flake_ver) != release ${VERSION#v} — bump the version attr (the ldflags line derives from it)"
 # The ldflags wiring is single-source (check-version-agreement.sh guards the
 # derivation): the build line must interpolate the attr, not carry a second
