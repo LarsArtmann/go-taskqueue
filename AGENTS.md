@@ -42,11 +42,10 @@ for m in $(find internal task journal queue executor worker -name go.mod -printf
 
 **Public facades (ADR-0016):** `task/ journal/ queue/ executor/ worker/`
 re-export internals via type aliases — the only external import surface;
-in-repo code imports `internal/…` (driver facades `queue/sqlite` +
-`queue/postgres` retired 2026-11-23).
+in-repo code imports `internal/…` (driver facades retired 2026-11-23).
 Facades: require (real tag) + relative replace; tests import internals, never
 sibling facades; parity via `check-facade-parity.sh` BEFORE staging;
-postgres `OpenWithPool` pools CALLER-OWNED. No root go.work — replace-only
+`OpenWithPool` pools CALLER-OWNED. No root go.work — replace-only
 (exception: tracked `cmd/tq/go.work`, ADR-0017); a module `go`-directive bump
 bumps its `go` line (`go work edit -go=<ver>`) in the same change — stale
 lines fail every cmd/tq go command. Release flow: docs/release/.

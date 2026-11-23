@@ -92,3 +92,18 @@ surface; a facade would invite external coupling to composition wiring
 that ADR-0019 reserves for the platform migration. In-repo root-module
 code imports `internal/…` directly (the root go.mod already
 requires + replaces it), same as every other internal module.
+
+**Driver-facade retirement addendum (2026-11-23, owner ruling):** the
+`queue/sqlite` and `queue/postgres` facade modules are REMOVED. The
+drivers stay where they always lived — `internal/queue/sqlite` and
+`internal/queue/postgres`, still tagged and proxy-resolvable (their
+historical facade tags `queue/{sqlite,postgres}/v0.3.0…v0.4.2` remain
+frozen on the proxy). Rationale: with ADR-0019 landed the facades were
+pure alias shims over modules that are themselves published, versioned,
+and conform-tested; the tq Store contract evolved faster than the facade
+re-exports could honestly track, and the repo is private (no external
+adopter ever rode the driver facades). The five contract facades —
+`task`, `journal`, `queue`, `executor`, `worker` — remain the external
+surface (parity table drops to five pairs; the install smokes verify the
+five). An external embedder constructs a store by vendoring the tree,
+forking the drivers, or implementing `queue.Store` directly.

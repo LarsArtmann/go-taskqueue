@@ -134,6 +134,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   spend in human phrasing — mirroring the visible readout, raw over cap
   included ("9 of 5").
 
+### Removed
+
+- **The public `queue/sqlite` and `queue/postgres` driver facade modules**
+  (BEHAVIOR CHANGE for external library consumers): the modules are gone
+  from the tree. The SQLite/PostgreSQL store drivers remain published,
+  tagged modules at their in-repo paths
+  (`internal/queue/sqlite`, `internal/queue/postgres`) — importable from
+  within the `go-taskqueue` module path; external adopters implement
+  `queue.Store` or vendor the tree. The five contract facades (`task`,
+  `journal`, `queue`, `executor`, `worker`) are unchanged, and the
+  historical `queue/{sqlite,postgres}` tags (v0.3.0–v0.4.2) stay
+  proxy-frozen. Rationale + details: ADR-0016 retirement addendum
+  (2026-11-23).
+
 ### Fixed
 
 ### Internal
