@@ -20,6 +20,13 @@
 #
 # Pinned pairs (both visible ONLY in the raw view — the canonical view
 # never shows them; verified live at the 2026-11-07 widening):
+#
+# 2026-11-23: the conditional row (internal/queue/sqlitev4/wake_test.go ×
+# queue/sqlite/sqlite_test.go) removed — the facade path died in the
+# driver-facade retirement, so the group is impossible; the gate's
+# facade-era matcher patterns were tightened to internal-only the same
+# day (scripts/check-mirror-clones.sh), making the row permanently
+# unmatchable rather than merely resolved.
 
 assignment internal/queue/postgresv4/adapter.go internal/queue/sqlitev4/adapter.go
 # Engine-backed thin delegators (`tokenFor + mapErr(s.engine.X(...))`)
@@ -27,8 +34,3 @@ assignment internal/queue/postgresv4/adapter.go internal/queue/sqlitev4/adapter.
 # (docs/planning/archived/2026-09-26_companion-extraction-design.md:
 # "they are not clone mass"); the small pieces carry art-dupl:accept
 # directives with recorded reasons; S4 deletes the modules anyway.
-
-conditional internal/queue/sqlitev4/wake_test.go queue/sqlite/sqlite_test.go
-# 6-token test-setup prolog (t.Fatalf + defer Close + ctx) —
-# test-scaffolding idiom below the actionability floor, not mirror
-# mass (2026-09-27_15-29 §f6 triage class).

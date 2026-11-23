@@ -259,6 +259,12 @@ import re
 import sys
 
 canon_path, raw_path, strict, show_suppressed = sys.argv[1:5]
+# Backend matcher (tightened 2026-11-23): ONLY internal/ paths. The
+# unanchored facade-era patterns (r"queue/sqlite/", r"queue/postgres/")
+# died with the driver-facade retirement — the queue/{sqlite,postgres}
+# public modules are gone, so those substrings now occur only inside the
+# anchored internal/ paths; keeping them would silently re-widen the
+# matcher if a foreign path ever contained them.
 patterns = [
     r"internal/queue/sqlite$",
     r"internal/queue/sqlite/",
@@ -266,8 +272,6 @@ patterns = [
     r"internal/queue/postgres$",
     r"internal/queue/postgres/",
     r"internal/queue/postgresv4",
-    r"queue/sqlite/",
-    r"queue/postgres/",
 ]
 backend_res = [re.compile(p) for p in patterns]
 baseline_path = "scripts/mirror-baseline.txt"
@@ -293,9 +297,12 @@ def parse(path):
         if len(hits) < 2:
             continue
         roots = set()
+        # Tightened 2026-11-23: every matched path is internal/-prefixed
+        # (the facade-era matcher is gone), so the backend dir is always
+        # the first three path segments.
         for h in hits:
             parts = h.split("/")
-            roots.add("/".join(parts[:3]) if h.startswith("internal/") else parts[0])
+            roots.add("/".join(parts[:3]))
         if len(roots) > 1:
             cat = re.search(r'data-category="([^"]*)"', g)
             cat = cat.group(1) if cat else "?"
