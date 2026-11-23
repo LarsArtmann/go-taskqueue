@@ -414,7 +414,7 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 
 - **go-cqrs-lite IS the platform (ADR-0019)**: adopted in
   `{sqlitev4,postgresv4}` + `companion`; `internal/journal/cqrs` PROPRIETARY,
-  read-only — never extend or import below root. Facade Open
+  read-only — never extend or import below root. `internal/queue/sqlite.Open`
   backward-auto-upgrades legacy pre-flip DBs in place (snapshot
   `<db>.legacy-*.bak`, verify, restore on mismatch; absent tables
   tolerated); refuse via `TQ_NO_AUTO_UPGRADE=1`; manual replay:

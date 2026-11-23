@@ -119,7 +119,9 @@ Status of every stage, verified against the tree at the v0.3.1 tag wave:
 
 - **S1 (engine flip): DONE.** Both spike drivers ride the go-cqrs-lite
   queue engines; facts-in-same-tx is engine-enforced via the
-  `FactTx.WithFacts` sink; the backward auto-upgrade on facade `Open`
+  `FactTx.WithFacts` sink; the backward auto-upgrade on
+  `internal/queue/sqlite.Open` (the store seam the retired driver facades
+  re-exported)
   (snapshot `<db>.legacy-*.bak` → verify → auto-restore on mismatch,
   `TQ_NO_AUTO_UPGRADE=1` refusal, absent feature-era tables tolerated)
   landed and is pinned by `scripts/smoke/legacy-serve-upgrade.sh`. The

@@ -11,8 +11,9 @@ import (
 	_ "modernc.org/sqlite" // pure-Go SQLite driver (CGo-free)
 )
 
-// TestOpenAutoUpgradesLegacyDatabase pins the P1 wiring: the facade Open
-// probes for the pre-flip hand-rolled schema (tasks WITHOUT lease_token),
+// TestOpenAutoUpgradesLegacyDatabase pins the P1 wiring: Open (the store
+// seam the retired driver facades re-exported) probes for the pre-flip
+// hand-rolled schema (tasks WITHOUT lease_token),
 // upgrades it in place under the migration package's verified safety net,
 // and serves a live engine store. The projection-equality details are
 // pinned in internal/queue/sqlitev4/migration; this test proves the seam.
