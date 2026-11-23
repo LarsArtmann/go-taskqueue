@@ -90,10 +90,10 @@ are limited to what was read.
 
 ## b) PARTIALLY DONE
 
-1. The review→fix loop: verdicts done, fix not. The parity test is unwritten.
+1. ~~The review→fix loop: verdicts done, fix not. The parity test is unwritten.~~ — RESOLVED 2026-11-23: parity test shipped: internal/readmodel/detailkeys_test.go (TODO_LIST.md:766)
    Blocker: owner ruling (g1) — though I held a recommendation and could have
    landed it without one. Effort to finish: S.
-2. Split-brain audit: found ONE split brain (repriDetail vs
+2. ~~Split-brain audit: found ONE split brain (repriDetail vs~~ — RESOLVED 2026-11-23: all three detail-struct twins + the repriEvent decode policy now pinned (detailkeys_test.go)
    queue.ReprioritizeEvidence); the sibling twins (requeueDetail,
    enqueueDetail, budgetUsageView) are noted with matching shapes read, but
    their key-pinning status is unverified beyond the repriDetail grep. Effort: S.

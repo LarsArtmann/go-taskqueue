@@ -9,11 +9,11 @@ legacy ASAP", executed as phases P0–P5 of the endgame plan.
 
 ## a) Fully done (verified green at each landing)
 
-1. **P0 — Baseline green.** Root vendor/ resynced (the v4-family bump
+1. ~~**P0 — Baseline green.** Root vendor/ resynced (the v4-family bump~~ — RESOLVED 2026-11-23: baseline green at HEAD — full root `go build && go vet && go test ./... -race` rc=0 (vendoring regime since changed: no vendor/ tree at HEAD).
    563c30c3 never re-vendored — root builds were broken on inconsistent
    vendoring); `internal/readmodel` + `internal/worker` go.sums tidied;
    root build+vet+test -race green; every nested module gate green.
-2. **P1 — Backward auto-upgrade on open (production unblock).**
+2. ~~**P1 — Backward auto-upgrade on open (production unblock).**~~ — RESOLVED 2026-11-23: live at HEAD — internal/queue/sqlitev4/migration (upgrade.go, TQ_NO_AUTO_UPGRADE kill switch :39,:75); dogfood cutover 2026-10-05 (FEATURES.md:54, docs/release/2026-10-05_CUTOVER-RUNBOOK.md); pinned by scripts/smoke/legacy-serve-upgrade.sh.
    - The replay tool's core moved from `package main` into the importable
      `internal/queue/sqlitev4/migration` package; `replay/` stays as thin CLI.
    - `migration.UpgradeIfNeeded`: read-only schema probe (fresh/engine/legacy
@@ -29,11 +29,11 @@ legacy ASAP", executed as phases P0–P5 of the endgame plan.
      f0643178^) — the old test seeded through the thin driver and produced
      an engine-shaped fixture (its docstring had rotted).
    - Gates green: migration pkg, sqlitev4, sqlite facade, root, cmd/tq.
-3. **P2 — S3 flip: the metaengine projection is the default read side.**
+3. ~~**P2 — S3 flip: the metaengine projection is the default read side.**~~ — RESOLVED 2026-11-23: pinned — TestReadModelFlagDefaultsOn (cmd/tq/readmodel_default_test.go:11, docstring names the S3 flip).
    `--read-model` defaults TRUE on `tq stats`/`tq api`/`tq serve`;
    `--read-model=false` is the explicit fallback; pinned by
    `TestReadModelFlagDefaultsOn`; cmd/tq gate green.
-4. **P3 — S2 journal unification (the last split brain dies).**
+4. ~~**P3 — S2 journal unification (the last split brain dies).**~~ — RESOLVED 2026-11-23: companion.JournalFacts seam live (internal/queue/companion/core.go:182); vocabulary-drift test pins tq-vs-engine constants (companion test "vocabulary drift: tq %q != engine %q").
    - Both v4 adapters' `Facts`/`FactsForTask` now ride the ENGINE's own
      `queue.Store` reads; companion's mirrored SQL for those two is deleted;
      ONE conversion seam (`companion.JournalFacts`, inverse of `UpstreamFact`).
@@ -46,14 +46,14 @@ legacy ASAP", executed as phases P0–P5 of the endgame plan.
      type rides, not an import.
    - Gates green: companion, sqlitev4, postgresv4, queue, journal,
      readmodel, worker, journal/cqrs, both facades, cqrsqlite, root, cmd/tq.
-5. **AGENTS.md truth pass** — architecture table now names the thin-driver
+5. ~~**AGENTS.md truth pass** — architecture table now names the thin-driver~~ — RESOLVED 2026-11-23: table live at HEAD — AGENTS.md:73 ("Thin v4-adapter drivers") and :76 ("internal/{readmodel,composition} … S3 projection + S4 root").
    - v4-adapter + readmodel reality; auto-upgrade seam documented; ~1 kB
      of phrasing waste pruned; doc budget consciously reset 15,000 → 15,200
      (dated comment in the guard — net-new load-bearing rows landed).
 
 ## b) Partially done (in flight right now)
 
-6. **P4 — S4 system composition root.**
+6. ~~**P4 — S4 system composition root.**~~ — RESOLVED 2026-11-23: promotion completed — internal/composition is its own module (go.mod, compose.go), required + relative-replaced by root (go.mod:114,163) and imported by cmd/tq (cmd/tq/go.mod:13, main.go:32).
    - `internal/composition` package written and GREEN as a root package:
      `system.New(ctx, dbPath)` over a durable sqlite engine at the
      projection home (`<db>.readmodel.db`), empty domain by design (the
@@ -76,7 +76,7 @@ legacy ASAP", executed as phases P0–P5 of the endgame plan.
 
 ## c) Not started
 
-7. **P5 — legacy deletion + docs truth pass**: delete `internal/queue/cqrsqlite`
+7. ~~**P5 — legacy deletion + docs truth pass**: delete `internal/queue/cqrsqlite`~~ — RESOLVED 2026-11-23: executed — internal/queue/cqrsqlite deleted (no such dir at HEAD), absent from all go.mods; ADR-0019 + FEATURES/CHANGELOG truth rows live (docs/adr/0019-go-cqrs-lite-platform-adoption.md, FEATURES.md:54, CHANGELOG.md:1619); full ci-local ran 2026-11-23 (TODO_LIST.md:20).
    (superseded spike; conform suite keeps running for sqlitev4/postgresv4),
    collapse dual read paths where the S3 design sanctions it, ADR-0019
    stage markers, FEATURES/CHANGELOG rows, TODO_LIST ADR rows, LOC +
@@ -94,12 +94,12 @@ legacy ASAP", executed as phases P0–P5 of the endgame plan.
    `modernc.org/libc`/`sqlite` indirects and pulled otel/watermill/koanf
    transitive deps — NOT yet reconciled against the nix vendorHash gate
    (not run since the go.mod changes) or `check-go-mods.sh`.
-10. **`new-module.sh` refused** the composition scaffold's readmodel
+10. ~~**`new-module.sh` refused** the composition scaffold's readmodel~~ — RESOLVED 2026-11-23: the manual nominal-require+replace treatment completed — internal/composition is a required, relative-replaced module at root and cmd/tq (go.mod:163, cmd/tq/go.mod:13).
     require (no cut tag exists) — expected per its design, but it means the
     composition module's go.mod needs the manual nominal-require+replace
     treatment; I had just started that edit (the scaffolded file changed
     under me mid-write).
-11. **Incomplete verification breadth this session**: I ran targeted gates
+11. ~~**Incomplete verification breadth this session**: I ran targeted gates~~ — RESOLVED 2026-11-23: superseded — full ci-local matrix ran green 2026-11-23 (TODO_LIST.md:20) and the full root -race battery is rc=0 at HEAD.
     per phase + one full root `-race` pass (P0, P3) — the FULL ci-local
     matrix, smokes, and the nix build (vendor-hash + webui-css checks) have
     NOT run since the go.mod changes landed.
@@ -115,37 +115,37 @@ legacy ASAP", executed as phases P0–P5 of the endgame plan.
 
 ## f) Up to 50 next things (roughly execution order)
 
-1. Finish the `internal/composition` module promotion: corrected go.mod
+1. ~~Finish the `internal/composition` module promotion: corrected go.mod~~ — RESOLVED 2026-11-23: done — internal/composition module (go.mod, compose.go) live at HEAD.
    (require readmodel v0.3.0 nominal + `=> ../readmodel` replace, system +
    sqliteengine requires), move `compose.go`/`compose_test.go` in.
-2. `go mod tidy` inside internal/composition; module gate green.
-3. Root go.mod: require + relative-replace `internal/composition`; root
+2. ~~`go mod tidy` inside internal/composition; module gate green.~~ — RESOLVED 2026-11-23: module live with go.sum; covered by the green root battery at HEAD.
+3. ~~Root go.mod: require + relative-replace `internal/composition`; root~~ — RESOLVED 2026-11-23: go.mod:114 require + :163 replace, battery green at HEAD.
    build/vet/test green; `go mod vendor`.
-4. cmd/tq: require `internal/composition v0.3.0`, swap the import, run
+4. ~~cmd/tq: require `internal/composition v0.3.0`, swap the import, run~~ — RESOLVED 2026-11-23: import swapped — cmd/tq/go.mod:13 + cmd/tq/main.go:32 import internal/composition.
    `./scripts/test-cmd-tq.sh`.
 5. Reconcile cmd/tq's drift (libc/sqlite bumps): keep if gates pass, else
    pin back; run `scripts/check-go-mods.sh`.
-6. Run `nix build .#checks.x86_64-linux.vendor-hash`; copy `got:` to
+6. ~~Run `nix build .#checks.x86_64-linux.vendor-hash`; copy `got:` to~~ — RESOLVED 2026-11-23: superseded — nix build + flake check green 2026-11-23, vendor-hash unchanged (TODO_LIST.md:22).
    flake.nix (AGENTS vendorHash ritual).
-7. Full `./scripts/ci-local.sh` pass (the real matrix).
+7. ~~Full `./scripts/ci-local.sh` pass (the real matrix).~~ — RESOLVED 2026-11-23: ran 2026-11-23 — TODO_LIST.md:20 `[x]` (every gate green except two documented freshness items).
 8. WebUI + httpapi smokes (`scripts/smoke/`), incl. `TestRoutesAreReadOnly`
    - health-CSP pins against the now-default readmodel path.
-9. `tq serve` dogfood dry-run on a scratch TQ_DB with a legacy fixture:
+9. ~~~~`tq serve` dogfood dry-run on a scratch TQ_DB with a legacy fixture:~~ — RESOLVED 2026-11-23: shipped as scripts/smoke/legacy-serve-upgrade.sh (docstring: LEGACY pre-flip journal → transparent auto-upgrade → default-ON readmodel → GracefulClose ordering); dogfood cut over 2026-10-05 (FEATURES.md:54).
    auto-upgrade → readmodel default-on → GracefulClose ordering, one script.
-10. P5: delete `internal/queue/cqrsqlite` + its conform-suite wiring
+10. ~~P5: delete `internal/queue/cqrsqlite` + its conform-suite wiring~~ — RESOLVED 2026-11-23: package deleted (absent at HEAD and from all go.mods).
     (harness keeps sqlitev4/postgresv4); delete `fromUFacts` duplication in
     cqrsqlite (dies with the package).
-11. P5: root go.mod drops cqrsqlite references; module loop re-run.
-12. P5: collapse dual tally paths in cmd/tq (tallyStats vs tallyModelRows)
+11. ~~P5: root go.mod drops cqrsqlite references; module loop re-run.~~ — RESOLVED 2026-11-23: 0 cqrsqlite references in go.mod/cmd/tq/go.mod at HEAD.
+12. ~~P5: collapse dual tally paths in cmd/tq (tallyStats vs tallyModelRows)~~ — RESOLVED 2026-11-23: both identifiers gone from cmd/tq at HEAD (0 grep hits — dual path collapsed).
     where the S3 design says projection-backed (keep store-backed
     row-rich views).
 13. P5: decide + execute the fate of the hand journal tailer (ADR-0003
     Phase D read path) — retire once Watcher/SSE serves the dogfood.
-14. Docs: ADR-0019 add the endgame addendum (S2/S3/S4 + auto-upgrade
+14. ~~Docs: ADR-0019 add the endgame addendum (S2/S3/S4 + auto-upgrade~~ — RESOLVED 2026-11-23: docs/adr/0019-go-cqrs-lite-platform-adoption.md carries the endgame state (addendum renamed to the real seam in the 2026-11-23 sweep, TODO_LIST row "Sweep living docs for dead facade phrasing" `[x]`).
     landed; S1 already); stage markers per section.
-15. Docs: FEATURES.md rows for auto-upgrade, readmodel-default, engine
+15. ~~Docs: FEATURES.md rows for auto-upgrade, readmodel-default, engine~~ — RESOLVED 2026-11-23: FEATURES.md:54 auto-upgrade row 🟢 FULLY_FUNCTIONAL with smoke + runbook citations.
     fact reads, composition root (status 🟢 with citations).
-16. CHANGELOG `[Unreleased]` entry for the whole endgame wave.
+16. ~~CHANGELOG `[Unreleased]` entry for the whole endgame wave.~~ — RESOLVED 2026-11-23: entry exists — CHANGELOG.md:1619 "Backward auto-upgrade on facade Open (S1 flip residue, landed…)".
 17. TODO_LIST: close ADR-0019 S1 row (stale — flip landed), S2 row,
     S3 row; S4 row once composition lands; keep dogfood-cutover row.
 18. LOC delta report (tokei) + art-dupl `-t 4` recount vs the 2026-09-23
@@ -154,13 +154,13 @@ legacy ASAP", executed as phases P0–P5 of the endgame plan.
     excludes cmd/tq from the zip) + internal/{queue/sqlite,
     queue/sqlitev4, queue/postgresv4, queue/companion, readmodel,
     composition} tags; proxy checks per docs/release/.
-20. `scripts/check-facade-parity.sh` after the tag wave (facade requires
+20. ~~~~`scripts/check-facade-parity.sh` after the tag wave (facade requires~~ — RESOLVED 2026-11-23: re-ran at HEAD — "facade parity OK: 5 facades mirror their internal packages" (post-tag-wave: facades now at v0.4.2).
     re-pinned to real tags).
-21. Dogfood deploy: systemd unit TQ_DB swap is owner-run; with P1 the
+21. ~~Dogfood deploy: systemd unit TQ_DB swap is owner-run; with P1 the~~ — RESOLVED 2026-11-23: cut over 2026-10-05 — FEATURES.md:54 ("Dogfood cut over 2026-10-05") + docs/release/2026-10-05_CUTOVER-RUNBOOK.md.
     auto-upgrade makes it transparent — prepare the runbook note.
-22. Post-deploy verification: `tq doctor` against the production journal
+22. ~~Post-deploy verification: `tq doctor` against the production journal~~ — RESOLVED 2026-11-23: covered by the 2026-10-05 cutover receipt (runbook + FEATURES.md:54: snapshot kept, auto-upgrade transparent).
     (auto-upgrade log line + backup file present + head seq unchanged).
-23. Keep `<db>.legacy-*.bak` hygiene note in the runbook (owner may prune
+23. ~~Keep `<db>.legacy-*.bak` hygiene note in the runbook (owner may prune~~ — RESOLVED 2026-11-23: snapshot naming documented — FEATURES.md:54 ("snapshot `<db>.legacy-*.bak` → migrate → verify → auto-restore") + the cutover runbook.
     after a green week).
 24. Upstream ratification memo (M4) — still blocked on owner go (TODO row
     stands): enqueued-fact snapshot detail + CountFacts/FactsSince
@@ -174,7 +174,7 @@ legacy ASAP", executed as phases P0–P5 of the endgame plan.
     revisit only with a genuinely timer-shaped feature (map §4a).
 28. `internal/journal/cqrs` public-facade ruling (TODO row) — still
     owner-blocked.
-29. Sweep stale LSP vendoring noise: the gopls/golangci stale-vendor error
+29. ~~Sweep stale LSP vendoring noise: the gopls/golangci stale-vendor error~~ — RESOLVED 2026-11-23: moot — no vendor/ tree exists at HEAD (vendoring regime retired), so the stale-vendor error class is gone.
     persists until the daemon-era vendor sync is picked up; harmless but
     noisy for other agents.
 30. Agent-shell hazard: `new-module.sh` + concurrent daemon writes raced
