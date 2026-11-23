@@ -132,6 +132,11 @@ sites: {
 		resource: "crush/git/go binaries on PATH"
 		trigger: "tq doctor environment check"
 	}
+	"cmd/tq.doctorMcpEnrollment": claims: {
+		resource: "repo .crushrc contents (tq-mcp enrollment probe)"
+		trigger: "tq doctor mcp:<repo> check"
+		rationale: "read-only probe; a missing or unenrolled .crushrc is a WARN by design (enrollment is opt-in)"
+	}
 	"cmd/tq.doctorProjection": claims: {
 		resource: "projection db file presence"
 		trigger: "tq doctor projection check"
@@ -204,6 +209,18 @@ sites: {
 		resource: "pool config file"
 		trigger: "pool config load at worker/pool start"
 	}
+	"cmd/tq.newAgentPoolFlagSet": claims: {
+		resource: "TQ_DISCOVERY_ADDR env (agent-pool flag default)"
+		trigger: "agent-pool flag set construction"
+	}
+	"cmd/tq.newServeFlagSet": claims: {
+		resource: "TQ_SERVE_TOKEN / TQ_PAP_URL env (serve flag defaults)"
+		trigger: "serve flag set construction"
+	}
+	"cmd/tq.newWorkerFlagSet": claims: {
+		resource: "TQ_* env (worker flag defaults)"
+		trigger: "worker flag set construction"
+	}
 	"cmd/tq.parkBy": claims: {
 		resource: "USER env (park-by identity)"
 		trigger: "tq park default author resolution"
@@ -268,6 +285,12 @@ sites: {
 		resource: "CRUSH_SESSION_ID env and session registry"
 		trigger: "tq session ping"
 	}
+	"cmd/tq.writeFileAtomic": claims: {
+		resource: "caller-named file via tmp + rename (config/service files, verdict result file)"
+		trigger: "each atomic write site"
+		durability: "recoverable"
+		rationale: "tmp + rename keeps partial writes invisible; the tmp removal on rename failure is best-effort by design"
+	}
 	"internal/bridge/cqa.Bridge.Collect": claims: {
 		resource: "configured repo directory metadata"
 		trigger: "cqa bridge collect when the repo dir resolves"
@@ -307,6 +330,11 @@ sites: {
 	"internal/depsweep.DepgraphSource.Plan": claims: {
 		resource: "depgraph binary subprocess"
 		trigger: "each dep-sweep plan"
+	}
+	"internal/mcpserver.Server.Serve": claims: {
+		resource: "process stdin/stdout (JSON-RPC stdio transport)"
+		trigger: "each inbound MCP message"
+		rationale: "stdio transport IS the tq mcp surface; a broken stream ends a session the client already abandoned"
 	}
 	"internal/docsgates.binaryRunner": claims: {
 		resource: "docs-gates binary subprocess (run --json)"
