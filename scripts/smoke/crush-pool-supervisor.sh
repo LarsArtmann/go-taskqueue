@@ -152,6 +152,12 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(payload)
 
     def do_POST(self):
+        # Drain the body BEFORE any branch: an unread body on an HTTP/1.1
+        # keep-alive connection desyncs the client's next request into the
+        # leftover bytes (observed live: the 429 leg died on a 400-HTML
+        # desync when crush retried the title call on the same connection).
+        length = int(self.headers.get("Content-Length", "0"))
+        body = self.rfile.read(length) if length else b""
         if not self.path.startswith("/v1/chat/completions"):
             self._json(404, {"error": "not found"})
             return
@@ -159,8 +165,7 @@ class Handler(BaseHTTPRequestHandler):
             self._json(429, {"error": {"message": "rate limit exceeded (mock): retry after 60s",
                                        "type": "rate_limit_error", "code": 429}})
             return
-        length = int(self.headers.get("Content-Length", "0"))
-        req = json.loads(self.rfile.read(length) or b"{}")
+        req = json.loads(body or b"{}")
         messages = req.get("messages", [])
         # Full content for the content-key (a harvested work prompt carries
         # its "verdict" item text hundreds of chars in); truncated copy for

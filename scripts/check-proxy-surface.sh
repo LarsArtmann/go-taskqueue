@@ -27,6 +27,11 @@
 #                         empty output) = SKIP.
 #   TQ_PROXY_PROBE_CMD    args: $1 = module path, $2 = resolved version,
 #                         $3 = scratch dir. rc IS the sentinel-verdict fact.
+#   TQ_PROXY_PROBE_BODY_CMD  self-test-only (never set by ci-local/CI):
+#                         replaces default_probe's tidy/build/run body under
+#                         the SAME subshell + rc-capture control flow, so the
+#                         negative battery exercises default_probe itself
+#                         (the probe-rc hook never reaches it).
 #
 #   scripts/check-proxy-surface.sh              # real run (network)
 #   scripts/check-proxy-surface.sh --self-test  # hermetic summary pins
@@ -66,8 +71,10 @@ self_test() {
 	local probe_fail='exit 3'
 
 	run_hooked() {
+		# $1/$2 = the resolve/probe hooks; $3 (optional) = one extra
+		# VAR=value word (the default-probe body battery's override).
 		RUN_RC=0
-		RUN_OUT="$(TQ_PROXY_RESOLVE_CMD="$1" TQ_PROXY_PROBE_CMD="$2" "$self_abs" 2>&1)" || RUN_RC=$?
+		RUN_OUT="$(env TQ_PROXY_RESOLVE_CMD="$1" TQ_PROXY_PROBE_CMD="$2" ${3:+"$3"} "$self_abs" 2>&1)" || RUN_RC=$?
 	}
 	assert_case() {
 		if [ "$RUN_RC" -ne "$1" ]; then
@@ -115,7 +122,25 @@ self_test() {
 	must_mention "ok: proxy-surface queue@v9.9.9 sentinel probe" "$RUN_OUT" "per-module resolution pin (queue ok)"
 	must_mention "SKIP: proxy-surface task (latest tag unresolvable at the proxy — network-tolerant skip)" "$RUN_OUT" "per-module resolution pin (task skipped)"
 
-	echo "proxy-surface self-test ok (summary format pin + ok/skip/fail counter battery)"
+	# Battery E (default-probe body failure): batteries A–D ride the
+	# probe-rc hook and never reach default_probe; the BODY hook drives its
+	# own subshell + rc capture. A body exit 3 must FAIL the gate — the
+	# swallowed-rc regression class (if-construct $? reads 0 when no branch
+	# ran) may never count a real failure as verified.
+	run_hooked "$resolve_task" "$probe_ok" "TQ_PROXY_PROBE_BODY_CMD=exit 3"
+	assert_case 1 "default-probe body-fail summary pins the counters" \
+		"proxy-surface summary: 0 facades verified, 4 skipped, 1 failed"
+	must_mention "FAIL: proxy-surface task@v9.9.9 sentinel probe rc=3" "$RUN_OUT" "default-probe body-fail receipt carries the probe rc"
+
+	# Battery F (default-probe body happy path): the same control flow
+	# counts VERIFIED on body exit 0 — guards the inverse regression (a
+	# capture that always reads non-zero would fail every real run).
+	run_hooked "$resolve_task" "$probe_ok" "TQ_PROXY_PROBE_BODY_CMD=echo PROBE-OK task"
+	assert_case 0 "default-probe body-happy summary pins the counters" \
+		"proxy-surface summary: 1 facades verified, 4 skipped, 0 failed"
+	must_mention "ok: proxy-surface task@v9.9.9 sentinel probe" "$RUN_OUT" "default-probe body-happy receipt pin"
+
+	echo "proxy-surface self-test ok (summary format pin + ok/skip/fail counter battery + default-probe body battery)"
 }
 
 if [ "${1:-}" = "--self-test" ]; then
@@ -347,19 +372,27 @@ default_probe() {
 	local facade="$1" ver="$2" dir="$3"
 	"write_probe_$facade" "$dir/main.go"
 	local log="$dir/probe.log"
-	if (
+	# The rc comes off the SUBSHELL directly (|| probe_rc=$?) — capturing
+	# $? after a branch-less if reads the if-construct's 0 on the failure
+	# path and would swallow every real probe failure as verified.
+	local probe_rc=0
+	(
 		cd "$dir"
-		export GOWORK=off
-		export GOTOOLCHAIN=auto
-		export GOFLAGS=-mod=mod
-		go mod tidy >/dev/null
-		go build -o probe.bin .
-		./probe.bin
-	) >"$log" 2>&1; then
+		if [ -n "${TQ_PROXY_PROBE_BODY_CMD:-}" ]; then
+			bash -c "$TQ_PROXY_PROBE_BODY_CMD" tq-proxy-probe-body
+		else
+			export GOWORK=off
+			export GOTOOLCHAIN=auto
+			export GOFLAGS=-mod=mod
+			go mod tidy >/dev/null
+			go build -o probe.bin .
+			./probe.bin
+		fi
+	) >"$log" 2>&1 || probe_rc=$?
+	if [ "$probe_rc" -eq 0 ]; then
 		cat "$log"
 		return 0
 	fi
-	local probe_rc=$?
 	echo "--- $facade@$ver probe output tail (rc=$probe_rc) ---" >&2
 	tail -n 20 "$log" >&2 || true
 	return "$probe_rc"

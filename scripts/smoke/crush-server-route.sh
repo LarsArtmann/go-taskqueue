@@ -158,11 +158,15 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         global REQ_COUNT
+        # Drain the body BEFORE any branch — keep-alive clients (crush
+        # retries on the same connection) desync when a branch answers
+        # without reading the body.
+        length = int(self.headers.get("Content-Length", "0"))
+        body = self.rfile.read(length) if length else b""
         if not self.path.startswith("/v1/chat/completions"):
             self._json(404, {"error": "not found"})
             return
-        length = int(self.headers.get("Content-Length", "0"))
-        req = json.loads(self.rfile.read(length) or b"{}")
+        req = json.loads(body or b"{}")
         messages = req.get("messages", [])
         REQ_COUNT += 1
         roles = [m.get("role") for m in messages]

@@ -513,7 +513,7 @@ step "out-of-tree consumer install (proxy @latest; HARD gate in CI consumer job)
 # pins the listing, consumer-install pins the compile; this RUNS the
 # sentinels. Network gate: network absence can only SKIP; NEVER flake
 # checkPhase (hermeticity rule). Self-test first (countable-gate ordering).
-step "proxy-surface self-test (summary format pin + ok/skip/fail counter battery)"
+step "proxy-surface self-test (summary format pin + ok/skip/fail + default-probe body batteries)"
 ./scripts/check-proxy-surface.sh --self-test
 
 step "proxy-surface sentinel probes (per facade @latest; network-tolerant SKIP)"
