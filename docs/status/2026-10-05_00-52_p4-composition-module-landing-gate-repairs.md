@@ -12,7 +12,7 @@ nix-buildable tree. P0–P3 were already landed and green at resume.
 
 ## a) Fully done (each verified green at landing)
 
-1. **P4.1 — composition module go.mod + tidy.** Wrote the corrected
+~~1. **P4.1 — composition module go.mod + tidy.** Wrote the corrected~~ — RESOLVED 2026-11-23: module go.mod exists at HEAD (internal/composition/go.mod)
    go.mod (module + go 1.27.1 + system/v4 v4.10.1, sqliteengine/v4
    v4.5.0, readmodel v0.3.0 nominal). First tidy+build FAILED: replacing
    readmodel with a directory does NOT propagate readmodel's own
@@ -21,9 +21,9 @@ nix-buildable tree. P0–P3 were already landed and green at resume.
    `journal.QuestionAsked undefined`). Fixed by mirroring readmodel's
    full 7-replace set into composition's go.mod (`../task`, `../journal`,
    `../queue`, `../queue/{sqlite,sqlitev4,companion}`, `../readmodel`).
-2. **P4.2 — composition module gate green** (build + vet + test,
+~~2. **P4.2 — composition module gate green** (build + vet + test,~~ — RESOLVED 2026-11-23: module gate re-run green at HEAD (internal/composition (build+vet+test ok 2026-11-23))
    `TestNewBuildsSystemRootOverProjectionHome` ok).
-3. **P4.3 — root wiring.** Deviation from the resume notes, reasoned:
+~~3. **P4.3 — root wiring.** Deviation from the resume notes, reasoned:~~ — RESOLVED 2026-11-23: replace line present in root go.mod (go.mod:163)
    root gets the REPLACE only, not require+replace — nothing in the root
    module imports composition, so `go mod tidy` prunes the require; the
    load-bearing line for both the devmod shim and the nix FOD is the
@@ -32,7 +32,7 @@ nix-buildable tree. P0–P3 were already landed and green at resume.
    (its require moved into the composition module where it is actually
    imported) and demoted sqliteengine to indirect. `go mod vendor`;
    root build + vet + `test ./... -race -count=1` ALL GREEN.
-4. **P4.4 — cmd/tq wiring; THE BLOCKER DIES.** Added
+~~4. **P4.4 — cmd/tq wiring; THE BLOCKER DIES.** Added~~ — RESOLVED 2026-11-23: cmd/tq requires the composition module (v0.4.2, tag-resolved) (cmd/tq/go.mod:13)
    `internal/composition v0.3.0` to cmd/tq's direct requires; the devmod
    shim picks up the mirrored replace automatically. Full cmd/tq gate
    (`scripts/test-cmd-tq.sh`) GREEN — the ambiguous-import class is
@@ -47,14 +47,14 @@ nix-buildable tree. P0–P3 were already landed and green at resume.
    timeout (18/20) with SQLITE_BUSY storm, NOT an exactly-once
    violation; passed in 0.04 s on a quiet host. Documented flake, not
    attributed to the migration.
-6. **check-go-mods.sh pending-tag exception.** `go mod verify` in cmd/tq
+~~6. **check-go-mods.sh pending-tag exception.** `go mod verify` in cmd/tq~~ — RESOLVED 2026-11-23: pending-tag block gone — tag wave landed (git tag internal/composition/v0.3.0..v0.4.2; scripts/check-go-mods.sh (block absent))
    cannot resolve `internal/composition@v0.3.0` from the proxy before
    the owner-gated tag wave. Added a surgical, self-deleting downgrade:
    only unknown-revision lines naming the pending path WARN; every other
    verify error stays a hard FAIL. Gate: 47 ok / 0 failed. cmd/tq's
    libc/sqlite drift self-reconciled (root and cmd/tq now agree on
    libc v1.77.1 / sqlite v1.60.1).
-7. **flake.nix eval collision fixed.** The go-nix-helpers input (locked
+~~7. **flake.nix eval collision fixed.** The go-nix-helpers input (locked~~ — RESOLVED 2026-11-23: option disabled in place (flake.nix:92)
    2026-10-02, pre-dating this window) now generates its own
    `checks.vendor-hash` in go-standard.nix, colliding with the repo's
    hand-rolled drift gate at eval time (broke ANY eval of that attr).
@@ -72,7 +72,7 @@ nix-buildable tree. P0–P3 were already landed and green at resume.
    (proxy fetch of internal/composition@v0.3.0 fails by design — this
    also reproduced the exact ambiguous-import error the prior session
    hit, confirming the diagnosis). Cleanroom: GREEN.
-9. **AGENTS.md truth pass for the module topology.** Composition row in
+~~9. **AGENTS.md truth pass for the module topology.** Composition row in~~ — RESOLVED 2026-11-23: AGENTS.md names the composition module (AGENTS.md:33,76)
    the architecture table + module listing (tightened twice to fit the
    budget). Second conscious budget reset 15,200 → 15,400 with dated
    comment (Go guard `agentsDocMaxBytes` + the bash twin
@@ -120,11 +120,11 @@ nix-buildable tree. P0–P3 were already landed and green at resume.
 
 ## c) Not started
 
-15. **P5 — legacy deletion + docs truth pass** (cqrsqlite deletion,
+~~15. **P5 — legacy deletion + docs truth pass** (cqrsqlite deletion,~~ — RESOLVED 2026-11-23: P5 landed — cqrsqlite deleted, dual tally collapsed, endgame addendum written (internal/queue/cqrsqlite absent at HEAD; docs/adr/0019-go-cqrs-lite-platform-adoption.md:116)
     dual-tally collapse, ADR-0019 stage markers, FEATURES/CHANGELOG/
     TODO_LIST rows, LOC/art-dupl delta) — still owner-gated on the
     deletion-cadence question.
-16. **The tag wave** (root v0.3.1 + internal/composition + readmodel
+~~16. **The tag wave** (root v0.3.1 + internal/composition + readmodel~~ — RESOLVED 2026-11-23: tag wave landed (root + internal module tags, pushed with owner authorization) (git tag v0.4.2; TODO_LIST.md:21)
     tags, then delete the check-go-mods pending-tag block) — owner-gated.
 17. **Dogfood cutover** (systemd restart against the production
     pre-flip journal; P1 auto-upgrade makes it transparent) — owner-gated.
@@ -176,21 +176,21 @@ nix-buildable tree. P0–P3 were already landed and green at resume.
 
 1. Re-run `./scripts/ci-local.sh` once the parallel windows land their
    lint-baseline regen + report fixes — expect full green.
-2. `nix flake check` (webui-css, treefmt, templ-committed, version-sync
+~~2. `nix flake check` (webui-css, treefmt, templ-committed, version-sync~~ — RESOLVED 2026-11-23: nix build + flake check green 2026-11-23 (14/14 checks) (TODO_LIST.md:22)
    together).
 3. WebUI + httpapi smokes vs the now-default readmodel path
    (`scripts/smoke/webui.sh`, `api.sh`) — not run since P2's flip.
 4. `tq serve` dogfood dry-run on a scratch TQ_DB seeded from a legacy
    fixture: auto-upgrade → readmodel default-on → GracefulClose
    ordering, one script (smoke candidate).
-5. **P5**: delete `internal/queue/cqrsqlite` + its conform-suite wiring
+~~5. **P5**: delete `internal/queue/cqrsqlite` + its conform-suite wiring~~ — RESOLVED 2026-11-23: cqrsqlite deleted at HEAD (internal/queue/cqrsqlite absent; zero go.mod refs)
    (suite keeps running for sqlitev4/postgresv4).
-6. **P5**: root go.mod drops cqrsqlite references; module loop re-run.
-7. **P5**: collapse dual tally paths in cmd/tq (tallyStats vs
+~~6. **P5**: root go.mod drops cqrsqlite references; module loop re-run.~~ — RESOLVED 2026-11-23: root go.mod clean of cqrsqlite (go.mod (zero cqrsqlite refs at HEAD))
+~~7. **P5**: collapse dual tally paths in cmd/tq (tallyStats vs~~ — RESOLVED 2026-11-23: tallyStats/tallyModelRows gone from cmd/tq (cmd/tq (symbols absent at HEAD))
    tallyModelRows) where the S3 design sanctions projection-backed.
 8. **P5**: decide + execute the hand journal tailer's fate (ADR-0003
    Phase D read path) once Watcher/SSE serves the dogfood.
-9. **P5**: ADR-0019 endgame addendum (S2/S3/S4 + auto-upgrade landed).
+~~9. **P5**: ADR-0019 endgame addendum (S2/S3/S4 + auto-upgrade landed).~~ — RESOLVED 2026-11-23: endgame addendum present (docs/adr/0019-go-cqrs-lite-platform-adoption.md:116)
 10. **P5**: FEATURES.md rows (auto-upgrade, readmodel-default, engine
     fact reads, composition root) with citations.
 11. **P5**: CHANGELOG `[Unreleased]` entry for the whole endgame wave.
@@ -198,10 +198,10 @@ nix-buildable tree. P0–P3 were already landed and green at resume.
     keep dogfood-cutover row owner-blocked.
 13. **P5**: LOC delta (tokei) + art-dupl `-t 4` recount vs the
     2026-09-23 baseline — the deletion dividend.
-14. **Tag wave** (owner-gated, see §g): root v0.3.1 + internal/
+~~14. **Tag wave** (owner-gated, see §g): root v0.3.1 + internal/~~ — RESOLVED 2026-11-23: tag wave landed (git tag v0.4.2; TODO_LIST.md:21)
     {queue/sqlite,queue/sqlitev4,queue/postgresv4,queue/companion,
     readmodel,composition} tags; proxy checks per docs/release/.
-15. After the wave: delete the check-go-mods.sh pending-tag block
+~~15. After the wave: delete the check-go-mods.sh pending-tag block~~ — RESOLVED 2026-11-23: pending-tag block deleted after the wave (scripts/check-go-mods.sh (absent at HEAD))
     (self-deleting by design).
 16. After the wave: `check-facade-parity.sh` re-pin to real tags.
 17. Dogfood deploy runbook note (P1 makes the restart transparent;
@@ -218,11 +218,11 @@ nix-buildable tree. P0–P3 were already landed and green at resume.
 22. Sweeper ticks → `system.ManageTimers` — stays no-fit; revisit only
     with a genuinely timer-shaped feature (map §4a).
 23. `internal/journal/cqrs` public-facade ruling — owner-blocked TODO.
-24. Fix the paperclip report's date drift (foreign file — coordinate or
+~~24. Fix the paperclip report's date drift (foreign file — coordinate or~~ — RESOLVED 2026-11-23: index gate green at HEAD (drift healed) (scripts/check-status-index.sh ok 2026-11-23)
     leave to its window's next pass).
 25. Heal the two dead-SHA citations (fork records) — docs-health
     ANNOTATE material.
-26. INDEX BLOAT: 194 live rows > 100 threshold — archive sweep or
+~~26. INDEX BLOAT: 194 live rows > 100 threshold — archive sweep or~~ — RESOLVED 2026-11-23: monthly digest ritual adopted; ANNOTATE/archive sweeps ran (TODO_LIST.md:1070)
     monthly digest row.
 27. Make the devmod shim collision-proof: per-invocation dev.mod suffix
     (TMPDIR-based) so concurrent gates can't delete each other's modfile.
