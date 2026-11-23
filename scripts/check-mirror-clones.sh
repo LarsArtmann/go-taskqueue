@@ -213,7 +213,14 @@ if [ "$mode" = "--self-test" ]; then
 		exit 1
 	fi
 	must_mention "RESOLVED (regen baseline to shrink)" "$res_out" "unseen baseline rows are reported RESOLVED"
-	must_mention "1 resolved" "$res_out" "summary counts the resolved row"
+	# A single-row baseline resolves to the empty union, whose pinned
+	# output is the zero line (the summary counter never prints there);
+	# larger baselines get the counted summary.
+	if [ "$(baseline_rows | wc -l)" -eq 1 ]; then
+		must_mention "mirror-clones: 0 cross-backend clone groups" "$res_out" "single-row baseline resolves to the pinned zero line"
+	else
+		must_mention "1 resolved" "$res_out" "summary counts the resolved row"
+	fi
 	echo "ok: resolved rows reported"
 
 	# 6) Zero groups keeps the pinned zero line.
