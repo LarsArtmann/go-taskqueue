@@ -1,5 +1,9 @@
 {
-  "skip_gates": ["audit-all", "annotate"],
+  "annotate_corpus": "unarchived",
+  "annotate_max": 144,
+  "skip_gates": [
+    "audit-all"
+  ],
   "cadence": {
     "struck_rows": 20,
     "max_unarchived": 280,

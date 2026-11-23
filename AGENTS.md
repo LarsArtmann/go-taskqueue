@@ -427,10 +427,13 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   trial MOUNTED); go-nix-helpers flake-input.
 - **docs-gates (ADOPTED 2026-11-06)**: `.docs-gates.json` + ci-local gate
   `scripts/check-docs-gates.sh` (battery `run --json`; absent binary →
-  SKIP rc=0). Doctrine: audit-all + annotate SKIPPED — history-locked
-  findings stay SWEEP-only; cadence = pileup tripwire (280/75d vs pbx
-  15/21). A new report's §f must harvest into TODO_LIST or carry a
-  fresh:skip comment, else the gate trips.
+  SKIP rc=0). Doctrine: audit-all SKIPPED (corpus archaeology stays
+  sweep-only); annotate ON since docs-gates v0.5.0's `annotate_corpus:
+  "unarchived"` knob (2026-11-23) — the unarchived corpus is judged
+  under the `annotate_max` ratchet (pinned at the measured 144;
+  history-locked archive strikes stay out); cadence = pileup tripwire
+  (280/75d vs pbx 15/21). A new report's §f must harvest into TODO_LIST
+  or carry a fresh:skip comment, else the gate trips.
 - **BuildFlow**: deliberately NOT covered (no `.buildflow.yml`) —
   ci-local + flake own quality here. Ad-hoc steps only (`-s gomod-check
   --fix`; `-s nix-hash-fix --fix` barred by the #88 Known Issue).
