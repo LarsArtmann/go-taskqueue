@@ -25,7 +25,7 @@ no new dedup triage, no foreign work touched.
      status reports are the record. Recorded as a Won't-implement annotation
      on the 16-02 report's f5 row.
 2. ~~**sqlitev4 unused require dropped** (16-02 §f2): in-module `go mod tidy`~~ — RESOLVED 2026-11-23: internal/queue/sqlitev4/go.mod carries only the replace (4be4a8ef)
-   removed `internal/queue/sqlite` + 4 stale go.sum lines; module gate green
+   dropped the unused sqlitev4 require + 4 stale go.sum lines; module gate green
    (3.6s); root `go mod vendor` clean (zero diff);
    `nix build .#checks.x86_64-linux.vendor-hash` rc=0, no drift, flake.nix
    untouched. The standing gopls warning cleared. Commit `4be4a8ef`.
