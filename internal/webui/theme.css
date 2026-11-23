@@ -1263,8 +1263,10 @@ input[type="search"]::-webkit-search-cancel-button {
 }
 
 /* Burst badge (design-pass §f25/§f3): the "N new facts" count is NOT a
-   filter chip — it is ephemeral feedback that lives a few seconds and
-   clears itself, so it gets a settled look instead of the chip pill:
+   filter chip; it is ephemeral feedback with no timer of its own: the
+   badge persists until the next zero-new swap clears it (app.js
+   showFeedBurst) or the un-hover resurface rewrites it as "N new while
+   paused". That is why it gets a settled look instead of the chip pill:
    dashed hairline (transience), no fill, italic mono, non-interactive.
    Both themes carry it; app.js toggles the node, CSS owns the voice. */
 .tq-feed-burst {
