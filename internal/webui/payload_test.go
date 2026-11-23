@@ -559,7 +559,7 @@ func TestPayloadSectionWindowGrouping(t *testing.T) {
 			}
 		}
 
-		if strings.Contains(html, ">window</span><span class=\"tq-payload-window-links\">") {
+		if strings.Contains(html, ">window</span> <span class=\"tq-payload-window-links\">") {
 			t.Error("grouped strip must drop the flat row label")
 		}
 	})
@@ -569,7 +569,7 @@ func TestPayloadSectionWindowGrouping(t *testing.T) {
 
 		html := render(t, entry("w1")+","+entry("w2")+","+entry("w3"))
 
-		if !strings.Contains(html, ">window</span><span class=\"tq-payload-window-links\">") {
+		if !strings.Contains(html, ">window</span> <span class=\"tq-payload-window-links\">") {
 			t.Errorf("flat strip missing the window row label: %s", html)
 		}
 
