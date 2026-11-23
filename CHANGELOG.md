@@ -157,9 +157,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   root builds silently read (`-mod=vendor`) — every internal-module
   change needed a `go mod vendor` follow-up or builds died on stale
   vendoring. The tree is gone permanently (never re-plant; `go mod
-  vendor` now draws a tq-bash-guard advisory) and
-  `scripts/check-gomod-vendor-sync.sh` is renamed
-  `scripts/check-gomod-sync.sh` with the vendor leg removed: per-module
+  vendor` now draws a tq-bash-guard advisory) and the drift gate is
+  renamed `scripts/check-gomod-sync.sh` (formerly `check-gomod-vendor-sync`)
+  with the vendor leg removed: per-module
   tidy drift detection, cmd/tq cqrs parity (now REQUIRED to report its
   ok-line), and the lint-leak go.sum scan all stay. Env hooks renamed
   (`GOMOD_SYNC_SELF_TEST`/`GOMOD_SYNC_OFF`/`TQ_GOMOD_SYNC_EXTRA_SUMS`).

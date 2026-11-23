@@ -25,6 +25,8 @@ allow=(
 	'^internal/executor/testdata/fuzz'                    # CHANGELOG cites the deleted FuzzExtractResultPayload seed corpus historically (corpus removed with the target, 2026-11-13)
 	'^cmd/tq/v0\.4\.3$'                                   # CHANGELOG names the post-push CLI module TAG for the v0.4.2 wave (supersedes the proxy-poisoned cmd/tq@v0.4.2) — a tag, not a path
 	'^notifications/claude/channel$'                      # AGENTS Channels-plan bullet cites the claude MCP channel-push notification NAME (docs/planning/2026-10-16_01-11_TQ-MCP-CHANNELS-DESIGN-INPUT.md) — an MCP method, not a repo path
+	'^queue/(sqlite|postgres)$'                           # CHANGELOG Removed + FEATURES cite the RETIRED driver facade modules (2026-11-23 owner ruling; ADR-0016 retirement addendum) — deleted modules cited historically
+	'^scripts/check-gomod-vendor-sync\.sh$'               # CHANGELOG historical rows cite the drift gate under its PRE-rename name (renamed scripts/check-gomod-sync.sh 2026-11-23, vendor leg removed)
 )
 
 fail=0
