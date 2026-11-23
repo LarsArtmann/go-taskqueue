@@ -177,6 +177,36 @@ func TestUnknownMethodIsMinus32601(t *testing.T) {
 	}
 }
 
+// TestServerDiscoverBeforeInitialize pins the crush extension probe:
+// crush's MCP client sends server/discover BEFORE initialize (observed
+// live on crush v0.102.0, F21) and the server must answer it (empty
+// result — we implement no extensions) rather than -32601, so the
+// handshake that follows stays alive.
+func TestServerDiscoverBeforeInitialize(t *testing.T) {
+	responses := conversation(t, &stubStore{},
+		`{"jsonrpc":"2.0","id":1,"method":"server/discover"}`,
+		`{"jsonrpc":"2.0","id":2,"method":"initialize","params":{"protocolVersion":"2025-06-18"}}`,
+	)
+
+	if len(responses) != 2 {
+		t.Fatalf("want 2 responses (discover + initialize), got %d: %v", len(responses), responses)
+	}
+
+	if strings.Contains(responses[0], `"error"`) {
+		t.Fatalf("server/discover must not error: %s", responses[0])
+	}
+
+	if !strings.Contains(responses[0], `"result":{}`) {
+		t.Fatalf("server/discover must answer an empty result: %s", responses[0])
+	}
+
+	var init initializeResult
+	decodeInto(t, responses[1], &init)
+	if init.ProtocolVersion != "2025-06-18" {
+		t.Fatalf("initialize after discover must still negotiate: %+v", init)
+	}
+}
+
 // TestToolsCallUnknownTool pins the invalid-params class: calling a tool
 // that is not registered is a protocol error (the model asked for
 // something the registry never advertised).

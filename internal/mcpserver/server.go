@@ -140,6 +140,13 @@ func (s *Server) handleLine(ctx context.Context, line []byte) *rpcResponse {
 		return s.handleInitialize(req)
 	case req.Method == "ping":
 		return newResult(req.ID, struct{}{})
+	case req.Method == "server/discover":
+		// crush's MCP client probes this extension method BEFORE
+		// initialize (observed live on crush v0.102.0, F21). We implement
+		// no extensions, so the probe answers empty — a -32601 would also
+		// be spec-legal, but the empty result keeps extension-aware
+		// clients from treating the silence as a broken server.
+		return newResult(req.ID, struct{}{})
 	case req.Method == "tools/list":
 		return newResult(req.ID, toolsListResult{Tools: s.toolSummaries()})
 	case req.Method == "tools/call":
