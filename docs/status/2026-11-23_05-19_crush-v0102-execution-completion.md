@@ -59,7 +59,7 @@ then flagged this report as not-at-HEAD — this delta is the cure.
 3. Phase 2 (owner-gated): `tq mcp` gains `notifications/claude/channel` push + `channel_reply`; bootstrap `--channel` emission behind the serve-per-repo gate; doctor `mcp-channels:<repo>` probe implementation per plan §6.
 4. park_task write tool (M8) — owner gate.
 5. mcpserver: tolerate/implement crush's `server/discover` extension request if tq mcp ever runs under crush's client (observed in the F21 probe; crush proceeds without the reply today).
-6. ci-local receipt: if the in-flight run is green, cite /var/tmp/tq-ci-local-m14.log in the index row; if red, triage before push.
+6. ~~ci-local receipt: if the in-flight run is green, cite /var/tmp/tq-ci-local-m14.log in the index row; if red, triage before push.~~ — RESOLVED in-window: the battery's three legs (CI-divergence refusal, AGENTS size budget, erraudit workspace floor) were cured per the Battery outcome above; the receipt lives at /var/tmp/tq-ci-local-m14.log and its outcome is recorded there — nothing left to harvest. <!-- fresh:skip -->
 7. Index-bloat digest ritual (414 rows > 400 threshold) — standing advisory, monthly cadence.
 
 ## g) OWNER QUESTIONS (cannot self-resolve)
