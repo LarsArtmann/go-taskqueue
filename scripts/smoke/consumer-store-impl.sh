@@ -94,6 +94,7 @@ fi
 	# name are facade-reachable ones (queue/task/journal aliases) plus
 	# stdlib — anything else cannot compile from out of tree, which is
 	# precisely the rot class this smoke exists to catch.
+	# pins: out-of-tree-compile — stdlib-only consumer program implementing Store
 	cat >main.go <<'EOF'
 package main
 

@@ -145,6 +145,7 @@ default_resolve() {
 # contract shape (verified against the v0.4.2 tags); compile failure and
 # assertion failure are both rc-captured by default_probe.
 write_probe_task() {
+	# pins: task-probe-declines-unknown-method — a no-tools probe program
 	cat >"$1" <<'PROBE_EOF'
 package main
 
@@ -184,6 +185,7 @@ PROBE_EOF
 }
 
 write_probe_journal() {
+	# pins: journal-probe-happy-writes — probe writes the journal marker
 	cat >"$1" <<'PROBE_EOF'
 package main
 
@@ -226,6 +228,7 @@ PROBE_EOF
 }
 
 write_probe_queue() {
+	# pins: queue-probe-happy-writes — probe exercises the queue store
 	cat >"$1" <<'PROBE_EOF'
 package main
 
@@ -262,6 +265,7 @@ PROBE_EOF
 }
 
 write_probe_executor() {
+	# pins: executor-probe-happy-writes — probe exercises the executor
 	cat >"$1" <<'PROBE_EOF'
 package main
 
@@ -307,6 +311,7 @@ PROBE_EOF
 }
 
 write_probe_worker() {
+	# pins: worker-probe-happy-writes — probe exercises the worker
 	cat >"$1" <<'PROBE_EOF'
 package main
 

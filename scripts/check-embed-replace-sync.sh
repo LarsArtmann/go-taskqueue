@@ -138,6 +138,7 @@ run_checks() {
 	fi
 
 	if [ "$drift" -ne 0 ]; then
+		# pins: drift-exit-recipe — the recipe + provenance block names every drift exit
 		cat >&2 <<'EOF'
 fix recipe: cd examples/embed && GOWORK=off go mod tidy, then add ONE replace line per new tq module in the transitive graph (see the block's KEEP-FOREVER comment); keep scripts/smoke/consumer-store-impl.sh deriving its block live -- never freeze a module list into it
 provenance: embed's local build AND the smoke's TQ_STORE_IMPL_REPLACE=1 HEAD-truth leg both resolve the tq graph from this ONE hand-maintained block; a missing line silently mixed a stale proxy tag into HEAD-truth verification (facade-retirement batch 000001a2093ef4b12ceab7e50acc00000000)
