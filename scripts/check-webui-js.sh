@@ -28,11 +28,11 @@ self_test() {
 		printf '%s\n' "$out"
 		exit 1
 	fi
-	must_mention 'webui-js summary: 12 tests ok, 1 failed' "$out" "summary pins the negative counters"
+	must_mention 'webui-js summary: 21 tests ok, 1 failed' "$out" "summary pins the negative counters"
 	must_mention 'intentional failure for gate self-test' "$out" "forced-failure branch reports by name"
 	local pos_out pos_rc=0
 	pos_out="$("$self_abs" 2>&1)" || pos_rc=$?
-	must_mention 'webui-js summary: 13 tests ok, 0 failed' "$pos_out" "positive run pins the full counter"
+	must_mention 'webui-js summary: 22 tests ok, 0 failed' "$pos_out" "positive run pins the full counter"
 	if [ "$pos_rc" -ne 0 ]; then
 		echo "FAIL: positive run exited $pos_rc"
 		printf '%s\n' "$pos_out"
