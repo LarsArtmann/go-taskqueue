@@ -12,7 +12,6 @@ cd "$(dirname "$0")/../.."
 REPO_ROOT="$(pwd)"
 
 TMP="$(mktemp -d)"
-WORK="$TMP"
 # shellcheck source=_lib.sh
 source "$(dirname "$0")/_lib.sh"
 SMOKE_FAILED=""
