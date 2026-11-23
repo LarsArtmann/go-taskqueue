@@ -33,7 +33,7 @@
 set -euo pipefail
 
 MODULE="github.com/larsartmann/go-taskqueue"
-repo_root="$(cd "$(dirname "$0")/.." && pwd)"
+repo_root="$(cd "$(dirname "$0")/../.." && pwd)"
 verify_dir="$(mktemp -d)"
 trap 'rm -rf "$verify_dir"' EXIT
 
