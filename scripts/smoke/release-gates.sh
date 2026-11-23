@@ -33,7 +33,7 @@ expect_fail() {
 }
 
 # The real tree must pass against the real tags.
-expect_pass go.mod "real go.mod (incl. nested queue/sqlite replace + require)"
+expect_pass go.mod "real go.mod (incl. nested internal-module requires)"
 
 # Fixture repo: the require-tag existence check resolves tags here.
 fixture="$(mktemp -d)"

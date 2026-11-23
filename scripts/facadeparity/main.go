@@ -195,7 +195,7 @@ func run(root string) error {
 		)
 	}
 
-	fmt.Println("facade parity OK: 7 facades mirror their internal packages")
+	fmt.Println("facade parity OK: 5 facades mirror their internal packages")
 
 	return nil
 }

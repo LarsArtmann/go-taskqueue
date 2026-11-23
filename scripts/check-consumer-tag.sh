@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Tagged-facade consumer-path proof: a scratch module that knows NOTHING
-# about this checkout resolves the root module plus all seven ADR-0016
+# about this checkout resolves the root module plus all five ADR-0016
 # facades at an EXPLICIT tag from the module proxy and compiles an import
 # of every facade. This is the canonical release verification (02-02
 # report §f11; 00-23 §b1/f3): the literal `go install <facade>@<tag>` is
@@ -20,11 +20,10 @@ cd "$(dirname "$0")/.."
 
 MODULE="github.com/larsartmann/go-taskqueue"
 
-# ADR-0016 facade surface: the root module plus the seven re-export
+# ADR-0016 facade surface: the root module plus the five re-export
 # facades (mirrors check-pkg-proxy.sh's list; check-facade-parity pins
-# the pairs — adding an 8th facade means updating all three).
+# the pairs — adding a 6th facade means updating all three).
 FACADES=("$MODULE/task" "$MODULE/journal" "$MODULE/queue"
-	"$MODULE/queue/sqlite" "$MODULE/queue/postgres"
 	"$MODULE/executor" "$MODULE/worker")
 
 # write_consumer_spec emits the scratch module the proof builds: a go.mod
@@ -137,4 +136,4 @@ trap 'rm -rf "$verify_dir"' EXIT
 	go mod tidy >/dev/null
 	go build -o /dev/null .
 )
-echo "CONSUMER-TAG OK: root + 7 facades resolve from the proxy and compile at $version"
+echo "CONSUMER-TAG OK: root + 5 facades resolve from the proxy and compile at $version"

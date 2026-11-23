@@ -85,7 +85,7 @@ publish_steps() {
 	# The literal `go install <facade>@<tag>` is impossible-by-design
 	# (facade go.mods carry relative dev replaces — toolchain refusal
 	# everywhere, 00-23 §b1), so the consumer path IS the facade proof:
-	# root + all seven ADR-0016 facades resolved from the proxy at
+	# root + all five ADR-0016 facades resolved from the proxy at
 	# $VERSION and compiled.
 	./scripts/check-consumer-tag.sh "$VERSION"
 

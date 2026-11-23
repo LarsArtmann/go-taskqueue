@@ -485,8 +485,6 @@ you import are stable while the implementations stay free to refactor:
 | `task`           | Task record, status state machine, sentinel errors                        |
 | `journal`        | Fact types, append-only Journal interface, in-memory Journal              |
 | `queue`          | The store CONTRACT: `Store` interface, `Filter`, `Queue` facade           |
-| `queue/sqlite`   | Embedded SQLite driver (`sqlite.Store`) — the default backend             |
-| `queue/postgres` | Networked PostgreSQL driver (`postgres.Store`) for shared-machine pools   |
 | `executor`       | Pluggable execution: `sh`, HTTP, headless agent, review, status, registry |
 | `worker`         | Claim → heartbeat → execute loop over any `queue.Store`                   |
 
@@ -494,17 +492,21 @@ you import are stable while the implementations stay free to refactor:
 independently tagged Go module; the `internal/…` modules behind them are
 implementation detail.)
 
-Both store drivers implement the same `queue.Store` contract with
-byte-compatible facts, so the choice is one import line:
+The two store drivers — embedded SQLite and networked PostgreSQL — satisfy
+the same `queue.Store` contract with byte-compatible facts. Since the
+2026-11-23 facade retirement they live in the in-repo-path modules
+`internal/queue/sqlite` and `internal/queue/postgres` (importable from
+within the `go-taskqueue` module path; external adopters implement
+`queue.Store` or vendor the tree):
 
 ```go
-import "github.com/larsartmann/go-taskqueue/queue/sqlite"
+import "github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
 
 store, err := sqlite.Open("tq.db", sqlite.WithProjectExclusivity())
 // or
-import "github.com/larsartmann/go-taskqueue/queue/postgres"
+import "github.com/larsartmann/go-taskqueue/internal/queue/postgres"
 
-store, err := postgres.Open(ctx, "postgres://…", 4)
+store, err := postgres.Open(ctx, "postgres://…")
 // already holding a *pgxpool.Pool? reuse it instead of a second pool:
 store, err := postgres.OpenWithPool(ctx, myPool) // pool stays yours; Store.Close will not close it
 ```

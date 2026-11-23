@@ -2,7 +2,7 @@
 # Publishability audit for the module proxy + pkg.go.dev (09-06/09-14/10-27
 # reports §f: the pkg.go.dev 404 window where the proxy listed v0.3.0 for
 # every facade while the docs site still 404'd for hours). Checks, for the
-# root module and the seven ADR-0016 facades, that the latest root tag is:
+# root module and the five ADR-0016 facades, that the latest root tag is:
 #   1. listed by proxy.golang.org (`go list -m -versions`), and
 #   2. rendered by pkg.go.dev (HTTP 200).
 # Network-tolerant by design (advisory in ci-local): a proxy/curl failure
@@ -42,7 +42,6 @@ command -v go >/dev/null || {
 
 mods=("$MODULE"
 	"$MODULE/task" "$MODULE/journal" "$MODULE/queue"
-	"$MODULE/queue/sqlite" "$MODULE/queue/postgres"
 	"$MODULE/executor" "$MODULE/worker")
 
 missing=0

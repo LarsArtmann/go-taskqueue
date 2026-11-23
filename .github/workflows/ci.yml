@@ -347,7 +347,7 @@ jobs:
 
   consumer:
     # T5 (09-14 retro §f5 + §f6): the out-of-tree consumer proof — a scratch
-    # module consuming all 7 ADR-0016 facades from the module proxy at the
+    # module consuming all 5 ADR-0016 facades from the module proxy at the
     # latest released tags — plus the examples/embed rot guard, which until
     # now ran only in ci-local (the ci.yml parity gap).
     runs-on: ubuntu-latest
@@ -358,7 +358,7 @@ jobs:
           go-version: 1.27.4
       - name: Facade adopter on-ramp build (examples/embed)
         run: cd examples/embed && GOWORK=off go build ./...
-      - name: Out-of-tree consumer install (proxy @latest, all 7 facades)
+      - name: Out-of-tree consumer install (proxy @latest, all 5 facades)
         run: ./scripts/smoke/consumer-install.sh
 
   nix:

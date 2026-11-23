@@ -40,9 +40,10 @@ for m in $(find internal task journal queue executor worker -name go.mod -printf
 ./scripts/test-cmd-tq.sh   # cmd/tq module gate (CMD_TQ_OS=windows cross-compile)
 ```
 
-**Public facades (ADR-0016):** `task/ journal/ queue/ queue/sqlite/
-queue/postgres/ executor/ worker/` re-export internals via type aliases —
-the only external import surface; in-repo code imports `internal/…`.
+**Public facades (ADR-0016):** `task/ journal/ queue/ executor/ worker/`
+re-export internals via type aliases — the only external import surface;
+in-repo code imports `internal/…` (driver facades `queue/sqlite` +
+`queue/postgres` retired 2026-11-23).
 Facades: require (real tag) + relative replace; tests import internals, never
 sibling facades; parity via `check-facade-parity.sh` BEFORE staging;
 postgres `OpenWithPool` pools CALLER-OWNED. No root go.work — replace-only

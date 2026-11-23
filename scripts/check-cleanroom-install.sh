@@ -31,12 +31,12 @@ package main
 import (
 	"fmt"
 
-	"$MODULE/queue/sqlite"
+	"$MODULE/queue"
 	"$MODULE/task"
 )
 
 func main() {
-	fmt.Println(task.Pending, sqlite.Open)
+	fmt.Println(task.Pending, queue.ErrTaskDone)
 }
 EOF
 	GOFLAGS=-mod=mod go mod init cleanroom >/dev/null

@@ -490,8 +490,7 @@
           # runs `go test ./...` at the root, which stops at nested go.mods.
           # Loop the disk-derived module list exactly like ci-local.sh. The
           # hermetic checks.test stays root-scope on purpose: the sandbox
-          # vendors only the root module's dependency graph (queue/postgres
-          # needs pgx, which root no longer carries).
+          # vendors only the root module's dependency graph.
           apps = {
             test = lib.mkForce {
               type = "app";
