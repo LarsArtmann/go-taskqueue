@@ -448,6 +448,11 @@ step "vendor-hash drift self-test (drift branch + recipe + ok summary pins)"
 step "vendor-hash drift (flake pin vs module graph; skips nix-less hosts)"
 ./scripts/check-vendor-hash.sh
 
+# Facade parity self-test first (fleet countable-gate contract: the pin
+# fails here, not at the next silent summary rot).
+step "facade parity self-test (summary format pin + fixture skew battery)"
+./scripts/check-facade-parity.sh --self-test
+
 step "facade parity (ADR-0016: facades mirror internal exports)"
 ./scripts/check-facade-parity.sh
 
