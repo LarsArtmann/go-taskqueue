@@ -432,8 +432,10 @@ func detailItems(t task.Task, now time.Time, nonce string) []display.DefinitionI
 
 // provenanceItems builds the priority provenance section's definition rows:
 // current + band, harvest item identity, cached AI verdict, and one row per
-// reprioritization fact.
-func provenanceItems(v priorityProvenanceView) []display.DefinitionItem {
+// reprioritization fact. History renders AS-IS — the slice order the shared
+// harvest.BuildProvenance builder produced (fact-trail order, oldest→
+// newest; pinned by TestProvenanceItemsOrderingAndAge).
+func provenanceItems(v priorityProvenanceView, now time.Time) []display.DefinitionItem {
 	items := []display.DefinitionItem{
 		{Term: "current", Detail: formatInt(v.Current) + " (" + v.Band + ")"},
 	}
@@ -475,11 +477,32 @@ func provenanceItems(v priorityProvenanceView) []display.DefinitionItem {
 
 		items = append(items, display.DefinitionItem{
 			Term:   "repri " + ev.At.Format("01-02 15:04"),
-			Detail: detail,
+			Detail: detail + " · " + repriAge(ev.At, now),
 		})
 	}
 
 	return items
+}
+
+// repriAge is the coarse relative age the provenance card shows beside the
+// absolute repri term (design-pass §f31): minute/hour/day/week buckets so
+// "when did this reprioritize" reads without doing calendar math, with the
+// absolute term next to it always keeping the exact answer.
+func repriAge(at, now time.Time) string {
+	d := now.Sub(at)
+
+	switch {
+	case d < time.Minute:
+		return "just now"
+	case d < time.Hour:
+		return fmt.Sprintf("%dm ago", int(d.Minutes()))
+	case d < 24*time.Hour:
+		return fmt.Sprintf("%dh ago", int(d.Hours()))
+	case d < 7*24*time.Hour:
+		return fmt.Sprintf("%dd ago", int(d.Hours()/24))
+	default:
+		return fmt.Sprintf("%dw ago", int(d.Hours()/(7*24)))
+	}
 }
 
 // markerText is the human text of a harvest-time marker level (0 = none).

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/larsartmann/go-taskqueue/internal/dlqbackoff"
 	"github.com/larsartmann/go-taskqueue/internal/executor"
@@ -745,7 +746,7 @@ templ TaskDetail(data DashboardData, t task.Task, facts []journalFactView, prov 
 			@taskDetailCard(data, t)
 		</div>
 		@payloadSection(t, payloadViewFor(t))
-		@priorityProvenanceSection(prov)
+		@priorityProvenanceSection(prov, data.Now)
 		<div class="tq-heading">
 			<span class="tq-label">fact timeline</span>
 		</div>
@@ -946,10 +947,10 @@ templ prioritizeResultCard(res executor.PrioritizeResult) {
 // current value and its band, the harvested item identity plus the cached
 // AI verdict, and the reprioritization history distilled from the fact
 // trail — the same story `tq show` tells, on the operator's page.
-templ priorityProvenanceSection(v priorityProvenanceView) {
+templ priorityProvenanceSection(v priorityProvenanceView, now time.Time) {
 	@pageHeading("priority provenance", "")
 	@display.Card(display.CardProps{Padding: display.CardPaddingLG}) {
-		@display.DefinitionList(display.DefinitionListProps{Items: provenanceItems(v)})
+		@display.DefinitionList(display.DefinitionListProps{Items: provenanceItems(v, now)})
 	}
 }
 
