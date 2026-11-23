@@ -41,7 +41,16 @@ done
 if [[ "$mode" == "--regen" || "$clean_cache" == 1 ]]; then
 	# Stale caches served phantom counts twice in 2026-09: regen must never
 	# run warm; --check opts in explicitly (warm --check stays cheap).
-	golangci-lint cache clean
+	# golangci-lint cache clean RemoveAll's the cache ROOT; when the root is
+	# an autofs/btrfs mountpoint (2026-11 cache relocation) unlinkat on the
+	# root itself fails EBUSY — clear the CONTENTS instead, same cold-cache
+	# invariant.
+	cache_dir="$(golangci-lint cache status | awk '/^Dir: /{print $2}')"
+	if mountpoint -q "$cache_dir"; then
+		find "$cache_dir" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+	else
+		golangci-lint cache clean
+	fi
 fi
 
 out="$(mktemp "${TMPDIR:-/tmp}/tq-baseline.XXXXXX")"
