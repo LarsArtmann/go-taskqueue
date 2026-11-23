@@ -58,8 +58,8 @@ Verified-in-tree and built on: M1.5/M1.6 papdashboard `trackBudgetBlocked` (thei
 
 ## b) PARTIALLY DONE
 
-1. **M19.1 is half-shipped**: robustification landed; the ROOT-CAUSE fix (terminal-write transient retry in the worker) is designed, not typed. The test still fails 19/20 under the right SQLITE_BUSY interleaving — just later (60s) and with a status map that names the disease. The worker-module change needs `go mod vendor` + module gate + a stress run (`-count=5 -race`) before landing.
-2. **M8.1 full pass still owed**: check-ci stays red until the Windows fix rides a push and a remote CI run goes green; the local `CI_CHECK=off` full ci-local run on this tree has not been done this session (the first attempt aborted at check-ci by design).
+1. ~~**M19.1 is half-shipped**: robustification landed; the ROOT-CAUSE fix (terminal-write transient retry in the worker) is designed, not typed. The test still fails 19/20 under the right SQLITE_BUSY interleaving — just later (60s) and with a status map that names the disease. The worker-module change needs `go mod vendor` + module gate + a stress run (`-count=5 -race`) before landing.~~ — RESOLVED 2026-11-23: root-cause fix landed: 41afb323 (internal/worker/worker.go:421-426)
+2. ~~**M8.1 full pass still owed**: check-ci stays red until the Windows fix rides a push and a remote CI run goes green; the local `CI_CHECK=off` full ci-local run on this tree has not been done this session (the first attempt aborted at check-ci by design).~~ — RESOLVED 2026-11-23: resolved via CI authority: master CI green at pinned SHA c8755d16, run 37361330330 SUCCESS incl. test-windows (20-35 report b2; c8755d16 on origin/master)
 3. **M1.7** (AGENTS.md claim-time bullet extended with "alert + audit hint + badge") not done by this session — the 00-33 window owns the bullet's text and may have covered it; unverified here.
 4. **M2.4 precedence pin**: I had planned a worker-level probe; the 07-24 window correctly reframed it as owner-gated (§g2: budget-park vs answer-clear precedence). Nothing typed — correctly.
 
@@ -79,7 +79,7 @@ Nothing destroyed, reverted, or left red. No foreign work touched. Honest failur
 
 ## e) WHAT WE SHOULD IMPROVE
 
-1. **Land the terminal-write retry (M19 root cause).** Highest-value open robustness item in the repo: a transient SQLITE_BUSY on Complete/Fail currently orphans a PAID turn until lease expiry (production double-spend risk, not just test noise). Small, precedented (go-retry + `execWithTransientRetry`), worker-module-local.
+1. ~~**Land the terminal-write retry (M19 root cause).** Highest-value open robustness item in the repo: a transient SQLITE_BUSY on Complete/Fail currently orphans a PAID turn until lease expiry (production double-spend risk, not just test noise). Small, precedented (go-retry + `execWithTransientRetry`), worker-module-local.~~ — RESOLVED 2026-11-23: landed: 41afb323 (internal/worker/worker.go:421-426)
 2. **Budget-gate Nth-item policy needs a ruling, not a silent change.** `spent >= cap` at claim parks the cap-authorized Nth task until midnight. If unintended, the fix is one comparison — but it is money policy (§g1 below).
 3. **Badge-scope honesty**: the nowband `BudgetParked` is a 24h-window approximation; M11's readmodel projection column would make it exact and pushdown-cheap. Keep the title text until then.
 4. **Stale-brief discipline** (echoing 07-24 §e1, independently re-learned): resume claims are hypotheses; grep the tree first.
@@ -87,31 +87,31 @@ Nothing destroyed, reverted, or left red. No foreign work touched. Honest failur
 
 ## f) NEXT (consolidated; 07-24 §f items 1–28 STAND — this list adds/reorders only what this session's findings change)
 
-1. **M19 root cause**: worker terminal-write transient retry (Complete/Fail, busy/locked IsRetryable, 3 attempts ≤400ms) + stress pin (`-count=5 -race`), module gate + `go mod vendor`.
+1. ~~**M19 root cause**: worker terminal-write transient retry (Complete/Fail, busy/locked IsRetryable, 3 attempts ≤400ms) + stress pin (`-count=5 -race`), module gate + `go mod vendor`.~~ — RESOLVED 2026-11-23: 41afb323: 3-attempt busy-class retry on terminal writes (internal/worker/worker.go:421)
 2. **§g1 below**: budget Nth-item claim policy ruling → then M22 (hysteresis rides it).
-3. **M8.1**: push the Windows fix (owner authorization already granted for master fixes this arc), confirm remote CI green, THEN full `ci-local.sh` (M8.1's actual run).
+3. ~~**M8.1**: push the Windows fix (owner authorization already granted for master fixes this arc), confirm remote CI green, THEN full `ci-local.sh` (M8.1's actual run).~~ — RESOLVED 2026-11-23: resolved via CI authority: master CI green at pinned SHA c8755d16, run 37361330330 SUCCESS incl. test-windows (20-35 report b2; c8755d16 on origin/master)
 4. **M2.4** precedence pin — unblocks the moment 07-24 §g2 is ratified.
-5. **M6** release v0.3.x — 07-24 §g1 local-tag ruling still owed; CHANGELOG cut already partially staged by the budget entry work.
+5. ~~**M6** release v0.3.x — 07-24 §g1 local-tag ruling still owed; CHANGELOG cut already partially staged by the budget entry work.~~ — RESOLVED 2026-11-23: M6 done: v0.3.x shipped and pushed: v0.3.1 cut, retracted on the broken-graph catch, v0.3.2 re-cut the full 22-tag wave; v0.4.x line live (docs/release/RELEASE.md:240-256; tags v0.3.1/v0.4.2 on origin)
 6. **M4** wake-trace implementation per the memo's checklist — unblocks on §g-2.
-7. **M11.1–M11.4** budget surfaces (tq top chip, `--parked budget`, journalaudit --json counts, readmodel column — the column also upgrades §e3).
-8. **M9.1–M9.2** webui operator-stance audit (findings only).
-9. **M10.1–M10.7** webui systematic fixes.
-10. **M12.1–M12.5** retry failure-classification taxonomy (the M19 root cause makes `IsRetryable` classification in-worker a natural first slice).
-11. **M13.1–M13.2** session-escalation ladder.
-12. **M14.1–M14.4** stranded-work notices.
-13. **M15.1–M15.2** zombie-run filter.
-14. **M16.1** `tq work --agents` budget flags/gate-or-document (cmd/tq now stable post-restructure — re-verify file layout first).
-15. **M17.1–M17.2** doctor budget-gate self-check + devmod clear error.
-16. **M18.1** cmd/tq gopls false positives.
-17. **M20.1–M20.5 + §e5** guard/protocol bundle (add: status-index-at-creation, Written-date convention, Open-close test convention; still §g-3-held for cross-module claims).
-18. **M21.1–M21.3** Windows canary + `Config.Budget` example + examples mentions.
-19. **M23.1–M23.2** goal-ancestry injection.
-20. **M24.1–M24.3** secret-injection design + prototype + SECURITY.md.
-21. **M25.1–M25.2** ROADMAP rows + 02-36/02-38 archive triage (M25.3 done here).
+7. ~~**M11.1–M11.4** budget surfaces (tq top chip, `--parked budget`, journalaudit --json counts, readmodel column — the column also upgrades §e3).~~ — RESOLVED 2026-11-23: 31b1998b: surfaces at HEAD (cmd/tq/parked.go; internal/readmodel/readmodel.go:65,71)
+8. ~~**M9.1–M9.2** webui operator-stance audit (findings only).~~ — RESOLVED 2026-11-23: d5e42cc8 + docs/planning/2026-10-05_webui-operator-stance-audit.md
+9. ~~**M10.1–M10.7** webui systematic fixes.~~ — RESOLVED 2026-11-23: d5e42cc8 (M10.3 mono line; F2/F4/F5/F6 verified-satisfied, F1 filed)
+10. ~~**M12.1–M12.5** retry failure-classification taxonomy (the M19 root cause makes `IsRetryable` classification in-worker a natural first slice).~~ — RESOLVED 2026-11-23: 6c892290/a53e16e4 + conform pin (internal/queue/companion/conform/tests.go:3733)
+11. ~~**M13.1–M13.2** session-escalation ladder.~~ — RESOLVED 2026-11-23: a310c984 (TestRetrySessionLadder, internal/executor/classify_test.go:74)
+12. ~~**M14.1–M14.4** stranded-work notices.~~ — RESOLVED 2026-11-23: bdb89ae8 (card-stranded, internal/webui/components.go:163)
+13. ~~**M15.1–M15.2** zombie-run filter.~~ — RESOLVED 2026-11-23: investigated, REJECTED with evidence (11-47 report a7)
+14. ~~**M16.1** `tq work --agents` budget flags/gate-or-document (cmd/tq now stable post-restructure — re-verify file layout first).~~ — RESOLVED 2026-11-23: budgetClaimGate carries the flags (cmd/tq/main.go:1139)
+15. ~~**M17.1–M17.2** doctor budget-gate self-check + devmod clear error.~~ — RESOLVED 2026-11-23: a6d1084d + doctorBudget (cmd/tq/doctor.go:1557)
+16. ~~**M18.1** cmd/tq gopls false positives.~~ — RESOLVED 2026-11-23: root-caused + documented (scripts/lib/cmd-tq-devmod.sh:3-9)
+17. ~~**M20.1–M20.5 + §e5** guard/protocol bundle (add: status-index-at-creation, Written-date convention, Open-close test convention; still §g-3-held for cross-module claims).~~ — RESOLVED 2026-11-23: c974d66b landed the guard/protocol bundle
+18. ~~**M21.1–M21.3** Windows canary + `Config.Budget` example + examples mentions.~~ — RESOLVED 2026-11-23: ec6d1422 + ExampleConfig_budget (internal/worker/example_test.go:59)
+19. ~~**M23.1–M23.2** goal-ancestry injection.~~ — RESOLVED 2026-11-23: 0875e0a7 (internal/harvest/harvest.go:66)
+20. ~~**M24.1–M24.3** secret-injection design + prototype + SECURITY.md.~~ — RESOLVED 2026-11-23: 2026686d (internal/executor/agent.go:623) + SECURITY.md
+21. ~~**M25.1–M25.2** ROADMAP rows + 02-36/02-38 archive triage (M25.3 done here).~~ — RESOLVED 2026-11-23: 81102012 (ROADMAP.md:82,88)
 22. e2e `budgetE2E` shared harness (07-24 §e3 — endorse).
 23. Promote `ParseRequeueEvidence` into companion (07-24 §e4 — endorse; my lamp is consumer #3).
 24. M1.7 verification: whether the AGENTS.md claim-time bullet needs the visibility clause (00-33 owner's call).
-25. Windows CI green confirmation for the migration fix (rides item 3's push).
+25. ~~Windows CI green confirmation for the migration fix (rides item 3's push).~~ — RESOLVED 2026-11-23: resolved via CI authority: master CI green at pinned SHA c8755d16, run 37361330330 SUCCESS incl. test-windows (20-35 report b2; c8755d16 on origin/master)
 
 ## g) QUESTIONS FOR THE OWNER (cannot self-answer)
 

@@ -11,15 +11,15 @@ clones** shown. Every flagged site was read at file:line before disposition.
 
 ## a) FULLY DONE
 
-1. **Full 16-group triage.** Every clone site read and dispositioned:
+1. ~~**Full 16-group triage.** Every clone site read and dispositioned:~~ — RESOLVED 2026-11-23: dispositions in place: directives across the tree + the AGENTS-named residual (AGENTS.md:311)
    extract / accept-with-directive / accept-residual. No group skipped.
-2. **Group #8 extracted (the one real clone).** cqrsqlite `fromUFacts`
+2. ~~**Group #8 extracted (the one real clone).** cqrsqlite `fromUFacts`~~ — RESOLVED 2026-11-23: superseded: the whole cqrsqlite module was deleted (c8755d16; 21-53 report a M04)
    (internal/queue/cqrsqlite/adapter.go, 20 lines byte-identical to
    `companion.JournalFacts`) deleted; both call sites now delegate to
    `companion.JournalFacts`. cqrsqlite joins sqlitev4/postgresv4 in the
    ADR-0019 "adapters delegate to internal/queue/companion" pattern; the
    now-unused `ufacts` import removed with it.
-3. **36 art-dupl:accept directives with recorded reasons** across 14 files
+3. ~~**36 art-dupl:accept directives with recorded reasons** across 14 files~~ — RESOLVED 2026-11-23: directives in place (23 files carry art-dupl:accept)
    (21 doc-position + 17 inline), covering 14 of the 15 remaining groups:
    SQL query prologs + scan-loop tails (companion/reads.go ×4 funcs + tails,
    sqlitev4/migration oldStatusCounts/oldAllFacts), mutex prologs
@@ -27,11 +27,11 @@ clones** shown. Every flagged site was read at file:line before disposition.
    check prologs (×2), exec buffer wiring (agent/verifygate/command/depbump),
    executor entry seams (review/status), subcommand wiring (cmdDLQ/cmdFacts/
    cmdWatermarks/sessionList).
-4. **Directive placement semantics established empirically** (new, recorded
+4. ~~**Directive placement semantics established empirically** (new, recorded~~ — RESOLVED 2026-11-23: AGENTS.md:313-314
    in AGENTS.md): a directive only suppresses when it sits within a few lines
    ABOVE the clone's first line. Doc-position works for func-top clones;
    mid-function clones need an inline comment adjacent to the start.
-5. **Report zeroed except one documented residual.** Final canonical run:
+5. ~~**Report zeroed except one documented residual.** Final canonical run:~~ — RESOLVED 2026-11-23: the single accepted residual is named in AGENTS.md:311
    **2 clones / 1 group** (was 36/16), 225 suppressed. The survivor is the
    `fragments.templ` conditional-span pair (sessions lamp vs attempts/error
    preview) — same shape, different domain content, and Go comments cannot
@@ -47,35 +47,35 @@ clones** shown. Every flagged site was read at file:line before disposition.
    - `gofmt -l` on every touched package: clean
 7. **4 em-dash house-rule violations in my own new comments** caught and
    fixed (conform/tests.go directives).
-8. **AGENTS.md updated** with the directive-placement gotcha + the named
+8. ~~**AGENTS.md updated** with the directive-placement gotcha + the named~~ — RESOLVED 2026-11-23: AGENTS.md:313-314
    templ residual (Conventions, executor-seams bullet).
 
 ## b) PARTIALLY DONE
 
-1. **Foreign doc-ref break investigation (stopped on instruction).**
+1. ~~**Foreign doc-ref break investigation (stopped on instruction).**~~ — RESOLVED 2026-11-23: fixed on sight at 4be4a8ef (this report's g1 answer; 20-39 report a1)
    `check-doc-refs.sh` rc=1: ROADMAP.md:287 cites `internal/budget.SessionUsage`
    which the checker reports MISSING. The symbol EXISTS
    (internal/budget/budget.go:174) — the checker appears to resolve
    symbol-style citations as file paths. One-line ROADMAP citation change
    fixes it; investigation and fix halted because the status request landed
    mid-investigation. Pre-existing/foreign: my edits touch neither file.
-2. **Verification depth.** Targeted gates green, but NOT run:
+2. ~~**Verification depth.** Targeted gates green, but NOT run:~~ — RESOLVED 2026-11-23: run by the 20-39 window: -race battery (a6) + root-gate rc=0 (a7)
    `root-gate.sh` full suite, `-race` on the 6 touched modules (the
    concurrent-agent noise rule), nix build checks.
-3. **No CHANGELOG entry** for the sweep (policy question, see g3).
-4. **HARVEST of section (f) into TODO_LIST** not run (awaiting instructions;
+3. ~~**No CHANGELOG entry** for the sweep (policy question, see g3).~~ — RESOLVED 2026-11-23: ruled: internal-only sweeps get no row (20-39 report a1 Q3)
+4. ~~**HARVEST of section (f) into TODO_LIST** not run (awaiting instructions;~~ — RESOLVED 2026-11-23: five rows landed (TODO_LIST.md:786-790)
    docs-health owns the routing rigor).
 
 ## c) NOT STARTED
 
-1. Long-term disposition of the templ residual: upstream art-dupl feature
+1. ~~Long-term disposition of the templ residual: upstream art-dupl feature~~ — RESOLVED 2026-11-23: ruled: documented residual is the durable answer, config exclusion declined (20-39 report a1 Q2; AGENTS.md:311)
    request for directives usable inside templ markup, and/or a repo-level
    art-dupl config (`-c` JSON) exclusion so canonical runs can show literally
    zero groups. Currently: accepted-by-documentation only.
-2. Foreign pre-existing item observed, untouched: gopls warns
+2. ~~Foreign pre-existing item observed, untouched: gopls warns~~ — RESOLVED 2026-11-23: require dropped (4be4a8ef; 20-39 report a2: sqlitev4/go.mod now carries only the replace)
    `internal/queue/sqlitev4/go.mod:11` requires `internal/queue/sqlite`
    but the module never uses it.
-3. Provenance cross-check of my 14 accept-reasons against the recorded
+3. ~~Provenance cross-check of my 14 accept-reasons against the recorded~~ — RESOLVED 2026-11-23: ledger re-read: type-dupes disjoint from these statement clones; provenance cites this report's a3 (f12 annotation below)
    12-27 dupe-type verdicts ledger (alignment assumed, not re-read).
 
 ## d) TOTALLY FUCKED UP

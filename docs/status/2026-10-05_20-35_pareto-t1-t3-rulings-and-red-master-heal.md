@@ -7,7 +7,7 @@
 
 ## a) FULLY DONE
 
-1. **T1 — 17 owner rulings collected and recorded** (O1–O15 + dead-sha remedy O16 +
+1. ~~**T1 — 17 owner rulings collected and recorded** (O1–O15 + dead-sha remedy O16 +~~ — RESOLVED 2026-11-23: durable record at docs/planning/2026-10-05_15-00_OWNER-RULINGS-SHEET.md
    cancelled-run O17), gathered live through 4 question batches. Durable record:
    `docs/planning/2026-10-05_15-00_OWNER-RULINGS-SHEET.md`. Highlights: agents push
    gate-green master (O1); budget cap = token/cost (O2); JIT frontier scoring replaces
@@ -19,17 +19,17 @@
    100% metaengine+system commitment, cqrsqlite dies (O12); weekly archive sweeps,
    vendor-guard YAGNI (O13); operator-visible-only CHANGELOG (O14); red master
    disclose-only, GOEXPERIMENT env ruled in, Dependabot ON (O15).
-2. **TODO_LIST un-block surgery** — 16 answered rows deleted, 15 BLOCKED rows rewritten
+2. ~~**TODO_LIST un-block surgery** — 16 answered rows deleted, 15 BLOCKED rows rewritten~~ — RESOLVED 2026-11-23: rows rewritten per the rulings sheet; check-todo-list green in the ci-local doc gates
    into executable work, 8 rows gained ruling cites, 5 more completed rows closed after
    implementation; `check-todo-list.sh` green after fixing two rows my own cite text had
    tripped (owner-word triggers, one mangled parenthetical).
-3. **T3 — dead-SHA gate healed end-to-end**: `scripts/check-dead-sha-refs.sh` rewritten
+3. ~~**T3 — dead-SHA gate healed end-to-end**: `scripts/check-dead-sha-refs.sh` rewritten~~ — RESOLVED 2026-11-23: scripts/check-dead-sha-refs.sh --emit-baseline generator mode (:25-33)
    with `--emit-baseline` generator mode (O16), per-token arrow-escape tightening (a
    dead sha sharing a line with an unrelated `old→new` record now still fails), and a
    5-branch self-test (clean/baselined-silence/exact-file:line/per-token-arrow/
    emit-roundtrip). 71 new tokens (10-01..05 heal mass) baselined under a dated
    provenance block. Gate: `dead-sha refs ok (259 baselined, 0 new)`, rc=0.
-4. **T2 legs fixed**:
+4. ~~**T2 legs fixed**:~~ — RESOLVED 2026-11-23: fullcore deadline scoped (examples/fullcore/main.go:88); vendor-hash verified fresh (scripts/check-vendor-hash.sh, ci-local:458)
    - `examples/fullcore/main.go`: the drain deadline no longer covers postgres Open,
      the demo enqueues, and the drain polls (CI died with `enqueue demo 2: context
      deadline exceeded` on a loaded runner). Deadline now fires only in the drain wait
@@ -41,10 +41,10 @@
    - nix vendor-hash leg: verified CORRECT at HEAD by deleting the FOD store path and
      forcing a fresh realization (rc=0) — the CI hash mismatch was proxy-fetch drift
      (row 54 class), self-healing, nothing to change.
-5. **E3 — check-ci cancelled-run neutrality** (O17): CANCELLED is its own class now
+5. ~~**E3 — check-ci cancelled-run neutrality** (O17): CANCELLED is its own class now~~ — RESOLVED 2026-11-23: scripts/check-ci.sh cancelled class + self-test (:23-57)
    (exit 0, "cancelled — not red", `gh run rerun <id>` hint); classification pinned by
    `CHECK_CI_SELF_TEST=1` (6 assertions), wired into ci-local beside the live probe.
-6. **Fleet lint gate restored to GREEN at HEAD** (it was red for every window on
+6. ~~**Fleet lint gate restored to GREEN at HEAD** (it was red for every window on~~ — RESOLVED 2026-11-23: lint-baseline within baseline at HEAD (1268≤1286 SHRUNK); green in the CI run
    committed foreign code): migrate.go named returns dropped (2 funcs),
    `inamedparam` params named in the executor result seams, `golines -w` over six
    flagged files, readmodel detail/parity tests parallelized (11 findings, all
@@ -52,11 +52,11 @@
    `//nolint:ireturn` (design-level interface returns), `golangci-lint fmt` settling
    the disturbed import grouping. Final: `lint-baseline: within baseline (1268 vs
    1286)` — SHRUNK.
-7. **Both co-tenant smokes de-flaked** (row 99 class, live-reproduced both directions):
+7. ~~**Both co-tenant smokes de-flaked** (row 99 class, live-reproduced both directions):~~ — RESOLVED 2026-11-23: pool stagger + busy-retry landed (scripts/smoke/multi-repo.sh:64-67)
    multi-repo pools staggered (pool-2 waits 2s), questions-e2e waits out the worker's
    open and retries the enqueue on the busy signature. Both PASS standalone; production
    open-path retry remains owner-gated (row 99) with fresh evidence now on file.
-8. **CHANGELOG** (O14 policy applied): three entries — Added (emit-baseline generator),
+8. ~~**CHANGELOG** (O14 policy applied): three entries — Added (emit-baseline generator),~~ — RESOLVED 2026-11-23: entries at CHANGELOG.md:1956/:1988/:2021
    Changed (check-ci neutral class), Fixed (fullcore deadline scoping).
 9. **Verification gates on this session's own delta**: root build+vet green; touched
    modules green in-module (`sqlitev4` build+test, `executor` build+vet+test 9.4s,
@@ -66,13 +66,13 @@
 
 ## b) PARTIALLY DONE
 
-1. **T2's final step — "confirm green run on master"**: the fix stack is committed
+1. ~~**T2's final step — "confirm green run on master"**: the fix stack is committed~~ — RESOLVED 2026-11-23: resolved via CI authority: master CI green at pinned SHA c8755d16, run 37361330330 SUCCESS incl. test-windows (20-35 report b2; c8755d16 on origin/master)
    locally (branch ~18 commits ahead of origin) but NOT PUSHED — every full-battery
    attempt kept surfacing one more leg (lint growth ×4, dead-exports transient,
    app.css drift, two smoke flakes), and the last two batteries' logs were lost to a
    /tmp wipe. The O17 neutral-class also means check-ci needs the push to observe the
    healing run. **One `git push` + one CI watch closes T2.**
-2. **Full ci-local rc citation — RESOLVED VIA CI**: local full batteries kept racing
+2. ~~**Full ci-local rc citation — RESOLVED VIA CI**: local full batteries kept racing~~ — RESOLVED 2026-11-23: receipts verified: c8755d16 on origin/master; run 37361330330 SUCCESS
    the concurrent fleet's commits (battery 9: shellcheck SC2034 on my own fresh edit —
    fixed; battery 10: root gosec `Files=0` — transient mid-commit snapshot, standalone
    rerun Files=45 rc=0; battery 11: `cmd/tq typecheck` NEW — raced an 11-file foreign
@@ -145,24 +145,24 @@ A/B). See the plan's Tables A/B; §f ranks them.
 
 ## f) NEXT 50 (ranked, most first)
 
-1. Push the ~18-commit stack; watch the master CI run; confirm green (closes T2).
+1. ~~Push the ~18-commit stack; watch the master CI run; confirm green (closes T2).~~ — RESOLVED 2026-11-23: resolved via CI authority: master CI green at pinned SHA c8755d16, run 37361330330 SUCCESS incl. test-windows (20-35 report b2; c8755d16 on origin/master)
 2. Amend this report with battery 9's rc + push confirmation.
 3. Owner ruling on row 99 (production open-path retry) using today's repro data.
 4. Owner ruling on row 416 (AGENTS size-guard budget), then codify O1/O14 into AGENTS.md.
-5. T4: cut v0.4.0 (CHANGELOG walk, sub-tags, proxy + clean-room checks) — 5 weeks of [Unreleased].
-6. T5/E10–11: ADR-0019 S2 journal flip on `facts.Fact` (UNBLOCKED, owner-committed via O12).
+5. ~~T4: cut v0.4.0 (CHANGELOG walk, sub-tags, proxy + clean-room checks) — 5 weeks of [Unreleased].~~ — RESOLVED 2026-11-23: v0.4.0 cut and pushed (tag v0.4.0 on origin; v0.4.2 current per AGENTS.md:5)
+6. ~~T5/E10–11: ADR-0019 S2 journal flip on `facts.Fact` (UNBLOCKED, owner-committed via O12).~~ — RESOLVED 2026-11-23: landed: type Fact = facts.Fact (internal/journal/journal.go:44)
 7. T6/E12: file the M4 ratification memo upstream (go-cqrs-lite CountFacts/FactsSince).
 8. T7/E14–15: owner flips `.tq-verify` → `scripts/verify.sh`; genuine-red pin + KNOWN_FLAKY sync gate.
 9. T9/E18–19: de-micromanage prompt stack; batching default ON sized to ~60 min (O7).
 10. T10/E21–22: mint-time done-check (O4) + `scripts/smoke/done-guard.sh`.
 11. Implement O3: JIT frontier scoring (score next-K claimable, rolling refresh).
-12. Implement O2: token/cost-denominated daily cap + `UsageToday` semantics + ADR.
-13. O12 execution: delete `internal/queue/cqrsqlite` (+ gates, references).
+12. ~~Implement O2: token/cost-denominated daily cap + `UsageToday` semantics + ADR.~~ — RESOLVED 2026-11-23: cost cap live: "daily cost cap reached" (internal/budget/budget.go:150; UsageToday :138)
+13. ~~O12 execution: delete `internal/queue/cqrsqlite` (+ gates, references).~~ — RESOLVED 2026-11-23: deleted (c8755d16)
 14. O15 execution: Dependabot config for the 8-module tree; retire `--dep-sweep`.
 15. O11 execution: CSP `form-action 'self'` + SECURITY.md + header pins.
 16. O8 execution: delete `internal/consumer` + ADR-0009 outcome; document the 3 FactSource interfaces.
 17. O10 execution: three cqrs-lint fixes on a go-cqrs-lite branch (A014/D013/V006).
-18. O7 execution: closeout reports → `docs/status/tasks/` + 10-append cap.
+18. ~~O7 execution: closeout reports → `docs/status/tasks/` + 10-append cap.~~ — RESOLVED 2026-11-23: docs/status/tasks/ in active use (O7 routing; docs/status/README.md:167)
 19. Row 440/450: heal-daemon-sweep fork-record capture (old→old, post-rewrite shas) + self-test to green.
 20. Row 104 follow-through: extend check-ci self-test over the JSON parse path (canned payload).
 21. check-dead-exports: kill the /tmp temp-file race (workdir-scoped scratch + retry wrap).
@@ -172,7 +172,7 @@ A/B). See the plan's Tables A/B; §f ranks them.
 25. T13/E31–32: vendor-gofmt structural fix (row 102's `.tq-verify`), closeoutPending lifetime audit.
 26. T14/E33–35: prioritize live pilot (one batch, cost measured) — feeds O3 calibration.
 27. T15/E36–38: webui P2 polish batches (a11y, cancel/rescue feedback, AMBIGUOUS soften).
-28. T16/E39–40: `check-archive-eligibility.sh` + harvest-disposition lint (weekly cadence per O13).
+28. ~~T16/E39–40: `check-archive-eligibility.sh` + harvest-disposition lint (weekly cadence per O13).~~ — RESOLVED 2026-11-23: LANDED (scripts/check-archive-eligibility.sh; TODO_LIST.md:429)
 29. T17/E41–42: ci.yml parity sweep (dead-sha/features-ci/verify/session-close/help-text legs) + loop guards.
 30. T18/E43–44: cmd/tq gosec coverage + goTarballHash single-source.
 31. T19/E45: postgres `--store` CLI wiring + `ArchiveFactsBefore` twin.
@@ -185,7 +185,7 @@ A/B). See the plan's Tables A/B; §f ranks them.
 38. T26/E56–57: micro-batch A (smoke-assert bundle, TQ_BIN rot-guard, dead-export trio, fold-marker).
 39. T27/E58–64: micro-batches B1–B7 (help-text pins, doctor WARNs, fullcore knobs, gocognit repair).
 40. Row 465: daemon-sweep baseline shrink sweep (drop rows whose sweeps gained footers).
-41. Row 412: land `check-archive-eligibility.sh` into ci-local next to check-status-index.
+41. ~~Row 412: land `check-archive-eligibility.sh` into ci-local next to check-status-index.~~ — RESOLVED 2026-11-23: wired: scripts/ci-local.sh:933
 42. Row 391: fullcore stop-seam ordering pin (grep-assert no `sql: database is closed` noise).
 43. Row 187: session-start SUMMARY carries master-CI state (master-CI=red@<sha>).
 44. Row 124/127: deploy-readiness bundle rides the next SystemNix flip (owner sudo, GOEXPERIMENT env ruled in).

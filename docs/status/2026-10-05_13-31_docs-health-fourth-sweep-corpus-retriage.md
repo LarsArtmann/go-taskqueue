@@ -20,7 +20,7 @@
    KEEP-OPEN below), October-ship cross-check — none became fully-resolved;
    they remain the documented KEEP-OPEN floor (absence of a marker IS the
    open signal; the standing retire-vs-execute row owns the per-item pass).
-2. **4-file archive with manifest** (bulk archive → manifest per the
+2. ~~**4-file archive with manifest** (bulk archive → manifest per the~~ — RESOLVED 2026-11-23: all four files present in docs/status/archived/ (2026-09-27_05-09, 2026-09-28_20-03, 2026-09-29_04-15, 2026-09-30_14-54)
    2026-10-01 rule):
    - `2026-09-27_05-09_artdupl-t2-sweep.md` → ARCHIVE-DONE: all 5 §f items
      routed to live open rows at HEAD (rows: M4 memo, FOD/cut-planning
@@ -167,7 +167,7 @@
 1. Owner rulings carried, not re-minted: strike scope (10-01 §g1),
    KEEP-OPEN terminal state (10-01 §g2), archive-eligibility gate
    (rows 281/441), TODO row-cap convention (this pass §e2).
-2. Next docs-health sweep should glob `2026-10-*` (80 live files and
+2. ~~Next docs-health sweep should glob `2026-10-*` (80 live files and~~ — RESOLVED 2026-11-23: superseded: the 2026-0* corpus finished 2026-11-04 (docs/status/README.md:167)
    growing ~15/day) while the delta is still three days deep.
 3. Re-run the root battery at final HEAD if concurrent windows land after
    this report's rc capture (convention: cite rc TO A FILE).

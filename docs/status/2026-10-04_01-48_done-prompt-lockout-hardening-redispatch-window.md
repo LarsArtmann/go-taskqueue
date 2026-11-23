@@ -18,13 +18,13 @@ verification appendix below if it completed in the window).
 
 ## a) FULLY DONE
 
-1. **Lockout tests de-slept** (task …3f3f6e, commit `93c7f4ad`, healed with the
+1. ~~**Lockout tests de-slept** (task …3f3f6e, commit `93c7f4ad`, healed with the~~ — RESOLVED 2026-11-23: fake-clock TestAuthLockout live (internal/httpapi/httpapi_test.go:307+); commits 93c7f4ad/0f79f0ec carry the task footer; row deleted on closure.
    sweep under `0f79f0ec`, report 00-36). `TestAuthLockout` now uses a
    `lockout.Config.Now` fake clock (was a real 60 ms sleep); webui
    `TestWriteRateLimit*` were verified ALREADY on fake clocks, so the item's
    webui half was done-on-arrival. TODO row 126 `[x]`. Re-verified: httpapi gate
    green at HEAD.
-2. **Warn-once on first bound eviction + clock unification** (task …2b6000,
+2. ~~**Warn-once on first bound eviction + clock unification** (task …2b6000,~~ — RESOLVED 2026-11-23: evictWarn sync.Once live (lockout.go:63,241-248); Retry-After via Limiter.Locked on both surfaces (auth.go:238, httpapi.go:217); zero time.Until hits; commit 68e568c7 footer-verified.
    work commit `68e568c7`, healed, report 00-57). `internal/lockout/lockout.go`
    `boundLocked` fires a one-time `slog.Warn` via `sync.Once` on the
    least-recently-active eviction path; the clock-unification half was confirmed
@@ -32,24 +32,24 @@ verification appendix below if it completed in the window).
    flow through the injected `nowFunc`; zero limiter `time.Until` hits). TODO
    row 127 `[x]`. Re-verified at HEAD: the warn sites exist and the module gates
    (httpapi, webui consumer) pass.
-3. **Review finding fixed: warn gated on an actual eviction** (task …00000000 →
+3. ~~**Review finding fixed: warn gated on an actual eviction** (task …00000000 →~~ — RESOLVED 2026-11-23: `if evicted > 0` gate live at HEAD (internal/lockout/lockout.go:241-248); fix commit 6116e23a footer-verified.
    ticket …776600, fix commit `6116e23a`, canonical report 01-25, re-dispatch
    closeout 01-34). The reviewer rejected the first warn for firing even when the
    idle sweep alone recovered the map; the fix counts LRA evictions
    (`evicted++`/delete in the oldest-first loop) and gates `evictWarn.Do` on
    `evicted > 0`. Re-verified at HEAD: `lockout.go:228` shows
    `if evicted > 0` guarding the `Do`.
-4. **401/429 body shape aligned** (task …46d0000, fix commit `6369ea75`,
+4. ~~**401/429 body shape aligned** (task …46d0000, fix commit `6369ea75`,~~ — RESOLVED 2026-11-23: zero `http.Error` under internal/httpapi re-verified; body pin TestAuthPlaneBodyShape landed (httpapi_test.go:393); commit 6369ea75 + CHANGELOG.md:1966.
    canonical report 01-17, re-dispatch closeout 01-29). Both `http.Error` call
    sites in the httpapi guard replaced with the shared `writeError` seam
    (`{error, fix}` JSON); headers (`WWW-Authenticate`, `Retry-After`, nosniff)
    unchanged. Re-verified at HEAD: `grep -n 'http.Error' internal/httpapi/*.go`
    returns ZERO hits. TODO row 129 `[x]`.
-5. **`?token=` strike path + lockout-over-enqueue pins** (task …2b6000→ re-dispatch …2b6…,
+5. ~~**`?token=` strike path + lockout-over-enqueue pins** (task …2b6000→ re-dispatch …2b6…,~~ — RESOLVED 2026-11-23: TestQueryTokenFailureStrikes (httpapi_test.go:502) + TestLockoutCoversEnqueue (:555) live; commit d8809930 footer-verified.
    actually task …fcb7970, work commit `d8809930`, reports 01-06 + 01-12). Both
    pins verified present (`TestQueryTokenFailureStrikes`, `TestLockoutCoversEnqueue`);
    the 01-12 dispatch was a pure no-op re-verification. TODO row 128 `[x]`.
-6. **Docs-health deltas this pass:** CHANGELOG [Unreleased]/Changed gained the two
+6. ~~**Docs-health deltas this pass:** CHANGELOG [Unreleased]/Changed gained the two~~ — RESOLVED 2026-11-23: both entries live — CHANGELOG.md:1966 (auth-plane JSON) + :1972 (eviction warn-once); the inline correction on the 00-52 §c2 is receipt-backed (d8809930, 6369ea75 both verified).
    missing user-visible entries (401/429 JSON wire change; eviction warn-once);
    the 00-52 window report's §c2 staleness (strike pin + body shape listed as open)
    inline-corrected with commit evidence; 5 deduped TODO rows appended (§f).
@@ -61,13 +61,13 @@ verification appendix below if it completed in the window).
    once (the 01-25 review finding) and re-verified twice, all by reading — TODO
    row 459 (fake-clock table suite with the three-case warn pin) remains the
    highest-leverage open item in this arc.
-2. **The 401/429 body shape is unpinned by tests** (01-17 §b1, still true): guard
+2. ~~**The 401/429 body shape is unpinned by tests** (01-17 §b1, still true): guard~~ — RESOLVED 2026-11-23: pinned since — TestAuthPlaneBodyShape (internal/httpapi/httpapi_test.go:393-397); TODO row 714 `[x]` DONE 2026-10-31.
    tests assert status codes only; a regression to plain text would not fail CI.
    → row appended this pass.
-3. **No httpapi package-doc line** for the new body contract (01-29 §f3) —
+3. ~~**No httpapi package-doc line** for the new body contract (01-29 §f3) —~~ — RESOLVED 2026-11-23: doc line landed — internal/httpapi/httpapi.go:9-13; TODO row 715 `[x]`.
    appended as a row (it touches a .go comment, outside this pass's doc-only
    scope).
-4. **Root `-race` battery:** several window reports cite module gates only; the
+4. ~~**Root `-race` battery:** several window reports cite module gates only; the~~ — RESOLVED 2026-11-23: closed by this report's own appendix battery (rc=0 at d5c77115) and re-verified at HEAD 2026-11-23 (full root -race rc=0).
    00-36 task ran the root battery at ITS head, but heads moved 6+ commits since.
    This report's own battery run covers the gap (appendix).
 5. **check-dead-sha-refs.sh still rc=1 at HEAD** (re-run 01:48): the 13-cite
@@ -76,7 +76,7 @@ verification appendix below if it completed in the window).
 
 ## c) NOT STARTED
 
-1. `heal-daemon-sweep.sh --self-test` fix — re-verified RED at HEAD 01:48
+1. ~~`heal-daemon-sweep.sh --self-test` fix — re-verified RED at HEAD 01:48~~ — RESOLVED 2026-11-23: fixed — 92c9193c; SELF-TEST OK (45 checks) at HEAD; pinned in ci-local (scripts/ci-local.sh:204-205).
    (`5 ok, 7 failed`, same `line 388` self-path error). Row 456; no window
    picked it up.
 2. The status-index archive sweep (live rows at 178 + 5 new) — untouched,
@@ -98,7 +98,7 @@ verification appendix below if it completed in the window).
    00-57, and per the 00-52 report) — row 457 exists, still unbuilt. The
    attribution-block-after-footer ordering trap also recurred (00-57 §d2) and is
    covered by owner-blocked rows 283/311.
-3. **The heal tool's own safety net remains untrusted:** self-test 7/12 red,
+3. ~~**The heal tool's own safety net remains untrusted:** self-test 7/12 red,~~ — RESOLVED 2026-11-23: both halves closed — self-test green (SELF-TEST OK, 45 checks; fix 92c9193c) and the identity FORK-RECORD output explained + self-test-pinned (scripts/heal-daemon-sweep.sh:767-771, fork-record honesty pin rows 69/455).
    re-verified this pass, AND the 00-57 heal printed identity `FORK-RECORD`
    pairs (old→old) on a range that WAS rewritten (§b4 of its report) — an
    unexplained verification-story weakness, appended as a diagnosis row this
@@ -111,7 +111,7 @@ verification appendix below if it completed in the window).
 
 ## e) WHAT WE SHOULD IMPROVE
 
-1. **Dispatch-time done-dedup is the single highest-ROI queue fix** (§d1): a
+1. ~~**Dispatch-time done-dedup is the single highest-ROI queue fix** (§d1): a~~ — RESOLVED 2026-11-23: landed — harvested row `[x]` TODO_LIST.md:387 "Queue-side dedup-key→COMPLETED short-circuit: when a dispatch's task ID already has a COMPLETED task, mint a zero-cost verify stub or skip" (owner ruling O4 2026-10-05).
    mint-time check (terminal fact or footer-bearing closeout commit exists →
    refuse/mint as `reverify`) would have made this window ~60% cheaper. Row 451
    holds the decision; the evidence pile grows nightly.
@@ -126,7 +126,7 @@ verification appendix below if it completed in the window).
 4. **heal `--from` ergonomics** (row 457): auto-extend to the parent when the
    named ref is footer-less; three windows of identical mistakes is a script
    bug, not an attention bug.
-5. **Fork-record honesty** (new row): resolve whether `old→old` identity pairs
+5. ~~**Fork-record honesty** (new row): resolve whether `old→old` identity pairs~~ — RESOLVED 2026-11-23: resolved — identity pairs are the documented honest-output shape, self-test-pinned (scripts/heal-daemon-sweep.sh:767-771).
    are a print-order bug or a no-op rewrite before the next heal is trusted.
 
 ## f) UP TO 50 NEXT THINGS (routed: 5 appended to TODO_LIST this pass, deduped
@@ -135,9 +135,9 @@ against 274 pre-existing open rows; the rest carry standing rows)
 
 Appended this pass (docs/status/2026-10-04_01-48_…):
 
-1. Pin the auth-plane 401/429 `{error, fix}` body + `Content-Type: application/json`.
-2. One-sentence body-shape contract in the internal/httpapi package doc.
-3. Diagnose the heal FORK-RECORD identity (old→old) output; pairs with row 456.
+1. ~~Pin the auth-plane 401/429 `{error, fix}` body + `Content-Type: application/json`.~~ — RESOLVED 2026-11-23: TestAuthPlaneBodyShape (internal/httpapi/httpapi_test.go:393-397); TODO row 714 `[x]`.
+2. ~~One-sentence body-shape contract in the internal/httpapi package doc.~~ — RESOLVED 2026-11-23: internal/httpapi/httpapi.go:9-13; TODO row 715 `[x]`.
+3. ~~Diagnose the heal FORK-RECORD identity (old→old) output; pairs with row 456.~~ — RESOLVED 2026-11-23: diagnosed + pinned — scripts/heal-daemon-sweep.sh:767-771; self-test green (92c9193c).
 4. Ruling (BLOCKED): eviction-warn payload shape (over=/evicted/surface) before
    the row-459 suite pins it.
 5. Ruling (BLOCKED): do `tq serve` write endpoints adopt `{error, fix}` JSON or
@@ -145,10 +145,10 @@ Appended this pass (docs/status/2026-10-04_01-48_…):
 
 Standing top-of-mind (NOT re-appended; existing rows):
 6. Row 459 — `internal/lockout` fake-clock table suite incl. the three-case warn pin.
-7. Row 456 — fix the heal self-test (7/12 red, re-verified 01:48).
+7. ~~Row 456 — fix the heal self-test (7/12 red, re-verified 01:48).~~ — RESOLVED 2026-11-23: SELF-TEST OK (45 checks) at HEAD after 92c9193c; pinned in ci-local.
 8. Row 457 — heal `--from` semantics + HEAL VERIFIED contract.
 9. Row 414 — dead-SHA cite heal (still rc=1 at HEAD).
-10. Row 451 + 148/179 — re-dispatch suppression (owner-blocked; three fresh
+10. ~~Row 451 + 148/179 — re-dispatch suppression (owner-blocked; three fresh~~ — RESOLVED 2026-11-23: landed — harvested row `[x]` TODO_LIST.md:387 (dedup-key→COMPLETED short-circuit, owner ruling O4 2026-10-05).
 data points from this window).
 11. Row 89 — HTTP-date Retry-After fixture (pins the nowFunc-unified clock path).
 12. Route-inventory structural guard for the all-routes auth/lockout matrix

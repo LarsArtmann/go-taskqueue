@@ -86,7 +86,7 @@
 
 ## c) NOT STARTED
 
-1. The counter-paragraph narrative line in `docs/status/README.md` for
+1. ~~The counter-paragraph narrative line in `docs/status/README.md` for~~ — RESOLVED 2026-11-23: docs/status/README.md:105 carries the fourth-sweep narrative
    THIS sweep (prior sweeps each appended one; I bumped the counter
    572→576 but forgot the paragraph) — fixed during THIS closeout, see
    §d7.
@@ -210,7 +210,7 @@
 
 1. Strike scope ratification — forward-only vs strike-all (10-01 §g1; gates the eligibility-gate spec).
 2. KEEP-OPEN terminal state — in-file visibility vs funded per-item pass (10-01 §g2; owns the 09-11_23-16 pointer table too).
-3. `scripts/check-archive-eligibility.sh` — mechanical archive bar (rows 281/441; three+ sweeps have demanded it).
+3. ~~`scripts/check-archive-eligibility.sh` — mechanical archive bar (rows 281/441; three+ sweeps have demanded it).~~ — RESOLVED 2026-11-23: LANDED: scripts/check-archive-eligibility.sh + ci-local self-test step (scripts/ci-local.sh:933; TODO_LIST.md:429)
 4. `[x]`-row closure form — DONE-DELETED purge cadence vs the [x]+note form (this pass deleted 32; §g1 below).
 5. Vendor-freshness guard — keep as preventive vs decline as YAGNI (§g2 below; premise was refuted).
 6. TODO_LIST row-cap / section-retirement convention before intake outflow rebalances again (13-31 §e2).
@@ -219,7 +219,7 @@
 9. Attribution-ruling bundle: footer-vs-attribution shape, daemon-fold policy, msg-filter heal ratification (rows 288/147/446/417).
 
 **This sweep's direct residue (small, unrowed, from my own session):**
-10. Add the THIS-sweep narrative line to the docs/status/README.md counter paragraph — minted here in closeout if not done by the time you read this (§c1).
+10. ~~Add the THIS-sweep narrative line to the docs/status/README.md counter paragraph — minted here in closeout if not done by the time you read this (§c1).~~ — RESOLVED 2026-11-23: docs/status/README.md:105
 11. Run check-dead-sha-refs own-file leg over the 13-31+13-51 pass's touched files (§c2).
 12. Run check-ghost-archives.sh once after today's archived/ moves (§c3).
 13. Run test-cmd-tq.sh (TestAgentsDocSizeGuard in-situ) at a quiet host (§c4).
@@ -234,7 +234,7 @@
 22. `tq session begin`/crush-wrapper adoption for interactive sweeps (§e9; rides rows 79/80 trigger automation).
 
 **Carried rows this sweep benefited from or bumped (named, not re-listed):**
-23. Row 281/441 archive-eligibility gate (= 3 above, the gate half).
+23. ~~Row 281/441 archive-eligibility gate (= 3 above, the gate half).~~ — RESOLVED 2026-11-23: LANDED (TODO_LIST.md:429; scripts/check-archive-eligibility.sh)
 24. Row 419/418 dead-SHA mass heal (92 cites; every heal mints more).
 25. Row 438 red-master CI diagnosis (still gating ci-local refusals).
 26. Row 387 verify_stage surfacing (+ this pass's two gap folds).

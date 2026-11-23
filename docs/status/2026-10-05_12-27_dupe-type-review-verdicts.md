@@ -166,83 +166,83 @@ fucks are process-level:
 
 ## f) Top things to get done next (ranked; Impact / Effort / Category)
 
-1. Add repriDetail↔queue.ReprioritizeEvidence parity test (marshal the real
+1. ~~Add repriDetail↔queue.ReprioritizeEvidence parity test (marshal the real~~ — RESOLVED 2026-11-23: shipped: internal/readmodel/detailkeys_test.go (TODO_LIST.md:766 header records the pins as SHIPPED)
    queue type, decode into repriDetail, assert all four fields) — the
    budget_test model, internal/budget/budget.go:189-193. **Critical / S / Testing**
-2. Harvest this §f into TODO_LIST.md (docs-health HARVEST; ROADMAP-route f25
+2. ~~Harvest this §f into TODO_LIST.md (docs-health HARVEST; ROADMAP-route f25~~ — RESOLVED 2026-11-23: 7-row section at TODO_LIST.md:766-774
    and f12 if rejected as TODO-sized). **Critical / S / Process**
-3. Re-baseline tree health: root per-module gate loop + scripts/test-cmd-tq.sh
+3. ~~Re-baseline tree health: root per-module gate loop + scripts/test-cmd-tq.sh~~ — RESOLVED 2026-11-23: resolved via CI authority: master CI green at pinned SHA c8755d16, run 37361330330 SUCCESS incl. test-windows (20-35 report b2; c8755d16 on origin/master)
    with GOCACHE=/tmp/go-build-cache (concurrent agents; nothing verified this
    session). **High / M / Quality**
-4. Parity pin requeueDetail↔queue.RequeueEvidence (retry_in_ms, class keys;
+4. ~~Parity pin requeueDetail↔queue.RequeueEvidence (retry_in_ms, class keys;~~ — RESOLVED 2026-11-23: internal/readmodel/detailkeys_test.go
    events.go:145 vs queue.go:348). **High / S / Testing**
-5. Parity pin enqueueDetail↔queue.EnqueueDetail (project, type keys;
+5. ~~Parity pin enqueueDetail↔queue.EnqueueDetail (project, type keys;~~ — RESOLVED 2026-11-23: internal/readmodel/detailkeys_test.go
    events.go:131). **High / S / Testing**
-6. Record the family-policy ruling (keep local wire structs + pins vs reuse
+6. ~~Record the family-policy ruling (keep local wire structs + pins vs reuse~~ — RESOLVED 2026-11-23: policy recorded at the events.go family header (internal/readmodel/events.go:13-19); recommended path executed (14-09 report b3)
    queue types) at the events.go family header — blocked on g1. **High / S / Documentation**
-7. Verify the webui provenance path: does webui call harvest.BuildProvenance
+7. ~~Verify the webui provenance path: does webui call harvest.BuildProvenance~~ — RESOLVED 2026-11-23: verified NO hand-mirror; both call harvest.BuildProvenance (TODO_LIST.md:768)
    or hand-mirror it (render.go:17 imports harvest; render.go:60-63 says
    "mirroring")? **High / S / Quality**
-8. If hand-mirrored: collapse webui's builder onto harvest.BuildProvenance —
+8. ~~If hand-mirrored: collapse webui's builder onto harvest.BuildProvenance —~~ — RESOLVED 2026-11-23: collapsed in the 2026-09-26 sweep; stale comment corrected (TODO_LIST.md:768)
    kills a statement-level twin, not just a type twin. **High / M / Quality**
-9. Write the accepted type-dupe ledger (10 groups from §a) into docs —
+9. ~~Write the accepted type-dupe ledger (10 groups from §a) into docs —~~ — RESOLVED 2026-11-23: docs/dupe-type-accepted-ledger.md (TODO_LIST.md:769)
    status digest row or a docs/ note; respect the AGENTS 15,400 B guard.
    **High / S / Documentation**
-10. Verify the cmd/tq gopls errors (58) are the documented false-positive
+10. ~~Verify the cmd/tq gopls errors (58) are the documented false-positive~~ — RESOLVED 2026-11-23: CLI gates green (14-09 report a5; cmd/tq gate rc=0 in the c8755d16 CI run)
     class: one scripts/test-cmd-tq.sh run; never edit from LSP output.
     **High / S / Quality**
-11. Verify internal/journal/cqrs go.mod gopls errors the same way
+11. ~~Verify internal/journal/cqrs go.mod gopls errors the same way~~ — RESOLVED 2026-11-23: GOWORK=off build+vet OK (14-09 report a5)
     (GOWORK=off in-module build). **High / S / Quality**
-12. Decide and wire (or reject) a branching-flow-dupe accepted-baseline gate
+12. ~~Decide and wire (or reject) a branching-flow-dupe accepted-baseline gate~~ — RESOLVED 2026-11-23: SHIPPED: scripts/dupe-baseline.sh --check wired into ci-local (TODO_LIST.md:770)
     in ci-local, mirroring scripts/lint-baseline.sh --check. **Medium / M / Tooling**
-13. Confirm check-mirror-clones.sh coverage of the three sweeper shells
+13. ~~Confirm check-mirror-clones.sh coverage of the three sweeper shells~~ — RESOLVED 2026-11-23: intentionally outside; ruling recorded beside the comments (TODO_LIST.md:771)
     (gated surface or intentionally outside); record the answer next to the
     "deliberately stays per-sweeper" comments. **Medium / S / Quality**
-14. cmd/tq golden-JSON test pinning budgetUsageView keys (runs, cost_usd,
+14. ~~cmd/tq golden-JSON test pinning budgetUsageView keys (runs, cost_usd,~~ — RESOLVED 2026-11-23: cmd/tq/budget_json_test.go golden pins (TODO_LIST.md:772)
     prompt_tokens, completion_tokens, messages) — the cross-module wire
     contract of budget.SessionUsage (main.go:1959, budget.go:174).
     **Medium / S / Testing**
-15. Index-bloat sweep: 206 docs/status files vs 100-live-row threshold —
+15. ~~Index-bloat sweep: 206 docs/status files vs 100-live-row threshold —~~ — RESOLVED 2026-11-23: threshold re-derived 100→400 with prunes (TODO_LIST.md:790)
     archive sweep (docs-health ANNOTATE) or a monthly digest row.
     **Medium / M / Documentation**
-16. After the daemon folds this report: run scripts/check-status-index.sh and
+16. ~~After the daemon folds this report: run scripts/check-status-index.sh and~~ — RESOLVED 2026-11-23: report indexed, row intact (docs/status/README.md)
     confirm the index row + file landed (amend maneuver if the fold split
     them). **Medium / S / Process**
-17. Add the deliberate-shell rationale line to the status Sweeper doc comment
+17. ~~Add the deliberate-shell rationale line to the status Sweeper doc comment~~ — RESOLVED 2026-11-23: internal/status/sweep.go:96
     (parity with dlqfix/review siblings; internal/status/sweep.go:83-91).
     **Medium / S / Documentation**
-18. One doc line on TaskFilter pointing at TaskList's MUST-NOT-dispatch
+18. ~~One doc line on TaskFilter pointing at TaskList's MUST-NOT-dispatch~~ — RESOLVED 2026-11-23: internal/readmodel/readmodel.go:76
     warning (queries.go:23-26) so the pair reads as a deliberate split.
     **Medium / S / Documentation**
-19. Cite the metaengine OnRecordTyped distinct-Go-type contract from
+19. ~~Cite the metaengine OnRecordTyped distinct-Go-type contract from~~ — RESOLVED 2026-11-23: events.go cites metaengine/v4 v4.17.0 record_fold.go:43 (TODO_LIST.md:773)
     go-cqrs-lite docs/tests so the evt* family rule is citable beyond an
     in-repo comment (flips §d3's first latent verdict to verified).
     **Medium / S / Documentation**
-20. Re-run branching-flow dupe after f1-f9: expect the report to shrink to
+20. ~~Re-run branching-flow dupe after f1-f9: expect the report to shrink to~~ — RESOLVED 2026-11-23: re-run 2026-10-20: every actionable group ledgered (TODO_LIST.md:769)
     accepted groups only. **Medium / S / Tooling**
-21. gocognit 28 on status Sweeper.maybeMint (internal/status/sweep.go:159):
+21. ~~gocognit 28 on status Sweeper.maybeMint (internal/status/sweep.go:159):~~ — RESOLVED 2026-11-23: refactored, findings zero (TODO_LIST.md:774)
     refactor or accept into baseline deliberately (advisory, growth-gated by
     lint-baseline). **Medium / M / Quality**
-22. err113 dynamic-error classes surfaced in session/status sweeps: batch-fix
+22. ~~err113 dynamic-error classes surfaced in session/status sweeps: batch-fix~~ — RESOLVED 2026-11-23: static sentinels landed (TODO_LIST.md:774)
     or baseline-accept (advisory). **Medium / M / Quality**
 23. Compile-time cross-satisfaction test for the two FactSource interfaces
     (var _ session.FactSource = <cqrs-adapted store> in a test) to catch
     semantic drift of the Facts contract at the seam. **Medium / S / Testing**
-24. One-line AGENTS.md memory update (finding queued + ledger pointer), only
+24. ~~One-line AGENTS.md memory update (finding queued + ledger pointer), only~~ — RESOLVED 2026-11-23: superseded by the docs ledger (TODO_LIST.md:769)
     if it fits the 15,400 B guard; verify TestAgentsDocSizeGuard after.
     **Medium / S / Documentation**
-25. ROADMAP row: budget surface via a facade someday (would let cmd/tq delete
+25. ~~ROADMAP row: budget surface via a facade someday (would let cmd/tq delete~~ — RESOLVED 2026-11-23: row at ROADMAP.md:303
     budgetUsageView). **Low / S / Documentation**
-26. docs/DOMAIN_LANGUAGE.md line: repo+reason pairs (harvest.ScanFailure,
+26. ~~docs/DOMAIN_LANGUAGE.md line: repo+reason pairs (harvest.ScanFailure,~~ — RESOLVED 2026-11-23: docs/DOMAIN_LANGUAGE.md:74
     depsweep.Skip) are per-sweeper vocabulary, deliberately unshared.
     **Low / S / Documentation**
 27. If the §d1 lesson generalizes (reviews must land artifacts, not offers),
     commit it to crush-config references/lessons.md — by commit in that repo,
     never an in-session write to the global install. **Low / S / Process**
-28. Cover repriEvent's malformed-detail error branch explicitly if no test
+28. ~~Cover repriEvent's malformed-detail error branch explicitly if no test~~ — RESOLVED 2026-11-23: pinned in internal/readmodel/detailkeys_test.go (decode policy test)
     does (the drift-surfacing path is the whole point of the local decode).
     **Low / S / Testing**
-29. Sweep events.go once beyond the flagged three for any other local struct
+29. ~~Sweep events.go once beyond the flagged three for any other local struct~~ — RESOLVED 2026-11-23: closed by inspection: exactly three Unmarshal sites, all pinned (14-09 report a8)
     decoding queue-owned keys unchecked. **Low / S / Quality**
 
 29 items — cut at 29 rather than pad toward 50: everything past this duplicates

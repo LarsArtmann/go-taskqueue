@@ -9,7 +9,7 @@ no new dedup triage, no foreign work touched.
 
 ## a) FULLY DONE
 
-1. **All three §g rulings executed and recorded.**
+1. ~~**All three §g rulings executed and recorded.**~~ — RESOLVED 2026-11-23: 4be4a8ef doc-refs fix; 748f75f3 AGENTS named-residual line (AGENTS.md:311); no-row ruling annotated on 16-02 f5
    - **Q1 foreign break**: `ROADMAP.md:287`'s symbol-style citation
      (`internal/budget.SessionUsage`) reworded to a checker-visible path span
      - bare-symbol span; `check-doc-refs.sh` rc=0 ("doc refs ok"). Commit
@@ -24,37 +24,37 @@ no new dedup triage, no foreign work touched.
      behavioral/user-facing entries only; Keep-a-Changelog semantics); dated
      status reports are the record. Recorded as a Won't-implement annotation
      on the 16-02 report's f5 row.
-2. **sqlitev4 unused require dropped** (16-02 §f2): in-module `go mod tidy`
+2. ~~**sqlitev4 unused require dropped** (16-02 §f2): in-module `go mod tidy`~~ — RESOLVED 2026-11-23: internal/queue/sqlitev4/go.mod carries only the replace (4be4a8ef)
    removed `internal/queue/sqlite` + 4 stale go.sum lines; module gate green
    (3.6s); root `go mod vendor` clean (zero diff);
    `nix build .#checks.x86_64-linux.vendor-hash` rc=0, no drift, flake.nix
    untouched. The standing gopls warning cleared. Commit `4be4a8ef`.
-3. **Dead directive prune** (16-02 §f6): the six round-1 doc-position
+3. ~~**Dead directive prune** (16-02 §f6): the six round-1 doc-position~~ — RESOLVED 2026-11-23: de63fe08
    directives (cmdDLQ, cmdFacts, cmdWatermarks, sessionList,
    `ReviewExecutor.Execute`, `StatusExecutor.Execute`) + their `//`
    separators deleted (21 lines, commit `de63fe08`). One em-dash straggler
    (inside the cmdWatermarks directive) died with the prune. Empirical proof
    of byte-neutrality: art-dupl read **1 group / 2 clones** before AND after.
-4. **Symbol-style citation audit** (16-02 §f13): reproduced the checker's
+4. ~~**Symbol-style citation audit** (16-02 §f13): reproduced the checker's~~ — RESOLVED 2026-11-23: check-doc-refs green at HEAD; the one real failure fixed at 4be4a8ef
    grep across all six guarded docs — exactly ONE real failure repo-wide
    (the f1 row); every other audit hit is covered by an existing allow-rule.
-5. **Directive proofread** (16-02 §f15): zero em dashes across every
+5. ~~**Directive proofread** (16-02 §f15): zero em dashes across every~~ — RESOLVED 2026-11-23: zero em dashes across art-dupl:accept lines at HEAD (grep-verified)
    remaining `art-dupl:accept` line; style terse.
-6. **`-race` battery** (16-02 §f4): executor 12.5s, companion (+conform),
+6. ~~**`-race` battery** (16-02 §f4): executor 12.5s, companion (+conform),~~ — RESOLVED 2026-11-23: green under -race (executor/companion/cqrsqlite/sqlitev4; cmd/tq CGO-pinned per b1)
    cqrsqlite 5.4s, sqlitev4 (+migration) 5.7s — all green under `-race`;
    cmd/tq green via the sanctioned devmod gate (see b1 for the -race caveat).
-7. **`root-gate.sh` certification** (16-02 §f3): **rc=0** at this HEAD, on
+7. ~~**`root-gate.sh` certification** (16-02 §f3): **rc=0** at this HEAD, on~~ — RESOLVED 2026-11-23: rc=0 composite run recorded here
    the composite tree INCLUDING a concurrent agent's in-flight edits
    (webui 15.8s, facadeparity OK in the tail).
-8. **Final art-dupl over the composite tree**: 260 files analyzed, **1 group
+8. ~~**Final art-dupl over the composite tree**: 260 files analyzed, **1 group~~ — RESOLVED 2026-11-23: the one accepted templ residual, named in AGENTS.md:311
    / 2 clones** — the one accepted templ residual. The concurrent agent's
    fresh Go lines (commit `06974658`) introduced nothing.
-9. **TODO_LIST harvest** (16-02 §f7): five bounded rows appended under a
+9. ~~**TODO_LIST harvest** (16-02 §f7): five bounded rows appended under a~~ — RESOLVED 2026-11-23: five rows at TODO_LIST.md:786-790
    dated section (upstream art-dupl templ issue; art-dupl `-c` config pin;
    14-02 open-items cross-check; 12-27 verdicts-ledger alignment;
    index-bloat check), each citing the source report;
    `check-todo-list.sh` ok.
-10. **16-02 report annotated inline** (docs-health ANNOTATE, the
+10. ~~**16-02 report annotated inline** (docs-health ANNOTATE, the~~ — RESOLVED 2026-11-23: the f/g strikes are present in the 16-02 report (lines 129-146)
     2026-09-28/29 bulk-strike pattern): 15 f/g dispositions struck with
     verdicts (done-at hashes, verified evidence, Won't-implement rulings)
     via `annotate-status-items.py` (`--emit-keys` → TSV spec → dry-run →

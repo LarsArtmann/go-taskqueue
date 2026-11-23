@@ -144,46 +144,46 @@ Honest failure ledger:
 
 ## f) NEXT (prioritized; no new research — plan items + this session's residue)
 
-1. **M6** release v0.3.x — CHANGELOG cut + queue/worker/root local tags +
+1. ~~**M6** release v0.3.x — CHANGELOG cut + queue/worker/root local tags +~~ — RESOLVED 2026-11-23: M6 done: v0.3.x shipped and pushed: v0.3.1 cut, retracted on the broken-graph catch, v0.3.2 re-cut the full 22-tag wave; v0.4.x line live (docs/release/RELEASE.md:240-256; tags v0.3.1/v0.4.2 on origin)
    proxy checks (owner ruling §g-1 required first).
 2. **M2.4** precedence pin test (owner ruling §g-2-adjacent, question 2).
 3. **Parked-count split** stats/webui budget vs rate-limit (owner ruling
    §g-3: now vs M11 fold-in).
 4. **M4** wake-trace implementation — harvest skip-path fact + consumers,
    per the landed memo (owner ruling §g-2 required).
-5. **M5** `docs/research/paperclip-lessons.md` + source-verify 2-3 cited
+5. ~~**M5** `docs/research/paperclip-lessons.md` + source-verify 2-3 cited~~ — RESOLVED 2026-11-23: docs/research/2026-10-05_paperclip-lessons.md exists at HEAD
    paperclip paths.
-6. **M8.1** full `scripts/ci-local.sh` on the green tree; triage foreign
+6. ~~**M8.1** full `scripts/ci-local.sh` on the green tree; triage foreign~~ — RESOLVED 2026-11-23: resolved via CI authority: master CI green at pinned SHA c8755d16, run 37361330330 SUCCESS incl. test-windows (20-35 report b2; c8755d16 on origin/master)
    breaks per retry protocol.
-7. **M8.3** verify/wire `scripts/root-gate.sh` into AGENTS.md commands
+7. ~~**M8.3** verify/wire `scripts/root-gate.sh` into AGENTS.md commands~~ — RESOLVED 2026-11-23: AGENTS.md Commands block runs ./scripts/root-gate.sh (AGENTS.md:25)
    (foreign-landed; unverified by me).
-8. **M11.1–M11.4** budget surfaces: `tq top` chip, `tq tasks --parked
+8. ~~**M11.1–M11.4** budget surfaces: `tq top` chip, `tq tasks --parked~~ — RESOLVED 2026-11-23: 31b1998b: --parked-class (cmd/tq/parked.go) + readmodel not_before/parked_by (internal/readmodel/readmodel.go:65,71)
    budget`, journalaudit `--json` budget counts, readmodel column.
-9. **M9.1–M9.2** webui operator-stance audit (findings table only).
-10. **M10.1–M10.7** webui systematic fixes (vocabulary, monospace,
+9. ~~**M9.1–M9.2** webui operator-stance audit (findings table only).~~ — RESOLVED 2026-11-23: d5e42cc8 + docs/planning/2026-10-05_webui-operator-stance-audit.md at HEAD
+10. ~~**M10.1–M10.7** webui systematic fixes (vocabulary, monospace,~~ — RESOLVED 2026-11-23: audit disposition landed in d5e42cc8: M10.3 mono fix shipped, F2/F4/F5/F6 verified-satisfied with citations, F1 filed
     contextual-feedback rules + tests).
-11. **M12.1–M12.5** retry failure-classification taxonomy + provider
+11. ~~**M12.1–M12.5** retry failure-classification taxonomy + provider~~ — RESOLVED 2026-11-23: 6c892290 + a53e16e4: ClassifyFailure (internal/executor/classify.go:41) + conform pin TestFailureEvidenceDetailRoundTrips (internal/queue/companion/conform/tests.go:3733)
     `retryNotBefore` from body + class on requeue evidence + conform pin.
-12. **M13.1–M13.2** session-escalation ladder on agent retries.
-13. **M14.1–M14.4** stranded-work human notices (never auto-recover
+12. ~~**M13.1–M13.2** session-escalation ladder on agent retries.~~ — RESOLVED 2026-11-23: a310c984 + TestRetrySessionLadder (internal/executor/classify_test.go:74)
+13. ~~**M14.1–M14.4** stranded-work human notices (never auto-recover~~ — RESOLVED 2026-11-23: bdb89ae8 + stranded lamp at HEAD (internal/webui/components.go:163-170)
     human-assigned).
-14. **M15.1–M15.2** zombie-run filter for resume/coalesce targets.
-15. **M16.1** `tq work --agents` budget: flags+gate OR documented
+14. ~~**M15.1–M15.2** zombie-run filter for resume/coalesce targets.~~ — RESOLVED 2026-11-23: investigated and REJECTED with evidence; the disposition record is the 11-47 report a7
+15. ~~**M16.1** `tq work --agents` budget: flags+gate OR documented~~ — RESOLVED 2026-11-23: verified already carried: budgetClaimGate wired (cmd/tq/main.go:1139)
     ungatedness.
-16. **M17.1–M17.2** doctor budget-gate wiring self-check + devmod
+16. ~~**M17.1–M17.2** doctor budget-gate wiring self-check + devmod~~ — RESOLVED 2026-11-23: a6d1084d devmod preflight + doctorBudget (cmd/tq/doctor.go:1557)
     clear-error.
-17. **M18.1** LSP cmd/tq false-positive root-cause or crisp suppression.
-18. **M19.1** `TestExactlyOnceUnderConcurrency` robustify/quarantine +
+17. ~~**M18.1** LSP cmd/tq false-positive root-cause or crisp suppression.~~ — RESOLVED 2026-11-23: root-caused and documented in the devmod shim header (scripts/lib/cmd-tq-devmod.sh:3-9)
+18. ~~**M19.1** `TestExactlyOnceUnderConcurrency` robustify/quarantine +~~ — RESOLVED 2026-11-23: 41afb323: persistOutcome retry.Do on busy-class errors (internal/worker/worker.go:421-426; pin TestPersistOutcomeRetriesTransientBusy)
     re-run protocol doc.
-19. **M20.1–M20.5** guard/protocol docs bundle (HOLD until §g-3 settles;
+19. ~~**M20.1–M20.5** guard/protocol docs bundle (HOLD until §g-3 settles;~~ — RESOLVED 2026-11-23: c974d66b: size-guard reset rules + budget vocabulary landed
     add: status-index-at-creation clause, Written-date convention).
-20. **M21.1–M21.3** Windows CI confirm + `Config.Budget` example +
+20. ~~**M21.1–M21.3** Windows CI confirm + `Config.Budget` example +~~ — RESOLVED 2026-11-23: ec6d1422: ExampleConfig_budget (internal/worker/example_test.go:59); Windows CI runs the worker package
     examples doc mentions.
 21. **M22.1–M22.4** budget policy v2 (per-project caps, hysteresis,
     working-set) — §g-1 gated.
-22. **M23.1–M23.2** goal-ancestry injection in harvest payloads.
-23. **M24.1–M24.3** secret-injection seam design + prototype + SECURITY.md.
-24. **M25.1–M25.3** ROADMAP rows, archive sweep, CHANGELOG cross-links.
+22. ~~**M23.1–M23.2** goal-ancestry injection in harvest payloads.~~ — RESOLVED 2026-11-23: 0875e0a7: REPO_PURPOSE placeholders (internal/harvest/harvest.go:57-66)
+23. ~~**M24.1–M24.3** secret-injection seam design + prototype + SECURITY.md.~~ — RESOLVED 2026-11-23: 2026686d: TQ_DB denylist at agent spawn (internal/executor/agent.go:623) + SECURITY.md
+24. ~~**M25.1–M25.3** ROADMAP rows, archive sweep, CHANGELOG cross-links.~~ — RESOLVED 2026-11-23: 81102012: ROADMAP raw-idea rows (missed-run policy ROADMAP.md:82, injection endgame :88)
 25. e2e `budgetE2E` shared harness helper (e3 above).
 26. Promote `ParseRequeueEvidence` into the shared companion surface when
     the fourth consumer lands (e4 above).

@@ -92,10 +92,10 @@ All five window tasks closed their TODO rows, carry the exact `Task-Queue-ID` fo
 18. `run_with_flake_retry`: trap-based temp-file cleanup on SIGINT/SIGTERM (carried pre-existing gap; fold into any next lib touch).
 19. `verify_gate` line: the one-line "do not reformat; sed-pinned" comment (03-47 §e7).
 20. After the flip lands: watch one real agent window through verify.sh and record whether FLAKE-RETRY ever fires in production (the value claim is lab-proven, not field-proven).
-21. Row 141: `closeoutPending` lifetime audit (parked-while-cancelled leak).
-22. Row 40: `tq pool-health` one-shot summarizer.
+~~21. Row 141: `closeoutPending` lifetime audit (parked-while-cancelled leak).~~ — RESOLVED 2026-11-23: audited 2026-10-13 — residue bounded and harmless (TODO_LIST.md:330)
+~~22. Row 40: `tq pool-health` one-shot summarizer.~~ — RESOLVED 2026-11-23: landed 2026-10-11 (cmdPoolHealth, --since/--json) (TODO_LIST.md:333)
 23. ADR-0019 S1→S4 flips (rows 31–34) — the big carried platform work, untouched this window, unchanged in priority.
-24. One full quiet-tree ci-local pass exercising the two attribution steps + check-verify in situ — the only remaining closure for the inherited §b1 chain (five windows and counting).
+~~24. One full quiet-tree ci-local pass exercising the two attribution steps + check-verify in situ — the only remaining closure for the inherited §b1 chain (five windows and counting).~~ — RESOLVED 2026-11-23: full ci-local ran 2026-11-23 with both attribution steps + check-verify in situ, gates green (TODO_LIST.md:20)
 25. Row 282/310 (BLOCKED/open): footer-vs-attribution message-shape ruling + footer-placement conflict fix.
 
 (Remaining §f slots intentionally unfilled — the carried backlog already exceeds drain capacity; refuses padding.)

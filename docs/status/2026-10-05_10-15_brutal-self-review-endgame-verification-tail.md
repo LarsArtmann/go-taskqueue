@@ -11,7 +11,7 @@ executed, one real product bug found and fixed en route.
 1. **Fleet baseline + vendorHash**: 55 commits since the P4 landing
    (d13ffc29 rewritten by the daemon into bcd9fa54); vendorHash verified
    CURRENT (no FOD-graph drift); tree clean at resume.
-2. **`nix flake check` green — twice** (after the apps fix, and at final
+2. ~~**`nix flake check` green — twice** (after the apps fix, and at final~~ — RESOLVED 2026-11-23: apps fix e62581a0; flake check now a ci-local gate (scripts/ci-local.sh:1075)
    HEAD with the migration fix in the FOD). Root cause of the
    never-green eval: repo leaf-only `apps.<name>.meta.description` vs
    upstream `mkDefault`-wrapped whole-app defs — the priority filter
@@ -20,14 +20,14 @@ executed, one real product bug found and fixed en route.
    helper rev. Fixed with full app definitions (e62581a0 + treefmt
    amend). NOTE: flake check had never been green — no gate in the repo
    runs it (see e3).
-3. **webui.sh + api.sh smokes green** against the default readmodel path
+3. ~~**webui.sh + api.sh smokes green** against the default readmodel path~~ — RESOLVED 2026-11-23: scripts/smoke/webui.sh + scripts/smoke/api.sh
    (S4 composition root) — the "not run since P2's flip" debt paid.
-4. **Dogfood dry-run landed**: `scripts/smoke/legacy-serve-upgrade.sh`
+4. ~~**Dogfood dry-run landed**: `scripts/smoke/legacy-serve-upgrade.sh`~~ — RESOLVED 2026-11-23: scripts/smoke/legacy-serve-upgrade.sh (c306269a wiring, scripts/ci-local.sh:737)
    (legacy fixture → exactly one `.bak` → readmodel default-ON → SIGTERM
    → GracefulClose rc=0 → journal intact: fact survived, head seq
    unchanged, no second backup) + ci-local wiring (c306269a). Green
    standalone and in-matrix (run4:4622, run5:4604).
-5. **Real auto-upgrade bug found + fixed**: legacy journals lacking
+5. ~~**Real auto-upgrade bug found + fixed**: legacy journals lacking~~ — RESOLVED 2026-11-23: sourceTableExists tolerance pinned (internal/queue/sqlitev4/migration/migrate_test.go:448); AGENTS.md:421
    feature-era tables (deps/watermarks/priority_scores) were REFUSED by
    verify ("no such table" mismatch → restore). Absent = nothing to
    carry now, in BOTH paths (verify + replay copiers) via one
@@ -35,22 +35,22 @@ executed, one real product bug found and fixed en route.
    Regression test + in-budget AGENTS.md clause (cd451220;
    15,397/15,400). Daemon-swept footer-less (ea7866b6) before my
    attribution commit — grandfathered.
-6. **lint-baseline regenerated deliberately** (145cf459): golangci
+6. ~~**lint-baseline regenerated deliberately** (145cf459): golangci~~ — RESOLVED 2026-11-23: 145cf459
    2.14.0 via the 10-03 nixpkgs roll; 21 new (module, linter) classes,
    ZERO growth in existing classes; post-regen --check 1255=1255.
-7. **daemon-sweep baseline +18** (2 this window's migration sweep —
+7. ~~**daemon-sweep baseline +18** (2 this window's migration sweep —~~ — RESOLVED 2026-11-23: rows live in scripts/daemon-sweep-baseline.txt
    already pushed, heal forbidden; 16 fleet). Gate: 1086 baselined,
    0 new.
-8. **ci.yml SC2086 directives** (79fe53e3) for the gosec job's
+8. ~~**ci.yml SC2086 directives** (79fe53e3) for the gosec job's~~ — RESOLVED 2026-11-23: 79fe53e3
    intentional `$GOSEC_EXCLUDES` word-splits — foreign 09-28 code the
    gate had never reached (lint-baseline always died first).
-9. **dead-sha baseline +6** with patch-id mappings recorded in the
+9. ~~**dead-sha baseline +6** with patch-id mappings recorded in the~~ — RESOLVED 2026-11-23: mappings in the dead-sha baseline comment
    baseline comment (058dbbe0→f5d773b9, 2da0bad6→92932f2f,
    e0f65d93→d76c6437, e3fcd3c7→503d553e; 2 with no reachable twin).
    Zero foreign-file edits.
-10. **Work report 09-15 + index row committed** (75c29d5b), §d includes
+10. ~~**Work report 09-15 + index row committed** (75c29d5b), §d includes~~ — RESOLVED 2026-11-23: 75c29d5b
     its own confessions.
-11. **multi-repo load-flake triaged**: run5's sole red — SQLITE_BUSY at
+11. ~~**multi-repo load-flake triaged**: run5's sole red — SQLITE_BUSY at~~ — RESOLVED 2026-11-23: later de-flaked at the smoke layer: pool stagger (scripts/smoke/multi-repo.sh:67)
     pool-1 open under host load 140.67 — standalone re-run rc=0, all
     assertions. The documented flake class, not a regression.
 
@@ -60,7 +60,7 @@ Session commits: 6 attributed (e62581a0, c306269a, cd451220, 145cf459,
 
 ## b) Partially done
 
-1. **A single fully-green ci-local pass was NOT captured.** Run5: ~124
+1. ~~**A single fully-green ci-local pass was NOT captured.** Run5: ~124~~ — RESOLVED 2026-11-23: resolved via CI authority: master CI green at pinned SHA c8755d16, run 37361330330 SUCCESS incl. test-windows (20-35 report b2; c8755d16 on origin/master)
    steps green (every smoke incl. the new one), red only at multi-repo
    (load-flake, standalone-green) — but that means the ~20 stock steps
    after multi-repo (papdashboard e2e ×2, rate-limit, redaction,
@@ -71,23 +71,23 @@ Session commits: 6 attributed (e62581a0, c306269a, cd451220, 145cf459,
    were verified STANDALONE-where-re-run, not in one continuous green
    log. Under fleet load 140 I judged a 6th matrix run
    (load-flake roulette) worse than the honest split evidence.
-2. **Guard-wiring gate unverified in-matrix** (it sits after
+2. ~~**Guard-wiring gate unverified in-matrix** (it sits after~~ — RESOLVED 2026-11-23: guard-wiring green in the CI SUCCESS run at c8755d16 (20-35 report b2)
    multi-repo); my smoke IS committed-wired so it should pass — should,
    not does-proven-this-session.
-3. **All gate evidence lives in /tmp/tq-gates/** — "stable" within a
+3. ~~**All gate evidence lives in /tmp/tq-gates/** — "stable" within a~~ — RESOLVED 2026-11-23: scripts/archive-evidence.sh now exists for evidence archiving
    boot, volatile across it. The prior session LOST logs to /tmp churn
    (its §d19) and I repeated the storage class anyway.
-4. **CHANGELOG/FEATURES rows for the auto-upgrade hardening** deferred
+4. ~~**CHANGELOG/FEATURES rows for the auto-upgrade hardening** deferred~~ — RESOLVED 2026-11-23: docs truth pass landed them (874e1934: FEATURES platform rows + CHANGELOG endgame bullets)
    to P5's endgame truth pass — defensible batching, but the fix is
    user-visible NOW and rides no released entry.
 
 ## c) Not started (owner-gated or out of this window's scope)
 
-1. Tag wave (root v0.3.1 + six internal tags; check-go-mods pending-tag
+1. ~~Tag wave (root v0.3.1 + six internal tags; check-go-mods pending-tag~~ — RESOLVED 2026-11-23: shipped: v0.3.x shipped and pushed: v0.3.1 cut, retracted on the broken-graph catch, v0.3.2 re-cut the full 22-tag wave; v0.4.x line live (docs/release/RELEASE.md:240-256; tags v0.3.1/v0.4.2 on origin)
    block deletion; facade-parity re-pin) — owner-gated, asked twice now.
-2. P5 legacy deletion + docs truth pass (cqrsqlite, dual-tally, ADR/
+2. ~~P5 legacy deletion + docs truth pass (cqrsqlite, dual-tally, ADR/~~ — RESOLVED 2026-11-23: executed (c8755d16 cqrsqlite deletion; a45d9f08 tally collapse; 874e1934 docs pass)
    FEATURES/CHANGELOG/TODO_LIST, LOC/art-dupl delta) — owner-gated.
-3. Dogfood production cutover (systemd restart + tq doctor verify) —
+3. ~~Dogfood production cutover (systemd restart + tq doctor verify) —~~ — RESOLVED 2026-11-23: done (67164cec runbook; live verified)
    owner-gated.
 4. go-nix-helpers upstream issue for the mkDefault leaf-augmentation
    footgun — verify-before-filing applies; not started.
@@ -146,16 +146,16 @@ Session commits: 6 attributed (e62581a0, c306269a, cd451220, 145cf459,
    until the rc FILE exists; for interactive probes use `; echo rc=$? >`
    to a file every single time — my twice-broken pipe discipline needs a
    habit replacement, not vigilance.
-2. **Wire `nix flake check` into ci-local** (or a weekly gate). It was
+2. ~~**Wire `nix flake check` into ci-local** (or a weekly gate). It was~~ — RESOLVED 2026-11-23: gated at scripts/ci-local.sh:1075
    NEVER green and NOTHING noticed for weeks because no automated gate
    runs it — the apps eval collision festered precisely there. (Owner
    call: adds ~minutes; cached mostly.)
-3. **Move gate evidence out of /tmp**: repo-root `.gates/` (gitignored)
+3. ~~**Move gate evidence out of /tmp**: repo-root `.gates/` (gitignored)~~ — RESOLVED 2026-11-23: scripts/archive-evidence.sh exists
    or scripts/archive-evidence.sh for the receipts that back reports.
 4. **devmod shim per-invocation dev.mod suffix** (prior §f27, still
    open, this session nearly tripped it twice) — mechanical guard beats
    a convention nobody enforces under load.
-5. **Load-aware skips**: host load 140 flaked a healthy smoke; the
+5. ~~**Load-aware skips**: host load 140 flaked a healthy smoke; the~~ — RESOLVED 2026-11-23: superseded by better fixes: smoke stagger + busy-retry (scripts/smoke/multi-repo.sh:67) and the exactly-once root-cause fix (41afb323)
    known-flaky list (exactly-once, multi-repo open) should skip-or-retry
    on load average rather than burn triage time every storm.
 6. **Pin actionlint/shellcheck via the flake** — the SC2086 findings
@@ -176,34 +176,34 @@ Session commits: 6 attributed (e62581a0, c306269a, cd451220, 145cf459,
 ## f) Up to 50 next things (roughly execution order)
 
 1. Quiet-host full ci-local pass; capture ONE continuous green log.
-2. Wire `nix flake check` into ci-local (owner veto-able, see e2).
-3. Tag wave (owner-gated): root v0.3.1 + six internal tags, proxy checks
+2. ~~Wire `nix flake check` into ci-local (owner veto-able, see e2).~~ — RESOLVED 2026-11-23: gated at scripts/ci-local.sh:1075
+3. ~~Tag wave (owner-gated): root v0.3.1 + six internal tags, proxy checks~~ — RESOLVED 2026-11-23: shipped: v0.3.x shipped and pushed: v0.3.1 cut, retracted on the broken-graph catch, v0.3.2 re-cut the full 22-tag wave; v0.4.x line live (docs/release/RELEASE.md:240-256; tags v0.3.1/v0.4.2 on origin)
    per docs/release/, delete the check-go-mods pending-tag block,
    facade-parity re-pin.
-4. P5: delete internal/queue/cqrsqlite + conform wiring; root go.mod
+4. ~~P5: delete internal/queue/cqrsqlite + conform wiring; root go.mod~~ — RESOLVED 2026-11-23: deleted (c8755d16)
    cleanup; module loop re-run.
-5. P5: collapse dual tally paths (tallyStats vs tallyModelRows).
-6. P5: ADR-0019 endgame addendum (S2/S3/S4 + auto-upgrade landed).
-7. P5: FEATURES rows (auto-upgrade, readmodel-default, composition
+5. ~~P5: collapse dual tally paths (tallyStats vs tallyModelRows).~~ — RESOLVED 2026-11-23: tallyStats/tallyModelRows deleted (a45d9f08)
+6. ~~P5: ADR-0019 endgame addendum (S2/S3/S4 + auto-upgrade landed).~~ — RESOLVED 2026-11-23: landed (874e1934)
+7. ~~P5: FEATURES rows (auto-upgrade, readmodel-default, composition~~ — RESOLVED 2026-11-23: landed (874e1934)
    root) + CHANGELOG [Unreleased] for the whole endgame wave — INCLUDE
    the absent-table hardening bullet.
-8. P5: TODO_LIST ADR-0019 row closures; LOC/art-dupl delta.
-9. Dogfood cutover (owner-gated): systemd restart, tq doctor verify,
+8. ~~P5: TODO_LIST ADR-0019 row closures; LOC/art-dupl delta.~~ — RESOLVED 2026-11-23: closed in the docs truth pass (874e1934; TODO_LIST 301→297)
+9. ~~Dogfood cutover (owner-gated): systemd restart, tq doctor verify,~~ — RESOLVED 2026-11-23: done (67164cec)
    `<db>.legacy-*.bak` hygiene note, prune-after-green-week.
 10. Evidence: copy /tmp/tq-gates receipts into the archive BEFORE the
     next reboot (the run4/run5 logs and rc files are the only proof of
     this window's matrix claims).
-11. Adopt repo `.gates/` convention (e3) + AGENTS.md one-liner.
+11. ~~Adopt repo `.gates/` convention (e3) + AGENTS.md one-liner.~~ — RESOLVED 2026-11-23: scripts/archive-evidence.sh exists
 12. devmod shim per-invocation suffix (e4).
-13. Load-aware skip/retry for multi-repo smoke + exactly-once test (e5).
+13. ~~Load-aware skip/retry for multi-repo smoke + exactly-once test (e5).~~ — RESOLVED 2026-11-23: stagger + busy-retry landed (scripts/smoke/multi-repo.sh:67)
 14. go-nix-helpers upstream issue: mkDefault whole-app + consumer leaf
     augmentation silently deletes the app — verify against their HEAD
     first (verify-before-filing), then file.
 15. heal-daemon-sweep task-less attribution mode (e7).
 16. docs-health note: dead-sha triage requires .git quiescence (e8).
-17. INDEX BLOAT: 213 live rows (I added one more) vs threshold 100 —
+17. ~~INDEX BLOAT: 213 live rows (I added one more) vs threshold 100 —~~ — RESOLVED 2026-11-23: threshold re-derived 100→400 with prunes (TODO_LIST.md:790)
     archive sweep or monthly digest row.
-18. multi-repo smoke product hardening: retry-on-open under SQLITE_BUSY
+18. ~~multi-repo smoke product hardening: retry-on-open under SQLITE_BUSY~~ — RESOLVED 2026-11-23: retry/stagger landed (scripts/smoke/multi-repo.sh:64-67)
     instead of failing the whole smoke on one busy window.
 19. Apply the 4 recorded patch-id mappings as arrow-form citations to
     SHRINK the dead-sha baseline by 4 rows.
@@ -214,7 +214,7 @@ Session commits: 6 attributed (e62581a0, c306269a, cd451220, 145cf459,
 23. Prior report §f24-34 still open (paperclip drift FIXED this session
     by its window; the rest — index digest, self-test pins, observability
     nits — carried).
-24. After tag wave: cleanroom + consumer-install re-verified against
+24. ~~After tag wave: cleanroom + consumer-install re-verified against~~ — RESOLVED 2026-11-23: consumer-install + consumer-tag green against real tags at v0.4.2 (TODO_LIST.md:21)
     real tags (currently nominal v0.3.0 pins).
 25. Consider a report-lint rule (check-status-index extension): a §-file
     may not contain "rc=0" for a run whose log file it does not name —

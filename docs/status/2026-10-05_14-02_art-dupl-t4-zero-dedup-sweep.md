@@ -18,31 +18,31 @@ idiom (see §b/§e).
 
 Extractions — every one a named seam, built + tested at its module:
 
-1. **`topLevelScalar(data, key)`** — internal/harvest/priority.go:181.
+1. ~~**`topLevelScalar(data, key)`** — internal/harvest/priority.go:181.~~ — RESOLVED 2026-11-23: internal/harvest/priority.go:170
    `ReadImportance` + `repoPurpose` shared a hand-rolled "read one
    top-level scalar from the flat metadata file" loop; extracted (-t 1
    pass). Harvest module build+vet+test green, gofmt clean.
-2. **`copyOptionalTable`** — internal/queue/sqlitev4/migration/migrate.go
+2. ~~**`copyOptionalTable`** — internal/queue/sqlitev4/migration/migrate.go~~ — RESOLVED 2026-11-23: internal/queue/sqlitev4/migration/migrate.go:386
    (~:370). The `sourceTableExists` guard + `copyQueriedRows` body
    duplicated across `copyWatermarks`/`copyPriorityScores`. sqlitev4
    module green (incl. migration tests).
-3. **`withSource(fromPath, fn)` + `migrateInto`/`verifyAgainst`** —
+3. ~~**`withSource(fromPath, fn)` + `migrateInto`/`verifyAgainst`** —~~ — RESOLVED 2026-11-23: internal/queue/sqlitev4/migration/migrate.go:168
    migrate.go:166. Both replay entry points (Migrate, Verify) shared the
    `openSource` + `defer Close` bracket; now one closure-scoped seam,
    stats/report preserved via named returns + pointer. Migration tests
    green (copy + verify paths both exercised).
-4. **`agentRepo(ctx, agent, repo, cleanTree)`** — internal/executor/
+4. ~~**`agentRepo(ctx, agent, repo, cleanTree)`** — internal/executor/~~ — RESOLVED 2026-11-23: internal/executor/preflight.go:35
    preflight.go:31. The nil-defaulting `base()` + `prepareRepo` prelude
    ran identically in dlqfix/prioritize/review/status; all four now call
    the seam and the four per-type `base()` methods are DELETED (zero
    callers, verified by grep before deletion).
-5. **`finishParsedRun[T]`** — internal/executor/result.go:154. Generic
+5. ~~**`finishParsedRun[T]`** — internal/executor/result.go:154. Generic~~ — RESOLVED 2026-11-23: internal/executor/result.go:227
    over `interface{ *R; setLogPath; deriveUsage }` (same constraint
    pattern as `recordRunOutcome`): parse-error wrap (`"<kind>: %w"`) +
    `deriveUsage` + `recordRunOutcome` tail deduped across dlqfix +
    prioritize. Executor module green incl. `-race` (9.9 s) and
    GOOS=windows cross-build.
-6. **Conform-suite helpers** — internal/queue/companion/conform/tests.go:
+6. ~~**Conform-suite helpers** — internal/queue/companion/conform/tests.go:~~ — RESOLVED 2026-11-23: assertTaskState at internal/queue/companion/conform/tests.go:1960
    `assertTaskState`, `assertNoTaskDue`, `startSeededStore`,
    `filterCase`+`assertFilterCounts`. Killed the 14-line assert pair
    (fail1/requeue), the 3×11-line seeded-store prologs, and the query
@@ -51,7 +51,7 @@ Extractions — every one a named seam, built + tested at its module:
    `LastError: "preflight: repo dirty"` — a deliberate strengthening
    (comment in place); the first draft over-pinned and broke all three
    backends loudly (see §d).
-7. **WebUI badge/meta single-sourcing** — internal/webui/
+7. ~~**WebUI badge/meta single-sourcing** — internal/webui/~~ — RESOLVED 2026-11-23: badgeInfo at internal/webui/components.go:116-117
    components.go:113 (`badgeInfo`, `metaChip`, `taskBadgeExtras`,
    `nowbandMetaChips`) + fragments.templ:23 (`badge`, `metaCount`
    templ components). taskBadges renders one status badge + a loop over
@@ -60,7 +60,7 @@ Extractions — every one a named seam, built + tested at its module:
    inline by design). `templ generate` + `nix run .#webui-css` both run
    (fragments_templ.go + app.css regenerated, committed by daemon);
    webui tests green (10.2 s).
-8. **Accept directives with recorded reasons** — the skill's "leave a
+8. ~~**Accept directives with recorded reasons** — the skill's "leave a~~ — RESOLVED 2026-11-23: art-dupl:accept directives in place (23 files carry them)
    one-line rationale" mechanism, already used by the spike adapters:
    - Sweeper shells (internal/dlqfix/sweep.go, internal/review/sweep.go):
      `art-dupl:accept mirrored sweeper shell … shared pump already lives
@@ -81,7 +81,7 @@ touched files clean; `go vet` on webui+e2e rc=0.
 
 ## b) PARTIALLY DONE
 
-1. **The `-t 3` tail (16 groups) is judged, not driven to zero.** All
+1. ~~**The `-t 3` tail (16 groups) is judged, not driven to zero.** All~~ — RESOLVED 2026-11-23: closed by the 16-02 window: 2 clones/1 documented residual; named residual in AGENTS.md:311
    pre-existing idiom: reads.go QueryContext preambles, lockout mutex
    triples, cmd/tq flag-set prologs, error-return ladders, `var buf
    bytes.Buffer` pairs, conform `t.Fatalf` pairs, the review/status
@@ -90,7 +90,7 @@ touched files clean; `go vet` on webui+e2e rc=0.
    the owner's bar was the pasted `-t 4` report; -t 3 remains the mirror
    gate's input, which passes (it only fails cross-backend). §g-1 asks
    for the standing ruling.
-2. **AGENTS.md dedup-convention line not updated.** The existing
+2. ~~**AGENTS.md dedup-convention line not updated.** The existing~~ — RESOLVED 2026-11-23: AGENTS.md:311-314 names the single residual + the art-dupl:accept mechanism
    "Residual art-dupl groups accepted; don't add new ones" should name
    the `art-dupl:accept` directive as THE mechanism. Skipped: the file
    sits at 15,694/15,700 B (6 B headroom — the guard prunes, never
@@ -106,7 +106,7 @@ touched files clean; `go vet` on webui+e2e rc=0.
    single-pass only. The AGENTS known-issue (concurrent agents → re-run
    -race before declaring success) is satisfied for executor, not for
    the rest.
-5. **Evidence not archived to files.** Gate rcs live in this report's
+5. ~~**Evidence not archived to files.** Gate rcs live in this report's~~ — RESOLVED 2026-11-23: archived: docs/status/assets/tq-000001a156a33bbf-evidence/ with SHA256SUMS (TODO_LIST.md:788)
    prose from the session log, not in a dated evidence file (the
    "battery rc TO A FILE" convention). Nothing is in dispute — every
    gate is re-runnable in seconds — but the letter of the convention is
@@ -117,12 +117,12 @@ touched files clean; `go vet` on webui+e2e rc=0.
 
 ## c) NOT STARTED
 
-1. **`scripts/heal-daemon-sweep.sh` on this session's commits.** The
+1. ~~**`scripts/heal-daemon-sweep.sh` on this session's commits.** The~~ — RESOLVED 2026-11-23: DEAD: commits pushed to origin/master, history policy bars rewrite; day's sweeps grandfathered (TODO_LIST.md:788)
    daemon folded my work into footer-less `chore: auto-commit` commits
    throughout; no Task-Queue-ID footer exists on any of them (this
    session ran without a task id, so `--task-closeout` was never in
    play). Healing is available and unstarted.
-2. **CHANGELOG entry** for the dedup pass (append-only file, untouched).
+2. ~~**CHANGELOG entry** for the dedup pass (append-only file, untouched).~~ — RESOLVED 2026-11-23: ruled: no CHANGELOG row for internal-only sweeps (20-39 report a1 Q3)
 3. **FEATURES/TODO_LIST harvest** of the new seams (they are internal
    implementation, but the conform-suite invariants and the accept-
    directive convention are doc-worthy).
@@ -130,7 +130,7 @@ touched files clean; `go vet` on webui+e2e rc=0.
    ACCEPTED the sweeper shells and several twins; this session EXECUTED
    the extraction side. No pointer was added from that report to here or
    vice versa (only the index rows sit adjacent).
-5. **lint-baseline / gosec re-check** after new code (components.go grew
+5. ~~**lint-baseline / gosec re-check** after new code (components.go grew~~ — RESOLVED 2026-11-23: lint-baseline green at HEAD (20-35 report a6); re-check ran per TODO_LIST.md:788
    ~60 lines; golangci is advisory but `--check` gates growth).
 
 ## d) TOTALLY FUCKED UP (all caught; none shipped broken)
@@ -207,23 +207,23 @@ touched files clean; `go vet` on webui+e2e rc=0.
    metered span) — closes §d-1's gap.
 2. WebUI render test: taskBadges stack (status leads; extras order
    review→status→agent→prioritize; empty stack = status only).
-3. Standing ruling on the dedup bar (-t 4 reporting vs -t 3 canonical)
+3. ~~Standing ruling on the dedup bar (-t 4 reporting vs -t 3 canonical)~~ — RESOLVED 2026-11-23: ruled: named-residual doctrine (AGENTS.md:311); canonical config scripts/art-dupl.json (TODO_LIST.md:787)
    — §g-1; then pin it in scripts/check-dedup.sh.
-4. Run scripts/heal-daemon-sweep.sh over this window's footer-less
+4. ~~Run scripts/heal-daemon-sweep.sh over this window's footer-less~~ — RESOLVED 2026-11-23: DEAD per TODO_LIST.md:788 (pushed commits; grandfathered instead)
    daemon commits (subject/stats/tree verification) — §c-1.
-5. CHANGELOG entry: dedup-to-zero pass (7 seams + accept directives).
-6. AGENTS.md: fold the art-dupl:accept mechanism into the existing
+5. ~~CHANGELOG entry: dedup-to-zero pass (7 seams + accept directives).~~ — RESOLVED 2026-11-23: no-row ruling for internal-only sweeps (20-39 report a1 Q3)
+6. ~~AGENTS.md: fold the art-dupl:accept mechanism into the existing~~ — RESOLVED 2026-11-23: AGENTS.md:314 names art-dupl:accept
    dedup line byte-neutrally (prune-first if needed) — §b-2.
-7. Full ci-local battery at current HEAD (the pre-push gate; my gates
+7. ~~Full ci-local battery at current HEAD (the pre-push gate; my gates~~ — RESOLVED 2026-11-23: resolved via CI authority: master CI green at pinned SHA c8755d16, run 37361330330 SUCCESS incl. test-windows (20-35 report b2; c8755d16 on origin/master)
    were scoped).
 8. `-race` re-run for sqlitev4, cqrsqlite, postgresv4, queue, dlqfix,
    review, harvest, webui — §b-4.
-9. Persist this session's gate battery to a dated evidence file — §b-5.
+9. ~~Persist this session's gate battery to a dated evidence file — §b-5.~~ — RESOLVED 2026-11-23: receipts archived to docs/status/assets/tq-000001a156a33bbf-evidence/ (TODO_LIST.md:788)
 10. Run the e2e suite once over the comment-touched file — §b-6.
-11. lint-baseline `--check` + check-gosec after components.go growth.
+11. ~~lint-baseline `--check` + check-gosec after components.go growth.~~ — RESOLVED 2026-11-23: lint-baseline green at HEAD (20-35 report a6)
 12. Route copyDeps through copyQueriedRows (or accept-directive the
     guard) — §b-3.
-13. cmd/tq claimCount: implement the documented GROUP BY store method
+13. ~~cmd/tq claimCount: implement the documented GROUP BY store method~~ — RESOLVED 2026-11-23: store ClaimCounts implemented and consumed (cmd/tq/main.go:2458; internal/queue/queue.go)
     (comment at cmd/tq/main.go:1919 names it) → delete the accepted
     mirror entirely.
 14. Consolidate the three mirrored conformance suites into
@@ -232,17 +232,17 @@ touched files clean; `go vet` on webui+e2e rc=0.
 16. Conform: sweep remaining Get+multi-assert sites onto assertTaskState
     where the pin set matches (tests.go ~141-160 et al.).
 17. Conform: adopt startSeededStore at tests.go:3286/3402 prologs (-t 3).
-18. review/status Permanent payload prolog: either a shared
+18. ~~review/status Permanent payload prolog: either a shared~~ — RESOLVED 2026-11-23: accepted via directives in the 16-02 window (16-02 report a3)
     contract-miss constructor or accept directives at the chosen bar.
-19. reads.go QueryContext preambles (-t 3): row-scan helper or
+19. ~~reads.go QueryContext preambles (-t 3): row-scan helper or~~ — RESOLVED 2026-11-23: accepted via directives (16-02 report a3)
     accept-with-reason per site.
-20. lockout mutex-guard triples (-t 3): accept directive (concurrent
+20. ~~lockout mutex-guard triples (-t 3): accept directive (concurrent~~ — RESOLVED 2026-11-23: accepted via directives (16-02 report a3)
     access methods are intentionally repetitive).
-21. cmd/tq flag-set prologs (watermarks show/set etc., -t 3): accept
+21. ~~cmd/tq flag-set prologs (watermarks show/set etc., -t 3): accept~~ — RESOLVED 2026-11-23: accepted via directives (16-02 report a3)
     directives (flag CLI shape is inherently repeated).
-22. `var buf bytes.Buffer` pairs (command/depbump/agent/verifygate,
+22. ~~`var buf bytes.Buffer` pairs (command/depbump/agent/verifygate,~~ — RESOLVED 2026-11-23: accepted via directives (16-02 report a3)
     -t 3): accept directives (idiomatic exec plumbing).
-23. Verify gopls cmd/tq false errors clear after a clean vendor + restart
+23. ~~Verify gopls cmd/tq false errors clear after a clean vendor + restart~~ — RESOLVED 2026-11-23: CLI gates green (14-09 report a5)
     (AGENTS already declares the class; one confirmation closes it).
 24. Cross-link the 12-27 dupe-type review report to this pass (the
     ACCEPTED entries now have extractions or directives).

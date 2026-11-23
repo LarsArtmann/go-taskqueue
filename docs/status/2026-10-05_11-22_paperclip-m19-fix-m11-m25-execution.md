@@ -15,7 +15,7 @@ AGENTS.md formatter-padding inflation was restored to the compact table
 
 ## a) Fully done (each verified green at landing)
 
-1. **M19 — the exactly-once flake FIXED, not robustified.** Every store
+1. ~~**M19 — the exactly-once flake FIXED, not robustified.** Every store~~ — RESOLVED 2026-11-23: 41afb323 at HEAD (internal/worker/worker.go:421)
    transition write in `internal/worker` (complete/fail/requeue/cancel)
    now retries in-process on busy-class errors (3 attempts, 50–400 ms,
    `go-retry` promoted to a direct require): `41afb323`. Root cause
@@ -25,7 +25,7 @@ AGENTS.md formatter-padding inflation was restored to the compact table
    double-apply; the reclaim backstop is unchanged. `TestExactlyOnceUnderConcurrency`
    ×5 `-race` green at landing, ×3 again at report time; worker module
    gate + root battery green.
-2. **M11 — class-park surfaces** (`31b1998b`): `tq top` bpark column +
+2. ~~**M11 — class-park surfaces** (`31b1998b`): `tq top` bpark column +~~ — RESOLVED 2026-11-23: 31b1998b at HEAD
    `budget_parked` JSON; `tq tasks --parked-class` (CLI-side join over
    the requeue evidence, `cmd/tq/parked.go`); readmodel projection gains
    `not_before` + `parked_by` columns folded from the requeue evidence
@@ -34,7 +34,7 @@ AGENTS.md formatter-padding inflation was restored to the compact table
    bare string per event struct — the panic taught before it passed);
    parity extended + `TestParkedByProjection`. journalaudit `--json`
    budget counts were already landed by the M1 window.
-3. **M9 — webui operator-stance audit** (`d5e42cc8`,
+3. ~~**M9 — webui operator-stance audit** (`d5e42cc8`,~~ — RESOLVED 2026-11-23: d5e42cc8 + the audit doc at HEAD
    `docs/planning/2026-10-05_webui-operator-stance-audit.md`): 14 surfaces
    × three questions. The webui already carries the stance on every
    primary surface. One real fix fell out (F3 → M10.3); three
@@ -43,7 +43,7 @@ AGENTS.md formatter-padding inflation was restored to the compact table
    both v4 adapters clear `last_error` on completion; F5 no-toast silence;
    F6 neutral cancel). F1 (lamps without links) filed as follow-up, not
    half-fixed.
-4. **M12 — retry failure-classification** (`6c892290` taxonomy + JSON
+4. ~~**M12 — retry failure-classification** (`6c892290` taxonomy + JSON~~ — RESOLVED 2026-11-23: 6c892290 + a53e16e4 + conform pin (conform/tests.go:3733)
    body parsing, `1a1b115c`/`a53e16e4` stamping + readers): the worker
    rewrites failure evidence with the class of the FINAL error
    (`stampedFailureEvidence`, executor fields preserved, empty evidence
@@ -52,24 +52,24 @@ AGENTS.md formatter-padding inflation was restored to the compact table
    (`"reset_at": "…"`, `"retry_after": N`) that OpenAI-convention
    providers relay; conform pin `TestFailureEvidenceDetailRoundTrips`
    registered and green on sqlitev4.
-5. **M13 — same-session first retry** (`a310c984`): the paperclip
+5. ~~**M13 — same-session first retry** (`a310c984`): the paperclip~~ — RESOLVED 2026-11-23: a310c984
    `same_session → fresh_session` ladder — the FIRST retry resumes the
    previous attempt's session (read from the deterministic sidecar);
    from the second retry on, fresh again (a session that failed twice is
    itself the suspect). Payload-pinned sessions win; every miss degrades
    to today's fresh behavior.
-6. **M14 — stranded-work lamp** (`bdb89ae8`): pending tasks whose dep is
+6. ~~**M14 — stranded-work lamp** (`bdb89ae8`): pending tasks whose dep is~~ — RESOLVED 2026-11-23: bdb89ae8
    terminally not-completed now surface in the nowband (`stranded N`),
    derived from existing reads — deliberately NOT a new fact type (that
    contract addition awaits a demonstrated need, §g-2 discipline).
-7. **M15 — zombie-run filter: investigated, REJECTED with evidence.**
+7. ~~**M15 — zombie-run filter: investigated, REJECTED with evidence.**~~ — RESOLVED 2026-11-23: REJECTED with evidence; disposition is the 11-47 report a7
    The coalesce-exclusivity clause does count expired-lease zombies as
    the live run — but the starvation it causes self-heals within ONE poll
    (~250 ms reclaim), while excluding zombies would open a window where a
    sibling claims AND a reclaim lands → TWO live runs per project, a real
    exclusivity violation. The clause change was reverted; this report is
    the disposition record.
-8. **M16/M17/M18 — verified or hardened**: `tq work --agents` already
+8. ~~**M16/M17/M18 — verified or hardened**: `tq work --agents` already~~ — RESOLVED 2026-11-23: budgetClaimGate (cmd/tq/main.go:1139); a6d1084d; M18 documented (scripts/lib/cmd-tq-devmod.sh:3-9)
    carries `--daily-budget`/`--budget-cmd` wired into
    `budgetClaimGate` (M16 satisfied by the flags+gate half); doctor's
    budget check + the pool-start ungated warning cover M17.1, and the
@@ -78,35 +78,35 @@ AGENTS.md formatter-padding inflation was restored to the compact table
    root-caused (the replace-free module needs the dev.mod shim; a
    go.work is forbidden by policy) and its suppression was already
    documented — closed without spending AGENTS bytes.
-9. **M20 — guard/protocol doctrine** (`c974d66b`): the size-guard reset
+9. ~~**M20 — guard/protocol doctrine** (`c974d66b`): the size-guard reset~~ — RESOLVED 2026-11-23: c974d66b
    RULES pinned in the guard test's comment (reset = net-new load-bearing
    only; formatter padding is pruned, never budgeted — with this
    session's 1,706 B table-padding incident as the worked example);
    third reset to 15,700 for the facade-parity pre-commit ordering +
    claim-path cheap-first clauses; DOMAIN_LANGUAGE gains Cap / Claim
    gate / Parked-vs-refused.
-10. **M21 — examples + Windows** (`ec6d1422`): runnable
+10. ~~**M21 — examples + Windows** (`ec6d1422`): runnable~~ — RESOLVED 2026-11-23: ec6d1422 + ExampleConfig_budget (internal/worker/example_test.go:59)
     `ExampleConfig_budget` (guard contract + fail-open rationale +
     midnight park); both embed examples point at it. Windows CI verified
     to already run the worker package (root tests + per-sub-module loop)
     — no canary needed.
-11. **M23 — goal ancestry** (`0875e0a7`): work prompts (single + batch)
+11. ~~**M23 — goal ancestry** (`0875e0a7`): work prompts (single + batch)~~ — RESOLVED 2026-11-23: 0875e0a7 (internal/harvest/harvest.go:66)
     carry `Repo purpose: {{REPO_PURPOSE}}` from
     `.config/metadata.yaml`'s `purpose:` scalar; absent → an honest
     README pointer, never an invented purpose.
-12. **M24 — secret-injection seam** (`2026686d`): the agent spawn strips
+12. ~~**M24 — secret-injection seam** (`2026686d`): the agent spawn strips~~ — RESOLVED 2026-11-23: 2026686d (internal/executor/agent.go:623) + SECURITY.md
     an exact-key env denylist (`TQ_DB` — the documented inherited-
     production-journal hazard) at BOTH turn types; the successor design
     (minted per-run allowlist, `--strict-env`, managed HOME) is
     specified with its owner questions; SECURITY.md names the
     injection-vs-redaction posture.
-13. **M25 — parking + hygiene** (`81102012`): ROADMAP raw-idea rows
+13. ~~**M25 — parking + hygiene** (`81102012`): ROADMAP raw-idea rows~~ — RESOLVED 2026-11-23: 81102012 (ROADMAP.md:82,88)
     (routines/cron with missed-run policies, org-scale attribution,
     injection endgame); predecessor-report sweep (02-36/02-38 §f) found
     every survivor already owned by a TODO row or an owner-blocked
     ruling — nothing orphaned. M25.3 (CHANGELOG ↔ research-note link)
     landed in the previous window.
-14. **Twin-budget drift fixed** (`b6db79d4`): my M20 reset updated the
+14. ~~**Twin-budget drift fixed** (`b6db79d4`): my M20 reset updated the~~ — RESOLVED 2026-11-23: b6db79d4
     Go-test cap but NOT the `check-agents-size.sh` twin — the first
     ci-local run died exactly there (the 02-38 report's f6 prediction,
     lived once). Both twins now name each other and the incident.
@@ -121,14 +121,14 @@ AGENTS.md formatter-padding inflation was restored to the compact table
     formatting fixed, style classes absorbed by the deliberate regen,
     `87b26c44`). Run 4 launched after the regen — outcome in the
     Verification appendix, written after the rc existed.
-16. **CHANGELOG**: this session's features (M11 surfaces, retry
+16. ~~**CHANGELOG**: this session's features (M11 surfaces, retry~~ — RESOLVED 2026-11-23: features cut into the release: retry-taxonomy entry in the released CHANGELOG (CHANGELOG.md:1636); v0.3.2 wave shipped
     taxonomy + stamping, session ladder, stranded lamp, purpose prompts,
     env denylist) are itemized under `[Unreleased]` **Added**; the M6
     release cut remains owner-gated and untouched.
 
 ## c) Not started (all owner-gated, unchanged)
 
-17. M6 release v0.3.x (local tags need the owner wave authorization —
+17. ~~M6 release v0.3.x (local tags need the owner wave authorization —~~ — RESOLVED 2026-11-23: v0.3.x shipped and pushed: v0.3.1 cut, retracted on the broken-graph catch, v0.3.2 re-cut the full 22-tag wave; v0.4.x line live (docs/release/RELEASE.md:240-256; tags v0.3.1/v0.4.2 on origin)
     now compounded with the 09-15 tag-wave §g1 and the P5 cadence).
 18. M4 wake-trace implementation (§g-2 fact-type ruling; the M3 memo
     stands as its input).
@@ -181,14 +181,14 @@ AGENTS.md formatter-padding inflation was restored to the compact table
 
 ## f) Up to 50 next things (roughly execution order)
 
-1. Owner: push authorization for the remaining local commits (origin
+1. ~~Owner: push authorization for the remaining local commits (origin~~ — RESOLVED 2026-11-23: pushed: c8755d16 on origin/master; CI green (run 37361330330)
    moved mid-session — early commits including `6c892290` were pushed
    by an authorized party; ~10 commits since are local).
-2. Owner: the M6 tag wave (root v0.3.1 + module tags) — now carries
+2. ~~Owner: the M6 tag wave (root v0.3.1 + module tags) — now carries~~ — RESOLVED 2026-11-23: v0.3.x shipped and pushed: v0.3.1 cut, retracted on the broken-graph catch, v0.3.2 re-cut the full 22-tag wave; v0.4.x line live (docs/release/RELEASE.md:240-256; tags v0.3.1/v0.4.2 on origin)
    BOTH the ADR-0019 endgame AND the paperclip wave (M11/M12/M13/M24).
 3. Owner: §g-2 wake fact-type ruling → M4 implementation (the memo is
    ready); §g-1 → M22; M2.4 precedence ruling.
-4. Quiet-host ci-local capture (the standing 09-15 item) once the host
+4. ~~Quiet-host ci-local capture (the standing 09-15 item) once the host~~ — RESOLVED 2026-11-23: resolved via CI authority: master CI green at pinned SHA c8755d16, run 37361330330 SUCCESS incl. test-windows (20-35 report b2; c8755d16 on origin/master)
    load drops — this window's run is the latest data point.
 5. Webui F1 follow-up: give the loop-suspect/parked lamps real link
    targets (a webui parked-by-class view — the readmodel columns from
@@ -196,7 +196,7 @@ AGENTS.md formatter-padding inflation was restored to the compact table
 6. Webui BudgetParked exactness upgrade: read `parked_by`/`not_before`
    from the projection instead of the 24h fact-window approximation
    (needs the serve-path composition decision).
-7. `retryNotBefore` provider taxonomy: surface `FailureClass` in
+7. ~~`retryNotBefore` provider taxonomy: surface `FailureClass` in~~ — RESOLVED 2026-11-23: FailureClass surfaced: tq show renders the failure JSON section; class filters (AGENTS.md:213-218; cmd/tq/main.go:3444)
    `tq show`/journalaudit class counts (the fact carries it now; the
    readers can follow).
 8. Secret-injection widening per the design note's owner questions.

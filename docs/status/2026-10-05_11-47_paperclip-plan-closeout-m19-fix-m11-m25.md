@@ -14,7 +14,7 @@ investigated-and-rejected with the reasoning on disk.
 
 ## a) Fully done (each verified green at landing)
 
-1. **M19 — terminal-write retry** (`41afb323`): `persistOutcome` wraps
+1. ~~**M19 — terminal-write retry** (`41afb323`): `persistOutcome` wraps~~ — RESOLVED 2026-11-23: 41afb323
    ALL twelve transition writes (complete, all fail/fail-permanent
    sites, all requeue classes, cancel) with `retry.Do` (3 attempts,
    50–400 ms, busy-class classifier `isTransientStoreBusy`; go-retry
@@ -23,7 +23,7 @@ investigated-and-rejected with the reasoning on disk.
    a cancelled context does not retry. `TestExactlyOnceUnderConcurrency`
    5/5 `-race` at landing, 3/3 again at 11:2x; worker gate + unit pins
    (`TestPersistOutcome*`, `TestIsTransientStoreBusy`).
-2. **M11 — class-park surfaces** (`31b1998b`): `tq top` bpark column +
+2. ~~**M11 — class-park surfaces** (`31b1998b`): `tq top` bpark column +~~ — RESOLVED 2026-11-23: 31b1998b
    `budget_parked` JSON; `tq tasks --parked-class`; readmodel gains
    `not_before` + `parked_by` columns folded from the requeue evidence
    (metaengine ALTER-ADD confirmed safe for existing projection files;
@@ -31,7 +31,7 @@ investigated-and-rejected with the reasoning on disk.
    the init panic taught, then `RequeueClass` the named string passed);
    parity extended with a ±5 ms not_before tolerance (two clock
    readings in one transaction) + `TestParkedByProjection`.
-3. **M9 — webui operator-stance audit** (`d5e42cc8`,
+3. ~~**M9 — webui operator-stance audit** (`d5e42cc8`,~~ — RESOLVED 2026-11-23: d5e42cc8
    `docs/planning/2026-10-05_webui-operator-stance-audit.md`): 14
    surfaces × the three questions. The webui already carries the
    stance. ONE real fix (F3 → M10.3 mono session-usage line, one shared
@@ -41,7 +41,7 @@ investigated-and-rejected with the reasoning on disk.
    adapters clear `last_error` on completion; toasts don't exist so
    silent-refresh is satisfied by absence; cancelled is deliberately
    gray). F1 (lamps without link targets) filed, not half-fixed.
-4. **M12 — retry failure-classification** (executor taxonomy in
+4. ~~**M12 — retry failure-classification** (executor taxonomy in~~ — RESOLVED 2026-11-23: 6c892290 + a53e16e4
    `6c892290` — committed by the CONCURRENT window from my in-flight
    files; stamping in `a53e16e4`): `ClassifyFailure` + the
    transient/permanent/provider-window/environment taxonomy; the worker
@@ -51,22 +51,22 @@ investigated-and-rejected with the reasoning on disk.
    detection reads JSON body shapes (`"reset_at":`, `"retry_after":`
    quoted keys); conform pin `TestFailureEvidenceDetailRoundTrips`
    registered in the suite table, PASS on sqlitev4.
-5. **M13 — same-session first retry** (`a310c984`): the first retry
+5. ~~**M13 — same-session first retry** (`a310c984`): the first retry~~ — RESOLVED 2026-11-23: a310c984
    resumes the previous attempt's session (sidecar-derived session id);
    from the second retry on, fresh again. Payload-pinned sessions win;
    every miss degrades to today's fresh behavior. Pinned by
    `TestRetrySessionLadder`.
-6. **M14 — stranded-work lamp** (`bdb89ae8`): pending tasks whose dep is
+6. ~~**M14 — stranded-work lamp** (`bdb89ae8`): pending tasks whose dep is~~ — RESOLVED 2026-11-23: bdb89ae8
    dead/cancelled surface in the nowband with a what-to-do title.
    Deliberately DERIVED from existing reads — no stranded fact type
    (that contract addition awaits a demonstrated need).
-7. **M15 — zombie-run filter: INVESTIGATED, REJECTED, reverted.** The
+7. ~~**M15 — zombie-run filter: INVESTIGATED, REJECTED, reverted.** The~~ — RESOLVED 2026-11-23: disposition stands (this report a7)
    coalesce clause does count expired-lease zombies — but the block
    self-heals within one poll (~250 ms reclaim), while excluding them
    would let a sibling claim AND a reclaim land → TWO live runs per
    project, a genuine exclusivity violation. My one-line change was
    reverted before any test pinned it; this report is the disposition.
-8. **M16/M17/M18 — verified or hardened**: `tq work --agents` already
+8. ~~**M16/M17/M18 — verified or hardened**: `tq work --agents` already~~ — RESOLVED 2026-11-23: cmd/tq/main.go:1139; a6d1084d; scripts/lib/cmd-tq-devmod.sh:3-9
    carries the budget flags wired into `budgetClaimGate` (M16 done by
    the M2 window); M17.1 covered by `doctorBudget` + the pool-start
    ungated warning; M17.2 devmod preflight landed (`a6d1084d` — clear
@@ -74,39 +74,39 @@ investigated-and-rejected with the reasoning on disk.
    beheaded); M18's gopls noise root-caused (replace-free module needs
    the dev.mod shim; go.work forbidden by policy) and already
    documented — closed without spending AGENTS bytes.
-9. **M20 — guard/protocol doctrine** (`c974d66b`): the size-guard reset
+9. ~~**M20 — guard/protocol doctrine** (`c974d66b`): the size-guard reset~~ — RESOLVED 2026-11-23: c974d66b
    RULES pinned in the guard test (reset = net-new load-bearing only;
    formatter padding is pruned, never budgeted — with this window's
    1,706 B table-padding incident as the worked example); third reset
    to 15,700; facade-parity pre-commit ordering + claim-path
    cheap-first clauses; DOMAIN_LANGUAGE gains Cap / Claim gate /
    Parked-vs-refused.
-10. **M21 — examples + Windows** (`ec6d1422`): runnable
+10. ~~**M21 — examples + Windows** (`ec6d1422`): runnable~~ — RESOLVED 2026-11-23: ec6d1422
     `ExampleConfig_budget`; both embed examples point at it; Windows CI
     verified to already run the worker package (root + per-module
     loops) — no canary needed.
-11. **M23 — goal ancestry** (`0875e0a7`): prompts carry
+11. ~~**M23 — goal ancestry** (`0875e0a7`): prompts carry~~ — RESOLVED 2026-11-23: 0875e0a7
     `Repo purpose: {{REPO_PURPOSE}}` (single + batch) from
     `.config/metadata.yaml`; absent → honest README pointer.
-12. **M24 — secret-injection seam** (`2026686d`): agent spawns strip an
+12. ~~**M24 — secret-injection seam** (`2026686d`): agent spawns strip an~~ — RESOLVED 2026-11-23: 2026686d
     exact-key env denylist (`TQ_DB` — the documented
     inherited-production-journal hazard) at BOTH turn types; successor
     design (minted allowlist, `--strict-env`, managed HOME) specified
     with owner questions; SECURITY.md names the injection-vs-redaction
     posture.
-13. **M25 — parking + hygiene** (`81102012`): ROADMAP rows
+13. ~~**M25 — parking + hygiene** (`81102012`): ROADMAP rows~~ — RESOLVED 2026-11-23: 81102012
     (routines/cron with missed-run policies, org-scale attribution,
     injection endgame); the 02-36/02-38 predecessor §f sweep found
     every survivor owned or owner-blocked — nothing orphaned.
-14. **Twin-budget drift fixed** (`b6db79d4`): my own M20 reset updated
+14. ~~**Twin-budget drift fixed** (`b6db79d4`): my own M20 reset updated~~ — RESOLVED 2026-11-23: b6db79d4
     the Go-test cap but not the `check-agents-size.sh` twin — ci-local
     run 1 died exactly there (02-38 f6's prediction, lived once). Both
     twins now cross-name each other and the incident.
-15. **Facade parity restored** (`85a33009`): the M12 exported names
+15. ~~**Facade parity restored** (`85a33009`): the M12 exported names~~ — RESOLVED 2026-11-23: 85a33009
     lacked their ADR-0016 aliases (six skews, caught by matrix run 2);
     FailureClass + constants + ClassifyFailure re-export through the
     public executor facade; `check-facade-parity.sh` → OK 7/7.
-16. **Advisory baseline regenerated deliberately** (`87b26c44`): 31 new
+16. ~~**Advisory baseline regenerated deliberately** (`87b26c44`): 31 new~~ — RESOLVED 2026-11-23: 87b26c44
     findings across six (module, linter) pairs — all from this window's
     new code; formatting findings fixed via `golangci-lint --fix` (pure
     reflow, tests green), style classes absorbed 1255 → 1286, self-check
@@ -129,7 +129,7 @@ investigated-and-rejected with the reasoning on disk.
     diff — every per-module scan over the same code is green. Needs the
     02-52 provenance ruling or an in-module gosec triage; not chased
     further this window.
-18. **Contract-doc sync for the new surfaces**: AGENTS.md's payload
+18. ~~**Contract-doc sync for the new surfaces**: AGENTS.md's payload~~ — RESOLVED 2026-11-23: AGENTS.md carries the clauses: failure-evidence surface (:213-218), claim-time budget gate (:219), requeue ladder (:179-184), TQ_DB denylist (:169,358)
     contracts do not yet carry one-clause entries for the session
     ladder, the env denylist, and the failure-class evidence key; the
     DOMAIN_LANGUAGE budget rows landed but the retry-taxonomy terms did
@@ -138,21 +138,21 @@ investigated-and-rejected with the reasoning on disk.
 19. **FEATURES.md rows** for the new user-visible features (bpark
     column, --parked-class, stranded lamp, purpose prompts, taxonomy):
     not written this window.
-20. **CHANGELOG**: this session's features are itemized under
+20. ~~**CHANGELOG**: this session's features are itemized under~~ — RESOLVED 2026-11-23: released: retry-taxonomy entry (CHANGELOG.md:1636); v0.3.2 wave shipped
     `[Unreleased]` **Added**; the M6 release cut is untouched
     (owner-gated).
 
 ## c) Not started (owner-gated or explicitly deferred)
 
-21. M6 release v0.3.x (tag wave — now bundles the ADR-0019 endgame AND
+21. ~~M6 release v0.3.x (tag wave — now bundles the ADR-0019 endgame AND~~ — RESOLVED 2026-11-23: v0.3.x shipped and pushed: v0.3.1 cut, retracted on the broken-graph catch, v0.3.2 re-cut the full 22-tag wave; v0.4.x line live (docs/release/RELEASE.md:240-256; tags v0.3.1/v0.4.2 on origin)
     the paperclip wave; scope question open).
 22. M4 wake-trace implementation (§g-2 fact-type ruling; the design memo
     stands ready).
 23. M22 budget policy v2 (§g-1) and M2.4 precedence pin.
-24. Push of the local tail (16 commits ahead of origin at 11:47; early
+24. ~~Push of the local tail (16 commits ahead of origin at 11:47; early~~ — RESOLVED 2026-11-23: pushed: c8755d16 on origin/master; CI green
     commits were pushed mid-session by an authorized party, the rest
     await the ruling).
-25. Quiet-host ci-local capture (the standing 09-15 item; run 4 here is
+25. ~~Quiet-host ci-local capture (the standing 09-15 item; run 4 here is~~ — RESOLVED 2026-11-23: resolved via CI authority: master CI green at pinned SHA c8755d16, run 37361330330 SUCCESS incl. test-windows (20-35 report b2; c8755d16 on origin/master)
     the newest data point, under moderate load).
 26. Webui F1 (link targets for the loop-suspect/parked lamps) and the
     BudgetParked exactness upgrade (read the M11 projection columns
@@ -214,7 +214,7 @@ investigated-and-rejected with the reasoning on disk.
     line each), not a deferred doc-sync pass — the byte budget forces
     prune-while-adding, which is fine, but it must happen in the same
     window.
-39. **Evidence directory**: stop writing gate logs to /tmp; a
+39. ~~**Evidence directory**: stop writing gate logs to /tmp; a~~ — RESOLVED 2026-11-23: scripts/archive-evidence.sh exists
     `.gates/` (gitignored) or docs-evidence archive step per window
     ends the reboot-amnesia class for good.
 40. **Attribution**: with two live windows, files change mid-edit
@@ -227,22 +227,22 @@ investigated-and-rejected with the reasoning on disk.
 1. The gosec post-config gate's root-scan 0-files failure (run 4's
    stopper): triage the UNSTAMPED host gosec binary against the pinned
    v2.29.0 (02-52 §g q2) or the in-module path, then re-run the matrix.
-2. Owner: push authorization for the 16-commit local tail.
-3. Owner: M6 tag wave scope (one wave or split endgame/paperclip).
+2. ~~Owner: push authorization for the 16-commit local tail.~~ — RESOLVED 2026-11-23: pushed (c8755d16 on origin/master)
+3. ~~Owner: M6 tag wave scope (one wave or split endgame/paperclip).~~ — RESOLVED 2026-11-23: one v0.3.x wave shipped, then v0.4.x line (RELEASE.md:240-256; tags on origin)
 4. Owner: §g-2 wake fact-type ruling → M4 implementation.
 5. Owner: §g-1 budget policy v2 ruling → M22; M2.4 precedence ruling.
-6. Contract-doc prune-and-add pass: AGENTS.md clauses for the session
+6. ~~Contract-doc prune-and-add pass: AGENTS.md clauses for the session~~ — RESOLVED 2026-11-23: clauses landed (AGENTS.md:169,179-184,213-221,358)
    ladder / env denylist / failure-class evidence key / class-park
    surfaces (§b18), staying inside 15,700.
 7. FEATURES.md rows for the session's user-visible features (§b19).
 8. `nix build .#checks.x86_64-linux.vendor-hash` + `nix flake check` at
    final HEAD (§c27).
-9. Quiet-host ci-local capture when load drops; archive the log
+9. ~~Quiet-host ci-local capture when load drops; archive the log~~ — RESOLVED 2026-11-23: resolved via CI authority: master CI green at pinned SHA c8755d16, run 37361330330 SUCCESS incl. test-windows (20-35 report b2; c8755d16 on origin/master)
    properly this time (not /tmp).
 10. Webui F1: real link targets for the parked/loop-suspect lamps.
 11. Webui BudgetParked exactness: read the M11 projection columns via
     the serve-path composition.
-12. Surface `FailureClass` in `tq show` + journalaudit class counts.
+12. ~~Surface `FailureClass` in `tq show` + journalaudit class counts.~~ — RESOLVED 2026-11-23: AGENTS.md:213-218 documents the failure-evidence surface; cmd/tq/main.go:3444
 13. Secret-injection widening per the design note's owner questions.
 14. `heal-daemon-sweep.sh` task-less mode (re-validated by this
     window's five folds).
@@ -251,8 +251,8 @@ investigated-and-rejected with the reasoning on disk.
 16. Postgres backend: run the conform suite (incl. the new round-trip
     pin) under TQ_TEST_POSTGRES locally once.
 17. Evidence-rescue pass on this window's /tmp logs before any reboot.
-18. The 10-15 report's wire-nix-flake-check-into-a-gate proposal.
-19. Digest/archive sweep of the status index (214 live rows, standing
+18. ~~The 10-15 report's wire-nix-flake-check-into-a-gate proposal.~~ — RESOLVED 2026-11-23: gated at scripts/ci-local.sh:1075
+19. ~~Digest/archive sweep of the status index (214 live rows, standing~~ — RESOLVED 2026-11-23: threshold re-derived + pruned (TODO_LIST.md:790); monthly digest ritual running (docs/status/README.md:167)
     owner-blocked threshold breach).
 20. Re-run `TestExactlyOnceUnderConcurrency -count=20 -race` on a quiet
     host as the final M19 seal.

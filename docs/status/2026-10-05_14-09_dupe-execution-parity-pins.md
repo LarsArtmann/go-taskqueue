@@ -55,10 +55,10 @@ files only; the daemon folded every change (e2a7a825, 93245412, feb791f4,
 
 ## a) FULLY DONE
 
-1. Self-repair: blank-line table break in docs/status/README.md fixed (my
+1. ~~Self-repair: blank-line table break in docs/status/README.md fixed (my~~ — RESOLVED 2026-11-23: index table intact; report row present in docs/status/README.md
    own artifact); `scripts/check-status-index.sh` → `status index ok`; row
    contiguous with the table.
-2. The 12-27 report's core finding SHIPPED:
+2. ~~The 12-27 report's core finding SHIPPED:~~ — RESOLVED 2026-11-23: internal/readmodel/detailkeys_test.go at HEAD
    internal/readmodel/detailkeys_test.go — four tests / five cases:
    repriDetail↔queue.ReprioritizeEvidence, requeueDetail↔queue.RequeueEvidence
    (full + legacy-absent-class), enqueueDetail↔queue.EnqueueDetail, plus
@@ -69,11 +69,11 @@ files only; the daemon folded every change (e2a7a825, 93245412, feb791f4,
    (internal/budget/budget.go:189-193).
 3. readmodel module gate green: gofmt clean, build+vet clean, full suite
    `ok 0.157s -count=1` (final state, after all edits).
-4. f17/f18 doc fixes: deliberate-shell rationale added to the status Sweeper
+4. ~~f17/f18 doc fixes: deliberate-shell rationale added to the status Sweeper~~ — RESOLVED 2026-11-23: internal/status/sweep.go:96 + internal/readmodel/readmodel.go:76
    (internal/status/sweep.go:83-91, parity with dlqfix/review siblings);
    TaskFilter doc pointer to TaskList's MUST-NOT-dispatch warning
    (internal/readmodel/readmodel.go:63-68). status module BUILD+VET OK.
-5. LSP noise verified false positive via CLI gates (f10/f11): cqrs
+5. ~~LSP noise verified false positive via CLI gates (f10/f11): cqrs~~ — RESOLVED 2026-11-23: CLI gates green at HEAD (cmd/tq gate rc=0 in the c8755d16 CI run)
    GOWORK=off build+vet OK; cmd/tq gate `rc=0, ok 15.605s` — all 58 gopls
    "undefined" errors on cmd/tq/main.go and the cqrs go.mod errors are the
    documented stale-gopls class. Nothing to fix.
@@ -83,13 +83,13 @@ files only; the daemon folded every change (e2a7a825, 93245412, feb791f4,
    13:15/13:17 touched it; gate re-run GREEN. Transient concurrent-window
    mid-edit state — not my change (I never touched AGENTS.md), not fixed by
    me, nothing to do.
-7. f26/f25: "Scan failure" term added to docs/DOMAIN_LANGUAGE.md (Harvest
+7. ~~f26/f25: "Scan failure" term added to docs/DOMAIN_LANGUAGE.md (Harvest~~ — RESOLVED 2026-11-23: docs/DOMAIN_LANGUAGE.md:74 + ROADMAP.md:303
    loop table, beside Drift; names the deliberate per-sweeper vocabulary of
    harvest.ScanFailure/depsweep.Skip); budget-facade idea added to
    ROADMAP.md Raw ideas (group-5 disposition).
 8. f29 closed by inspection: exactly three json.Unmarshal sites in
    internal/readmodel (events.go:213/233/247), all three now pinned.
-9. HARVEST (f2): 7-row dedup-checked section appended to TODO_LIST.md
+9. ~~HARVEST (f2): 7-row dedup-checked section appended to TODO_LIST.md~~ — RESOLVED 2026-11-23: 7-row section at TODO_LIST.md:766-774; every row since ticked DONE
    (webui provenance twin, accepted-groups ledger, dupe-baseline gate,
    mirror-clones coverage, budgetUsageView golden pin, metaengine citation,
    advisory-lint pass) — `check-todo-list.sh` ok; index-sweep NOT re-rowed
@@ -113,15 +113,15 @@ files only; the daemon folded every change (e2a7a825, 93245412, feb791f4,
 
 ## c) NOT STARTED
 
-1. The seven harvested TODO rows (webui provenance twin, accepted-groups
+1. ~~The seven harvested TODO rows (webui provenance twin, accepted-groups~~ — RESOLVED 2026-11-23: all seven ticked DONE (TODO_LIST.md:768-774)
    ledger, dupe-baseline gate, mirror-clones coverage, budgetUsageView
    golden pin, metaengine citation, advisory-lint pass) — by design, they
    are the pool's work now.
 2. f27 lessons.md (crush-config repo, cross-project commit) — skipped with
    rationale now recorded HERE (should have been recorded in-session).
-3. f24 AGENTS.md memory line — superseded by the f9 ledger row (harvested).
-4. Root build+vet (f3 remainder).
-5. CHANGELOG bullet for the parity pins (repo convention: shipped work
+3. ~~f24 AGENTS.md memory line — superseded by the f9 ledger row (harvested).~~ — RESOLVED 2026-11-23: superseded by the docs ledger (TODO_LIST.md:769)
+4. ~~Root build+vet (f3 remainder).~~ — RESOLVED 2026-11-23: root build+vet green (20-35 report a9); CI green at c8755d16
+5. ~~CHANGELOG bullet for the parity pins (repo convention: shipped work~~ — RESOLVED 2026-11-23: no-row ruling for internal-only work (20-39 report a1 Q3)
    lives in CHANGELOG; nothing appended this session).
 
 ## d) TOTALLY FUCKED UP
@@ -164,18 +164,18 @@ clean. The honest fucks are mine, process-level:
 
 ## f) Top things to get done next (session-grounded, deduped against the 7 rows already in TODO_LIST — those are NOT re-listed; cut before padding toward 50 because the rest of the honest surface is already harvested)
 
-1. Mutation-verify detailkeys_test.go once: scratch-rename a queue tag,
+1. ~~Mutation-verify detailkeys_test.go once: scratch-rename a queue tag,~~ — RESOLVED 2026-11-23: demonstrated 2026-10-20: renamed tag fails the pin; demo recorded at internal/readmodel/detailkeys_test.go:22-23 (TODO_LIST.md:788)
    watch the pin FAIL, record the demonstration in the test comment (or add
    a renamed-key fixture asserting the zero-decode). **Critical / S / Testing**
-2. Finish f3: root build+vet + the full per-module gate loop at HEAD
+2. ~~Finish f3: root build+vet + the full per-module gate loop at HEAD~~ — RESOLVED 2026-11-23: green (20-35 report a9; CI at c8755d16)
    (GOCACHE=/tmp/go-build-cache, GOEXPERIMENT=jsonv2). **High / S / Quality**
-3. Full ci-local certification at current HEAD — the tree moved across
+3. ~~Full ci-local certification at current HEAD — the tree moved across~~ — RESOLVED 2026-11-23: resolved via CI authority: master CI green at pinned SHA c8755d16, run 37361330330 SUCCESS incl. test-windows (20-35 report b2; c8755d16 on origin/master)
    ≥4 windows today (size-guard churn, art-dupl sweep, my pins); nobody has
    a green full-run claim at THIS head. **High / M / Quality**
 4. Annotate the 12-27 report §f inline (SHIPPED <ref> on items 1-5, 17, 18,
    26, 28, 29; disposition notes on 23/24/27) per docs-health ANNOTATE
    semantics. **Medium / S / Documentation**
-5. Cross-read the concurrent art-dupl-t4-zero-dedup-sweep report before
+5. ~~Cross-read the concurrent art-dupl-t4-zero-dedup-sweep report before~~ — RESOLVED 2026-11-23: executed: TODO_LIST.md:788 (both named items done, remainder dispositioned)
    either window lands the accepted-groups ledger — one dedupe pass, one
    ledger, not two. **Medium / S / Process**
 6. Size-guard provenance hint: append `git log -1 --format=%as -- AGENTS.md`
@@ -185,17 +185,17 @@ clean. The honest fucks are mine, process-level:
 7. Table-continuity check in check-status-index.sh: fail on an empty line
    between `| 20` rows (today's d1 class is invisible to the presence-only
    check). **Medium / S / Tooling**
-8. Post-fold verification for THIS report: check-status-index.sh after the
+8. ~~Post-fold verification for THIS report: check-status-index.sh after the~~ — RESOLVED 2026-11-23: report indexed with an intact row (docs/status/README.md)
    daemon folds it; amend-maneuver if row and file land in separate
    commits. **Medium / S / Process**
-9. CHANGELOG [Unreleased] bullet for the detail-key parity pins +
+9. ~~CHANGELOG [Unreleased] bullet for the detail-key parity pins +~~ — RESOLVED 2026-11-23: no-row ruling for internal-only work (20-39 report a1 Q3)
    repriEvent policy pin (or an explicit fold-into-next-entry decision).
    **Medium / S / Documentation**
 10. g1 follow-through: if the owner rules direct-reuse, delete the three
     local detail structs, repoint the three decode sites at the queue
     types, keep repriEvent's fail-on-malformed policy, and convert the pins
     to round-trip tests. **Medium / M / Quality (blocked: g1 ruling)**
-11. g2/g3 disposition: file the outcomes of the dupe-baseline-gate and
+11. ~~g2/g3 disposition: file the outcomes of the dupe-baseline-gate and~~ — RESOLVED 2026-11-23: dupe-baseline gate decided + shipped (TODO_LIST.md:770); budget-facade ROADMAP row at :303
     budget-facade questions into the rows that carry them (TODO_LIST 12-27
     section; ROADMAP raw idea). **Medium / S / Process (blocked: rulings)**
 12. lessons.md candidates for crush-config references/lessons.md (by commit

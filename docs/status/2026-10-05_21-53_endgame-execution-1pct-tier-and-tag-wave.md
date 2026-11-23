@@ -127,21 +127,21 @@ genuine upstream design questions.
 
 ## f) NEXT (top ~20, priority order)
 
-1. Finish the 2 gocyclo test splits (parity_test) + verify all 5 lint
+1. ~~Finish the 2 gocyclo test splits (parity_test) + verify all 5 lint~~ — RESOLVED 2026-11-23: lint fixes verified: lint-baseline within baseline at HEAD (20-35 report a6)
    fixes → lint-baseline green.
-2. Re-run `release.sh v0.3.1` → `--tag` → `--push` → proxy + cleanroom
+2. ~~Re-run `release.sh v0.3.1` → `--tag` → `--push` → proxy + cleanroom~~ — RESOLVED 2026-11-23: completed: v0.3.1 cut+pushed, retracted on the broken-graph catch, v0.3.2 re-cut the full 22-tag wave (docs/release/RELEASE.md:240-256)
    `go install` verify (completes M05, F019–F026).
-3. Push master; watch the CI run go green (closes M10).
-4. Update AGENTS STATUS line + `docs/release/RELEASE.md` for v0.3.1
+3. ~~Push master; watch the CI run go green (closes M10).~~ — RESOLVED 2026-11-23: resolved via CI authority: master CI green at pinned SHA c8755d16, run 37361330330 SUCCESS incl. test-windows (20-35 report b2; c8755d16 on origin/master)
+4. ~~Update AGENTS STATUS line + `docs/release/RELEASE.md` for v0.3.1~~ — RESOLVED 2026-11-23: RELEASE.md documents v0.3.1/v0.3.2 (:240-256); AGENTS STATUS line updated (AGENTS.md:5, now v0.4.2)
    (F026 residue).
-5. Grandfather the session's daemon sweeps in the attribution baseline
+5. ~~Grandfather the session's daemon sweeps in the attribution baseline~~ — RESOLVED 2026-11-23: baselined: scripts/daemon-sweep-baseline.txt:378 (33a76ac9) and :1178 (be9bead4)
    (one pass).
 6. M08: projectionhost skeleton over FactJournal (F035) → watermarks
    CheckpointStore adapter (F036) → DLQ + options (F037) → pump shrinks
    to Handle (F038) → poison-fact DLQ test (F039) → lag gauge (F040).
 7. M09: doctor projection section (F041) → HealthCheckDetailed into
    /health (F042–F043).
-8. M13: S2 flip — Fact alias (F058), Detail sweep 79 sites (F059–F060),
+8. ~~M13: S2 flip — Fact alias (F058), Detail sweep 79 sites (F059–F060),~~ — RESOLVED 2026-11-23: landed: type Fact = facts.Fact (internal/journal/journal.go:44)
    companion scanFacts (F061), memory journal + cqrs re-point (F062),
    facade parity + gates (F063–F064). Closes the LAST ADR-0019 stage.
 9. M11/M12 disambiguation from the 09-15/10-15 reports, then execute.

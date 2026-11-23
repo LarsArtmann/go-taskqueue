@@ -15,7 +15,7 @@ nothing owner-gated was touched.
 1. **vendorHash verified current** despite 55 fleet commits since the P4
    landing (first action after the interruption-gap lesson from §d22 of
    the prior report).
-2. **`nix flake check` GREEN — after root-causing a pre-existing eval
+2. ~~**`nix flake check` GREEN — after root-causing a pre-existing eval~~ — RESOLVED 2026-11-23: apps default/lint/fmt fully defined (e62581a0); flake check now a ci-local gate (scripts/ci-local.sh:1075)
    collision** (it was never green; previous windows only ran `nix
    build`). The repo's `apps.<name>.meta.description` leaf-augmentations
    collide with go-nix-helpers' `mkDefault`-wrapped whole-app definitions:
@@ -25,10 +25,10 @@ nothing owner-gated was touched.
    helper rev (0fc140f0). Fixed by defining all three apps fully,
    mirroring the upstream programs (binary exe; golangci-lint with the
    tarball Go; treefmt wrapper). treefmt amended. Commits e62581a0 + amend.
-3. **webui.sh + api.sh smokes GREEN** against the now-default readmodel
+3. ~~**webui.sh + api.sh smokes GREEN** against the now-default readmodel~~ — RESOLVED 2026-11-23: scripts/smoke/webui.sh + scripts/smoke/api.sh exist and ride ci-local
    path (`tq serve`/`tq api` compose through the S4 system/ root) — the
    "not run since P2's flip" debt is paid.
-4. **Dogfood dry-run BUILT, GREEN, and wired into ci-local**:
+4. ~~**Dogfood dry-run BUILT, GREEN, and wired into ci-local**:~~ — RESOLVED 2026-11-23: scripts/smoke/legacy-serve-upgrade.sh wired into ci-local (scripts/ci-local.sh:737; c306269a)
    `scripts/smoke/legacy-serve-upgrade.sh` — seeds an honest pre-flip
    journal, runs `tq serve`, asserts auto-upgrade (exactly ONE
    `<db>.legacy-*.bak`), readmodel default-ON (`<db>.readmodel.db`),
@@ -36,7 +36,7 @@ nothing owner-gated was touched.
    ordering), then post-exit integrity (fact survived, head seq
    unchanged, re-open mints no second backup, migration log line).
    ci-local runs it right after the web UI smoke (c306269a).
-5. **REAL BUG found by that smoke and FIXED** (the smoke's first run
+5. ~~**REAL BUG found by that smoke and FIXED** (the smoke's first run~~ — RESOLVED 2026-11-23: pinned by TestUpgradeIfNeededToleratesAbsentFeatureTables (internal/queue/sqlitev4/migration/migrate_test.go:448); tolerance clause at AGENTS.md:421
    failed — honestly): auto-upgrade verify refused legacy journals that
    lack feature-era tables (deps / watermarks / priority_scores) with a
    confusing `no such table: priority_scores` SQL mismatch →
@@ -52,23 +52,23 @@ nothing owner-gated was touched.
    tolerance clause within budget (15,397/15,400, cd451220). The fix was
    daemon-swept footer-less (ea7866b6) before my attribution commit
    landed — grandfathered in the daemon baseline, see a7.
-6. **lint-baseline regenerated deliberately** (145cf459): the 10-03
+6. ~~**lint-baseline regenerated deliberately** (145cf459): the 10-03~~ — RESOLVED 2026-11-23: 145cf459 committed
    nixpkgs roll upgraded golangci-lint to 2.14.0 whose new default
    linters (contextcheck, godoclint, golines, inamedparam, mnd, nilerr,
    nilnil, noctx, paralleltest, usetesting, …) made 21 (module, linter)
    pairs "new classes". ZERO growth in existing classes — the ruler
    changed, not the code; the deliberate-regen clause of the gate's
    message applies. Post-regen `--check`: within baseline (1255 = 1255).
-7. **daemon-sweep baseline +18 shas** (fleet had 16 pushed
+7. ~~**daemon-sweep baseline +18 shas** (fleet had 16 pushed~~ — RESOLVED 2026-11-23: rows live in scripts/daemon-sweep-baseline.txt
    footer-less-shipping sweeps accumulate since its last update; 2 are
    this window's migration-fix sweep — pushed ⇒ heal forbidden, so
    grandfathered uniformly). Gate: 1086 baselined, 0 new.
-8. **ci.yml SC2086 silenced** (79fe53e3): actionlint's bundled shellcheck
+8. ~~**ci.yml SC2086 silenced** (79fe53e3): actionlint's bundled shellcheck~~ — RESOLVED 2026-11-23: 79fe53e3 directives in ci.yml
    flagged the gosec job's deliberate unquoted `$GOSEC_EXCLUDES`
    word-splits (09-28 code; the gate had not been reached by any matrix
    since — lint-baseline always died first). Directive + comment,
    behavior identical.
-9. **dead-sha baseline +6** (the paperclip-m2 report's and README's
+9. ~~**dead-sha baseline +6** (the paperclip-m2 report's and README's~~ — RESOLVED 2026-11-23: patch-id mappings recorded in the dead-sha baseline comment
    rebased-away citations): patch-id mappings recovered and recorded in
    the baseline comment for future healers (058dbbe0→f5d773b9,
    2da0bad6→92932f2f, e0f65d93→d76c6437, e3fcd3c7→503d553e; 0b72db95 +
@@ -102,11 +102,11 @@ nothing owner-gated was touched.
 
 ## c) Not started (all owner-gated, unchanged from the prior report)
 
-12. Tag wave (root v0.3.1 + six internal tags; then delete the
+12. ~~Tag wave (root v0.3.1 + six internal tags; then delete the~~ — RESOLVED 2026-11-23: shipped: v0.3.x shipped and pushed: v0.3.1 cut, retracted on the broken-graph catch, v0.3.2 re-cut the full 22-tag wave; v0.4.x line live (docs/release/RELEASE.md:240-256; tags v0.3.1/v0.4.2 on origin); check-go-mods pending-tag block deleted (a7144563); facade parity green vs real tags
     check-go-mods pending-tag block + facade-parity re-pin).
-13. P5 legacy deletion + docs truth pass (cqrsqlite deletion, dual-tally
+13. ~~P5 legacy deletion + docs truth pass (cqrsqlite deletion, dual-tally~~ — RESOLVED 2026-11-23: executed: cqrsqlite module deleted (c8755d16), dual-tally collapse (a45d9f08), docs truth pass (874e1934)
     collapse, ADR/FEATURES/CHANGELOG/TODO_LIST rows, LOC/art-dupl delta).
-14. Dogfood cutover (systemd restart against the production journal).
+14. ~~Dogfood cutover (systemd restart against the production journal).~~ — RESOLVED 2026-11-23: done: live on the tagged nix binary; runbook at docs/release/2026-10-05_CUTOVER-RUNBOOK.md (67164cec)
 
 ## d) Totallymente fucked up (honesty section)
 
@@ -155,11 +155,11 @@ nothing owner-gated was touched.
 1. If run5's tail exposes further foreign races (daemon mid-write
    commits), re-run only the affected step; expect full green on a
    quiescent tree.
-2. `nix flake check` re-run at final HEAD (prior green predates the
+2. ~~`nix flake check` re-run at final HEAD (prior green predates the~~ — RESOLVED 2026-11-23: green at final HEAD same day (10-15 report a2); now gated (scripts/ci-local.sh:1075)
    migration fix; FOD rebuild expected green — the module loop and
    cmd/tq gate already re-verified the code).
-3. Owner answers §g (below) — tag wave, dogfood cutover, P5 cadence.
-4. P5 item list: see prior report §f5-13 (cqrsqlite deletion, dual-tally
+3. ~~Owner answers §g (below) — tag wave, dogfood cutover, P5 cadence.~~ — RESOLVED 2026-11-23: answered and recorded (docs/planning/2026-10-05_15-00_OWNER-RULINGS-SHEET.md); tag wave, cutover and P5 all executed
+4. ~~P5 item list: see prior report §f5-13 (cqrsqlite deletion, dual-tally~~ — RESOLVED 2026-11-23: executed (21-53 report a M02/M04/M07: tally collapse, cqrsqlite deletion, docs truth pass)
    collapse, docs truth pass, LOC/art-dupl delta).
 5. Upstream (go-nix-helpers) issue candidate: leaf-augmentation silently
    deleting a whole mkDefault app is a footgun worth reporting (verify
