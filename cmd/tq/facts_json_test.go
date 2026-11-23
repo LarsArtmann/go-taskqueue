@@ -121,7 +121,11 @@ import (
 // Relation bullet with the annotate knob semantics — net-new load-bearing
 // for every report-writing session; AGENTS.md 27_810 at reset, foreign
 // growth, pruned nothing; twin scripts/check-agents-size.sh re-synced).
-const agentsDocMaxBytes = 27_900
+// 2026-11-23 (second): conscious reset 27_900 → 28_100 for the f11
+// convention line in §Known Issues (foreign-session AGENTS growth resets
+// the budget in the same change — the line IS that convention; AGENTS.md
+// 27_995 at reset, own growth, pruned nothing).
+const agentsDocMaxBytes = 28_100
 
 // TestAgentsDocSizeGuard keeps AGENTS.md from silently growing past its
 // byte budget (plan M89 residue); the failure names the top sections so a
