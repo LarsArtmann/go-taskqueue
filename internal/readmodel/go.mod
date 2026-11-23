@@ -1,6 +1,6 @@
 module github.com/larsartmann/go-taskqueue/internal/readmodel
 
-go 1.27.4
+go 1.27.2
 
 require (
 	github.com/larsartmann/go-cqrs-lite/event/v4 v4.15.2

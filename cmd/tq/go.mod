@@ -1,6 +1,6 @@
 module github.com/larsartmann/go-taskqueue/cmd/tq
 
-go 1.27.4
+go 1.27
 
 require (
 	github.com/dustin/go-humanize v1.1.0
