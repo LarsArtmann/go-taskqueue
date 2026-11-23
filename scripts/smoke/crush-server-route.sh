@@ -33,7 +33,16 @@
 #   respawn    — kill -9 the server; the next routed client respawns it
 #                (M7: ensureServer) and a fresh run completes
 #
-# No tq binary is exercised by the WIRE legs (the pool-integration E-gaps
+# v0.102.0 re-read (2026-11-23, research note docs/research/
+# 2026-11-23_00-32 citations 8/9/12): headless stays attach-only (a run
+# never leaves a server behind), routed runs report SetCurrentSession as
+# VIEWER (so cancel-when-last-viewer-leaves cannot hit them), interrupt
+# defers a 5s server-side CancelAgentSession, and client-side respawn is
+# TUI-only — the respawn leg above now exercises the SUPERVISOR restart
+# path only. The env-gap canary assumptions carry no cited v0.102.0
+# change (crush#4210 gap not in the release notes); the legs run live
+# against the deployed binary (F13/F14) before any pin flips.
+## No tq binary is exercised by the WIRE legs (the pool-integration E-gaps
 # 429/question-poll stay unit-pinned until the env gap closes); the BRIDGE
 # leg builds one (TQ_BIN pre-supply honored — `tq verdict --file` is the
 # command the rail teaches). TQ_DB is

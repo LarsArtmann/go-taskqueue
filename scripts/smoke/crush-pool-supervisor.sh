@@ -38,6 +38,20 @@
 # crush + python3 + git; TQ_BIN can pre-supply the tq binary for the
 # keeper leg. Scratch-only (TQ_DB hook rail), size-guarded (the 7.3G
 # crash-loop lesson, 2026-11-01 §d2).
+#
+# v0.102.0 re-read (2026-11-23, research note docs/research/
+# 2026-11-23_00-32 citations 7/14) — TWO watch-items for the live run
+# (F15, observe-first):
+#   V2.10 mid-run kill: the pinned "severed client exits 0 with the WARN
+#     line" is the v0.101 rc-0 lie. v0.102.0 fail-on-drop makes the
+#     severed client exit NONZERO with "lost connection to the crush
+#     server before the run completed" — the executor's M1 markers
+#     already match both; the leg's pin flips to the OBSERVED rc/text.
+#   operator cancel busy-reap: IsBusy is WIDER (counts acceptedRuns;
+#     IsSessionBusy split into HasActiveTurn/HasPendingWork) — if a
+#     cancelled client's accepted-but-unstarted run lingers, the "no
+#     busy session post-cancel" assertion may read nonzero. Judge the
+#     observed shape before tightening the reap pin.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 REPO_ROOT="$(pwd)"
