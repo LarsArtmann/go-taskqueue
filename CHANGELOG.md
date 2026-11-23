@@ -8,6 +8,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- **`tq mcp`**: a stdio MCP (Model Context Protocol) server over the
+  queue's reads — JSON-RPC 2.0 tools `task_list`, `task_show`,
+  `queue_stats`, `dlq_list` so agent sessions query the journal through
+  tool calls instead of shelling out (`tq tasks | grep` quoting
+  hazards). Read-only; the database rides the standard `--db` /
+  `$TQ_DB` resolution like every read command. First Phase-1 slice of
+  the tq-channels plan (plan 2026-10-16_01-11); `park_task` and the
+  push channel stay behind the owner gate.
 - `tq serve --daily-budget N`: the live dashboard now renders the budget
   meter (`budget today spent/cap` + fill bar) when the operator passes the
   cap — previously the meter only existed behind the agent pool's own

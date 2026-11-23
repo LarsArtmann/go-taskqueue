@@ -13,6 +13,7 @@ require (
 	github.com/larsartmann/go-taskqueue/internal/composition v0.4.2
 	github.com/larsartmann/go-taskqueue/internal/config v0.4.2
 	github.com/larsartmann/go-taskqueue/internal/dlqbackoff v0.4.2
+	github.com/larsartmann/go-taskqueue/internal/mcpserver v0.4.2
 	github.com/larsartmann/go-taskqueue/internal/executor v0.4.2
 	github.com/larsartmann/go-taskqueue/internal/journal v0.4.2
 	github.com/larsartmann/go-taskqueue/internal/journal/cqrs v0.4.2

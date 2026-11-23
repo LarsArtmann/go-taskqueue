@@ -10,6 +10,7 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
+
 // defaultTools is the v1 registry: read-only surfaces, one tool per
 // `tq` read command the agent pool actually shells out for. park_task
 // (the write tool) joins behind the same shape once the owner rules it
@@ -276,9 +277,16 @@ func (s *Server) handleQueueStats(ctx context.Context, _ json.RawMessage) (strin
 		return "", fmt.Errorf("status counts: %w", err)
 	}
 
-	byProject, err := s.store.ProjectCounts(ctx)
+	byProjectRaw, err := s.store.ProjectCounts(ctx)
 	if err != nil {
 		return "", fmt.Errorf("project counts: %w", err)
+	}
+
+	byProject := make(map[string]int, len(byProjectRaw))
+	for project, counts := range byProjectRaw {
+		for _, n := range counts {
+			byProject[project] += n
+		}
 	}
 
 	statuses, total := task.StatusCountsView(byStatus)

@@ -98,12 +98,18 @@ func (s *stubStore) StatusCounts(_ context.Context) (map[task.Status]int, error)
 	return counts, nil
 }
 
-func (s *stubStore) ProjectCounts(_ context.Context) (map[string]int, error) {
-	counts := map[string]int{}
+func (s *stubStore) ProjectCounts(_ context.Context) (map[string]map[task.Status]int, error) {
+	counts := map[string]map[task.Status]int{}
 	for _, row := range s.tasks {
-		if row.project != "" {
-			counts[row.project]++
+		if row.project == "" {
+			continue
 		}
+
+		if counts[row.project] == nil {
+			counts[row.project] = map[task.Status]int{}
+		}
+
+		counts[row.project][task.Status(row.status)]++
 	}
 
 	return counts, nil
@@ -153,8 +159,8 @@ func TestTaskListGoldenShape(t *testing.T) {
 
 	want := `[{` +
 		`"id":"t1","project":"demo","type":"agent","status":"pending",` +
-		`"maxAttempts":0,"createdAt":"2026-11-23T01:02:03Z"},` +
-		`{"id":"t2","type":"sh","status":"dead","attempts":3,` +
+		`"attempts":0,"maxAttempts":0,"createdAt":"2026-11-23T01:02:03Z"},` +
+		`{"id":"t2","type":"sh","status":"dead","attempts":3,"maxAttempts":0,` +
 		`"lastError":"` + strings.Repeat("x", 240) + `…",` +
 		`"createdAt":"2026-11-23T01:02:03Z"}]`
 

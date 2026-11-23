@@ -59,7 +59,7 @@ func decodeInto(t *testing.T, line string, target any) {
 // closes cleanly.
 func TestServeConversation(t *testing.T) {
 	store := &stubStore{
-		tasks: []stubTask{{id: "t1", project: "demo", typ: "agent", status: "pending"}},
+		tasks:        []stubTask{{id: "t1", project: "demo", typ: "agent", status: "pending"}},
 		statusCounts: map[string]int{"pending": 1},
 	}
 

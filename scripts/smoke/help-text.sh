@@ -42,7 +42,7 @@ check_help "tq" "$root_help"
 
 # Subcommands (kept in sync with the Usage block of `tq -h`; the explicit
 # dlq line below is the work item's minimum coverage regardless).
-cmds="enqueue worker harvest bootstrap agent-pool stats tasks audit doctor top show dlq cancel facts tail serve api version"
+cmds="enqueue worker harvest bootstrap agent-pool stats tasks audit doctor top show dlq cancel facts tail serve mcp api version"
 
 for cmd in $cmds; do
 	out="$("$TQ" "$cmd" -h 2>&1)" || {

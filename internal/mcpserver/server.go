@@ -23,7 +23,7 @@ type Store interface {
 	List(ctx context.Context, f queue.Filter) ([]task.Task, error)
 	FactsForTask(ctx context.Context, id string, limit int) ([]journal.Fact, error)
 	StatusCounts(ctx context.Context) (map[task.Status]int, error)
-	ProjectCounts(ctx context.Context) (map[string]int, error)
+	ProjectCounts(ctx context.Context) (map[string]map[task.Status]int, error)
 }
 
 // Tool is one registered MCP tool: a name, a description the model reads

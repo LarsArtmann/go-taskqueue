@@ -19,6 +19,7 @@ use (
 	../../internal/composition
 	../../internal/config
 	../../internal/dlqbackoff
+	../../internal/mcpserver
 	../../internal/executor
 	../../internal/journal
 	../../internal/journal/cqrs
