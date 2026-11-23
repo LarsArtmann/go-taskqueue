@@ -116,7 +116,12 @@ import (
 // pointer had already cost one stale-truth cycle; twin re-synced.
 // 2026-11-17: conscious reset 27_200 → 27_600 for the network-outage park
 // contract (one bullet in §Payload contracts; AGENTS.md 27_453 at reset).
-const agentsDocMaxBytes = 27_600
+// 2026-11-23: conscious reset 27_600 → 27_900 for the docs-gates v0.5.0
+// annotate_corpus flip doctrine (commit ea496f69 widened the docs-gates
+// Relation bullet with the annotate knob semantics — net-new load-bearing
+// for every report-writing session; AGENTS.md 27_810 at reset, foreign
+// growth, pruned nothing; twin scripts/check-agents-size.sh re-synced).
+const agentsDocMaxBytes = 27_900
 
 // TestAgentsDocSizeGuard keeps AGENTS.md from silently growing past its
 // byte budget (plan M89 residue); the failure names the top sections so a
