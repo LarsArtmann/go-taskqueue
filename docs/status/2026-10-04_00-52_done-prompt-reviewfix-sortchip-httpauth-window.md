@@ -12,23 +12,23 @@ read-only), and a fresh `heal-daemon-sweep.sh --self-test` run at HEAD.
 
 ## a) FULLY DONE
 
-1. **STATUS column widen (task …8ac2, commit `47a6515d`, healed into the task footer).**
+1. ~~**STATUS column widen (task …8ac2, commit `47a6515d`, healed into the task footer).**~~ — RESOLVED 2026-11-23: live at HEAD — `%-14s` in cmd/tq/tasks.go:307,319; commit 47a6515d carries trailer Task-Queue-ID=000001a0ff268ac2823ba481f13700000000.
    `cmd/tq/tasks.go` format strings `%-10s` → `%-14s` (header + rows), fixing the
    reviewer's medium finding: `running 9m59s` (13 chars) no longer pushes
    PROJECT/TYPE/ATT/NOTBEFORE/LAST ERROR right on healthy RUNNING rows. cmd/tq module
    gate green per close-out; diff verified at HEAD (2 insertions, 2 deletions, one file).
-2. **MaxTicks re-dispatch (task …5290, report 02-57).** Zero-diff verification window:
+2. ~~**MaxTicks re-dispatch (task …5290, report 02-57).** Zero-diff verification window:~~ — RESOLVED 2026-11-23: work commit 5e8bebc4 ("webui: adopt MaxTicks=5 on the dashboard metric AreaCharts"); MaxTicks=5 present at both call sites (internal/webui/fragments.templ:1141,1157); TODO row deleted on closure.
    work had already landed in `5e8bebc4` (MaxTicks=5 on both 560×200 metric AreaCharts,
    templ-components v1.19.4, TODO row 119 `[x]` — verified still `[x]` at HEAD). This
    dispatch contributed the independent verification (vendored prop present, both call
    sites carry MaxTicks, webui tests green) and the canonical-report pointer. Third
    zero-diff re-dispatch of the night — see §e.
-3. **Report-accuracy fix (task …3960, commit `8bd7b054`).** The 02-14 report's false
+3. ~~**Report-accuracy fix (task …3960, commit `8bd7b054`).** The 02-14 report's false~~ — RESOLVED 2026-11-23: commit 8bd7b054 exists ("docs(status): correct the lease-countdown report to the real commit topology").
    "one-commit HEAL OK" claim corrected at three points (a4/a5/d1) to the real topology:
    code landed in the daemon commit `6f561aa2` which DOES carry the task footer; the
    claimed heal never stuck. Finding verified at HEAD before editing (dangling `8af9c70e`
    confirmed, anchor text located). Doc-refs + status-index gates green.
-4. **Sort filter chip (task …cddc, work commit `42a38886`, healed from two footer-less
+4. ~~**Sort filter chip (task …cddc, work commit `42a38886`, healed from two footer-less~~ — RESOLVED 2026-11-23: all artifacts at HEAD — chip internal/webui/fragments.templ:667, clearSort render.go:790, clear-all parity :701, TestSortChip filter_test.go:261; theme duality re-verified at templ-components v1.27.0 display/table.templ:276-281; commit 42a38886 carries the task footer; CHANGELOG.md:1978.
    daemon sweeps).** Active `?sort=` renders as a removable `sort` chip via `filterChip`
    (internal/webui/fragments.templ:533-535), `clearSort` helper added
    (internal/webui/render.go), clear-all parity for sort-only state
@@ -37,7 +37,7 @@ read-only), and a fresh `heal-daemon-sweep.sh --self-test` run at HEAD.
    class level: chip reuses `filterChip`'s `dark:` variants; sort-header link verified
    in templ-components v1.16.0 `display/table.templ` (both-theme text + hover tokens,
    `aria-sort`). Full root build+vet+test -race rc=0 per close-out.
-5. **httpauth/lockout extraction (task …f850, work commit `82d16be1` + closeout
+5. ~~**httpauth/lockout extraction (task …f850, work commit `82d16be1` + closeout~~ — RESOLVED 2026-11-23: all artifacts at HEAD — httpauth.Presented/APIPolicy/DashboardPolicy (httpauth.go:42-65), lockout.Default* (lockout.go:21-27) derived by both surfaces (webui/auth.go:214, httpapi/httpapi.go:257), TestPresentationPolicyPresented (httpauth_test.go:78); commits 82d16be1+5447c991 carry the task footer; CHANGELOG.md:1792.
    `5447c991`, both footer-carrying).** `httpauth.PresentationPolicy` with
    `APIPolicy()` (header+query, cookie never consulted) and `DashboardPolicy(cookieName)`
    (all three channels) replaces webui `presentedToken` and httpapi inline extraction;
@@ -46,7 +46,7 @@ read-only), and a fresh `heal-daemon-sweep.sh --self-test` run at HEAD.
    3 mnd warnings died as a side effect). `TestPresentationPolicyPresented` (9 cases)
    pins precedence + per-policy channel rejection. TODO row 125 `[x]` with DONE note.
    FEATURES.md rows already cite the shared `internal/httpauth` seam — no drift.
-6. **Window-adjacent: TestAuthLockout de-slept** (task …3f3f6e, commit `93c7f4ad`,
+6. ~~**Window-adjacent: TestAuthLockout de-slept** (task …3f3f6e, commit `93c7f4ad`,~~ — RESOLVED 2026-11-23: fake-clock conversion live (httpapi_test.go:307+, zero sleeps); commit 93c7f4ad carries the task footer; root battery re-verified rc=0 at HEAD 2026-11-23.
    report 00-36, landed 6 min after this window's last listed task): fake-clock
    conversion, TODO row 126 `[x]`, root battery rc=0 — which also formally closes the
    httpauth close-out's §b2 open gate ("root full -race not re-run after final edits").
@@ -113,7 +113,7 @@ read-only), and a fresh `heal-daemon-sweep.sh --self-test` run at HEAD.
 
 ## e) WHAT WE SHOULD IMPROVE
 
-1. **Fix the heal self-test before wiring it anywhere.** A rail whose fixture suite
+1. ~~**Fix the heal self-test before wiring it anywhere.** A rail whose fixture suite~~ — RESOLVED 2026-11-23: self-test green (SELF-TEST OK, 45 checks, rerun 2026-11-23; self-path fix 92c9193c) and wired as a ci-local gate step (scripts/ci-local.sh:201-205).
    fails 7/12 cannot gate anything; the two open "wire/grow the self-test" rows both
    assume a green base that does not exist today.
 2. **Heal-script output honesty:** HEAL OK must mean "post-rewrite topology re-derived
@@ -126,7 +126,7 @@ read-only), and a fresh `heal-daemon-sweep.sh --self-test` run at HEAD.
 4. **`internal/lockout` deserves its own fake-clock suite** now that it is the shared
    constant source for both surfaces — currently a limiter regression could pass both
    consumers' suites only by luck of coverage.
-5. **Process: verify-after-mutate as a written rule.** The 02-14 fabrication (heal
+5. ~~**Process: verify-after-mutate as a written rule.** The 02-14 fabrication (heal~~ — RESOLVED 2026-11-23: convention in AGENTS.md:288-290 ("after ANY commit re-read `git log -1 --format='%(trailers:key=Task-Queue-ID,valueonly)'` — EMPTY output = an in-flight daemon sweep landed").
    claimed, never re-checked) and the 00-07 range mistake share one root: tool stdout
    trusted over `git log` after the fact. One convention line in AGENTS.md beats five
    post-mortems.
@@ -139,9 +139,9 @@ read-only), and a fresh `heal-daemon-sweep.sh --self-test` run at HEAD.
 
 268 existing open rows; blocked rulings listed separately there)
 
-1. Fix `heal-daemon-sweep.sh --self-test` (7/12 red at HEAD, self-path resolution
+1. ~~Fix `heal-daemon-sweep.sh --self-test` (7/12 red at HEAD, self-path resolution~~ — RESOLVED 2026-11-23: fixed — 92c9193c; SELF-TEST OK (45 checks) at HEAD; pinned in ci-local (scripts/ci-local.sh:204-205).
    error at line 388) — the heal rail's safety net is untrusted. ← appended
-2. Heal `--from` range semantics: document exclusivity or add an inclusive mode
+2. ~~Heal `--from` range semantics: document exclusivity or add an inclusive mode~~ — RESOLVED 2026-11-23: documented exclusive — scripts/heal-daemon-sweep.sh:46-53,98-100; landed dab22f83.
    (00-07 §d1/§e1 incident). ← appended
 3. Post-heal trailer-verification convention in AGENTS.md + HEAL VERIFIED output
    contract in the script. ← appended (merged with 2's script half)

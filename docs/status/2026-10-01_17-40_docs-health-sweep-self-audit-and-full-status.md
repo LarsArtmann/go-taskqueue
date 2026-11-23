@@ -76,7 +76,7 @@
 
 ## c) NOT STARTED
 
-1. `scripts/check-archive-eligibility.sh` (TODO row 281) — third
+~~1. `scripts/check-archive-eligibility.sh` (TODO row 281) — third~~ — RESOLVED 2026-11-23: shipped and wired into ci-local (scripts/check-archive-eligibility.sh; scripts/ci-local.sh:933)
    judgment-scale sweep has now demanded it; unbuilt.
 2. The `grep -rLn '~~'` completeness spot-check over `archived/` — reasoned
    about (disposition-note archives make it N/A), never actually run.
@@ -90,46 +90,46 @@
 
 ## d) TOTALLY FUCKED UP (honest defects)
 
-1. **Turn-1 ritual skipped — the chronic miss, re-hit, and then MISSED FROM
+~~1. **Turn-1 ritual skipped — the chronic miss, re-hit, and then MISSED FROM~~ — RESOLVED 2026-11-23: narrative defect record, no forward ask (ratified archive conventions, docs/status/README.md; the follow-up ask lives in §e5)
    THE 16-06 REPORT'S OWN §d.** No `scripts/session-start.sh`, no
    CONTRIBUTING read, no master-CI probe before starting; the 16-06 report
    confessed five defects and forgot this one. A self-audit that misses its
    own known-worst pattern is exactly why this second report exists.
-2. **One mis-strike shipped (then repaired):** the 05-57 emit-keys substring
+~~2. **One mis-strike shipped (then repaired):** the 05-57 emit-keys substring~~ — RESOLVED 2026-11-23: narrative defect record, no forward ask (repaired in-session per the record; ratified archive conventions, docs/status/README.md)
    for §f2 (`2@…--self-test…`) contains-matched the §c2 twin line 84 first —
    line 84 got §f2's verdict (true for it too, luckily) and line 156 was
    missed until the applied-lines diff caught it. The tool's duplicate-key
    guard fired only on EXACT duplicate keys, not prefix twins.
-3. **Three 429 rate-limit waves** on parallel sub-agent fan-out (~30 min
+~~3. **Three 429 rate-limit waves** on parallel sub-agent fan-out (~30 min~~ — RESOLVED 2026-11-23: narrative defect record, no forward ask (serial-fallback advice carried by the playbook record itself)
    lost to serial relaunches) — the playbook's serial-fallback advice was
    in the 09-30 §d3 and still wasn't applied preemptively.
-4. **Battery hole: edited FEATURES.md without running
+~~4. **Battery hole: edited FEATURES.md without running~~ — RESOLVED 2026-11-23: narrative defect record, no forward ask (the forward follow-up is §f4, left open there)
    `check-features-ci.sh`** (the gate that gh-verifies FEATURES' CI-run
    citations) and without using the new `scripts/verify-battery.sh` — the
    sweep hand-rolled its battery one day after the one-script battery
    landed, and dropped a gate that parses a file it touched. rc was green
    on everything actually run, but "everything run" was the wrong set.
-5. **Sub-agent line numbers were wrong in every bucket** (drifted several
+~~5. **Sub-agent line numbers were wrong in every bucket** (drifted several~~ — RESOLVED 2026-11-23: narrative defect record, no forward ask (remedy minted as its own TODO row — fan-out playbook pin, open)
    lines per file; one bucket's file cited under the wrong DATE). The
    re-derivation pass (`grep -nE '^\s*[0-9]+\. '` per file) was predictable
    cost — the 09-30 §d4 lesson, paid a second time instead of encoded in
    the fan-out contract (now minted as a row).
-6. **Trusted-then-hallucinated-file scare:** bucket F reported a DONE file
+~~6. **Trusted-then-hallucinated-file scare:** bucket F reported a DONE file~~ — RESOLVED 2026-11-23: narrative defect record, no forward ask (ratified archive conventions, docs/status/README.md)
    as `2026-09-20_05-20` that is actually `2026-09-19_05-20`; the missing
    file briefly looked like a concurrent-session archive (cost a diagnosis
    roundtrip and a git-status scare before the date-typo explanation).
-7. **Unmeasured before-number:** the index live-rows "285→265" delta was
+~~7. **Unmeasured before-number:** the index live-rows "285→265" delta was~~ — RESOLVED 2026-11-23: narrative defect record, no forward ask (ratified archive conventions, docs/status/README.md)
    derived (265+20), not captured from the gate before the moves. Small,
    but the math-discipline rule says count first.
-8. **Sub-skeleton math in 16-06 §a1 says "267 files"** from 252+13+2, while
+~~8. **Sub-skeleton math in 16-06 §a1 says "267 files"** from 252+13+2, while~~ — RESOLVED 2026-11-23: narrative defect record, no forward ask (ratified archive conventions, docs/status/README.md)
    the live count had already grown past 252 by triage time — point-in-time
    numbers approximated instead of pinned to a measured instant.
 
 ## e) WHAT WE SHOULD IMPROVE
 
-1. **Encode the strike scope + archive bar mechanically** (row 281): every
+~~1. **Encode the strike scope + archive bar mechanically** (row 281): every~~ — RESOLVED 2026-11-23: shipped — scripts/check-archive-eligibility.sh encodes exactly this strike-or-mark bar and is wired into ci-local (scripts/ci-local.sh:933)
    one of the last three sweeps re-litigated scope; a gate that refuses
-   `git mv` until every numbered/- [ ] item is struck-or-marked ends it.
+   ~~`git mv` until every numbered/- [ ] item is struck-or-marked ends it.~~
 2. **Fan-out contract: grep-derived line numbers only** (minted this pass)
    — would have deleted §d5 entirely.
 3. **Orchestrator spot-verify quota:** verify ≥2 shipped-claims per DONE
@@ -148,26 +148,26 @@
 
 ## f) Up to 50 things we should get done next (honest; carried rows named, not re-minted)
 
-1. Owner ruling: forward-only vs strike-all scope for fully-done windows (§g1) — blocks the eligibility gate's spec.
-2. Row 281: build `scripts/check-archive-eligibility.sh` (scope from 1, wire into ci-local).
-3. Heal the 13-15 report's 5 dead cites when its window closes (8305e044/76ef8874/691a9da7 classes) — un-reds the default-scope gate.
+~~1. Owner ruling: forward-only vs strike-all scope for fully-done windows (§g1) — blocks the eligibility gate's spec.~~ — RESOLVED 2026-11-23: settled by the landed mechanical bar — scripts/check-archive-eligibility.sh pins the strike contract, no scope ruling needed (twin: 2026-10-01_16-06 §g1)
+~~2. Row 281: build `scripts/check-archive-eligibility.sh` (scope from 1, wire into ci-local).~~ — RESOLVED 2026-11-23: shipped + wired (scripts/check-archive-eligibility.sh; scripts/ci-local.sh:933)
+~~3. Heal the 13-15 report's 5 dead cites when its window closes (8305e044/76ef8874/691a9da7 classes) — un-reds the default-scope gate.~~ — RESOLVED 2026-11-23: healed/baselined — check-dead-sha-refs over that report rc=0 at HEAD ("5 baselined, 0 new")
 4. Run `check-features-ci.sh` over the reconstructed `tq tasks` row + the whole file once at HEAD (close §d4).
 5. Re-run the root battery at current HEAD (the S1 facade-flip commits landed after my rc=0 — my green is stale by ~90 min, not mine to re-verify).
 6. Triage the 21 `2026-10-01_*` reports at the next sweep (they are now the untriaged corpus).
 7. Harvest the highest-value unrowed items from the KEEP-OPEN mass (§b1) — or retire the ask via §g2.
-8. Row 121/144: next status-index re-sweep (265 live rows; plus the 14 pre-existing unbackticked stale rows — fix their backticks or rule them permanent).
+~~8. Row 121/144: next status-index re-sweep (265 live rows; plus the 14 pre-existing unbackticked stale rows — fix their backticks or rule them permanent).~~ — RESOLVED 2026-11-23: re-sweeps ran (2026-10-02 113-file pass archived with disposition notes; 2026-10-26/10-31/11-14 passes; index-bloat sweep DONE 2026-10-28 per ticked TODO row); stale-row half mooted by INDEX_BLOAT_THRESHOLD=400 (scripts/check-status-index.sh)
 9. Row 429: settle the index-row ONE-write-point convention (this pass inserted at the top cluster by convention; the tail-append race class is still open).
-10. Mint-time done-check (row 200 family): the re-dispatch duplicate mass (3 more this pass) is its standing evidence.
+~~10. Mint-time done-check (row 200 family): the re-dispatch duplicate mass (3 more this pass) is its standing evidence.~~ — RESOLVED 2026-11-23: landed — ticked TODO row "Land the mint-time done-check for repeat dispatches (O4 2026-10-05 ratified: refuse at mint, --force-redispatch escape)"
 11. Add `check-features-ci.sh` to the AGENTS.md docs-window battery line (one-line convention edit, size budget 41 B slack — prune in-place).
 12. Row 376: verify AGENTS.md's thin-snapshot paragraph at HEAD; close the row if the prune already fixed it.
-13. Weekly mini-sweep cadence decision (§g2-adjacent, third ask): 1 day between sweeps yielded 28 files; weekly would halve per-sweep cost.
+~~13. Weekly mini-sweep cadence decision (§g2-adjacent, third ask): 1 day between sweeps yielded 28 files; weekly would halve per-sweep cost.~~ — RESOLVED 2026-11-23: ruled — monthly digest/archive ritual adopted (docs/status/README.md digest rows; twin verdicts 2026-10-02_06-44 §f3/§f4)
 14. `grep -rLn '~~' docs/status/archived/` spot-check + record the ratified disposition-note exception next to the skill's completeness gate (one README line).
 15. Archive-counter automation (09-21 §f13 class): the counter is hand-edited every sweep; derive from `ls | wc -l` in the gate.
 16. Pin `annotate-status-items.py` prefix-twin lesson upstream: duplicate-substring guard should compare against ALREADY-MATCHED lines, not only spec keys (file with the skill's owner = this repo's sessions).
-17. The 09-15..09-29 windows' "sibling summary" micro-items (hundreds in KEEP files) — batch-triage once, then freeze the convention.
+~~17. The 09-15..09-29 windows' "sibling summary" micro-items (hundreds in KEEP files) — batch-triage once, then freeze the convention.~~ — RESOLVED 2026-11-23: absorbed — the 2026-09 corpus is archived (634 files under docs/status/archived/; oldest live report now 2026-10-01, receipt 2026-10-02_06-44 §f19 verdict)
 18. Sweep playbook: require the sweep report to include §a's measured corpus count pinned to a `git rev-parse HEAD` instant (fixes §d8's class).
 19. Verify the 17 archived windows' routed-verdicts still resolve after future TODO purges (routed cites name row phrases, not row numbers — hold the line; a check that greps archive verdict phrases against TODO_LIST leading phrases would mechanize it, extend row 244's spot-checker).
-20. Feedback drafts: owner sends the helpcentre reply → move both files to `done/` (the only action gating them).
+~~20. Feedback drafts: owner sends the helpcentre reply → move both files to `done/` (the only action gating them).~~ — RESOLVED 2026-11-23: drafts left the live corpus — moved under docs/feedback/archived/ (helpcentre-reply-draft.md et al.; twin disposition 2026-10-01_16-06 §b2)
 
 (20 honest items; the remaining ~30 "next" slots are already-owned rows in
 TODO_LIST §"Docs-health harvest" sections — re-listing them here would be
@@ -175,17 +175,17 @@ the duplication the DONE-DELETED ruling forbids.)
 
 ## g) QUESTIONS I CANNOT FIGURE OUT MYSELF
 
-1. **Strike scope (blocks the eligibility gate spec):** for a fully-done
+~~1. **Strike scope (blocks the eligibility gate spec):** for a fully-done~~ — RESOLVED 2026-11-23: answered by the landed mechanical bar — scripts/check-archive-eligibility.sh pins the contract (twin struck in 2026-10-01_16-06 §g1)
    window, strike ALL numbered items (09-30 style: every §a–§g line) or
    FORWARD-LOOKING items only (this pass: §f/§g + tail asks, narrative
    §a–§e left bare)? I recommend forward-only (narrative strikes add noise,
    fail the skill's "So what?" test) — ratify or overrule?
-2. **The KEEP-OPEN mass (~210 reports):** is in-file visibility the accepted
+~~2. **The KEEP-OPEN mass (~210 reports):** is in-file visibility the accepted~~ — RESOLVED 2026-11-23: settled — mechanical bar + digest ritual own archival now (owner closed via the README cadence ruling; twin verdict 2026-10-02_06-44 §f4)
    TERMINAL state (retire the per-item strike-pass ask forever, sweeps only
    archive newly-done files), or do you want a funded dedicated pass that
    strikes resolved items across KEEP files? The first is cheaper and
    honest; the second makes `grep '~~'` completeness meaningful corpus-wide.
-3. **Battery scope when sibling windows are mid-flight:** this sweep closed
+~~3. **Battery scope when sibling windows are mid-flight:** this sweep closed~~ — RESOLVED 2026-11-23: answered — AGENTS.md:228 "No absolute verification phrases" bullet encodes the scoped-claim form (scoped-green close-outs are the sanctioned convention)
    with the default-scope dead-sha gate RED (5 cites in the actively-edited
    13-15 report) and claimed only the own-file leg. Is scoped-green an
    acceptable close-out claim for sweeps during concurrent windows, or must
