@@ -219,3 +219,43 @@ flowchart TD
    JSON-RPC, no new deps — the plan doc's rule holds).
 8. **Push only the plan + this window's commits**; never the concurrent
    agent's in-flight files (stage by path, never `git add -A`).
+
+## 6. Design notes (recorded at execution, M9/M10)
+
+**M9 emission form (landed, 2bd5b30c).** The managed `.crushrc` block
+gains one rc statement under `tq bootstrap --mcp`:
+
+```
+mcp add tq --type stdio --command <abs tq> --args mcp --args --db --args <abs journal>
+```
+
+Verified against crush v0.102.0 `internal/shellconfig/mcp.go`: `mcp
+add <name> --type stdio --command CMD --args ARG` with repeatable
+`--args` (opAppend). Paths are absolute because stdio MCP servers start
+with the workspace's cwd (upstream bb9914d9) and agent shells have
+`TQ_DB` denylist-stripped — explicit > inherited, per the plan's own
+rule. Doctor carries the `mcp:<repo>` WARN when a pool repo's block
+lacks the enrollment (warn, never fail — opt-in).
+
+**F42 — doctor channels-capability probe design (design only; build
+lands with Phase 2).** Signal: the CHANNEL capability is declared by
+the MCP server, not crush — a server's `initialize` result carries
+`capabilities.experimental["claude/channel"]` (wire contract, research
+note 2026-11-23_00-32 citations 1–6). Probe: doctor spawns the ENROLLED
+command from the repo's `mcp add tq` line over stdio, sends
+`initialize`, and checks the declared experimental keys against the
+installed tq binary's support. WARN shape: `mcp-channels:<repo>` —
+warns when the tq mcp server is enrolled but does NOT declare
+`claude/channel` (stale tq binary: the pool would drop every push) and
+when channels keys exist without the enrollment. Never FAIL: channels
+are opt-in (owner serve-per-repo gate, Phase 2).
+
+**F43 — channel_enabled / channel_reply emission ruling.** Phase 2's
+bootstrap emission uses the OFFICIAL flags — `mcp add tq --channel
+true --channel-reply '<json>'` (v0.102.0 `shellconfig/mcp.go` lines
+58–59; research lesson 2: flags and raw keys persist identically, the
+flags are self-documenting and survive schema reshapes). Raw
+`crush.json` keys remain the documented fallback for pre-flag
+enrollments. The flags join the M9 statement only behind the owner
+serve-per-repo gate; `tq mcp` gains `notifications/claude/channel`
+push + `channel_reply` in the same phase.
