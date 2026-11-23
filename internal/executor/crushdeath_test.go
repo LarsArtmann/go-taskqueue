@@ -11,17 +11,20 @@ import (
 	"testing"
 )
 
-// TestDetectCrushServerDeath pins the two-sided death signature (observed
-// live on crush v0.99.0): a severed routed run exits 0 with
-// `WARN Events stream ended error="unexpected EOF"` in the output and
-// NOTHING else — a normal routed completion emits no such line — and an
-// unreachable socket at attach surfaces as a dial-unix error.
+// TestDetectCrushServerDeath pins the two-sided death signature: the
+// v0.99.0 severed-stream WARN (rc-0 lie, output-scanned), the dial-unix
+// attach failure, and the v0.102.0 fail-on-drop error pair (upstream
+// 2a8be165) — versus a normal routed completion that must never match.
 func TestDetectCrushServerDeath(t *testing.T) {
 	severed := "INFO  Running in non-interactive mode\n" +
 		"INFO  Created session for non-interactive run session_id=2d5cfb51\n" +
 		"warn  Events stream ended error=\"unexpected EOF\"\n"
 	normal := "INFO  Running in non-interactive mode\n" +
 		"INFO  Created session for non-interactive run session_id=2d5cfb51\n" +
+		"result text\n"
+	verboseCompletion := "INFO  Running in non-interactive mode\n" +
+		"INFO  Created session for non-interactive run session_id=9f3ab1\n" +
+		"INFO  Session completed usage_in=120 usage_out=340\n" +
 		"result text\n"
 
 	if !DetectCrushServerDeath(severed, "") {
@@ -32,9 +35,23 @@ func TestDetectCrushServerDeath(t *testing.T) {
 		t.Fatal("a normal routed completion must NOT classify (rc-0 runs are the lie, not the rule)")
 	}
 
+	if DetectCrushServerDeath(verboseCompletion, "") {
+		t.Fatal("a verbose routed completion (session + usage lines, no markers) must NOT classify")
+	}
+
 	dialErr := `Get "http://crush/v1/workspaces": dial unix /run/tq/crush.sock: connect: no such file or directory`
 	if !DetectCrushServerDeath("", dialErr) {
 		t.Fatal("dial-unix error must classify as crush-server death")
+	}
+
+	failOnDrop := "crush: lost connection to the crush server before the run completed"
+	if !DetectCrushServerDeath("", failOnDrop) {
+		t.Fatal("v0.102.0 fail-on-drop error must classify as crush-server death")
+	}
+
+	cancelled := "crush: agent run was cancelled on the server before it completed"
+	if !DetectCrushServerDeath("", cancelled) {
+		t.Fatal("v0.102.0 server-side-cancel error must classify as crush-server death")
 	}
 
 	if DetectCrushServerDeath("boring output", "boring error") {
