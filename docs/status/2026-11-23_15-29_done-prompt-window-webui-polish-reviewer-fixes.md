@@ -195,9 +195,9 @@ landing commit carrying this report is 40d71fca (1c8d8a57→40d71fca).
 2. Go-side pin: FactFeed markup must carry `data-seq` on every line
    (feed_filter_test pattern) so the JS exactness contract has a Go gate
    twin (17-39 §f1, unrowed). ← minted
-3. Sync-pins-same-change convention line in AGENTS §Conventions (grow a
-   countable gate → update its summary pins in the same commit).
-   ← minted
+3. ~~Sync-pins-same-change convention line in AGENTS §Conventions (grow a
+   countable gate → update its summary pins in the same commit).~~
+   ← minted — DONE 2026-11-23: convention line landed in the AGENTS §Conventions countable-gates bullet (GROWING a countable gate updates its summary pins in the SAME COMMIT — a gate whose output grew while its pins stayed put is a lying pin)
 4. aria-live announcement parity for the "N new while paused" badge
    variant (17-39 §f6). ← minted
 5. forced-colors adjustment for the dashed-border burst badge (17-39 §f7).
