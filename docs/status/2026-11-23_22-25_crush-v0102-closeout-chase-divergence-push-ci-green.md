@@ -159,14 +159,14 @@ legs, then to the edge of a fully-unbypassed local battery.
 7. Tick row 829's supersession note honestly: the 20-35 §b2 ruling supersedes the quiet-host
    local run, with the Dependabot-evidence correction noted.
 8. Verify the foreign proxy-surface gate's probe fixtures still compile after my pins: comments
-   (run check-proxy-surface standalone). — DONE 2026-11-23: standalone rc=0 — 5 facades verified, 0 skipped, 0 failed (worker sentinel PROBE-OK).
+   (run check-proxy-surface standalone). — DONE 2026-11-23: standalone rc=0 — 5 facades verified, 0 skipped, 0 failed (worker sentinel PROBE-OK). <!-- fresh:skip --> one-shot verification, receipt inline.
 9. The 2026-12 digest accrual: target verify-only duplicate layers (dispatch re-passes whose
    canonical exists).
 10. The index-bloat row: consider a ratchet DOWN of the 400 threshold after the next real
     archive sweep.
 11. Run `tq doctor` at HEAD for a fresh receipt (crush pin 0.102.0 still proven).
 12. Re-run the two crush smokes after today's host churn (route + supervisor, 14/11 PASS
-    baseline). — DONE 2026-11-23: route 14 PASS rc=0 + supervisor 11 PASS rc=0 (receipts /var/tmp/route-f12.log + /var/tmp/supervisor-f12.log) — baseline held exactly.
+    baseline). — DONE 2026-11-23: route 14 PASS rc=0 + supervisor 11 PASS rc=0 (receipts /var/tmp/route-f12.log + /var/tmp/supervisor-f12.log) — baseline held exactly. <!-- fresh:skip --> one-shot verification, receipt inline.
 13. The ai-ratelimit smoke: consider TQ_SMOKE_KEEP-style diagnostics for worker-log races.
 14. go-mod floors: check whether cqrs-lite's own floor moved (our 1.27.4 raise may exceed the
     sibling floor — confirm the dependency-ordered flip story still holds).
@@ -198,7 +198,7 @@ legs, then to the edge of a fully-unbypassed local battery.
 31. The three AGENTS size resets today suggest the convention line itself is load-bearing but
     expensive — consider a docs/ file for reset history instead of the const comment.
 32. `heal-daemon-sweep.sh --self-test` after today's mass: confirm the tool still pins its rails
-    (nothing in my session touched it, but the daemon did). — DONE 2026-11-23: SELF-TEST OK (45 checks), rc=0.
+    (nothing in my session touched it, but the daemon did). — DONE 2026-11-23: SELF-TEST OK (45 checks), rc=0. <!-- fresh:skip --> one-shot verification, receipt inline.
 33. The foreign `check-proxy-surface.sh` rides my 78d90f22 — consider a follow-up commit naming
     the ride (attribution hygiene).
 34. Check-push-timing: confirm the next push isn't rate-limited after today's volume.
@@ -227,7 +227,7 @@ legs, then to the edge of a fully-unbypassed local battery.
 47. Sub-agent etiquette lesson (§f13) still unfiled in crush-config — needs a commit THERE.
 48. The `.tq-verify` wrapper flip (owner ruling) — untouched, still blocked on owner. <!-- fresh:skip --> harvested at TODO_LIST row 736 (BLOCKED owner — freshness-matcher false-negative class, row 99).
 49. features.md row 173 / ci.yml step naming — the foreign session renamed; my report §f
-    annotations already cite the new names; done, no action. — DONE 2026-11-23 (no-action verified).
+    annotations already cite the new names; done, no action. — DONE 2026-11-23 (no-action verified). <!-- fresh:skip --> one-shot verification, no standing row.
 50. WAIT-state hygiene: this report is the WAIT point; the resuming session should start at
     f-list item 1 (the tick-claims fix commit).
 
