@@ -80,6 +80,9 @@ if [ "${1:-}" = "--receipt" ]; then
 	shift 2
 	if [ -d "$rpath" ] || [[ "$rpath" == */ ]]; then
 		mkdir -p "$rpath"
+		# strip trailing slashes so the header path matches what find(1)
+		# prints for the same file (the self-test pins the exact string)
+		while [[ "$rpath" == */ ]]; do rpath="${rpath%/}"; done
 		rpath="$rpath/tq-tick-claims-$(date +%Y-%m-%d_%H-%M).log"
 	fi
 	mkdir -p "$(dirname "$rpath")"
