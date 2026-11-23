@@ -255,6 +255,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   compile-only inference. Network gate: wired as a ci-local step
   (self-test first) and a CI consumer-job step; network absence can only
   SKIP; never flake checkPhase (hermeticity rule).
+- fix `scripts/check-proxy-surface.sh` default-probe rc capture
+  (2026-11-24 review finding): `local probe_rc=$?` after the branch-less
+  `if` read the if-construct's 0 on the failure path, so a real probe
+  failure counted as verified and the gate exited 0 — the exact
+  v0.3.0-regression class the gate exists to catch. The rc now comes off
+  the subshell directly (`|| probe_rc=$?`), and the self-test grows two
+  default-probe body batteries (failure → gate FAILS rc=1; happy →
+  verified) via the `TQ_PROXY_PROBE_BODY_CMD` self-test-only hook, per
+  the countable-gate negative-path convention.
 
 ## [v0.4.2] - 2026-11-07
 
