@@ -227,6 +227,8 @@ github.com/larsartmann/go-taskqueue/internal/journal v0.4.2 h1:8t8ocPmVYMZHsipyI
 github.com/larsartmann/go-taskqueue/internal/journal v0.4.2/go.mod h1:7FcGxoXloC+F6cYdPt4Rz1QoYYGmlM+CtCIikew1BHU=
 github.com/larsartmann/go-taskqueue/internal/journal/cqrs v0.4.2 h1:MWXyQWU06c2AFhzoNuHIaoH3mzhxuF1RkKvfiW5jHWY=
 github.com/larsartmann/go-taskqueue/internal/journal/cqrs v0.4.2/go.mod h1:9HLzLOBPJjieTHcDRzmBA2YD8+lO1uuqQc3qVlVrWN4=
+github.com/larsartmann/go-taskqueue/internal/mcpserver v0.4.2 h1:/XdJ4Rp/KomPMUpdnCwRDMvVUvEpyKvLjm9JW4Xo43o=
+github.com/larsartmann/go-taskqueue/internal/mcpserver v0.4.2/go.mod h1:0uLhuZwSwrYl7FIKK2Qchvr0lsfpHqhdb9+R+IFE9tw=
 github.com/larsartmann/go-taskqueue/internal/queue v0.4.2 h1:qYVq/7ArfjuNVE4czA1tHt3jmiFHn0WdekzY0bMxL48=
 github.com/larsartmann/go-taskqueue/internal/queue v0.4.2/go.mod h1:hJQ1Ip3gzFlDqqOjJc+znH22ih9QRrwwK9PWHbsWQ8Y=
 github.com/larsartmann/go-taskqueue/internal/queue/companion v0.4.2 h1:/NqlMYMj67oQVc49RfgVccdFta/VezpDDLwyS594WnA=
