@@ -122,7 +122,7 @@ const doctorCrushMinVersion = "0.94.1"
 // two smokes before trusting `--crush-server`, then bump this pin in the
 // same change (A13/V2.16; ensureServer's mismatch auto-replace is the
 // server-side upgrade path — a client newer than the server replaces it).
-const doctorCrushProvenVersion = "0.99.0"
+const doctorCrushProvenVersion = "0.102.0"
 
 // crushVersionProbeTimeout bounds one `--version` call: a hung binary must
 // not hang the doctor.
