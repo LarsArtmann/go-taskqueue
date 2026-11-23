@@ -1,5 +1,7 @@
 # ART-DUPL T4 ZERO — DEDUP SWEEP (interactive, 13:00–14:00 window)
 
+Written 2026-10-05. (Strike verdicts below carry their resolution date.)
+
 Status report per the a)-g) skeleton. Session goal (owner, verbatim):
 "deduplicate to fucking zero" — drive the art-dupl `-t 4` report to zero
 shown groups at HEAD. Start state: 11 shown groups (owner's `-t 4

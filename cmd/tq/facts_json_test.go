@@ -125,7 +125,11 @@ import (
 // convention line in §Known Issues (foreign-session AGENTS growth resets
 // the budget in the same change — the line IS that convention; AGENTS.md
 // 27_995 at reset, own growth, pruned nothing).
-const agentsDocMaxBytes = 28_100
+// 2026-11-23 (third): conscious reset 28_100 → 28_250 for the foreign
+// facade-rename session (9f8fdb42's dead facade-Open phrasing rewrites +
+// the sync-pins convention line folding through sweep 7660e292; AGENTS.md
+// 28_154 at reset, foreign growth, pruned nothing).
+const agentsDocMaxBytes = 28_250
 
 // TestAgentsDocSizeGuard keeps AGENTS.md from silently growing past its
 // byte budget (plan M89 residue); the failure names the top sections so a
