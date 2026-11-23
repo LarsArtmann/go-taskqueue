@@ -1066,6 +1066,15 @@ else
 	echo "SKIP: local go-cqrs-lite checkout not found (${HOME}/projects/go-cqrs-lite)"
 fi
 
+# Budget-meter smoke (2026-11-13 done-prompt report f12): boots
+# `tq serve --daily-budget N` against its own scratch TQ_DB and asserts the
+# rendered stats page carries the live budget meter — the CLI flag →
+# webui.Config → BudgetView wire end to end in a real binary. Wired 2026-11-23
+# when guard-wiring flagged the smoke orphaned (wire or delete; it is a real
+# wire proof).
+step "budget-meter smoke (daily-budget wire, self-scratch DB)"
+./scripts/smoke/budget-meter.sh
+
 # --- CI nix job, on a fully tracked tree ------------------------------------
 # Flakes only see git-tracked files, so stage everything first and then prove
 # no untracked stragglers remain BEFORE nix sees the tree. Measuring nix on a

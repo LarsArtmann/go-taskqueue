@@ -63,7 +63,7 @@ if [ "${TQ_STORE_IMPL_REPLACE:-0}" = "1" ]; then
 	# resolve from the proxy and re-arm the exact proxy-mixed class
 	# this leg exists to prevent. Derived from this script's main.go
 	# heredoc, never frozen.
-	imported_facades="$(sed -n "/^[[:space:]]*cat >main.go <<'EOF'/,/^EOF\$/p" "$0" | grep -oE "${MODULE//./\\.}/[a-z]+" | sed "s~^$MODULE/~~" | sort -u)"
+	imported_facades="$(sed -n "/^[[:space:]]*cat >main.go <<'EOF'/,/^EOF\$/p" "$0" | grep -oE "${MODULE//./\\.}/[a-z]+" | sed "s~^$MODULE/~~" | sort -u || true)"
 	if [ -z "$imported_facades" ]; then
 		echo "STORE-IMPL FAIL: imported-facade extraction found nothing in the main.go heredoc (shape changed?) -- an uncovered import would resolve from the proxy, not HEAD; fix the extraction." >&2
 		exit 1
