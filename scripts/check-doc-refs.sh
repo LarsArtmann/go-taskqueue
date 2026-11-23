@@ -27,6 +27,7 @@ allow=(
 	'^notifications/claude/channel$'                      # AGENTS Channels-plan bullet cites the claude MCP channel-push notification NAME (docs/planning/2026-10-16_01-11_TQ-MCP-CHANNELS-DESIGN-INPUT.md) — an MCP method, not a repo path
 	'^queue/(sqlite|postgres)$'                           # CHANGELOG Removed + FEATURES cite the RETIRED driver facade modules (2026-11-23 owner ruling; ADR-0016 retirement addendum) — deleted modules cited historically
 	'^scripts/check-gomod-vendor-sync\.sh$'               # CHANGELOG historical rows cite the drift gate under its PRE-rename name (renamed scripts/check-gomod-sync.sh 2026-11-23, vendor leg removed)
+	'^internal/queue/sqlite\.Open$'                       # AGENTS/ADR-0019/FEATURES cite the store SEAM as package.Function (2026-11-23 facade-retirement doc renames) — a Go symbol, not a repo path
 )
 
 fail=0
