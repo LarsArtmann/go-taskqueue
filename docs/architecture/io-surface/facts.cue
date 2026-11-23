@@ -5,9 +5,9 @@
 package io_surface
 
 audit: {
-	commit: "8a0b79b8-dirty"
-	date:   "2026-11-17"
-	claims: 379
+	commit: "b27039e4"
+	date:   "2026-11-23"
+	claims: 385
 	method: "io-surface extract (AST, stdlib-only)"
 }
 
@@ -35,7 +35,7 @@ scope: {
 sites: {
 	"cmd/tq.appendRSSSample": {
 		location: [
-			"cmd/tq/agentpool.go:1286",
+			"cmd/tq/agentpool.go:1385",
 		]
 		family: "file-write"
 		facts: {
@@ -72,9 +72,9 @@ sites: {
 	}
 	"cmd/tq.bootstrapOptions.ensureCrushConfig": {
 		location: [
-			"cmd/tq/bootstrap.go:569",
-			"cmd/tq/bootstrap.go:591",
-			"cmd/tq/bootstrap.go:599",
+			"cmd/tq/bootstrap.go:580",
+			"cmd/tq/bootstrap.go:610",
+			"cmd/tq/bootstrap.go:618",
 		]
 		family: "file-write"
 		facts: {
@@ -83,7 +83,7 @@ sites: {
 	}
 	"cmd/tq.bootstrapOptions.ensureRepos": {
 		location: [
-			"cmd/tq/bootstrap.go:424",
+			"cmd/tq/bootstrap.go:431",
 		]
 		family: "file-read"
 		facts: {
@@ -92,8 +92,8 @@ sites: {
 	}
 	"cmd/tq.bootstrapOptions.ensureTQVerify": {
 		location: [
-			"cmd/tq/bootstrap.go:537",
-			"cmd/tq/bootstrap.go:553",
+			"cmd/tq/bootstrap.go:548",
+			"cmd/tq/bootstrap.go:564",
 		]
 		family: "file-write"
 		facts: {
@@ -102,22 +102,20 @@ sites: {
 	}
 	"cmd/tq.bootstrapOptions.installService": {
 		location: [
-			"cmd/tq/bootstrap.go:753",
-			"cmd/tq/bootstrap.go:758",
-			"cmd/tq/bootstrap.go:763",
-			"cmd/tq/bootstrap.go:768",
-			"cmd/tq/bootstrap.go:777",
+			"cmd/tq/bootstrap.go:805",
+			"cmd/tq/bootstrap.go:815",
+			"cmd/tq/bootstrap.go:829",
 		]
 		family: "file-write"
 		facts: {
-			call: ["exec.Command", "os.MkdirAll", "os.WriteFile"]
+			call: ["exec.Command", "os.MkdirAll"]
 		}
 	}
 	"cmd/tq.bootstrapOptions.resolveRepos": {
 		location: [
-			"cmd/tq/bootstrap.go:379",
-			"cmd/tq/bootstrap.go:390",
-			"cmd/tq/bootstrap.go:400",
+			"cmd/tq/bootstrap.go:386",
+			"cmd/tq/bootstrap.go:397",
+			"cmd/tq/bootstrap.go:407",
 		]
 		family: "file-read"
 		facts: {
@@ -126,7 +124,7 @@ sites: {
 	}
 	"cmd/tq.buildAgentConveniencePayload": {
 		location: [
-			"cmd/tq/main.go:622",
+			"cmd/tq/main.go:624",
 		]
 		family: "file-read"
 		facts: {
@@ -135,8 +133,8 @@ sites: {
 	}
 	"cmd/tq.cmdAPI": {
 		location: [
-			"cmd/tq/main.go:4061",
-			"cmd/tq/main.go:4114",
+			"cmd/tq/main.go:4104",
+			"cmd/tq/main.go:4157",
 		]
 		family: "listener"
 		facts: {
@@ -164,9 +162,9 @@ sites: {
 	}
 	"cmd/tq.cmdEnqueue": {
 		location: [
-			"cmd/tq/main.go:432",
-			"cmd/tq/main.go:482",
-			"cmd/tq/main.go:489",
+			"cmd/tq/main.go:434",
+			"cmd/tq/main.go:484",
+			"cmd/tq/main.go:491",
 		]
 		family: "env"
 		facts: {
@@ -175,11 +173,20 @@ sites: {
 	}
 	"cmd/tq.cmdHarvest": {
 		location: [
-			"cmd/tq/main.go:863",
+			"cmd/tq/main.go:906",
 		]
 		family: "env"
 		facts: {
 			call: ["os.Getenv"]
+		}
+	}
+	"cmd/tq.cmdMCP": {
+		location: [
+			"cmd/tq/mcp.go:29",
+		]
+		family: "listener"
+		facts: {
+			call: [".Serve"]
 		}
 	}
 	"cmd/tq.cmdPoolHealth": {
@@ -191,22 +198,9 @@ sites: {
 			call: ["os.Getenv"]
 		}
 	}
-	"cmd/tq.cmdServe": {
-		location: [
-			"cmd/tq/main.go:4308",
-			"cmd/tq/main.go:4313",
-			"cmd/tq/main.go:4327",
-			"cmd/tq/main.go:4337",
-			"cmd/tq/main.go:4342",
-		]
-		family: "env"
-		facts: {
-			call: ["os.Getenv"]
-		}
-	}
 	"cmd/tq.cmdShow": {
 		location: [
-			"cmd/tq/main.go:2683",
+			"cmd/tq/main.go:2726",
 		]
 		family: "env"
 		facts: {
@@ -217,29 +211,25 @@ sites: {
 		location: [
 			"cmd/tq/verdict.go:51",
 			"cmd/tq/verdict.go:83",
-			"cmd/tq/verdict.go:94",
 		]
-		family: "file-write"
+		family: "stream-copy"
 		facts: {
-			call: ["io.ReadAll", "os.Getenv", "os.WriteFile"]
+			call: ["io.ReadAll", "os.Getenv"]
 		}
 	}
 	"cmd/tq.cmdWorker": {
 		location: [
-			"cmd/tq/main.go:674",
-			"cmd/tq/main.go:677",
-			"cmd/tq/main.go:686",
-			"cmd/tq/main.go:699",
+			"cmd/tq/main.go:742",
 		]
 		family: "env"
 		facts: {
-			call: ["os.Getenv", "os.Setenv"]
+			call: ["os.Setenv"]
 		}
 	}
 	"cmd/tq.commitsForTask": {
 		location: [
-			"cmd/tq/main.go:3129",
-			"cmd/tq/main.go:3133",
+			"cmd/tq/main.go:3172",
+			"cmd/tq/main.go:3176",
 		]
 		family: "ipc-subprocess"
 		facts: {
@@ -248,10 +238,10 @@ sites: {
 	}
 	"cmd/tq.crushKeeper": {
 		location: [
-			"cmd/tq/agentpool.go:1224",
-			"cmd/tq/agentpool.go:1241",
-			"cmd/tq/agentpool.go:1246",
-			"cmd/tq/agentpool.go:1248",
+			"cmd/tq/agentpool.go:1323",
+			"cmd/tq/agentpool.go:1340",
+			"cmd/tq/agentpool.go:1345",
+			"cmd/tq/agentpool.go:1347",
 		]
 		family: "outbound"
 		facts: {
@@ -270,7 +260,7 @@ sites: {
 	}
 	"cmd/tq.crushServerRSSLogPath": {
 		location: [
-			"cmd/tq/agentpool.go:1270",
+			"cmd/tq/agentpool.go:1369",
 		]
 		family: "env"
 		facts: {
@@ -279,7 +269,7 @@ sites: {
 	}
 	"cmd/tq.defaultDB": {
 		location: [
-			"cmd/tq/main.go:181",
+			"cmd/tq/main.go:183",
 		]
 		family: "env"
 		facts: {
@@ -288,7 +278,7 @@ sites: {
 	}
 	"cmd/tq.defaultProjectsDir": {
 		location: [
-			"cmd/tq/main.go:809",
+			"cmd/tq/main.go:852",
 		]
 		family: "env"
 		facts: {
@@ -297,7 +287,7 @@ sites: {
 	}
 	"cmd/tq.doctorCrushManagedBlock": {
 		location: [
-			"cmd/tq/doctor.go:2227",
+			"cmd/tq/doctor.go:2251",
 		]
 		family: "file-read"
 		facts: {
@@ -312,6 +302,15 @@ sites: {
 		family: "ipc-subprocess"
 		facts: {
 			call: ["exec.LookPath"]
+		}
+	}
+	"cmd/tq.doctorMcpEnrollment": {
+		location: [
+			"cmd/tq/doctor.go:2228",
+		]
+		family: "file-read"
+		facts: {
+			call: ["os.ReadFile"]
 		}
 	}
 	"cmd/tq.doctorProjection": {
@@ -404,9 +403,9 @@ sites: {
 	}
 	"cmd/tq.ensureCommitted": {
 		location: [
-			"cmd/tq/bootstrap.go:648",
-			"cmd/tq/bootstrap.go:655",
-			"cmd/tq/bootstrap.go:668",
+			"cmd/tq/bootstrap.go:700",
+			"cmd/tq/bootstrap.go:707",
+			"cmd/tq/bootstrap.go:720",
 		]
 		family: "ipc-subprocess"
 		facts: {
@@ -424,7 +423,7 @@ sites: {
 	}
 	"cmd/tq.expandRepoSpecs": {
 		location: [
-			"cmd/tq/main.go:340",
+			"cmd/tq/main.go:342",
 		]
 		family: "file-read"
 		facts: {
@@ -433,7 +432,7 @@ sites: {
 	}
 	"cmd/tq.foreignTaskRefs": {
 		location: [
-			"cmd/tq/main.go:3095",
+			"cmd/tq/main.go:3138",
 		]
 		family: "ipc-subprocess"
 		facts: {
@@ -442,7 +441,7 @@ sites: {
 	}
 	"cmd/tq.gitChangedFiles": {
 		location: [
-			"cmd/tq/main.go:2982",
+			"cmd/tq/main.go:3025",
 		]
 		family: "ipc-subprocess"
 		facts: {
@@ -451,7 +450,7 @@ sites: {
 	}
 	"cmd/tq.gitChildCommit": {
 		location: [
-			"cmd/tq/main.go:3022",
+			"cmd/tq/main.go:3065",
 		]
 		family: "ipc-subprocess"
 		facts: {
@@ -460,7 +459,7 @@ sites: {
 	}
 	"cmd/tq.gitCommitMeta": {
 		location: [
-			"cmd/tq/main.go:3002",
+			"cmd/tq/main.go:3045",
 		]
 		family: "ipc-subprocess"
 		facts: {
@@ -485,6 +484,49 @@ sites: {
 			call: ["os.Open"]
 		}
 	}
+	"cmd/tq.newAgentPoolFlagSet": {
+		location: [
+			"cmd/tq/agentpool.go:206",
+			"cmd/tq/agentpool.go:245",
+			"cmd/tq/agentpool.go:250",
+			"cmd/tq/agentpool.go:317",
+			"cmd/tq/agentpool.go:320",
+			"cmd/tq/agentpool.go:321",
+			"cmd/tq/agentpool.go:414",
+			"cmd/tq/agentpool.go:417",
+			"cmd/tq/agentpool.go:461",
+			"cmd/tq/agentpool.go:476",
+			"cmd/tq/agentpool.go:481",
+		]
+		family: "env"
+		facts: {
+			call: ["os.Getenv"]
+		}
+	}
+	"cmd/tq.newServeFlagSet": {
+		location: [
+			"cmd/tq/main.go:4377",
+			"cmd/tq/main.go:4382",
+			"cmd/tq/main.go:4396",
+			"cmd/tq/main.go:4411",
+			"cmd/tq/main.go:4416",
+		]
+		family: "env"
+		facts: {
+			call: ["os.Getenv"]
+		}
+	}
+	"cmd/tq.newWorkerFlagSet": {
+		location: [
+			"cmd/tq/main.go:707",
+			"cmd/tq/main.go:710",
+			"cmd/tq/main.go:719",
+		]
+		family: "env"
+		facts: {
+			call: ["os.Getenv"]
+		}
+	}
 	"cmd/tq.ownCgroupV2RelPath": {
 		location: [
 			"cmd/tq/poolhealth.go:215",
@@ -505,22 +547,11 @@ sites: {
 	}
 	"cmd/tq.parseAgentPoolOptions": {
 		location: [
-			"cmd/tq/agentpool.go:127",
-			"cmd/tq/agentpool.go:166",
-			"cmd/tq/agentpool.go:171",
-			"cmd/tq/agentpool.go:238",
-			"cmd/tq/agentpool.go:241",
-			"cmd/tq/agentpool.go:242",
-			"cmd/tq/agentpool.go:331",
-			"cmd/tq/agentpool.go:334",
-			"cmd/tq/agentpool.go:378",
-			"cmd/tq/agentpool.go:393",
-			"cmd/tq/agentpool.go:398",
-			"cmd/tq/agentpool.go:471",
-			"cmd/tq/agentpool.go:475",
-			"cmd/tq/agentpool.go:480",
-			"cmd/tq/agentpool.go:482",
-			"cmd/tq/agentpool.go:488",
+			"cmd/tq/agentpool.go:560",
+			"cmd/tq/agentpool.go:564",
+			"cmd/tq/agentpool.go:569",
+			"cmd/tq/agentpool.go:571",
+			"cmd/tq/agentpool.go:577",
 		]
 		family: "file-write"
 		facts: {
@@ -538,7 +569,7 @@ sites: {
 	}
 	"cmd/tq.printCQRSEvents": {
 		location: [
-			"cmd/tq/main.go:3844",
+			"cmd/tq/main.go:3887",
 		]
 		family: "stream-copy"
 		facts: {
@@ -547,7 +578,7 @@ sites: {
 	}
 	"cmd/tq.procRSSKB": {
 		location: [
-			"cmd/tq/agentpool.go:1304",
+			"cmd/tq/agentpool.go:1403",
 		]
 		family: "file-read"
 		facts: {
@@ -574,7 +605,7 @@ sites: {
 	}
 	"cmd/tq.repoDirty": {
 		location: [
-			"cmd/tq/bootstrap.go:499",
+			"cmd/tq/bootstrap.go:510",
 		]
 		family: "ipc-subprocess"
 		facts: {
@@ -593,17 +624,18 @@ sites: {
 	}
 	"cmd/tq.runCrushServerActor": {
 		location: [
-			"cmd/tq/agentpool.go:1141",
-			"cmd/tq/agentpool.go:1161",
+			"cmd/tq/agentpool.go:1233",
+			"cmd/tq/agentpool.go:1253",
+			"cmd/tq/agentpool.go:1259",
 		]
 		family: "file-write"
 		facts: {
-			call: ["exec.CommandContext", "os.MkdirAll"]
+			call: ["exec.CommandContext", "os.Environ", "os.MkdirAll"]
 		}
 	}
 	"cmd/tq.runDLQ": {
 		location: [
-			"cmd/tq/main.go:3304",
+			"cmd/tq/main.go:3347",
 		]
 		family: "env"
 		facts: {
@@ -657,6 +689,17 @@ sites: {
 			call: ["os.Getenv"]
 		}
 	}
+	"cmd/tq.writeFileAtomic": {
+		location: [
+			"cmd/tq/atomicwrite.go:14",
+			"cmd/tq/atomicwrite.go:18",
+			"cmd/tq/atomicwrite.go:19",
+		]
+		family: "file-write"
+		facts: {
+			call: ["os.Remove", "os.Rename", "os.WriteFile"]
+		}
+	}
 	"internal/bridge/cqa.Bridge.Collect": {
 		location: [
 			"internal/bridge/cqa/cqa.go:123",
@@ -690,7 +733,7 @@ sites: {
 	}
 	"internal/bridge/papdashboard.HealthRelay.handle": {
 		location: [
-			"internal/bridge/papdashboard/healthrelay.go:185",
+			"internal/bridge/papdashboard/healthrelay.go:188",
 		]
 		family: "stream-copy"
 		facts: {
@@ -700,7 +743,7 @@ sites: {
 	"internal/bridge/papdashboard.NewHealthRelay": {
 		location: [
 			"internal/bridge/papdashboard/healthrelay.go:152",
-			"internal/bridge/papdashboard/healthrelay.go:172",
+			"internal/bridge/papdashboard/healthrelay.go:175",
 		]
 		family: "listener"
 		facts: {
@@ -1023,9 +1066,9 @@ sites: {
 	}
 	"internal/executor.autoDetectVerify": {
 		location: [
-			"internal/executor/agent.go:1550",
-			"internal/executor/agent.go:1554",
-			"internal/executor/agent.go:1558",
+			"internal/executor/agent.go:1551",
+			"internal/executor/agent.go:1555",
+			"internal/executor/agent.go:1559",
 		]
 		family: "file-read"
 		facts: {
@@ -1111,8 +1154,8 @@ sites: {
 	}
 	"internal/executor.defaultVerify": {
 		location: [
-			"internal/executor/agent.go:1522",
-			"internal/executor/agent.go:1535",
+			"internal/executor/agent.go:1523",
+			"internal/executor/agent.go:1536",
 		]
 		family: "file-read"
 		facts: {
@@ -1184,7 +1227,7 @@ sites: {
 	}
 	"internal/executor.readTQVerify": {
 		location: [
-			"internal/executor/agent.go:1467",
+			"internal/executor/agent.go:1468",
 		]
 		family: "file-read"
 		facts: {
@@ -1221,7 +1264,7 @@ sites: {
 	}
 	"internal/executor.requireRepoAutonomy": {
 		location: [
-			"internal/executor/agent.go:1433",
+			"internal/executor/agent.go:1434",
 		]
 		family: "file-read"
 		facts: {
@@ -1259,7 +1302,7 @@ sites: {
 	}
 	"internal/executor.runVerify": {
 		location: [
-			"internal/executor/agent.go:1327",
+			"internal/executor/agent.go:1328",
 		]
 		family: "ipc-subprocess"
 		facts: {
@@ -1502,6 +1545,15 @@ sites: {
 		family: "stream-copy"
 		facts: {
 			call: ["http.MaxBytesReader"]
+		}
+	}
+	"internal/mcpserver.Server.Serve": {
+		location: [
+			"internal/mcpserver/server.go:78",
+		]
+		family: "stream-copy"
+		facts: {
+			call: ["bufio.NewWriter"]
 		}
 	}
 	"internal/queue/companion.ClaimCounts": {
@@ -1996,7 +2048,7 @@ sites: {
 	}
 	"internal/queue/sqlitev4/migration.removeSQLiteSidecars": {
 		location: [
-			"internal/queue/sqlitev4/migration/upgrade.go:246",
+			"internal/queue/sqlitev4/migration/upgrade.go:256",
 		]
 		family: "file-write"
 		facts: {
@@ -2005,12 +2057,14 @@ sites: {
 	}
 	"internal/queue/sqlitev4/migration.restoreOnConvergeFailure": {
 		location: [
-			"internal/queue/sqlitev4/migration/upgrade.go:226",
-			"internal/queue/sqlitev4/migration/upgrade.go:233",
+			"internal/queue/sqlitev4/migration/upgrade.go:227",
+			"internal/queue/sqlitev4/migration/upgrade.go:235",
+			"internal/queue/sqlitev4/migration/upgrade.go:241",
+			"internal/queue/sqlitev4/migration/upgrade.go:242",
 		]
 		family: "file-write"
 		facts: {
-			call: ["os.ReadFile", "os.WriteFile"]
+			call: ["os.ReadFile", "os.Remove", "os.Rename", "os.WriteFile"]
 		}
 	}
 	"internal/queue/sqlitev4/migration.snapshotLegacy": {

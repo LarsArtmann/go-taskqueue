@@ -81,9 +81,10 @@ sites: {
 		resource: "TQ_POOL_CONFIG path default"
 		trigger: "tq pool-health flag resolution"
 	}
-	"cmd/tq.cmdServe": claims: {
-		resource: "TQ_* serve defaults"
-		trigger: "tq serve flag resolution"
+	"cmd/tq.cmdMCP": claims: {
+		resource: "process stdin/stdout listener (tq mcp stdio surface)"
+		trigger: "tq mcp invocation over stdio"
+		rationale: "stdio transport IS the tq mcp surface; a broken stream ends a session the client already abandoned"
 	}
 	"cmd/tq.cmdShow": claims: {
 		resource: "TQ_DB env fallback in error guidance"
@@ -221,6 +222,11 @@ sites: {
 		resource: "TQ_* env (worker flag defaults)"
 		trigger: "worker flag set construction"
 	}
+	"cmd/tq.ownCgroupV2RelPath": claims: {
+		resource: "own process cgroup v2 relative path (/proc/self/cgroup)"
+		trigger: "pool-health service attribution resolution"
+		rationale: "read-only self-location; the /proc/io attribution lies live in the fold mechanism, not this read"
+	}
 	"cmd/tq.parkBy": claims: {
 		resource: "USER env (park-by identity)"
 		trigger: "tq park default author resolution"
@@ -236,6 +242,11 @@ sites: {
 	"cmd/tq.printCQRSEvents": claims: {
 		resource: "journal fact stream (stdout render)"
 		trigger: "tq events print"
+	}
+	"cmd/tq.readCgroupMemoryEventsLocal": claims: {
+		resource: "cgroup v2 memory.events file"
+		trigger: "pool-health memory-pressure read"
+		rationale: "kernel-maintained pressure counters; read-only"
 	}
 	"cmd/tq.procRSSKB": claims: {
 		resource: "/proc/<pid>/status VmRSS"
