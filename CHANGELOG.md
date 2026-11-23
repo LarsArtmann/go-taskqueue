@@ -173,6 +173,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Internal
 
+- **New `scripts/check-embed-replace-sync.sh` gate (2026-11-23)**:
+  examples/embed/go.mod's KEEP-FOREVER replace block is the one
+  hand-maintained tq module-graph list feeding both the embed example
+  build and the consumer-store-impl smoke's HEAD-truth leg (which derives
+  its block from it live); the gate pins requires-vs-replace coverage,
+  replace-target liveness, and the smoke's derivation (extraction
+  present, no hand-frozen module list, empty derivation now refused by
+  the smoke), self-tested per the countable-gate convention and wired
+  into ci-local beside check-embed-tidy. No operator-visible behavior
+  change.
 - **Deleted the local `vendor/` tree and retired its drift gate leg**
   (2026-11-23): `vendor/` was a gitignored 167 MB local-only tree that
   root builds silently read (`-mod=vendor`) — every internal-module

@@ -399,6 +399,16 @@ step "check-embed-tidy self-test (adopter tidy drift)"
 ./scripts/check-embed-tidy.sh --self-test || exit 1
 with_transient_retry "embed tidy (adopter graph)" ./scripts/check-embed-tidy.sh || exit 1
 
+# Embed replace-block sync gate (facade-retirement batch
+# 000001a2093ef4b1): embed's KEEP-FOREVER replace block is the ONE
+# hand-maintained tq graph list feeding both the embed example build and
+# the consumer-store-impl HEAD leg's live derivation -- the gate pins
+# requires-vs-replaces coverage, replace-target liveness, and the smoke's
+# derivation (countable convention).
+step "check-embed-replace-sync self-test (replace block, module graph, smoke derivation)"
+./scripts/check-embed-replace-sync.sh --self-test || exit 1
+./scripts/check-embed-replace-sync.sh || exit 1
+
 # Fleet convention (2026-10-24, TODO 01-12 §e7/§g2): countable gate
 # summaries are PINNED, not advisory — the self-test fails here, not at the
 # next silent counter rot. Self-test FIRST, then the real gate (dep-bump

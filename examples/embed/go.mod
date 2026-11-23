@@ -70,7 +70,10 @@ require (
 // retirement this example is the IN-REPO adopter GRAPH guard (facades +
 // internal-path drivers on the local tree); the external-adoptability
 // proof moved to scripts/smoke/consumer-store-impl.sh, whose replace
-// block mirrors this one (keep both in sync when the graph changes).
+// block derives from this one live. This block's graph coverage, its
+// targets' liveness, and that derivation are gate-pinned by
+// scripts/check-embed-replace-sync.sh (ci-local) — one hand-maintained
+// graph list, never two.
 replace (
 	github.com/larsartmann/go-taskqueue/executor => ../../executor
 	github.com/larsartmann/go-taskqueue/internal/config => ../../internal/config

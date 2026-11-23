@@ -21,10 +21,12 @@
 #                      design, same semantics as consumer-install.sh).
 #                      Wired into the CI consumer job.
 #   TQ_STORE_IMPL_REPLACE=1   replaces to the local tree (HEAD truth;
-#                      the replace list mirrors examples/embed's go.mod
-#                      block — keep both in sync when the module graph
-#                      changes). Wired into ci-local so interface drift
-#                      fires at the push, not at the tag wave.
+#                      the replace list is DERIVED live from examples/
+#                      embed's go.mod block, and that block's graph
+#                      coverage is gate-pinned by
+#                      scripts/check-embed-replace-sync.sh). Wired into
+#                      ci-local so interface drift fires at the push, not
+#                      at the tag wave.
 #
 #   scripts/smoke/consumer-store-impl.sh                 # @latest leg
 #   TQ_STORE_IMPL_REPLACE=1 scripts/smoke/consumer-store-impl.sh  # HEAD leg
@@ -39,15 +41,24 @@ leg="proxy @latest"
 replace_block=""
 if [ "${TQ_STORE_IMPL_REPLACE:-0}" = "1" ]; then
 	leg="local-tree replaces (HEAD truth)"
-	# Mirrors examples/embed/go.mod's replace block (ruling 2026-11-03:
-	# KEEP-FOREVER) — every tq module in the transitive graph needs one,
+	# Derived live from examples/embed/go.mod's replace block (ruling
+	# 2026-11-03: KEEP-FOREVER) -- ONE hand-maintained graph list, not
+	# two: every tq module in the transitive graph needs a line there,
 	# or tidy resolves internals from a stale tag against HEAD facades.
 	# The block's left side is the full module path; the right side is
-	# the repo-relative DIRECTORY (module path minus the $MODULE prefix).
+	# rewritten to the repo-root DIRECTORY (module path minus the
+	# $MODULE prefix). Coverage of that block is pinned by
+	# scripts/check-embed-replace-sync.sh; an EMPTY derivation is
+	# refused below (it would run this leg proxy-mixed, not HEAD-truth).
+	mapfile -t replace_mods < <(cd "$repo_root/examples/embed" && sed -n '/^replace (/,/^)/p' go.mod | sed -e '1d' -e '$d' -e 's/=> .*$//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' | grep -v '^$')
+	if [ "${#replace_mods[@]}" -eq 0 ]; then
+		echo "STORE-IMPL FAIL: EMPTY REPLACE LIST derived from examples/embed/go.mod -- the replace-block extraction found nothing (block shape changed?). Fix the extraction or restore embed's KEEP-FOREVER block; an empty block would run this leg proxy-mixed instead of HEAD-truth." >&2
+		exit 1
+	fi
 	replace_block=$'replace (\n'
-	while IFS= read -r mod; do
+	for mod in "${replace_mods[@]}"; do
 		replace_block+="	$mod => $repo_root/${mod#"$MODULE/"}"$'\n'
-	done < <(cd "$repo_root/examples/embed" && sed -n '/^replace (/,/^)/p' go.mod | sed -e '1d' -e '$d' -e 's/=> .*$//' -e 's/^[[:space:]]*//' | grep -v '^$')
+	done
 	replace_block+=')'
 fi
 

@@ -248,6 +248,8 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   advisory**: every countable sibling gate (check-script-syntax, check-go-mods, check-dead-exports, check-guard-wiring, check-stub-shebang, check-tick-claims, gosec)
   carries `--self-test` pinning its summary format + a negative-path
   counter battery via an env hook; wired into ci-local; new gates too.
+  GROWING a countable gate updates its summary pins in the SAME COMMIT
+  (a gate whose output grew while its pins stayed put is a lying pin).
 - **Crush PreToolUse hooks** (`scripts/hooks/`, `--self-test`):
   `tq-bash-guard` (^bash$) denies the paid-trap classes (PIPESTATUS,
   `printf %.0s`, ERE bracket `\t/\d`, unscoped `gofmt`, smokes w/o `TQ_DB=`,
