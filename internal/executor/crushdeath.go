@@ -13,17 +13,28 @@ import (
 // for the same marker.
 const CrushServerDeathCode = "crush-server"
 
-// crushServerDeathMarkers are the observed (v0.99.0) death signatures:
-//   - "Events stream ended": the severed SSE events stream — the client
-//     exits 0 with only a WARN line, so the OUTPUT must be scanned, not
-//     just the error (a normal routed completion emits no such line;
-//     two-sided pinned by TestDetectCrushServerDeath and the
-//     crush-server-route smoke's severed leg).
+// crushServerDeathMarkers are the observed death signatures:
+//   - "Events stream ended": the severed SSE events stream on v0.99.0 —
+//     the client exits 0 with only a WARN line, so the OUTPUT must be
+//     scanned, not just the error (a normal routed completion emits no
+//     such line; two-sided pinned by TestDetectCrushServerDeath and the
+//     crush-server-route smoke's severed leg). On v0.102.0 this WARN
+//     survives only under --verbose (work turns always run it); quiet
+//     runs surface the fail-on-drop error below instead.
 //   - "dial unix": the client could not reach the socket (dead at attach
 //     with a failed respawn) — only matched on the error path.
+//   - "lost connection to the crush server" / "agent run was cancelled
+//     on the server": v0.102.0's fail-on-drop (upstream 2a8be165) — a
+//     severed stream now fails the run rc≠0 with an error instead of the
+//     rc-0 WARN lie, and a server-side cancellation of an interrupted
+//     run reports the cancelled twin. Source-derived at tag; the M4
+//     observe-first pin (plan 2026-11-23_00-57, F18/F19) verifies the
+//     exact prefixes against the shipped binary.
 var crushServerDeathMarkers = []string{
 	"Events stream ended",
 	"dial unix",
+	"lost connection to the crush server",
+	"agent run was cancelled on the server",
 }
 
 // DetectCrushServerDeath reports whether a routed run's output or error
