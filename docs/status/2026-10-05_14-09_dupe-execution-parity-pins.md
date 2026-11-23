@@ -98,7 +98,7 @@ files only; the daemon folded every change (e2a7a825, 93245412, feb791f4,
 
 ## b) PARTIALLY DONE
 
-1. f3 tree re-baseline: touched-module gates (readmodel, status, cqrs) +
+1. ~~f3 tree re-baseline: touched-module gates (readmodel, status, cqrs) +~~ — RESOLVED 2026-11-23: root build+vet + the full per-module loop green (20-35 report a9; CI green at c8755d16)
    cmd/tq gate green; the ROOT build+vet and the full per-module loop NOT
    run. Remaining effort: S (one loop invocation with GOCACHE set).
 2. The 12-27 report's shipped §f items are dispositioned in the TODO

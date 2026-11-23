@@ -101,7 +101,7 @@ are limited to what was read.
    (forgotten/better/improve above); ghost-system sweep, scope-creep check,
    test-health inventory, removed-useful-things audit: not in this session's
    scope, not started.
-4. LSP observation: 58 gopls errors on cmd/tq/main.go (registerAgentExecutors,
+4. ~~LSP observation: 58 gopls errors on cmd/tq/main.go (registerAgentExecutors,~~ — RESOLVED 2026-11-23: verified the documented false-positive class via CLI gates (14-09 report a5)
    executor.TaskTypeDepBump, budget.Guard.WithCmdCache "undefined") plus
    internal/journal/cqrs go.mod errors appeared in tool output. Matched by eye
    against the AGENTS known false-positive class (templ + cmd/tq LSP
@@ -110,16 +110,16 @@ are limited to what was read.
 
 ## c) NOT STARTED
 
-1. Parity pins for the three detail structs (f1/f4/f5) — zero code written.
-2. Accepted type-dupe groups ledger (f9) — nothing written anywhere durable.
-3. dupe-baseline CI decision (f12) — no proposal drafted.
-4. webui provenance twin verification (f7/f8): render.go imports harvest
+1. ~~Parity pins for the three detail structs (f1/f4/f5) — zero code written.~~ — RESOLVED 2026-11-23: shipped: internal/readmodel/detailkeys_test.go (4 tests / 5 cases)
+2. ~~Accepted type-dupe groups ledger (f9) — nothing written anywhere durable.~~ — RESOLVED 2026-11-23: docs/dupe-type-accepted-ledger.md (TODO_LIST.md:769)
+3. ~~dupe-baseline CI decision (f12) — no proposal drafted.~~ — RESOLVED 2026-11-23: decided + shipped: scripts/dupe-baseline.sh --check in ci-local (TODO_LIST.md:770)
+4. ~~webui provenance twin verification (f7/f8): render.go imports harvest~~ — RESOLVED 2026-11-23: verified: no hand-mirror; both paths call harvest.BuildProvenance (TODO_LIST.md:768)
    (internal/webui/render.go:17) yet priorityProvenanceView "mirrors tq show's
    buildPriorityProvenance" (render.go:60-63) — whether webui hand-mirrors
    harvest.BuildProvenance is unchecked beyond the doc comment.
-5. Index-bloat sweep: 206 files under docs/status today, live-row threshold is
+5. ~~Index-bloat sweep: 206 files under docs/status today, live-row threshold is~~ — RESOLVED 2026-11-23: threshold re-derived 100→400 with prunes (TODO_LIST.md:790)
    100 (scripts/check-status-index.sh:14) — no sweep started.
-6. Gate re-run: no gate executed this session (read-only), so the working
+6. ~~Gate re-run: no gate executed this session (read-only), so the working~~ — RESOLVED 2026-11-23: superseded: root build+vet green (20-35 report a9); master CI green at c8755d16
    tree at HEAD is unverified by this window — normal for a review session,
    listed so nobody cites this session for tree health.
 

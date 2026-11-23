@@ -19,7 +19,7 @@
    cross-check); 14 non-md artifacts (reviews/modularization/research HTML,
    architecture-understanding d2/svg, evidence assets) classified LEAVE
    with reasons.
-2. **4-file archive, fully instrumented:** 1 fully-done window
+2. ~~**4-file archive, fully instrumented:** 1 fully-done window~~ — RESOLVED 2026-11-23: all four files present in docs/status/archived/ (2026-09-27_05-09, 2026-09-28_20-03, 2026-09-29_04-15, 2026-09-30_14-54)
    (2026-09-27_05-09, five §f strikes via annotate-status-items —
    emit-keys → --verify → apply, check-rows complete, every routed row
    verified live) + 3 verify-only duplicates (canonical existence verified
