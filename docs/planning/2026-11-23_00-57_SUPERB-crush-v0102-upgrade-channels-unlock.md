@@ -259,3 +259,46 @@ flags are self-documenting and survive schema reshapes). Raw
 enrollments. The flags join the M9 statement only behind the owner
 serve-per-repo gate; `tq mcp` gains `notifications/claude/channel`
 push + `channel_reply` in the same phase.
+
+## 7. Execution verdicts (observed, post-deploy — M3/M4/M5 receipts)
+
+**M3 host flip.** The SystemNix deploy (2026-11-23 03:56 run) landed
+crush v0.102.0 on the host (`crush version v0.102.0`,
+`/run/current-system` = the deployed toplevel; the run's own post
+battery hung on `media-atlas-backup` blocking the switch transaction —
+the flip itself was live). F13 route smoke: 14 PASS, rc=0
+(`/tmp/tq-smoke-route-f13.log`), env-gap canary holding. F15 supervisor
+smoke: 11 PASS, rc=0 (`/tmp/tq-smoke-super-f15.log`) — 429 fast-refuse,
+keeper restart, mid-run-kill no-burn (classified crush-server), verdict
+bridge, operator cancel all green on 0.102.0. F16/F17: proven pin →
+0.102.0 (f3e5e6ff); `tq doctor` receipt
+`ok crush-version crush 0.102.0 (floor 0.94.1, proven pin 0.102.0)`
+(`/tmp/tq-doctor-f17.log`).
+
+**M4 observe-first (F18/F19).** The severed-run capture
+(`/tmp/tq-f18/observe.out`): client rc=1, combined output carries the
+verbose WARN `Events stream ended error="unexpected EOF"` AND
+`Lost connection to the crush server before the run completed.` —
+fail-on-drop confirmed live, rc≠0 replaces the v0.101 rc-0 lie. The
+crushdeath pins HOLD unchanged: `DetectCrushServerDeath` matches via
+`containsFold` (case-insensitive), both observed lines hit existing
+markers; no test amendments. Not exercised by this repro: the
+`agent run was cancelled on the server` twin (kill -9 kills the server
+itself; the server-side cancel path rode the supervisor smoke's
+operator-cancel leg, green).
+
+**M5 channels probe (F20–F23).** Probe server + live run receipts in
+`/tmp/tq-mcp-channels-probe/`. VERDICT: (1) the M9 rc grammar parses on
+the shipped binary — `mcp add probe --type stdio --command python3
+--args … --channel true` enrolled and spawned; (2) the GATE OPENS — run
+log `MCP channel enabled name=probe buffered=0` (declared
+`experimental.claude/channel` honored); (3) the wire push DELIVERED —
+probe sent `notifications/claude/channel` right after
+`notifications/initialized` with no connection error; (4) the RENDER is
+UNCONFIRMED headless — no `<channel …>` wrapper in run output (push
+raced the turn start, buffered=0, or render is TUI-only); the
+`a push renders` half of the TODO row stays open for a TUI-observed
+run. Erratum for the design notes: crush's MCP client sends an
+extension `server/discover` request (io.modelcontextprotocol/* _meta)
+BEFORE `initialize` — a Phase-2 `tq mcp` server must tolerate (or
+implement) it.
