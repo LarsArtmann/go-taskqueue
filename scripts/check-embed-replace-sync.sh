@@ -153,14 +153,14 @@ self_test() {
 	# returned, and set -u would kill the trap on a function-local name.
 	tmp="$(mktemp -d)"
 	trap 'rm -rf "$tmp"' EXIT
-	local real_gomod="$SCRIPT_DIR/examples/embed/go.mod"
+	local real_gomod="$SCRIPT_DIR/../examples/embed/go.mod"
 	local out rc
 
 	# pins: negative-battery-coverage -- a required tq module without a
 	# replace line must fire the coverage branch naming the module.
 	grep -v 'go-taskqueue/internal/task =>' "$real_gomod" >"$tmp/missing.go.mod"
 	rc=0
-	out="$(TQ_REPLACE_SYNC_EMBED_GOMOD="$tmp/missing.go.mod" TQ_REPLACE_SYNC_EMBED_DIR="$SCRIPT_DIR/examples/embed" "$self_abs" 2>&1)" || rc=$?
+	out="$(TQ_REPLACE_SYNC_EMBED_GOMOD="$tmp/missing.go.mod" TQ_REPLACE_SYNC_EMBED_DIR="$SCRIPT_DIR/../examples/embed" "$self_abs" 2>&1)" || rc=$?
 	if [ "$rc" -ne 1 ]; then
 		echo "FAIL: missing-replace battery (want rc=1, got rc=$rc)"
 		printf '%s\n' "$out"
@@ -183,7 +183,7 @@ self_test() {
 	sed 's#internal/retryx => ../../internal/retryx#internal/retryx => ../../internal/nonexistent-target#' \
 		"$real_gomod" >"$tmp/stale.go.mod"
 	rc=0
-	out="$(TQ_REPLACE_SYNC_EMBED_GOMOD="$tmp/stale.go.mod" TQ_REPLACE_SYNC_EMBED_DIR="$SCRIPT_DIR/examples/embed" "$self_abs" 2>&1)" || rc=$?
+	out="$(TQ_REPLACE_SYNC_EMBED_GOMOD="$tmp/stale.go.mod" TQ_REPLACE_SYNC_EMBED_DIR="$SCRIPT_DIR/../examples/embed" "$self_abs" 2>&1)" || rc=$?
 	if [ "$rc" -ne 1 ]; then
 		echo "FAIL: stale-replace battery (want rc=1, got rc=$rc)"
 		printf '%s\n' "$out"
@@ -227,7 +227,8 @@ EOT
 #!/usr/bin/env bash
 replace_block="hand written list"
 echo "EMPTY REPLACE LIST guard marker present"
-EOT	rc=0
+EOT
+	rc=0
 	out="$(TQ_REPLACE_SYNC_SMOKE="$tmp/noderive-smoke.sh" "$self_abs" 2>&1)" || rc=$?
 	if [ "$rc" -ne 1 ]; then
 		echo "FAIL: no-derivation battery (want rc=1, got rc=$rc)"
