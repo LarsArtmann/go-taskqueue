@@ -2,7 +2,9 @@
 // (ADR-0016): the Store interface, Filter, the Queue convenience facade,
 // priority bands (ADR-0015), and the sentinel errors. The implementation
 // stays internal; this package pins the names. Store drivers live in the
-// sibling queue/sqlite and queue/postgres modules and satisfy Store here.
+// internal/queue/sqlite and internal/queue/postgres modules and satisfy
+// Store here (the public queue/sqlite + queue/postgres facades were
+// retired 2026-11-23).
 package queue
 
 import (

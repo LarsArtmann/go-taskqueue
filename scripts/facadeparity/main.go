@@ -142,8 +142,6 @@ func run(root string) error {
 		{"internal/task", "task"},
 		{"internal/journal", "journal"},
 		{"internal/queue", "queue"},
-		{"internal/queue/sqlite", "queue/sqlite"},
-		{"internal/queue/postgres", "queue/postgres"},
 		{"internal/executor", "executor"},
 		{"internal/worker", "worker"},
 	}

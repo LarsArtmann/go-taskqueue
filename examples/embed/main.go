@@ -1,9 +1,11 @@
 // Command embed is the adopter on-ramp: the same embed story as
-// examples/fullcore, but importing ONLY the public facade modules
-// (ADR-0016) — exactly the import lines an external consumer writes.
-// Nothing here may import internal/…; if you find yourself adding such
-// an import, the facade is missing a name (fix the facade, not this
-// example — scripts/check-facade-parity.sh pins the contract).
+// examples/fullcore, importing the public facade modules (ADR-0016) for
+// the contract surface (task, journal, queue, executor, worker) plus the
+// store-driver modules directly. Since the 2026-11-23 facade retirement
+// the drivers live at internal/queue/sqlite and internal/queue/postgres
+// — in-repo-path modules; an external consumer either vendors/forks this
+// tree or implements queue.Store itself.
+// The facade names stay the pinned contract — scripts/check-facade-parity.sh.
 //
 // Usage:
 //
@@ -31,9 +33,9 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/larsartmann/go-taskqueue/executor"
+	"github.com/larsartmann/go-taskqueue/internal/queue/postgres"
+	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
 	"github.com/larsartmann/go-taskqueue/queue"
-	"github.com/larsartmann/go-taskqueue/queue/postgres"
-	"github.com/larsartmann/go-taskqueue/queue/sqlite"
 	"github.com/larsartmann/go-taskqueue/task"
 	"github.com/larsartmann/go-taskqueue/worker"
 )

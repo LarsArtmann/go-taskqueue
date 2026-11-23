@@ -5,9 +5,9 @@ go 1.27.4
 require (
 	github.com/jackc/pgx/v5 v5.12.0
 	github.com/larsartmann/go-taskqueue/executor v0.4.2
+	github.com/larsartmann/go-taskqueue/internal/queue/postgres v0.4.2
+	github.com/larsartmann/go-taskqueue/internal/queue/sqlite v0.4.2
 	github.com/larsartmann/go-taskqueue/queue v0.4.2
-	github.com/larsartmann/go-taskqueue/queue/postgres v0.4.2
-	github.com/larsartmann/go-taskqueue/queue/sqlite v0.4.2
 	github.com/larsartmann/go-taskqueue/task v0.4.2
 	github.com/larsartmann/go-taskqueue/worker v0.4.2
 )
@@ -37,9 +37,7 @@ require (
 	github.com/larsartmann/go-taskqueue/internal/journal v0.4.2 // indirect
 	github.com/larsartmann/go-taskqueue/internal/queue v0.4.2 // indirect
 	github.com/larsartmann/go-taskqueue/internal/queue/companion v0.4.2 // indirect
-	github.com/larsartmann/go-taskqueue/internal/queue/postgres v0.4.2 // indirect
 	github.com/larsartmann/go-taskqueue/internal/queue/postgresv4 v0.4.2 // indirect
-	github.com/larsartmann/go-taskqueue/internal/queue/sqlite v0.4.2 // indirect
 	github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4 v0.4.2 // indirect
 	github.com/larsartmann/go-taskqueue/internal/retryx v0.4.2 // indirect
 	github.com/larsartmann/go-taskqueue/internal/task v0.4.2 // indirect
@@ -82,8 +80,6 @@ replace (
 	github.com/larsartmann/go-taskqueue/internal/testastguard => ../../internal/testastguard
 	github.com/larsartmann/go-taskqueue/internal/worker => ../../internal/worker
 	github.com/larsartmann/go-taskqueue/queue => ../../queue
-	github.com/larsartmann/go-taskqueue/queue/postgres => ../../queue/postgres
-	github.com/larsartmann/go-taskqueue/queue/sqlite => ../../queue/sqlite
 	github.com/larsartmann/go-taskqueue/task => ../../task
 	github.com/larsartmann/go-taskqueue/worker => ../../worker
 )
