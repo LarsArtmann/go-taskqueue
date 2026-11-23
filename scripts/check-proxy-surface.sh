@@ -63,7 +63,6 @@ self_test() {
 	local resolve_queue='case "$1" in *queue*) printf "%s\n" v9.9.9;; *) exit 7;; esac'
 	local probe_ok='exit 0'
 	local probe_fail='exit 3'
-	local out rc
 
 	run_hooked() {
 		RUN_RC=0
