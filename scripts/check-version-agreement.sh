@@ -14,7 +14,10 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-flake_version="$(sed -n 's/^[[:space:]]*version = "\(.*\)";$/\1/p' flake.nix | head -1)"
+# Anchor on the go-taskqueue pname line: the templ override's own `version`
+# attr (overrideAttrs semantics) sits earlier in flake.nix and must never
+# satisfy this comparison.
+flake_version="$(sed -n '/pname = "go-taskqueue";/,$s/^[[:space:]]*version = "\(.*\)";$/\1/p' flake.nix | head -1)"
 if [[ -z "$flake_version" ]]; then
 	echo "version-agreement: cannot parse flake.nix version attr" >&2
 	exit 2

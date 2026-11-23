@@ -260,8 +260,11 @@
 
             # `tq version` must report the flake's own version attr (round-2
             # caught a 0.1.0 binary shipping from a 0.2.0 flake — by hand).
+            # Extraction anchors on the go-taskqueue pname line: the templ
+            # override's own `version` attr (overrideAttrs semantics) sits
+            # EARLIER in the file and must never satisfy this comparison.
             version-sync = pkgs.runCommand "version-sync" { } ''
-              want="$(sed -n 's/^[[:space:]]*version = "\(.*\)";$/\1/p' ${./flake.nix} | head -1)"
+              want="$(sed -n '/pname = "go-taskqueue";/,$s/^[[:space:]]*version = "\(.*\)";$/\1/p' ${./flake.nix} | head -1)"
               got="$(${config.packages.default}/bin/tq version | awk '{print $2}' | tr -d ',')"
               if [ "$got" != "$want" ]; then
                 echo "error: tq version reports '$got' but flake.nix says '$want' — the ldflags line is out of sync" >&2
