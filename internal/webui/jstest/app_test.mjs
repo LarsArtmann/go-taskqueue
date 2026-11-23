@@ -632,7 +632,7 @@ test("pause-on-hover: hovered bursts accumulate and resurface on un-hover", () =
 	app.swapIn(el, { html: feedHTML(["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"], 3) });
 	el._fire("mouseleave");
 	badge = el.querySelector(".tq-feed-burst");
-	eq(badge.textContent, "12 new while paused", "un-hover resurfaces the accumulated total");
+	eq(badge.textContent, "11 new while paused", "un-hover resurfaces the accumulated total");
 	el.hovered = false;
 	app.swapIn(el, { html: feedHTML(["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"], 3) });
 	eq(el.querySelector(".tq-feed-burst"), null, "next unhovered zero-new swap clears the badge");

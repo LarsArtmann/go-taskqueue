@@ -183,19 +183,27 @@
      evaporates — each hovered burst accumulates, and un-hovering
      resurfaces the total as "N new while paused" instead of silently
      resuming the tail ladder. The next unhovered swap takes the badge
-     over: its own count, or the zero-new clear. */
-  var feedHoverNew = 0;
+     over: its own count, or the zero-new clear. The accumulator is a
+     per-element attribute, not module-global: two feed-like panes (the
+     detail-page timeline is a candidate) must not share one session,
+     and a count dies with its fragment instead of leaking into the
+     next one. */
+  function feedHoverNew(el) {
+    var n = parseInt(el.getAttribute("data-feed-hover-new"), 10);
+    return isNaN(n) ? 0 : n;
+  }
 
   function wireFeedPause(el) {
     if (el.getAttribute("data-feed-pause-wired")) return;
     el.setAttribute("data-feed-pause-wired", "1");
     el.addEventListener("mouseenter", function () {
-      feedHoverNew = 0;
+      el.setAttribute("data-feed-hover-new", "0");
     });
     el.addEventListener("mouseleave", function () {
-      if (feedHoverNew <= 0) return;
-      ensureFeedBadge(el).textContent = feedHoverNew + " new while paused";
-      feedHoverNew = 0;
+      var n = feedHoverNew(el);
+      if (n <= 0) return;
+      ensureFeedBadge(el).textContent = n + " new while paused";
+      el.setAttribute("data-feed-hover-new", "0");
     });
   }
 
@@ -208,7 +216,9 @@
     if (isFeed) {
       var burst = feedBurstCount(el, prevSeq);
       showFeedBurst(el, burst);
-      if (burst > 0 && el.matches && el.matches(":hover")) feedHoverNew += burst;
+      if (burst > 0 && el.matches && el.matches(":hover")) {
+        el.setAttribute("data-feed-hover-new", feedHoverNew(el) + burst);
+      }
       wireFeedPause(el);
     }
     updateBoardAffordance();
