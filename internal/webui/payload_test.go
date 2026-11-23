@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json/jsontext"
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -340,6 +341,71 @@ func TestRetryTrailCountsDeadLetter(t *testing.T) {
 	if trail[1].Reason != "preflight: repo dirty" || trail[1].Count != 1 {
 		t.Errorf("second reason = %+v, want the earlier refusal", trail[1])
 	}
+}
+
+// TestRetryStripCollapse pins the §f30 render split: at or below four
+// distinct reasons the strip stays the flat span row, past four it folds
+// behind a native <details> (the settled-rows idiom, no JS under CSP)
+// whose summary counts the reasons and occurrences — and whose body still
+// carries every row, so folding never loses information.
+func TestRetryStripCollapse(t *testing.T) {
+	t.Parallel()
+
+	render := func(t *testing.T, trail []retryReason) string {
+		t.Helper()
+
+		var buf bytes.Buffer
+		if err := retryStrip(trail).Render(context.Background(), &buf); err != nil {
+			t.Fatalf("retryStrip render: %v", err)
+		}
+
+		return buf.String()
+	}
+
+	reasons := func(n int) []retryReason {
+		trail := make([]retryReason, 0, n)
+		for i := range n {
+			trail = append(trail, retryReason{Count: i + 1, Reason: fmt.Sprintf("reason %d", i)})
+		}
+
+		return trail
+	}
+
+	t.Run("four reasons keep the flat strip", func(t *testing.T) {
+		t.Parallel()
+
+		html := render(t, reasons(4))
+
+		if !strings.Contains(html, `aria-label="retry summary"`) {
+			t.Errorf("flat strip missing the retries container: %s", html)
+		}
+
+		if strings.Contains(html, "<details") {
+			t.Errorf("four distinct reasons must not fold: %s", html)
+		}
+	})
+
+	t.Run("five reasons fold behind a native details", func(t *testing.T) {
+		t.Parallel()
+
+		html := render(t, reasons(5))
+
+		for _, marker := range []string{
+			`<details class="tq-settled" data-state-key="retries">`,
+			"5 distinct reasons",
+			"15 occurrences",
+			"expand for all",
+			`aria-label="retry summary"`,
+		} {
+			if !strings.Contains(html, marker) {
+				t.Errorf("folded strip missing %q: %s", marker, html)
+			}
+		}
+
+		if rows := strings.Count(html, `tq-retries-row`); rows != 5 {
+			t.Errorf("folded body carries %d rows, want all 5 reasons: %s", rows, html)
+		}
+	})
 }
 
 // TestPayloadSectionGoldenRender pins the RENDERED payload-section HTML for
