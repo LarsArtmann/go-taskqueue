@@ -347,7 +347,9 @@ TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   `--from`; tail-runs `check-footer-attribution.sh <id>` (rerun after ANY
   later rebuild); fallback = amend the unpushed HEAD once `git show --stat`
   proves it mine. Full DAG rebuild: `scripts/rebuild-lineage.sh <id> --mine 2,3`
-  (`--self-test`).
+  (`--self-test`). A session that grows AGENTS.md resets the size budget
+  (the `agentsDocMaxBytes` twin) IN THE SAME CHANGE — a tripped agents-size
+  gate is foreign-growth attribution, never a prune.
 - **TestExactlyOnceUnderConcurrency is load-flaky** and
   **TestSelfManagingLoop is load-flaky** (build storms at clean parents):
   rerun before attributing; ride KNOWN_FLAKY (lib/verify-retry.sh).

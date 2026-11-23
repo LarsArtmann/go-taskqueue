@@ -43,7 +43,7 @@
 
 ## f) NEXT — up to 50 (residue first; 1–3 are this window's own)
 
-1. Diagnose the ci-local rc=1 with all-summaries-green: the gate-fixture lib self-test prints two `SELF-TEST FAIL` pins ("wrong-rc pin (rc=3, want 1)", "fragment-miss pin") yet summarizes `ok (7 checks)` — is the battery negative fixture mis-counting, or is rc=1 leaking from that leg despite the ok summary?
+1. DONE 2026-11-23: NOT a mis-count and no rc leak in that leg — the two `SELF-TEST FAIL` lines are the lib-under-test's negative-pin DIAGNOSTICS (`gate_fixture_expect` prints them whenever a deliberate-bad fixture is counted; the pins' own counter checks pass; `bash scripts/lib/gate-fixture.sh --self-test` exits 0, receipt /tmp/tq-ci-f1-full.log). The battery's rc=1 came from the docs-gates freshness leg: this report's own §f rows 2 and 11 were unharvested (self-referential, the f6 class). Resolved below.
 2. Re-run ci-local to green after f1 and cite the receipt in the index row.
 3. Resolve the master/origin divergence (foreign rebuild of 3 pushed commits) — heal/rebuild-lineage vs coordinated force-with-lease; needs the foreign session's SHA map or owner ruling; then push the window's ~25 commits.
 4. TUI-observed channel render (row 1626 remainder) — one PTY `crush` session with the probe enrolled; closes the probe row.
@@ -53,7 +53,7 @@
 8. Tag internal/mcpserver v0.4.2 in the release train — cmd/tq's unpushed-tag require 404s proxy tidy (observed: `go: downloading .../internal/mcpserver v0.4.2` in the cmd/tq tidy attempt) until the tag exists.
 9. v0.4.3 release train: after the cqrs-htmx/go-cqrs-lite re-tag lands, flip sibling pins dependency-ordered and tag the trains (foreign campaign's stated plan — coordinate, don't duplicate).
 10. Index-bloat digest ritual (415 rows > 400 threshold) — standing monthly advisory.
-11. AGENTS convention line: foreign sessions that grow AGENTS.md reset the budget in the same change (from §e3).
+11. DONE 2026-11-23: convention line added to the AGENTS Known-Issue bullet "Concurrent agents commit constantly": a session that grows AGENTS.md resets the size budget (the `agentsDocMaxBytes` twin) IN THE SAME CHANGE — a tripped agents-size gate is foreign-growth attribution, never a prune (27_810/27_900 B).
 12. SystemNix docs: deploy warm = `nix flake archive` (from §e2); sudo deploys cannot fetch private inputs unworn.
 13. Lesson entry (crush-config repo, by commit): named-stash handoff etiquette for concurrent sessions (from §e5).
 14. Lesson entry: mid-gate daemon sweeps of EDIT-in-flight files — the only cure is edit+stage+commit in one breath; consider a pre-commit hook advisory when a repo-scope gate ran within N minutes of the last edit.
