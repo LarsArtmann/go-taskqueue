@@ -1,6 +1,6 @@
 module github.com/larsartmann/go-taskqueue/cmd/tq
 
-go 1.27
+go 1.27.2
 
 require (
 	github.com/dustin/go-humanize v1.1.0
@@ -13,10 +13,10 @@ require (
 	github.com/larsartmann/go-taskqueue/internal/composition v0.4.2
 	github.com/larsartmann/go-taskqueue/internal/config v0.4.2
 	github.com/larsartmann/go-taskqueue/internal/dlqbackoff v0.4.2
-	github.com/larsartmann/go-taskqueue/internal/mcpserver v0.4.2
 	github.com/larsartmann/go-taskqueue/internal/executor v0.4.2
 	github.com/larsartmann/go-taskqueue/internal/journal v0.4.2
 	github.com/larsartmann/go-taskqueue/internal/journal/cqrs v0.4.2
+	github.com/larsartmann/go-taskqueue/internal/mcpserver v0.4.2
 	github.com/larsartmann/go-taskqueue/internal/queue v0.4.2
 	github.com/larsartmann/go-taskqueue/internal/queue/companion v0.4.2
 	github.com/larsartmann/go-taskqueue/internal/queue/postgres v0.4.2

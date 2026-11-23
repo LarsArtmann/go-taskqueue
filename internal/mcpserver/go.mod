@@ -1,6 +1,6 @@
 module github.com/larsartmann/go-taskqueue/internal/mcpserver
 
-go 1.27
+go 1.27.2
 
 require (
 	github.com/larsartmann/go-taskqueue/internal/journal v0.4.2
