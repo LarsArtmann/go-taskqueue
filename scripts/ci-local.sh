@@ -493,7 +493,13 @@ step "frozen-date fixture gate (smoke + testdata compute dates at run time)"
 ./scripts/check-frozen-dates.sh
 
 step "module-proxy + pkg.go.dev publishability audit (advisory; network-tolerant SKIP)"
-./scripts/check-pkg-proxy.sh
+# KNOWN_FLAKY: pkg.go.dev render fetches flaked HTTP-000000 three times on
+# 2026-11-23 while every proxy leg stayed ok — always green on retry. One
+# retry, named; a persistent 404 still fails loud on both attempts.
+./scripts/check-pkg-proxy.sh || {
+	echo "pkg-proxy retry (transient HTTP-000000 class, 2026-11-23 ×3)"
+	./scripts/check-pkg-proxy.sh
+}
 
 step "clean-room consumer compile (advisory in ci-local; HARD gate in release.sh)"
 ./scripts/check-cleanroom-install.sh
