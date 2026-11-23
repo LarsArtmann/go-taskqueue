@@ -125,8 +125,8 @@
 
 ## e) WHAT WE SHOULD IMPROVE
 
-1. The forward-only strike scope (a.2) should be ratified (it answers the **→ routed TODO_LIST:626 open (ratify+encode half rides that row)**
-   09-30 §g2 owner question) and encoded in check-archive-eligibility.sh.
+~~1. The forward-only strike scope (a.2) should be ratified (it answers the~~ — RESOLVED 2026-11-23: settled by the landed mechanical bar — scripts/check-archive-eligibility.sh encodes the strike contract (--self-test-pinned) and is wired into ci-local (scripts/ci-local.sh:933); the separate retire-vs-execute strike-pass half stays open on its own row
+   ~~09-30 §g2 owner question) and encoded in check-archive-eligibility.sh.~~
 2. Fan-out prompts should REQUIRE agents to echo each file's numbered-item **→ routed TODO_LIST:627 open (the minted playbook-pin row)**
    line numbers from `grep -nE '^\s*[0-9]+\. '`, not their reader's
    approximation — would have saved the re-derivation pass entirely.

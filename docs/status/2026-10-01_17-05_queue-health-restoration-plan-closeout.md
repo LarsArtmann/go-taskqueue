@@ -169,7 +169,7 @@ The P1 loop alone consumed ~120% of the daily cap on its worst day.
    `tq watermarks set dlqfix-sweeper 0` → ~167 gofmt-class letters
    auto-dismiss FREE (shipped proof), ~148 others mint PAID autopsies
    (dedup-forever bounded). Rewind, partial, or leave?
-3. **Push posture:** ~40 unpushed commits on go-taskqueue master, CV
+~~3. **Push posture:** ~40 unpushed commits on go-taskqueue master, CV~~ — RESOLVED 2026-11-23: answered by events — pushes happened (v0.3.3 published 2026-10-07, v0.3.4 since, tags at HEAD; twin disposition 2026-10-01_13-15 §f6)
    ahead of origin, plus SystemNix/go-cqrs-lite from prior windows.
    Push now, or hold for F70?
 

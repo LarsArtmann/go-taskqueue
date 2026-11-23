@@ -222,7 +222,7 @@ redactOutput (no third tail helper can bypass).
 
 Lockout/auth cluster (19–23):
 ~~19. De-sleep lockout tests via nowFunc injection (httpapi + webui).~~ done (docs-health pass 2026-10-04)
-20. Pin the ?token= query auth-failure strike path. **→ routed row-not-found: ?token= query-auth strike pin — no TODO row, no pin found**
+~~20. Pin the ?token= query auth-failure strike path. **→ routed row-not-found: ?token= query-auth strike pin — no TODO row, no pin found**~~ — RESOLVED 2026-11-23: pin landed at HEAD — TestQueryTokenFailureStrikes (internal/httpapi/httpapi_test.go:502) pins wrong query tokens counting strikes like wrong Authorization headers
 21. Pin "lockout covers POST /api/v1/tasks" (all-routes contract). **→ routed row-not-found: nearest landed pin is CSRF-lockout 429 matrix, not token-lockout-covers-POST**
 ~~22. 401/429 body-shape ruling ({error,fix} vs plain text) — owner.~~ done (docs-health pass 2026-10-31)
 23. authLockout test knob ruling (ties to §g2's 61s leg). **→ routed TODO_LIST:611/700 open (knob rulings BLOCKED owner)**
