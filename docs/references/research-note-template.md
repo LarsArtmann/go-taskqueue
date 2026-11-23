@@ -28,11 +28,16 @@ is actionable for tq. If it is a layer below/above tq, say so._
 ## Source-verified citations
 
 _Every load-bearing claim gets a row. The "what it says" cell quotes or
-paraphrases the SOURCE, not a summary of it._
+paraphrases the SOURCE, not a summary of it. Two cite forms, and the gate
+rejects the wrong one: IN-REPO files cite `file:line`; UPSTREAM files cite
+`` `repo@tag <path>` (lines N-M) `` — `check-cite-drift.sh` cannot resolve a
+foreign `path:line` and will refuse it (2026-11-23 crush-v0.102.0 note §d:
+every upstream row had to use the tag form). Example of the upstream row
+shape (from that note):_
 
 | # | Path (`<repo>@<sha>`, verified <date>) | What it actually says |
 | - | -------------------------------------- | --------------------- |
-| 1 |                                        |                       |
+| 1 | `crush@v0.102.0 internal/backend/channels.go` (lines 25-33), verified 2026-11-23 | Server-mode channel pushes are processed once per workspace "no matter how many clients are attached — including zero." |
 
 ## Lesson table — what <source> does, where tq stands
 
@@ -55,10 +60,11 @@ _Two obligations, and the first one is the one that gets skipped._
   empty result as an acquisition event to write down. A trail that says "the
   citations were fetched from <urls> and read directly" while every fact came
   through an intermediary is the 2026-11-01 false-verification failure.
-- **Cite-then-verify.** Write the `file:line` cite, then RE-READ that exact
-  line before committing. Four cites in the 2026-11-01 note were off by one or
-  two lines because the numbers were written from memory of the file, not from
-  a read of it. The mechanical check, run over the files you touched:
+- **Cite-then-verify.** Write the `file:line` cite (in-repo) or the
+  `repo@tag <path>` (lines N-M) cite (upstream), then RE-READ that exact
+  line before committing. Four cites in the 2026-11-01 note were off by one
+  or two lines because the numbers were written from memory of the file, not
+  from a read of it. The mechanical check, run over the files you touched:
 
   ```bash
   ./scripts/check-cite-drift.sh docs/research/<your-note>.md
