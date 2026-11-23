@@ -22,7 +22,7 @@ vocabulary.
 **Fork records (checkpoint heals)**: the skeleton commit was daemon-swept
 into footer-less d2ac3d7b mid-run and healed: d2ac3d7b→0071dff8; the filled
 report + doc updates were daemon-swept into footer-less 1c8d8a57 and
-amended twice (5183ec4c, then the fork-record fix itself): the landing
+amended twice (the second amend was this fork-record fix): the landing
 commit carrying this report is 40d71fca (1c8d8a57→40d71fca).
 
 ## a) FULLY DONE (verified at HEAD 0071dff8)
@@ -73,8 +73,8 @@ commit carrying this report is 40d71fca (1c8d8a57→40d71fca).
    fix-prompt anchors (b46f9aae), scroll-mt corrected 4→20 against the
    measured 56px sticky header (881cfcef); closeout 7a979cd9.
 8. **Dangling pre-rebase SHA citations repointed** (000001a2057f896e42):
-   bfa55a4c mapped five unreachable cites (6612d27f→594dc0e8, 8051c0f0→
-   3d6af9f9, d7a12325→4688cad5, 18a59f9e→6f80974c + one extra catch) to
+   bfa55a4c mapped five unreachable cites (6612d27f→594dc0e8, 8051c0f0→3d6af9f9,
+   d7a12325→4688cad5, 18a59f9e→6f80974c + one extra catch) to
    reachable counterparts with ancestry-verified evidence; closeout 685b8232.
 9. **Closeout cite correction to sweep-fold commits** (000001a205966bda):
    970c616c — the 17-39 closeout's §a2/§a4 now cite BOTH halves (sweep-fold
