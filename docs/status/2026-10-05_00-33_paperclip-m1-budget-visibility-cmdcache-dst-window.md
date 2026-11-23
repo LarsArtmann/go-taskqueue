@@ -120,7 +120,7 @@ work was read, judged, built on, never reverted.
 
 ## b) PARTIALLY DONE
 
-1. **M2.1/M2.2 — claim-gate e2e ("enqueued before cap must not run after
+~~1. **M2.1/M2.2 — claim-gate e2e ("enqueued before cap must not run after~~ — RESOLVED 2026-11-23: the e2e landed and passes at HEAD (re-run 2026-11-23) (internal/e2e/budget_claim_test.go (TestBudgetClaimGateParksOverCapSubprocess PASS))
    cap")**: research 100% done, code NOT written. Design is settled and
    ready to type: `internal/e2e/budget_claim_test.go` — writeRepo with
    2 items → uncapped `tq harvest` (spent=2) → `tq agent-pool --once
@@ -203,7 +203,7 @@ work was read, judged, built on, never reverted.
 
 ## f) NEXT (prioritized; ~40 items)
 
-1. Type `internal/e2e/budget_claim_test.go` exactly as specified in §b1
+~~1. Type `internal/e2e/budget_claim_test.go` exactly as specified in §b1~~ — RESOLVED 2026-11-23: typed and green at HEAD (internal/e2e/budget_claim_test.go (PASS on re-run 2026-11-23))
    (design complete); run the e2e package gate.
 2. M2.4 precedence pin — cheapest true shape: answer-clear then budget
    spent → requeue class `budget` replaces the answer-clear, merged
@@ -218,20 +218,20 @@ work was read, judged, built on, never reverted.
 6. AGENTS.md: extend the claim-time budget bullet with "alert + audit
    hint + badge" (M1.7; size-guard aware — conscious 15.2k reset is
    standing).
-7. M3.1–M3.4: wake-trace design note (fact-type vs evidence-key tradeoffs
+~~7. M3.1–M3.4: wake-trace design note (fact-type vs evidence-key tradeoffs~~ — RESOLVED 2026-11-23: design note landed (by a concurrent agent) (docs/planning/2026-10-05_wake-trace-design-memo.md)
    → §g-2 ruling input; consumer ripple inventory: journalaudit/webui/
    readmodel + their pinned fact-type tables; recommendation).
 8. M4 (owner-blocked on §g-2): wake-trace implementation.
 9. M11.1–M11.4 budget surfaces: `tq top` chip, `tq tasks --parked budget`,
    journalaudit `--json` budgetCounts, readmodel projection — and fold
    the §e1 parked-count class split into this pass.
-10. M5 paperclip-lessons.md (source-verify 2-3 cited paths while writing).
-11. M6 release v0.3.x — M6.1 green battery first; local tags ONLY
+~~10. M5 paperclip-lessons.md (source-verify 2-3 cited paths while writing).~~ — RESOLVED 2026-11-23: research note exists (docs/research/2026-10-05_paperclip-lessons.md)
+~~11. M6 release v0.3.x — M6.1 green battery first; local tags ONLY~~ — RESOLVED 2026-11-23: v0.3.x tags cut locally; release wave since completed through v0.4.2 with owner push (git tag v0.3.1; TODO_LIST.md:21)
     (queue+worker modules), no push; proxy/pkg.go.dev checks are
     post-push, so they stay owner-gated (see §g1).
 12. M8.1 full `scripts/ci-local.sh` on this green tree (root-gate.sh
     exists now — use it for the root battery per M8.2's design).
-13. M9 webui operator-stance audit (findings table only).
+~~13. M9 webui operator-stance audit (findings table only).~~ — RESOLVED 2026-11-23: audit exists with findings table (docs/planning/2026-10-05_webui-operator-stance-audit.md)
 14. M10 webui systematic fixes (vocabulary sweep, monospace values,
     contextual feedback rules).
 15. M12 retry failure-classification layer (taxonomy + provider
@@ -258,9 +258,9 @@ work was read, judged, built on, never reverted.
     alert (§e3) — design note or explicit rejection.
 31. TODO_LIST row mint: one dated row noting M1+M7+M2.3 SHIPPED and M2.1/
     M2.2/M2.4 in-flight (check-todo-list green).
-32. Status-index row (done in this pass — see below), then re-run
+~~32. Status-index row (done in this pass — see below), then re-run~~ — RESOLVED 2026-11-23: report indexed; check-status-index green at HEAD (docs/status/README.md; scripts/check-status-index.sh ok 2026-11-23)
     `scripts/check-status-index.sh`.
-33. check-doc-refs after any new docs (the design note in §f7).
+~~33. check-doc-refs after any new docs (the design note in §f7).~~ — RESOLVED 2026-11-23: gate green at HEAD (scripts/check-doc-refs.sh ok 2026-11-23)
 34. `tq audit --journal` on the DOGFOOL journal (scratch TQ_DB!) to
     eyeball the new budget hint against real facts before the next
     pool deploy.
@@ -268,7 +268,7 @@ work was read, judged, built on, never reverted.
     (operators should know the verdict staleness bound).
 36. webui smoke: assert the parked:budget badge appears on a seeded
     budget-parked fixture (scripts/smoke/webui.sh extension).
-37. e2e attempts==0 assertion included in §f1 (double-pinned here so it
+~~37. e2e attempts==0 assertion included in §f1 (double-pinned here so it~~ — RESOLVED 2026-11-23: asserted in the landed e2e (internal/e2e/budget_claim_test.go:128)
     is not forgotten).
 38. Decide whether `budget.WithCmdCache` TTL belongs in pool.conf
     (`cmd-cache-ttl =`) or stays a constant — owner-config surface call.
@@ -309,7 +309,7 @@ work was read, judged, built on, never reverted.
 
 The §b debts are paid; receipts inline.
 
-1. **§b1 M2.1/M2.2 e2e — LANDED.** `internal/e2e/budget_claim_test.go`
+~~1. **§b1 M2.1/M2.2 e2e — LANDED.** `internal/e2e/budget_claim_test.go`~~ — RESOLVED 2026-11-23: test re-run PASS at HEAD (internal/e2e/budget_claim_test.go (2026-11-23))
    (`TestBudgetClaimGateParksOverCapSubprocess`, unix-gated) pins the
    money lesson through the real CLI: two single-item REPOS harvested
    uncapped (spent=2 enqueued-today), then `agent-pool --once
@@ -327,7 +327,7 @@ The §b debts are paid; receipts inline.
    full root battery rc=0 TWICE (before and after the e2e landed; second
    run 17 ok packages, internal/e2e 12.1s uncached). e2e package gate
    6.1s green; gofmt clean.
-3. **M3 wake-trace DESIGN — closed by a CONCURRENT agent, not this
+~~3. **M3 wake-trace DESIGN — closed by a CONCURRENT agent, not this~~ — RESOLVED 2026-11-23: memo exists at HEAD (implementation remains owner-blocked) (docs/planning/2026-10-05_wake-trace-design-memo.md; TODO_LIST.md:722)
    window:** `docs/planning/2026-10-05_wake-trace-design-memo.md` covers
    M3.1–M3.4 (option tradeoffs + recommendation A `task.wake` fact,
    draft fact shape, pinned-test consumer checklist, §g-2 ruling
