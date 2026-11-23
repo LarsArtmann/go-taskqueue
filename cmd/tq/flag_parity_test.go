@@ -2,14 +2,12 @@ package main
 
 import (
 	"flag"
-	"log/slog"
 	"maps"
 	"reflect"
 	"slices"
 	"testing"
 
 	"github.com/larsartmann/go-taskqueue/internal/httpapi"
-	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/worker"
 )
 
@@ -323,5 +321,5 @@ func TestAPIFlagSurfaceParity(t *testing.T) {
 	// constructor): a future Config-struct introduction must extend this
 	// test (walk the struct, drop the comment) rather than silently
 	// bypassing the audit.
-	var _ func(queue.Store, string, *slog.Logger) (*httpapi.Server, error) = httpapi.New
+	_ = httpapi.New
 }

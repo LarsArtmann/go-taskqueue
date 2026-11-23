@@ -427,7 +427,9 @@ func LinkifyFindingCites(prompt, taskID string) string {
 	if taskID == "" || !strings.Contains(prompt, "#finding-") {
 		return prompt
 	}
+
 	anchor := strings.ReplaceAll(taskID, "$", "$$")
+
 	return findingCitePattern.ReplaceAllString(
 		prompt,
 		"$1[#finding-$2](/task/"+anchor+"#finding-$2)",

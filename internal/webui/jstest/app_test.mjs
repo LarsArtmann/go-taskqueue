@@ -495,14 +495,30 @@ test("feed filter hides non-matching lines and flags the active chip", () => {
 		"frag-feed",
 	);
 	app.setFeedFilter("task.claimed");
-	eq(el.querySelector('[data-fact-type="task.claimed"]').hidden, false, "matching line stays visible");
+	eq(
+		el.querySelector('[data-fact-type="task.claimed"]').hidden,
+		false,
+		"matching line stays visible",
+	);
 	eq(el.querySelector('[data-fact-type="task.completed"]').hidden, true, "non-matching line hides");
-	eq(el.querySelector('[data-feed-type="task.claimed"]').classList.contains("tq-feed-chip-active"), true, "active chip flagged");
-	eq(el.querySelector('[data-feed-type="task.claimed"]').getAttribute("aria-pressed"), "true", "aria-pressed follows");
+	eq(
+		el.querySelector('[data-feed-type="task.claimed"]').classList.contains("tq-feed-chip-active"),
+		true,
+		"active chip flagged",
+	);
+	eq(
+		el.querySelector('[data-feed-type="task.claimed"]').getAttribute("aria-pressed"),
+		"true",
+		"aria-pressed follows",
+	);
 	/* reset through the "all" chip */
 	app.setFeedFilter("");
 	eq(el.querySelector('[data-fact-type="task.completed"]').hidden, false, "reset shows every line");
-	eq(el.querySelector('[data-feed-type=""]').classList.contains("tq-feed-chip-active"), true, "all chip owns the reset");
+	eq(
+		el.querySelector('[data-feed-type=""]').classList.contains("tq-feed-chip-active"),
+		true,
+		"all chip owns the reset",
+	);
 	app.setFeedFilter("");
 	doc.body.childNodes = doc.body.childNodes.filter((c) => c !== el);
 });
@@ -519,8 +535,16 @@ test("feed filter re-applies after an SSE swap of frag-feed", () => {
 			'<div class="tq-feed-chips"><button type="button" class="tq-feed-chip" data-feed-type="" aria-pressed="false">all</button><button type="button" class="tq-feed-chip" data-feed-type="task.completed" aria-pressed="false">task.completed</button></div>' +
 			'<div class="journal-scroll"><div data-fact-type="task.claimed">c</div><div data-fact-type="task.completed">d</div></div>',
 	});
-	eq(el.querySelector('[data-fact-type="task.claimed"]').hidden, true, "fresh line filtered by persisted selection");
-	eq(el.querySelector('[data-feed-type="task.completed"]').classList.contains("tq-feed-chip-active"), true, "fresh chip re-flagged");
+	eq(
+		el.querySelector('[data-fact-type="task.claimed"]').hidden,
+		true,
+		"fresh line filtered by persisted selection",
+	);
+	eq(
+		el.querySelector('[data-feed-type="task.completed"]').classList.contains("tq-feed-chip-active"),
+		true,
+		"fresh chip re-flagged",
+	);
 	app.setFeedFilter("");
 	doc.body.childNodes = doc.body.childNodes.filter((c) => c !== el);
 });
@@ -535,7 +559,9 @@ function feedHTML(types, seqBase = 0) {
 	return (
 		'<div class="tq-feed-chips"><button type="button" class="tq-feed-chip" data-feed-type="">all</button></div>' +
 		'<div class="journal-scroll">' +
-		types.map((t, i) => `<div data-fact-type="${t}" data-seq="${seqBase + i + 1}">${t} tail</div>`).join("") +
+		types
+			.map((t, i) => `<div data-fact-type="${t}" data-seq="${seqBase + i + 1}">${t} tail</div>`)
+			.join("") +
 		"</div>"
 	);
 }
@@ -550,7 +576,11 @@ test("feed burst badge counts lines added since the pre-swap last line", () => {
 	app.swapIn(el, { html: feedHTML(["a", "b", "c", "d"], 0) });
 	const badge = el.querySelector(".tq-feed-burst");
 	eq(badge.textContent, "2 new facts", "burst badge counts new lines");
-	eq(badge.getAttribute("class"), "tq-feed-burst", "badge carries its own ephemeral class, not the chip pill");
+	eq(
+		badge.getAttribute("class"),
+		"tq-feed-burst",
+		"badge carries its own ephemeral class, not the chip pill",
+	);
 	eq(badge.getAttribute("aria-live"), "polite", "badge announces politely");
 	doc.body.childNodes = doc.body.childNodes.filter((c) => c !== el);
 });
@@ -582,7 +612,11 @@ test("pause-on-hover: a hovered feed is not re-pinned by a burst", () => {
 	pane.scrollTop = 600; /* atBottom per stub geometry (1000-500-24) */
 	el.hovered = true;
 	app.swapIn(el, { html: feedHTML(["a", "b", "c"]) });
-	eq(el.querySelector(".journal-scroll").scrollTop, 600, "hovered burst restores position, withholds the pin");
+	eq(
+		el.querySelector(".journal-scroll").scrollTop,
+		600,
+		"hovered burst restores position, withholds the pin",
+	);
 	el.hovered = false;
 	app.swapIn(el, { html: feedHTML(["a", "b", "c"], 2) });
 	eq(el.querySelector(".journal-scroll").scrollTop, 1000, "unhovered burst resumes the tail pin");

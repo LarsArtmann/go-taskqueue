@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -274,7 +275,10 @@ func (v *payloadView) fromStatus(raw string) bool {
 		)
 
 		for _, c := range sp.Completed {
-			v.Window = append(v.Window, statusWindowEntry{TaskID: c.TaskID, Report: c.Report, Relation: windowRelationWindow})
+			v.Window = append(
+				v.Window,
+				statusWindowEntry{TaskID: c.TaskID, Report: c.Report, Relation: windowRelationWindow},
+			)
 		}
 	}
 
@@ -315,7 +319,7 @@ func (v *payloadView) fromDlqfix(raw string) bool {
 	}
 
 	if dp.Attempts > 0 {
-		v.Fields = append(v.Fields, payloadField{Label: "attempts", Value: fmt.Sprintf("%d", dp.Attempts)})
+		v.Fields = append(v.Fields, payloadField{Label: "attempts", Value: strconv.Itoa(dp.Attempts)})
 	}
 
 	if dp.TimeoutMinutes != 0 {
@@ -368,6 +372,7 @@ func windowGroups(entries []statusWindowEntry) []windowGroup {
 		relation := windowEntryRelation(e)
 		if n := len(groups) - 1; n >= 0 && groups[n].Relation == relation {
 			groups[n].Entries = append(groups[n].Entries, e)
+
 			continue
 		}
 

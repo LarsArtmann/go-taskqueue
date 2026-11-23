@@ -10,17 +10,22 @@ import (
 // selector text.
 func stripCSSComments(src string) string {
 	var b strings.Builder
+
 	for {
 		start := strings.Index(src, "/*")
 		if start < 0 {
 			b.WriteString(src)
+
 			return b.String()
 		}
+
 		end := strings.Index(src[start:], "*/")
 		if end < 0 {
 			b.WriteString(src)
+
 			return b.String()
 		}
+
 		b.WriteString(src[:start])
 		src = src[start+end+2:]
 	}
@@ -42,10 +47,11 @@ func TestLowercaseLabelScope(t *testing.T) {
 		t.Fatalf("read theme.css: %v", err)
 	}
 
-	for _, rule := range strings.Split(stripCSSComments(string(src)), "}") {
+	for rule := range strings.SplitSeq(stripCSSComments(string(src)), "}") {
 		if !strings.Contains(rule, "text-transform: lowercase") {
 			continue
 		}
+
 		sel, _, found := strings.Cut(rule, "{")
 		if !found {
 			t.Fatalf("malformed rule without selector: %q", rule)
@@ -55,13 +61,18 @@ func TestLowercaseLabelScope(t *testing.T) {
 		if at := strings.LastIndex(sel, "}"); at >= 0 {
 			sel = sel[at+1:]
 		}
-		for _, name := range strings.Split(sel, ",") {
+
+		for name := range strings.SplitSeq(sel, ",") {
 			name = strings.TrimSpace(name)
 			if name == "" {
 				t.Fatalf("empty selector in rule %q", rule)
 			}
+
 			if !strings.HasPrefix(name, ".tq-") && !strings.HasPrefix(name, ".dark .tq-") {
-				t.Fatalf("lowercase rule leaks past the tq-* seam: selector %q (sister surfaces /health + httpapi must stay untouched)", name)
+				t.Fatalf(
+					"lowercase rule leaks past the tq-* seam: selector %q (sister surfaces /health + httpapi must stay untouched)",
+					name,
+				)
 			}
 		}
 	}

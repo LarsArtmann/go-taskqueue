@@ -369,7 +369,11 @@ func newAgentPoolFlagSet() (*flag.FlagSet, *agentPoolFlagVals) {
 		"project-dependency-graph",
 		"dep-sweep: planner binary (PATH name or absolute)",
 	)
-	v.depSweepDir = fs.String("dep-sweep-dir", "", "dep-sweep: projects dir the planner scans (default: --projects-dir)")
+	v.depSweepDir = fs.String(
+		"dep-sweep-dir",
+		"",
+		"dep-sweep: projects dir the planner scans (default: --projects-dir)",
+	)
 	v.depSweepEvery = fs.Duration(
 		"dep-sweep-interval",
 		15*time.Minute,

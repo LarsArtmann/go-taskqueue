@@ -35,6 +35,7 @@ func TestFixPromptLinkifiesFindingCites(t *testing.T) {
 			t.Fatalf("fix prompt missing linkified cite %s:\n%s", want, prompt)
 		}
 	}
+
 	if got := strings.Count(prompt, "[#finding-2](/task/0001ab#finding-2)"); got != 2 {
 		t.Fatalf("cite #finding-2 must linkify once in title and once in detail, got %d:\n%s", got, prompt)
 	}

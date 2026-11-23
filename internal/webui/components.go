@@ -317,6 +317,7 @@ func sessionUsageSegments(costUSD float64, promptTokens, completionTokens int64,
 			usageSegment{Text: " messages"},
 		)
 	}
+
 	return segs
 }
 
@@ -337,13 +338,16 @@ func findingSeverityType(severity string) display.BadgeType {
 // first-seen order — the filter chips' row (design-pass §f24).
 func factTypes(facts []journal.Fact) []string {
 	seen := make(map[journal.FactType]bool)
+
 	var out []string
+
 	for _, f := range facts {
 		if !seen[f.Type] {
 			seen[f.Type] = true
 			out = append(out, string(f.Type))
 		}
 	}
+
 	return out
 }
 

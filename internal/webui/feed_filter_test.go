@@ -20,10 +20,12 @@ func TestFactTypes(t *testing.T) {
 		{Type: journal.Claimed},
 	}
 	got := factTypes(facts)
+
 	want := []string{string(journal.Claimed), string(journal.Completed)}
 	if strings.Join(got, ",") != strings.Join(want, ",") {
 		t.Fatalf("factTypes = %v, want %v", got, want)
 	}
+
 	if factTypes(nil) != nil {
 		t.Fatal("empty window: want no chips")
 	}
@@ -42,6 +44,7 @@ func TestFactFeedChipsMarkup(t *testing.T) {
 			{Type: journal.Completed, TaskID: "t2"},
 		},
 	}
+
 	html := renderComponent(context.Background(), FactFeed(data))
 	for _, want := range []string{
 		`data-fact-type="` + string(journal.Claimed) + `"`,
@@ -81,6 +84,7 @@ func TestReviewFindingsAnchorsMarkup(t *testing.T) {
 			t.Fatalf("reviewFindings markup missing %q", want)
 		}
 	}
+
 	if strings.Contains(html, `id="finding-3"`) {
 		t.Fatal("reviewFindings minted an id past the findings list")
 	}

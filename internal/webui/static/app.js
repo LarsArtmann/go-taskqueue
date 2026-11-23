@@ -330,9 +330,7 @@
     if (!feed) return;
     var lines = feed.querySelectorAll("[data-fact-type]");
     for (var i = 0; i < lines.length; i++) {
-      lines[i].hidden =
-        feedFilter !== "" &&
-        lines[i].getAttribute("data-fact-type") !== feedFilter;
+      lines[i].hidden = feedFilter !== "" && lines[i].getAttribute("data-fact-type") !== feedFilter;
     }
     var chips = feed.querySelectorAll("[data-feed-type]");
     for (var j = 0; j < chips.length; j++) {
