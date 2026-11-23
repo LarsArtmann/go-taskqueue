@@ -75,12 +75,12 @@ internal/mcpserver	gochecknoglobals:	1
 internal/mcpserver	makezero:	1
 internal/mcpserver	mnd:	3
 internal/mcpserver	modernize:	1
-internal/mcpserver	paralleltest:	12
+internal/mcpserver	paralleltest:	13
 internal/mcpserver	staticcheck:	1
 internal/mcpserver	tagliatelle:	2
 internal/mcpserver	varnamelen:	1
 internal/mcpserver	wrapcheck:	1
-internal/mcpserver	wsl_v5:	7
+internal/mcpserver	wsl_v5:	8
 internal/queue/companion	contextcheck:	1
 internal/queue/companion	cyclop:	14
 internal/queue/companion	errcheck:	8
@@ -178,7 +178,7 @@ root	govet:	4
 root	ineffassign:	4
 root	makezero:	15
 root	mirror:	2
-root	mnd:	62
+root	mnd:	64
 root	musttag:	1
 root	nestif:	1
 root	nilerr:	12
@@ -194,7 +194,7 @@ root	thelper:	10
 root	tparallel:	2
 root	unparam:	10
 root	unused:	1
-root	varnamelen:	55
+root	varnamelen:	56
 root	wastedassign:	1
 root	wrapcheck:	6
 task	godoclint:	1
