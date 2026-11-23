@@ -22,8 +22,10 @@
 #                      Wired into the CI consumer job.
 #   TQ_STORE_IMPL_REPLACE=1   replaces to the local tree (HEAD truth;
 #                      the replace list is DERIVED live from examples/
-#                      embed's go.mod block, and that block's graph
-#                      coverage is gate-pinned by
+#                      embed's go.mod block, extended with the facades
+#                      this leg's own main.go imports (embed's graph
+#                      misses some, e.g. journal), and that block's
+#                      graph coverage is gate-pinned by
 #                      scripts/check-embed-replace-sync.sh). Wired into
 #                      ci-local so interface drift fires at the push, not
 #                      at the tag wave.
@@ -55,6 +57,21 @@ if [ "${TQ_STORE_IMPL_REPLACE:-0}" = "1" ]; then
 		echo "STORE-IMPL FAIL: EMPTY REPLACE LIST derived from examples/embed/go.mod -- the replace-block extraction found nothing (block shape changed?). Fix the extraction or restore embed's KEEP-FOREVER block; an empty block would run this leg proxy-mixed instead of HEAD-truth." >&2
 		exit 1
 	fi
+	# Coverage for the leg's OWN imports: embed's block mirrors embed's
+	# graph, and embed does not import every facade the Store surface
+	# names (the journal facade today) -- an uncovered import would
+	# resolve from the proxy and re-arm the exact proxy-mixed class
+	# this leg exists to prevent. Derived from this script's main.go
+	# heredoc, never frozen.
+	imported_facades="$(sed -n "/^[[:space:]]*cat >main.go <<'EOF'/,/^EOF\$/p" "$0" | grep -oE "${MODULE//./\\.}/[a-z]+" | sed "s~^$MODULE/~~" | sort -u)"
+	if [ -z "$imported_facades" ]; then
+		echo "STORE-IMPL FAIL: imported-facade extraction found nothing in the main.go heredoc (shape changed?) -- an uncovered import would resolve from the proxy, not HEAD; fix the extraction." >&2
+		exit 1
+	fi
+	for facade in $imported_facades; do
+		mod="$MODULE/$facade"
+		printf '%s\n' "${replace_mods[@]}" | grep -qxF "$mod" || replace_mods+=("$mod")
+	done
 	replace_block=$'replace (\n'
 	for mod in "${replace_mods[@]}"; do
 		replace_block+="	$mod => $repo_root/${mod#"$MODULE/"}"$'\n'

@@ -173,6 +173,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Internal
 
+- **Fixed the consumer-store-impl smoke's HEAD-truth leg (2026-11-23
+  review finding)**: the script derived its repo root one level up
+  (resolving to `scripts/`, not the repo), so the live replace-block
+  derivation failed inside a process substitution and the leg either ran
+  proxy-mixed under the `local-tree replaces (HEAD truth)` label (pre-
+  refusal) or exited 1 (`EMPTY REPLACE LIST`) at HEAD — a red ci-local
+  step either way. The root is now derived two levels up, and the
+  derivation extends embed's block with the facades the leg's own
+  main.go imports (the journal facade, which embed's graph never covers)
+  so the full Store surface compiles against the local tree — the leg is
+  now genuinely HEAD-truth and runs offline. Still derived, never
+  frozen; the check-embed-replace-sync pins hold. No operator-visible
+  behavior change.
 - **New `scripts/check-embed-replace-sync.sh` gate (2026-11-23)**:
   examples/embed/go.mod's KEEP-FOREVER replace block is the one
   hand-maintained tq module-graph list feeding both the embed example
