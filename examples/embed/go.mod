@@ -64,6 +64,13 @@ require (
 // into a stale-tag canary. Replace directives apply from the main
 // module, so every module in the transitive graph (facades AND the
 // internal modules they require) needs one here.
+//
+// Context amendment (2026-11-23, batch 000001a208fede5e8c470e5eaf6100000000
+// item 3): the ruling stands unchanged — but since the driver-facade
+// retirement this example is the IN-REPO adopter GRAPH guard (facades +
+// internal-path drivers on the local tree); the external-adoptability
+// proof moved to scripts/smoke/consumer-store-impl.sh, whose replace
+// block mirrors this one (keep both in sync when the graph changes).
 replace (
 	github.com/larsartmann/go-taskqueue/executor => ../../executor
 	github.com/larsartmann/go-taskqueue/internal/config => ../../internal/config
