@@ -1,6 +1,6 @@
 module github.com/larsartmann/go-taskqueue/internal/worker
 
-go 1.27
+go 1.27.2
 
 require (
 	github.com/LarsArtmann/go-crush-data v0.6.0 // indirect
