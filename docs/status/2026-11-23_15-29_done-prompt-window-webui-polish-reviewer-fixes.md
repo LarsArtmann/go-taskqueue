@@ -22,7 +22,8 @@ vocabulary.
 **Fork records (checkpoint heals)**: the skeleton commit was daemon-swept
 into footer-less d2ac3d7b mid-run and healed: d2ac3d7b→0071dff8; the filled
 report + doc updates were daemon-swept into footer-less 1c8d8a57 and
-amended: 1c8d8a57→5183ec4c.
+amended twice (5183ec4c, then the fork-record fix itself): the landing
+commit carrying this report is 40d71fca (1c8d8a57→40d71fca).
 
 ## a) FULLY DONE (verified at HEAD 0071dff8)
 
