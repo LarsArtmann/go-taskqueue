@@ -42,9 +42,11 @@ if [ "${TQ_STORE_IMPL_REPLACE:-0}" = "1" ]; then
 	# Mirrors examples/embed/go.mod's replace block (ruling 2026-11-03:
 	# KEEP-FOREVER) — every tq module in the transitive graph needs one,
 	# or tidy resolves internals from a stale tag against HEAD facades.
+	# The block's left side is the full module path; the right side is
+	# the repo-relative DIRECTORY (module path minus the $MODULE prefix).
 	replace_block=$'replace (\n'
 	while IFS= read -r mod; do
-		replace_block+="	$mod => $repo_root/$mod"$'\n'
+		replace_block+="	$mod => $repo_root/${mod#"$MODULE/"}"$'\n'
 	done < <(cd "$repo_root/examples/embed" && sed -n '/^replace (/,/^)/p' go.mod | sed -e '1d' -e '$d' -e 's/=> .*$//' -e 's/^[[:space:]]*//' | grep -v '^$')
 	replace_block+=')'
 fi

@@ -491,6 +491,14 @@ step "clean-room consumer compile (advisory in ci-local; HARD gate in release.sh
 step "out-of-tree consumer install (proxy @latest; HARD gate in CI consumer job)"
 ./scripts/smoke/consumer-install.sh
 
+# Store-implementability (2026-11-23 embed-guard replacement): the HEAD-
+# truth leg — an out-of-tree scratch module implements every queue.Store
+# method against the facades via local-tree replaces, so a signature that
+# stops being facade-reachable fails at the push, not at the tag wave.
+# The proxy @latest leg rides the CI consumer job (release truth).
+step "out-of-tree Store-implementability (local-tree replaces; HEAD truth)"
+TQ_STORE_IMPL_REPLACE=1 ./scripts/smoke/consumer-store-impl.sh
+
 step "release proxy-wait loop offline test (both die branches)"
 ./scripts/smoke/proxy-wait.sh
 
