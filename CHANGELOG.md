@@ -16,6 +16,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `$TQ_DB` resolution like every read command. First Phase-1 slice of
   the tq-channels plan (plan 2026-10-16_01-11); `park_task` and the
   push channel stay behind the owner gate.
+- **Fact-feed type filter chips** (`tq serve`): the dashboard fact feed
+  gains a client-side chip row that hides non-matching feed lines by fact
+  type; the selection persists across page reloads (sessionStorage) and
+  re-applies on every SSE swap. Paired with it: a per-burst "N new facts"
+  badge on the feed (exact via per-line journal seq) and a pause-on-hover
+  accumulator that resurfaces "N new while paused" on un-hover.
 - `tq serve --daily-budget N`: the live dashboard now renders the budget
   meter (`budget today spent/cap` + fill bar) when the operator passes the
   cap — previously the meter only existed behind the agent pool's own
@@ -99,6 +105,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Changed
 
+- **Board lanes cap and scroll internally** (`tq serve` board view): a
+  lane with more cards than fit now scrolls within a capped column
+  (`max-h-96`, ~10 compact cards, `overscroll-contain`) with the lane
+  header and the "+N older" escape link kept outside the scroll box —
+  previously a bloated lane grew the full column and pushed every other
+  lane off-screen. (BEHAVIOR CHANGE for operators who relied on
+  full-column growth: tall lanes now scroll in place.)
 - **go-cqrs-lite version wave** (security + currency): `system/v4`
   v4.16.0→v4.18.0 (AggregateFn SQL-injection hardening in the engine
   family tq ships), `metaengine/v4` v4.20.0→v4.23.0,
