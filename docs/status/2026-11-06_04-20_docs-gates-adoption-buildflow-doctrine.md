@@ -46,9 +46,9 @@ rows. Battery `docs-gates run .` GREEN end-to-end after heals.
    (`internal/harvest` batch prompts: none touched; n/a) skip-marked
    in-report — the marker is the doctrine's own escape hatch.
    `docs-gates run .` GREEN.
-5. **Rule-F spacing heals** (3 living-doc sites): RELEASE.md "`go get`s" →
-   "performs `go get` on", architecture doc "`Option`s" → "`Option`
-   values", research note "`enqueue`s" → "`enqueue` calls". TODO_LIST (4)
+5. **Rule-F spacing heals** (3 living-doc sites): RELEASE.md "`go get` s" →
+   "performs `go get` on", architecture doc "`Option` s" → "`Option`
+   values", research note "`enqueue` s" → "`enqueue` calls". TODO_LIST (4)
    + CHANGELOG (2) sites deliberately NOT touched — TODO rows are dedup
    keys (prune-stale/cancel hazard), CHANGELOG is append-only.
 6. **`scripts/check-docs-gates.sh`** (new countable gate): runs the battery

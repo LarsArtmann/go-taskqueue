@@ -142,7 +142,7 @@ text alone.
 3. ~~**Dispatch claims need a freshness re-check as step zero** (grep~~ — RESOLVED 2026-11-23: mechanized — internal/harvest/donepreflight.go (footer-carry check, "no-op over 21 footer commits") + scripts/redispatch-brief.sh.
    `git log` + TODO row state before any other call) — cheap, and it
    just saved a full duplicate window.
-4. ~~**Sub-agent archive verdicts still ride unverified** — 113 `git mv`s~~ — RESOLVED 2026-11-23: levers landed — scripts/check-archive-eligibility.sh mechanical bar (ci-local:933) + mechanized docs-gates freshness corpus sweeps (883 reports replayed).
+4. ~~**Sub-agent archive verdicts still ride unverified** — 113 `git mv` s~~ — RESOLVED 2026-11-23: levers landed — scripts/check-archive-eligibility.sh mechanical bar (ci-local:933) + mechanized docs-gates freshness corpus sweeps (883 reports replayed).
    on six agents' word; the 10% spot-check and the eligibility script
    are the two standing levers.
 5. ~~**The script-only change class has no mandated gate**: `bash -n` +~~ — RESOLVED 2026-11-23: landed — scripts/check-script-syntax.sh + --self-test wired as ci-local steps (scripts/ci-local.sh:521-525).

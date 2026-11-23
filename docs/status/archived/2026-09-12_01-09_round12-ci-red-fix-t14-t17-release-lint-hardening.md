@@ -86,7 +86,7 @@ line-read). Fixture at `~/.cache/tq-release-fixture`:
   `github.com/larsartmann/go-taskqueue@v0.2.1` AND
   `…/internal/queue/sqlite@v0.2.1` from the fixture's git tags via
   `GOPROXY=direct` + `GIT_CONFIG_GLOBAL` insteadOf rewrite + `GOPRIVATE`.
-  Both `go get`s and `go list -m all` green.
+  Both `go get` s and `go list -m all` green.
 - **Negative gates:** existing-tag re-release dies (immutability);
   backwards version dies (forward-only). Replace-poison gate died correctly
   on my first wrong-shaped fixture (caught my own mistake).

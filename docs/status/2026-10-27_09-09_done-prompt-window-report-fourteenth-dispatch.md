@@ -49,7 +49,7 @@ All carry-over, verified still open at HEAD:
 
 ## f) NEXT THINGS
 
-1. **Verdict-receipt enforcement gate**: extend `tq session close` (or a ci-local/doctor check) to WARN/FAIL when any same-day `docs/status/<ts>_done-prompt-*.md` names a Task-Queue-ID whose `.tq/verdicts/<id>` receipt is absent — turning the twelfth/thirteenth half-closeout class from a silent paid re-dispatch into a visible gate red (complements row 1223's doc pin; evidence: two consecutive empty `$TQ_RESULT_FILE`s, 3ce1609d + abe06de7).
+1. **Verdict-receipt enforcement gate**: extend `tq session close` (or a ci-local/doctor check) to WARN/FAIL when any same-day `docs/status/<ts>_done-prompt-*.md` names a Task-Queue-ID whose `.tq/verdicts/<id>` receipt is absent — turning the twelfth/thirteenth half-closeout class from a silent paid re-dispatch into a visible gate red (complements row 1223's doc pin; evidence: two consecutive empty `$TQ_RESULT_FILE` s, 3ce1609d + abe06de7).
 
 Rows 1151-1224 already densely cover the window's follow-ups; nothing else survives dedup (the thirteenth's two rows are intact, and every other candidate maps to an existing row). One append this pass.
 

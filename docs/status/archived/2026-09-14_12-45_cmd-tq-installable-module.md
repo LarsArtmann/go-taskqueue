@@ -160,7 +160,7 @@ Nothing ship-blockingly fucked up, and nothing I broke survived to the
 final state — but honest lowlights from this run:
 
 1. **My early flake.nix edits were partially REVERTED mid-session** — the
-   `modRoot`/`subPackages` block I wrote (verified written, `git add`ed)
+   `modRoot`/`subPackages` block I wrote (verified written, `git add` ed)
    vanished from the worktree while the `preBuild` line survived. Cause
    undetermined (a concurrent agent's restore? daemon interaction?). I
    re-applied and the final state is coherent, but an unidentified writer

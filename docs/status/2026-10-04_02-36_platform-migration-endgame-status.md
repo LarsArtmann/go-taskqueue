@@ -179,7 +179,7 @@ legacy ASAP", executed as phases P0–P5 of the endgame plan.
     noisy for other agents.
 30. Agent-shell hazard: `new-module.sh` + concurrent daemon writes raced
     once this session (scaffold file changed mid-edit) — consider a
-    `.gitignore`d scratch dir convention for scaffolds.
+    `.gitignore` d scratch dir convention for scaffolds.
 
 ## g) Up to 3 questions (cannot figure out alone)
 

@@ -9,7 +9,7 @@ until done).
 
 1. **The webui smoke red is ROOT-CAUSED and FIXED (M08 slice 2
    unblocked).** The projectionhost live tail passed `SeqToEventID(after
-   - 1)`to`ReadFrom`, but`ReadFrom`is EXCLUSIVE of the ID it is
+   - 1) `to` ReadFrom `, but` ReadFrom `is EXCLUSIVE of the ID it is
    given (`journal.AfterSeq`): every poll boundary permanently skipped
    the fact at anchor+1, and a skipped terminal fact (Completed,
    DeadLettered) wedged the fold's ledger — the smoke's persistent

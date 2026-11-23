@@ -68,7 +68,7 @@ appended to the blocked TODO item (safe to kill; forwards nothing —
 head still seq 4, :18100 is a local stub).
 17. `TestRestartMidStreamLosesZeroFacts` deflake — bridge A's crash window
 200ms→600ms, `waitFor` 2s→5s; 8× green under -race.
-18. `taskid.txt` removed + `.gitignore`d.
+18. `taskid.txt` removed + `.gitignore` d.
 19. AGENTS.md: queue-tasks-outlive-TODO-items bullet + manual-worker
 `--once` runbook rule.
 20. docs/status/README.md: every report indexed exactly (globs removed).

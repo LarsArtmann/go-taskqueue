@@ -200,7 +200,7 @@ Process and design — concrete fixes, not vibes.
    with a pipe-count-parity check per markdown table row (5 lines of awk).
 4. **TODO_LIST edit races.** Impact: two of my five edit attempts this session
    failed on mtime churn; harvest consumes the same file. Fix: one AGENTS.md
-   line — "machine-consumed files (TODO_LIST.md) must be `view`ed immediately
+   line — "machine-consumed files (TODO_LIST.md) must be `view` ed immediately
    before every edit; expect mid-edit appends from the status loop" — plus a
    retry-once convention.
 5. **PG verification lifecycle.** Impact: the PG conformance currently depends

@@ -282,7 +282,7 @@ re-lists an existing row's work.)
    (000001a158f55c…) be re-dispatched or hand-run once and ticked?
 3. Dependabot scope: confirm the repo-level "Dependabot version
    updates" setting is enabled, and rule whether `internal/*` pins
-   should be `ignore`d (ADR-0017 release statements, not stale
+   should be `ignore` d (ADR-0017 release statements, not stale
    versions) — already BLOCKED-rowed; escalated here because the
    new-module.sh emitter (680d4387) now mints entries whose activation
    is still unconfirmed.

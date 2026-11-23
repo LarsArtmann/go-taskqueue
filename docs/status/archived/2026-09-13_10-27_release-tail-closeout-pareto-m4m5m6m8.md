@@ -24,7 +24,7 @@ for this window's changes (the earlier grant covered the plan doc + doc flips).
    `releases/latest` API = v0.3.0 + release list "Latest". First attempt with
    `--latest` alone correctly 422'd ("Latest cannot be draft or prerelease").
 2. **Clean-room sweep of ALL 7 facades** (TODO row 284): /tmp module with zero
-   replaces `go get`s task/journal/queue/queue/sqlite/queue/postgres/executor/
+   replaces `go get` s task/journal/queue/queue/sqlite/queue/postgres/executor/
    worker @v0.3.0 from proxy.golang.org (full internal graph resolves) and
    runs enqueue→Get through queue/sqlite end-to-end (`ALL-FACADES-OK`).
    API discovery done via `go doc` on the facade + internal modules; two

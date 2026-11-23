@@ -197,7 +197,7 @@ late verification:
    correct order is gates first, status claims second.
 
 5. **Fragile write choreography against a live daemon.** Two write attempts
-   on TODO_LIST.md bounced off read-tracking (I had `cat`ed via bash instead
+   on TODO_LIST.md bounced off read-tracking (I had `cat` ed via bash instead
    of using `view`), while the auto-commit daemon re-committed the file
    between my read and write. No content was lost — the daemon's changes were
    mtime-only — but with different timing that pattern clobbers a parallel

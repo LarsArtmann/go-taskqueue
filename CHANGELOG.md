@@ -2519,7 +2519,7 @@ Repo-internal tooling and non-operator-facing changes (O14 audit
 - **Dashboard filter links URL-escape their query strings and cap query
   length**: `QueryString` escapes metacharacters (`&`, `#`, `%`, spaces)
   so a project named `a&b` can no longer corrupt the link or smuggle
-  markup into `href`s, and `parseFilter` clamps the `query` parameter to
+  markup into `href` s, and `parseFilter` clamps the `query` parameter to
   200 chars (2026-09-12).
 - **Dashboard and write-API stats surfaces pinned to one wire contract**: `tq serve`'s
   `/api/stats` and `tq api`'s `/api/v1/stats` computed the same payload through two
@@ -3015,7 +3015,7 @@ Repo-internal tooling and non-operator-facing changes (O14 audit
   refusals double the base backoff (capped at 15m) with ±20% jitter so a
   sustained-dirty repo stops bouncing at the base delay, and the per-task
   refusal log is rate-limited to once per minute. `agent-pool` also
-  `MkdirAll`s its `--log-dir` at startup instead of warning on the first
+  `MkdirAll` s its `--log-dir` at startup instead of warning on the first
   sweep.
 - **One status-color table + shared empty states + shared banner consts**
   (2026-09-09): badge and board-accent colors come from the same

@@ -51,7 +51,7 @@ Caveat that belongs here honestly: until this report, all of the above existed *
 
 ## e) WHAT WE SHOULD IMPROVE
 
-1. **Interface-first rule for API proposals:** never propose an API for a package without `view`ing its interface first. This is now the second recorded class of "recommended-first, verified-later" (the 2026-08-21 report had the same shape per the skill's §0 note). If it repeats, it should become a hard hook/checklist item.
+1. **Interface-first rule for API proposals:** never propose an API for a package without `view` ing its interface first. This is now the second recorded class of "recommended-first, verified-later" (the 2026-08-21 report had the same shape per the skill's §0 note). If it repeats, it should become a hard hook/checklist item.
 2. **Run the target's tests when maturity is load-bearing** — cordis lives locally; `go test ./...` was one command away and would have upgraded a vendor claim to a verified one.
 3. **Label estimates in-line** ("~200 operators (estimated from example index)") — specificity is not evidence, and unlabeled estimates read as counts.
 4. **Re-verify freshness when a session spans git activity** — `git log --oneline -3` at answer time, not at session start, whenever the answer makes claims about current code.

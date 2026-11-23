@@ -85,7 +85,7 @@ normalize_token() {
 # repo-relative ("internal/queue/queue.go") and suffix-shorthand
 # ("sqlitev4/adapter.go", meaning the one file by that suffix) — so resolution
 # is a UNIQUE-SUFFIX match over `git ls-files` rather than a plain stat. An
-# ambiguous suffix (many `adapter.go`s) resolves to nothing and the cite is
+# ambiguous suffix (many `adapter.go` s) resolves to nothing and the cite is
 # skipped: judging it would be guessing which file the author meant.
 resolve_cite() {
 	local p=$1

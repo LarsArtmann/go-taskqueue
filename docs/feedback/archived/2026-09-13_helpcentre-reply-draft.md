@@ -43,7 +43,7 @@ consumer doing enqueue → deliberate failure → retry → complete against
 both sqlite and a live Postgres cluster, through the public imports.
 
 One limitation, disclosed rather than discovered: the `tq` CLI binary
-cannot be `go install`ed from the proxy (the root module carries
+cannot be `go install` ed from the proxy (the root module carries
 dev-time replace directives; Go refuses @version installs of replaced
 modules). Library consumption is unaffected. Clone + `go build ./cmd/tq`
 or nix work; a proper fix is tracked.
