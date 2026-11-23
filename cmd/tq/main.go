@@ -65,7 +65,7 @@ Usage:
   tq harvest --projects-dir DIR [--repos a,b] [--max-per-tick N] [--allow-dirty]
             [--prune-stale] [--dry-run] [--db PATH]
   tq bootstrap [repos...] [--agents N] [--model M] [--reasoning R] [--verify n=cmd]
-              [--install | --once | --dry-run] [--daily-budget N] [--db PATH]
+              [--install | --once | --dry-run] [--daily-budget N] [--db PATH] [--mcp]
              (one command from zero to a running agent pool: ensures .crushrc
               autonomy + .tq-verify, commits them, previews the harvest,
               then runs agent-pool — or installs the systemd unit)

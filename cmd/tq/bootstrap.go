@@ -101,6 +101,7 @@ type bootstrapOptions struct {
 	logDirMaxBytes int64         // retention: cap total sidecar bytes, oldest first (0 = uncapped)
 	db             string
 	binPath        string // resolved executable, for the systemd unit
+	mcp            bool   // managed `mcp add tq` enrollment in .crushrc (the stdio tq MCP server)
 }
 
 // reorderBootstrapArgs lets repos and flags appear in any order
@@ -280,6 +281,12 @@ func parseBootstrapArgs(args []string) (bootstrapOptions, error) {
 		"with reviews: do not mint fix tasks from request_changes verdicts",
 	)
 	noExclusive := fs.Bool("no-exclusive", false, "allow two tasks of one project in flight across pools")
+	fs.BoolVar(
+		&opts.mcp,
+		"mcp",
+		false,
+		"manage an `mcp add tq` enrollment in each repo's .crushrc: the stdio tq MCP server over this pool's journal (explicit --db)",
+	)
 
 	fs.Usage = func() {
 		_, _ = fmt.Fprint(fs.Output(), usageBootstrap)
@@ -467,6 +474,10 @@ func (o bootstrapOptions) ensureRepos(paths []string) (string, error) {
 			fmt.Fprintf(&b, "  crush autonomy already granted in .crushrc\n")
 		}
 
+		if o.mcp {
+			fmt.Fprintf(&b, "  tq mcp server enrolled in .crushrc (changed: %v)\n", changedCrushrc)
+		}
+
 		files := []string{".tq-verify", ".crushrc"}
 		if o.dryRun {
 			fmt.Fprintf(&b, "  git   dry-run — would commit %s if changed\n", strings.Join(files, ", "))
@@ -582,6 +593,14 @@ func (o bootstrapOptions) ensureCrushConfig(repo string) (bool, error) {
 	if o.model != "" {
 		block = append(block, "model large "+o.model+" --reasoning-effort "+o.reasoning)
 	}
+	if o.mcp {
+		line, err := o.mcpAddLine()
+		if err != nil {
+			return false, err
+		}
+
+		block = append(block, line)
+	}
 
 	block = append(block, tqManagedEnd)
 
@@ -601,6 +620,39 @@ func (o bootstrapOptions) ensureCrushConfig(repo string) (bool, error) {
 	}
 
 	return true, nil
+}
+
+// mcpAddLine renders the rc statement that enrolls the stdio tq MCP
+// server into a repo's crush config: `mcp add` is crush's shellconfig
+// grammar (v0.102.0 internal/shellconfig/mcp.go — `mcp add <name>
+// --type stdio --command CMD --args ARG ...`, repeatable --args). The
+// journal is an ABSOLUTE explicit --db because stdio MCP servers start
+// with the workspace's cwd (upstream bb9914d9) and agent shells have
+// TQ_DB denylist-stripped — explicit paths, never inherited env.
+func (o bootstrapOptions) mcpAddLine() (string, error) {
+	bin := o.binPath
+
+	if bin == "" {
+		exe, err := os.Executable()
+		if err != nil {
+			return "", fmt.Errorf("resolve tq binary for the mcp block: %w", err)
+		}
+
+		bin = exe
+	}
+
+	absBin, err := filepath.Abs(bin)
+	if err != nil {
+		return "", fmt.Errorf("abs tq binary: %w", err)
+	}
+
+	absDB, err := filepath.Abs(resolveDB(o.db))
+	if err != nil {
+		return "", fmt.Errorf("abs journal path: %w", err)
+	}
+
+	return "mcp add tq --type stdio --command " + absBin +
+		" --args mcp --args --db --args " + absDB, nil
 }
 
 // stripManagedBlock drops everything between (and including) the managed

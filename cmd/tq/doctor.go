@@ -2212,9 +2212,33 @@ func doctorRepoAutonomy(repo string) []checkResult {
 	} else {
 		results = append(results, checkResult{Name: "autonomy:" + name, Status: checkOK, Detail: ".crushrc present"})
 		results = append(results, doctorCrushManagedBlock(name, crushrc))
+		results = append(results, doctorMcpEnrollment(name, crushrc))
 	}
 
 	return results
+}
+
+// doctorMcpEnrollment warns when the repo's .crushrc does not enroll the
+// tq MCP server (`tq bootstrap --mcp`): agent sessions then fall back to
+// shelling out (`tq tasks | grep` quoting hazards) for every queue read.
+// WARN, never FAIL — enrollment is opt-in (plan 2026-11-23_00-57 M9).
+func doctorMcpEnrollment(repoName, path string) checkResult {
+	const name = "mcp:"
+
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return checkResult{Name: name + repoName, Status: checkWarn, Detail: "read .crushrc: " + err.Error()}
+	}
+
+	if strings.Contains(string(b), "mcp add tq ") {
+		return checkResult{Name: name + repoName, Status: checkOK, Detail: "tq mcp server enrolled"}
+	}
+
+	return checkResult{
+		Name:   name + repoName,
+		Status: checkWarn,
+		Detail: "no tq mcp enrollment in .crushrc (tq bootstrap --mcp enrolls the stdio tq MCP server)",
+	}
 }
 
 // doctorCrushManagedBlock verifies the repo's .crushrc tq-managed block

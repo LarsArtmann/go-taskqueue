@@ -69,6 +69,41 @@ func TestEnsureCrushConfigCreatesIdempotentBlocks(t *testing.T) {
 	}
 }
 
+func TestEnsureCrushConfigMcpBlockGolden(t *testing.T) {
+	repo := writeRepo(t, map[string]string{})
+
+	o := bootstrapOptions{mcp: true, db: "/tmp/tq-mcp-golden.db", binPath: "/usr/local/bin/tq"}
+
+	changed, err := o.ensureCrushConfig(repo)
+	if err != nil || !changed {
+		t.Fatalf("first ensure: changed=%v err=%v", changed, err)
+	}
+
+	got := readRepo(t, repo, ".crushrc")
+	want := "mcp add tq --type stdio --command /usr/local/bin/tq --args mcp --args --db --args /tmp/tq-mcp-golden.db"
+	if !strings.Contains(got, want) {
+		t.Fatalf("missing mcp enrollment %q in:\n%s", want, got)
+	}
+
+	// Idempotent re-run is a byte-identical no-op.
+	if changed, err := o.ensureCrushConfig(repo); err != nil || changed {
+		t.Fatalf("second ensure: changed=%v err=%v (want false)", changed, err)
+	}
+}
+
+func TestEnsureCrushConfigWithoutMcpFlagOmitsEnrollment(t *testing.T) {
+	repo := writeRepo(t, map[string]string{})
+
+	o := bootstrapOptions{db: "/tmp/tq-mcp-golden.db"}
+	if _, err := o.ensureCrushConfig(repo); err != nil {
+		t.Fatal(err)
+	}
+
+	if got := readRepo(t, repo, ".crushrc"); strings.Contains(got, "mcp add") {
+		t.Fatalf("mcp enrollment emitted without --mcp:\n%s", got)
+	}
+}
+
 func TestEnsureCrushConfigPreservesUserContentAndReplacesBlock(t *testing.T) {
 	old := "# my human notes\n" + tqManagedStart + "\npermissions allow view\n" + tqManagedEnd + "\n"
 	repo := writeRepo(t, map[string]string{".crushrc": old})
