@@ -91,11 +91,14 @@ class Handler(BaseHTTPRequestHandler):
 		self._json(404, {"error": "not found"})
 
 	def do_POST(self):
+		# Drain the body BEFORE any branch — keep-alive clients desync when
+		# a branch answers without reading the body.
+		length = int(self.headers.get("Content-Length", "0"))
+		body = self.rfile.read(length) if length else b""
 		if not self.path.startswith("/v1/chat/completions"):
 			self._json(404, {"error": "not found"})
 			return
-		length = int(self.headers.get("Content-Length", "0"))
-		req = json.loads(self.rfile.read(length) or b"{}")
+		req = json.loads(body or b"{}")
 		REQ_LOG.write(f"turn stream={req.get('stream')}\n")
 		delta = {"role": "assistant", "content": "done"}
 		if req.get("stream"):
