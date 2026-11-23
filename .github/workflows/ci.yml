@@ -364,6 +364,13 @@ jobs:
         run: ./scripts/smoke/consumer-install.sh
       - name: Out-of-tree Store-implementability (proxy @latest, facades)
         run: ./scripts/smoke/consumer-store-impl.sh
+      # Row-113 (2026-09-27 04-05 report §c/§e/§f): the RUN leg of the proxy
+      # consumer proof — consumer-install compiles the facades, this
+      # executes each facade's sentinel probe at the latest tag. Network
+      # gate: never flake checkPhase (hermeticity rule); the script
+      # self-SKIPs when the proxy is unreachable.
+      - name: Proxy-surface sentinel probes (per facade @latest)
+        run: ./scripts/check-proxy-surface.sh
 
   nix:
     runs-on: ubuntu-latest

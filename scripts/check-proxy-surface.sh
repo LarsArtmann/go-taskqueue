@@ -20,12 +20,13 @@
 # ladder, status transitions — that holds across the published surface,
 # not HEAD-only details.
 #
-# Hooks (the dead-exports TQ_DEAD_FILES_CMD pattern; both must accept the
-# module path as "$1", the probe also the resolved version "$2" and the
-# scratch dir "$3"):
-#   TQ_PROXY_RESOLVE_CMD  prints the resolved version on stdout, rc 0;
-#                         anything else (rc≠0 or empty output) = SKIP.
-#   TQ_PROXY_PROBE_CMD    rc IS the sentinel-verdict fact.
+# Hooks (both run under `bash -c "$CMD" tq-proxy-<leg> args…`, so the
+# snippet owns its own exit and sees the arguments as $1/$2/$3):
+#   TQ_PROXY_RESOLVE_CMD  args: $1 = module path. Prints the resolved
+#                         version on stdout, rc 0; anything else (rc≠0 or
+#                         empty output) = SKIP.
+#   TQ_PROXY_PROBE_CMD    args: $1 = module path, $2 = resolved version,
+#                         $3 = scratch dir. rc IS the sentinel-verdict fact.
 #
 #   scripts/check-proxy-surface.sh              # real run (network)
 #   scripts/check-proxy-surface.sh --self-test  # hermetic summary pins
@@ -59,8 +60,8 @@ self_test() {
 	# pinned in the header).
 	local resolve_all='printf "%s\n" v9.9.9'
 	local resolve_empty='exit 7'
-	local resolve_task='case "$1" in *task*) printf "%s\n" v9.9.9;; *) exit 7;; esac'
-	local resolve_queue='case "$1" in *queue*) printf "%s\n" v9.9.9;; *) exit 7;; esac'
+	local resolve_task='case "$1" in */task) printf "%s\n" v9.9.9;; *) exit 7;; esac'
+	local resolve_queue='case "$1" in */queue) printf "%s\n" v9.9.9;; *) exit 7;; esac'
 	local probe_ok='exit 0'
 	local probe_fail='exit 3'
 
@@ -135,7 +136,7 @@ default_resolve() {
 		export GOFLAGS=-mod=mod
 		go mod init tqproxysurface >/dev/null 2>&1
 		go mod edit -go=1.27.1
-		go get "$MODULE/$facade@latest" >/dev/null 2>&1
+		go get "$MODULE/$facade@latest" >/dev/null
 		go list -m -f '{{.Version}}' "$MODULE/$facade"
 	)
 }
@@ -371,7 +372,7 @@ for facade in "${FACADES[@]}"; do
 
 	ver=""
 	if [ -n "${TQ_PROXY_RESOLVE_CMD:-}" ]; then
-		ver="$(eval "$TQ_PROXY_RESOLVE_CMD" "$MODULE/$facade")" || ver=""
+		ver="$(bash -c "$TQ_PROXY_RESOLVE_CMD" tq-proxy-resolve "$MODULE/$facade")" || ver=""
 	else
 		ver="$(default_resolve "$facade" "$dir")" || ver=""
 	fi
@@ -383,7 +384,7 @@ for facade in "${FACADES[@]}"; do
 
 	probe_rc=0
 	if [ -n "${TQ_PROXY_PROBE_CMD:-}" ]; then
-		eval "$TQ_PROXY_PROBE_CMD" "$MODULE/$facade" "$ver" "$dir" || probe_rc=$?
+		bash -c "$TQ_PROXY_PROBE_CMD" tq-proxy-probe "$MODULE/$facade" "$ver" "$dir" || probe_rc=$?
 	else
 		default_probe "$facade" "$ver" "$dir" || probe_rc=$?
 	fi

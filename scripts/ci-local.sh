@@ -501,6 +501,18 @@ step "clean-room consumer compile (advisory in ci-local; HARD gate in release.sh
 step "out-of-tree consumer install (proxy @latest; HARD gate in CI consumer job)"
 ./scripts/smoke/consumer-install.sh
 
+# Proxy-surface sentinel probes (row-113, 2026-09-27 04-05 report §c/§e/§f):
+# per-facade @latest tag in a /tmp scratch module, build+run the sentinel
+# probe — the rc-captured "proxy consumers receive X" fact. check-pkg-proxy
+# pins the listing, consumer-install pins the compile; this RUNS the
+# sentinels. Network gate: network absence can only SKIP; NEVER flake
+# checkPhase (hermeticity rule). Self-test first (countable-gate ordering).
+step "proxy-surface self-test (summary format pin + ok/skip/fail counter battery)"
+./scripts/check-proxy-surface.sh --self-test
+
+step "proxy-surface sentinel probes (per facade @latest; network-tolerant SKIP)"
+./scripts/check-proxy-surface.sh
+
 # Store-implementability (2026-11-23 embed-guard replacement): the HEAD-
 # truth leg — an out-of-tree scratch module implements every queue.Store
 # method against the facades via local-tree replaces, so a signature that

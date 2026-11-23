@@ -235,6 +235,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   (`scripts/check-doc-refs.sh`). The surviving output parser
   (`parseStatusResult`, `internal/executor/status.go`) keeps table-test
   coverage; a replacement fuzz target is rowed in TODO_LIST.
+- `scripts/check-proxy-surface.sh`: per ADR-0016 facade (task, journal,
+  queue, executor, worker), resolve the latest tag at the module proxy
+  inside a /tmp scratch module and build+run a sentinel-symbol probe, so
+  "proxy consumers receive X" is an rc-captured fact instead of a
+  compile-only inference. Network gate: wired as a ci-local step
+  (self-test first) and a CI consumer-job step; network absence can only
+  SKIP; never flake checkPhase (hermeticity rule).
 
 ## [v0.4.2] - 2026-11-07
 
