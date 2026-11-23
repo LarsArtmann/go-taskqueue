@@ -1196,12 +1196,14 @@ func worktreeInFlight(ctx context.Context, store *sqlite.Store, agentExec *execu
 	}
 }
 
-// crushKeeperInterval is how often the keeper dials the server's
-// workspaces endpoint: crush servers self-terminate once the last client
-// detaches (planning doc M7), which between dispatch bursts would kill
-// the pool's actor and force a per-task respawn churn. A gentle poll
-// holds the server across idle gaps; the supervisor below bounds the
-// worst case if the idle timer ignores polls.
+// crushKeeperInterval is how often the keeper probes the server's
+// workspaces endpoint: a liveness probe plus the RSS sample below. On
+// crush v0.102.0's idle model (upstream 2923a2f0) a plain GET holds
+// NOTHING — idle is zero ATTACHED workspaces and the SSE stream is the
+// refcount — so the probe cannot keep the server alive across dispatch
+// gaps; idle-exit prevention lives in the server env
+// (CRUSH_SERVER_IDLE_TIMEOUT) and the supervisor below bounds the worst
+// case.
 const crushKeeperInterval = 45 * time.Second
 
 // crushServerRestartBackoff is the supervisor's restart ladder for an
@@ -1216,10 +1218,11 @@ var crushServerRestartBackoff = []time.Duration{time.Second, 5 * time.Second, 15
 // can claim, so a thin client never races a missing socket.
 //
 // Keeper + supervisor (TODO row 1449): the server self-terminates when
-// its last client detaches, so the actor keeps one client-shaped dial
-// alive (the workspaces endpoint the L2 pane reads) and SUPERVISES the
-// process — an unexpected exit restarts on a backoff ladder instead of
-// tearing the whole pool down; pool shutdown stays the clean exit.
+// idle (v0.102.0: zero ATTACHED workspaces after a 60 s linger), so the
+// actor disarms idle shutdown via CRUSH_SERVER_IDLE_TIMEOUT in the
+// server's env and SUPERVISES the process — an unexpected exit restarts
+// on a backoff ladder instead of tearing the whole pool down; pool
+// shutdown stays the clean exit.
 func runCrushServerActor(ctx context.Context, bin, socket string) error {
 	host := socket
 	if !strings.Contains(host, "://") {
@@ -1248,6 +1251,12 @@ func runCrushServerActor(ctx context.Context, bin, socket string) error {
 
 	for attempt := 0; ; attempt++ {
 		cmd := exec.CommandContext(ctx, bin, "server", "--host", host)
+		// Idle-shutdown disarm (v0.102.0, upstream 2923a2f0): idle = zero
+		// ATTACHED workspaces; a plain GET holds nothing, so without this
+		// knob the server would exit 60 s into every dispatch gap and the
+		// restart ladder below would churn. 43200 s (12 h) outlives any
+		// gap; pool shutdown still tears the server down with the actor.
+		cmd.Env = append(os.Environ(), "CRUSH_SERVER_IDLE_TIMEOUT=43200")
 		// No process-group kill here (windows-cross-compile stays
 		// portable): SIGTERM goes to the server itself, which owns its
 		// workspaces' teardown; WaitDelay keeps a wedged shutdown from
@@ -1285,11 +1294,12 @@ func runCrushServerActor(ctx context.Context, bin, socket string) error {
 	}
 }
 
-// crushKeeper holds one client-shaped dial against the pool's crush
-// server: a GET on the workspaces endpoint every crushKeeperInterval.
-// Best-effort by design — a failed dial logs nothing (the server may be
-// mid-restart); the supervisor owns correctness, the keeper only removes
-// the idle-suicide churn (M7). Each successful dial also samples the
+// crushKeeper probes the pool's crush server every crushKeeperInterval:
+// a GET on the workspaces endpoint plus the RSS sample below. Best-effort
+// by design — a failed dial logs nothing (the server may be mid-restart);
+// the supervisor owns correctness. The probe does NOT hold the server
+// open (v0.102.0: only an attached SSE stream does); idle-exit prevention
+// is the env knob above. Each successful dial also samples the
 // server's RSS (A9/V2.11): /proc/<pid>/status is read, the sample is
 // appended to the RSS log next to the journal (crushServerRSSLogPath)
 // and logged to stderr — the shared-server memory evidence the L4
