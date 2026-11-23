@@ -71,10 +71,16 @@ self_test() {
 	local probe_fail='exit 3'
 
 	run_hooked() {
-		# $1/$2 = the resolve/probe hooks; $3 (optional) = one extra
-		# VAR=value word (the default-probe body battery's override).
+		# $1 = the resolve hook; $2 = the probe hook (EMPTY = unset, so the
+		# DEFAULT probe path runs); $3 (optional) = one extra VAR=value
+		# word (the default-probe body battery's override). env options
+		# precede assignments, so the unset form is a separate invocation.
 		RUN_RC=0
-		RUN_OUT="$(env TQ_PROXY_RESOLVE_CMD="$1" TQ_PROXY_PROBE_CMD="$2" ${3:+"$3"} "$self_abs" 2>&1)" || RUN_RC=$?
+		if [ -n "$2" ]; then
+			RUN_OUT="$(env TQ_PROXY_RESOLVE_CMD="$1" "TQ_PROXY_PROBE_CMD=$2" ${3:+"$3"} "$self_abs" 2>&1)" || RUN_RC=$?
+		else
+			RUN_OUT="$(env -u TQ_PROXY_PROBE_CMD TQ_PROXY_RESOLVE_CMD="$1" ${3:+"$3"} "$self_abs" 2>&1)" || RUN_RC=$?
+		fi
 	}
 	assert_case() {
 		if [ "$RUN_RC" -ne "$1" ]; then
@@ -123,19 +129,21 @@ self_test() {
 	must_mention "SKIP: proxy-surface task (latest tag unresolvable at the proxy — network-tolerant skip)" "$RUN_OUT" "per-module resolution pin (task skipped)"
 
 	# Battery E (default-probe body failure): batteries A–D ride the
-	# probe-rc hook and never reach default_probe; the BODY hook drives its
-	# own subshell + rc capture. A body exit 3 must FAIL the gate — the
+	# probe-rc hook and never reach default_probe; here the probe hook is
+	# UNSET so the default path runs, and the BODY hook drives its own
+	# subshell + rc capture. A body exit 3 must FAIL the gate — the
 	# swallowed-rc regression class (if-construct $? reads 0 when no branch
 	# ran) may never count a real failure as verified.
-	run_hooked "$resolve_task" "$probe_ok" "TQ_PROXY_PROBE_BODY_CMD=exit 3"
+	run_hooked "$resolve_task" "" "TQ_PROXY_PROBE_BODY_CMD=exit 3"
 	assert_case 1 "default-probe body-fail summary pins the counters" \
 		"proxy-surface summary: 0 facades verified, 4 skipped, 1 failed"
 	must_mention "FAIL: proxy-surface task@v9.9.9 sentinel probe rc=3" "$RUN_OUT" "default-probe body-fail receipt carries the probe rc"
 
-	# Battery F (default-probe body happy path): the same control flow
-	# counts VERIFIED on body exit 0 — guards the inverse regression (a
-	# capture that always reads non-zero would fail every real run).
-	run_hooked "$resolve_task" "$probe_ok" "TQ_PROXY_PROBE_BODY_CMD=echo PROBE-OK task"
+	# Battery F (default-probe body happy path): the same default-path
+	# control flow counts VERIFIED on body exit 0 — guards the inverse
+	# regression (a capture that always reads non-zero would fail every
+	# real run).
+	run_hooked "$resolve_task" "" "TQ_PROXY_PROBE_BODY_CMD=echo PROBE-OK task"
 	assert_case 0 "default-probe body-happy summary pins the counters" \
 		"proxy-surface summary: 1 facades verified, 4 skipped, 0 failed"
 	must_mention "ok: proxy-surface task@v9.9.9 sentinel probe" "$RUN_OUT" "default-probe body-happy receipt pin"
