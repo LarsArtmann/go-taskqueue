@@ -149,7 +149,7 @@ legs, then to the edge of a fully-unbypassed local battery.
 
 ## f) NEXT (up to 50, residue first)
 
-1. Commit + push the tick-claims trailing-slash fix; re-run its self-test; cite the receipt.
+1. Commit + push the tick-claims trailing-slash fix; re-run its self-test; cite the receipt. — DONE 2026-11-23: self-test rc=0 ("…receipt rail" included); the fix landed via the daemon sweep 6b3f357a (swept the in-flight edit, +3 lines) and the report via 013f9aea, both pushed; receipt citation rides the §b fold.
 2. One full ci-local run with CI_CHECK ON → expect rc=0 → cite as the window's final receipt.
 3. Fold the battery outcome + last cures into the window-2 report and the index row (one docs
    delta).
@@ -159,14 +159,14 @@ legs, then to the edge of a fully-unbypassed local battery.
 7. Tick row 829's supersession note honestly: the 20-35 §b2 ruling supersedes the quiet-host
    local run, with the Dependabot-evidence correction noted.
 8. Verify the foreign proxy-surface gate's probe fixtures still compile after my pins: comments
-   (run check-proxy-surface standalone).
+   (run check-proxy-surface standalone). — DONE 2026-11-23: standalone rc=0 — 5 facades verified, 0 skipped, 0 failed (worker sentinel PROBE-OK).
 9. The 2026-12 digest accrual: target verify-only duplicate layers (dispatch re-passes whose
    canonical exists).
 10. The index-bloat row: consider a ratchet DOWN of the 400 threshold after the next real
     archive sweep.
 11. Run `tq doctor` at HEAD for a fresh receipt (crush pin 0.102.0 still proven).
 12. Re-run the two crush smokes after today's host churn (route + supervisor, 14/11 PASS
-    baseline).
+    baseline). — DONE 2026-11-23: route 14 PASS rc=0 + supervisor 11 PASS rc=0 (receipts /var/tmp/route-f12.log + /var/tmp/supervisor-f12.log) — baseline held exactly.
 13. The ai-ratelimit smoke: consider TQ_SMOKE_KEEP-style diagnostics for worker-log races.
 14. go-mod floors: check whether cqrs-lite's own floor moved (our 1.27.4 raise may exceed the
     sibling floor — confirm the dependency-ordered flip story still holds).
@@ -174,8 +174,8 @@ legs, then to the edge of a fully-unbypassed local battery.
     ci-local wrapper retries).
 16. Io-surface: wire `check --root .` into ci-local beside check-cleanroom-install.
 17. Guard-wiring: same (it ran in CI's test job, not ci-local — wait, it DID fail in CI's test
-    job; verify ci-local has the live leg, not just the self-test).
-18. Fixture-attribution: same check.
+    job; verify ci-local has the live leg, not just the self-test). — DONE 2026-11-23: the live leg exists — ci-local.sh:1013-1017 (self-test + live check-guard-wiring.sh); the CI-test-job red was the gate catching real orphan wiring, since cured.
+18. Fixture-attribution: same check. — DONE 2026-11-23: live leg exists — ci-local.sh:559-561 (self-test + live meta-gate).
 19. Tick-claims: consider pinning the `--receipt` double-slash shape in a negative fixture.
 20. docs-gates annotate ratchet: after the spacing cures, consider RATCHETING DOWN from 144 to
     the current count per the doctrine (only if the doctrine's letter allows for new-class
@@ -198,7 +198,7 @@ legs, then to the edge of a fully-unbypassed local battery.
 31. The three AGENTS size resets today suggest the convention line itself is load-bearing but
     expensive — consider a docs/ file for reset history instead of the const comment.
 32. `heal-daemon-sweep.sh --self-test` after today's mass: confirm the tool still pins its rails
-    (nothing in my session touched it, but the daemon did).
+    (nothing in my session touched it, but the daemon did). — DONE 2026-11-23: SELF-TEST OK (45 checks), rc=0.
 33. The foreign `check-proxy-surface.sh` rides my 78d90f22 — consider a follow-up commit naming
     the ride (attribution hygiene).
 34. Check-push-timing: confirm the next push isn't rate-limited after today's volume.
@@ -215,9 +215,9 @@ legs, then to the edge of a fully-unbypassed local battery.
     /var/tmp; consider the archive-evidence flow for the GREEN receipt once captured.
 41. task row 203 (ADR-0019 S2) — C's agent found the core landed but the row open on the webui
     tailer piece; worth a narrowing annotation.
-42. Row 694 (size-guard protocol) cited by agents twice — verify it's current.
+42. Row 694 (size-guard protocol) cited by agents twice — verify it's current. — DONE 2026-11-23: current in substance (owner budget call still BLOCKED; today's three resets 27_900→28_100→28_250 prove it alive); its 15,000/~15,500 B figures were stale — refreshed to the 28,250 lineage in this change.
 43. The `--channels` per-launch flag exists in crush; Phase 2's bootstrap could emit the flag
-    form (plan §6 F43 already rules this — unchanged).
+    form (plan §6 F43 already rules this — unchanged). <!-- fresh:skip --> no-action: plan §6 F43 rules the flag form; Phase 2 bootstrap owner-gated (§c1).
 44. Double-check `internal/mcpserver/v0.4.2` tag resolved on the proxy (pkg-proxy now covers
     facades only; the module tag isn't in its roster).
 45. The `check-version-agreement.sh` script exists beside the flake's version-sync — confirm
@@ -225,9 +225,9 @@ legs, then to the edge of a fully-unbypassed local battery.
 46. Consider testing `tq bootstrap --mcp` against a REAL .crushrc fixture end-to-end (the golden
     test covers emission, not crush's parse — the TUI probe DID parse it live, receipt exists).
 47. Sub-agent etiquette lesson (§f13) still unfiled in crush-config — needs a commit THERE.
-48. The `.tq-verify` wrapper flip (owner ruling) — untouched, still blocked on owner.
+48. The `.tq-verify` wrapper flip (owner ruling) — untouched, still blocked on owner. <!-- fresh:skip --> harvested at TODO_LIST row 736 (BLOCKED owner — freshness-matcher false-negative class, row 99).
 49. features.md row 173 / ci.yml step naming — the foreign session renamed; my report §f
-    annotations already cite the new names; done, no action.
+    annotations already cite the new names; done, no action. — DONE 2026-11-23 (no-action verified).
 50. WAIT-state hygiene: this report is the WAIT point; the resuming session should start at
     f-list item 1 (the tick-claims fix commit).
 
