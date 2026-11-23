@@ -228,7 +228,7 @@ landing commit carrying this report is 40d71fca (1c8d8a57→40d71fca).
 17. budget-meter end-to-end scratch run (16-00 closeout §f2 row).
 18. Dead-fallback sweep + check-smoke-dead-branches.sh (16-00 closeout
     §f3/f7 rows).
-19. Monthly digest ritual (standing row; 417/400 now).
+19. ~~Monthly digest ritual (standing row; 417/400 now).~~ — DONE 2026-11-23: ritual EXECUTED this window — per-item triage of the whole live 2026-10-01..05 corpus (68 reports, 5 date-bucket fan-outs, 800 verified strikes, ZERO archives: every report keeps open items, the archive bar correctly refused all 68); accrual landed on the digest 2026-11 index row; standing monthly TODO row minted.
 20. Suppress jstest stub-fidelity drift documentation (§f7 row, open).
 21-50. Lower-value residue observed in passing and already rowed elsewhere:
     scroll-mt on non-finding anchors (17-39 §f5), harness stub changelog
