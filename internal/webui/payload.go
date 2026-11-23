@@ -420,6 +420,22 @@ type retryReason struct {
 	Last   time.Time
 }
 
+// retryStripCollapsesWhenOver marks the distinct-reason count past which
+// the retry strip folds behind a native <details> (design-pass §f30): a
+// pathological trail otherwise towers over the timeline it summarizes.
+const retryStripCollapsesWhenOver = 4
+
+// retryOccurrences totals the per-reason counts — the folded summary's
+// "how many times did this task come back" number.
+func retryOccurrences(trail []retryReason) int {
+	total := 0
+	for _, r := range trail {
+		total += r.Count
+	}
+
+	return total
+}
+
 // retryTrail aggregates a task's refusals and failures (task.requeued,
 // task.failed, task.released, task.dead-lettered) into distinct reasons —
 // the one-glance answer to "why does this keep coming back?" above the

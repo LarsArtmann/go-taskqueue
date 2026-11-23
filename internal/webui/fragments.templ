@@ -990,19 +990,37 @@ templ taskDetailTimeline(data DashboardData, t task.Task, facts []journalFactVie
 
 // retryStrip is the retry trail's summary: distinct requeue/failure reasons
 // with counts, loudest first. One <span> per reason; the timeline underneath
-// carries every individual occurrence.
+// carries every individual occurrence. Past the collapse threshold the
+// strip folds behind a native <details> — the settled-rows idiom, no JS
+// under CSP — so a pathological trail stops towering over the timeline;
+// the full strip stays one click away and the fold's open state survives
+// SSE swaps via its data-state-key.
 templ retryStrip(trail []retryReason) {
-	if len(trail) > 0 {
-		<div class="tq-retries" aria-label="retry summary">
-			<span class="tq-retries-label">retry trail</span>
-			for _, r := range trail {
-				<span class="tq-retries-row">
-					<span class="tq-retries-count">×{ formatInt(r.Count) }</span>
-					<span class="tq-retries-reason" title={ r.Reason }>{ r.Reason }</span>
-				</span>
-			}
-		</div>
+	if len(trail) > retryStripCollapsesWhenOver {
+		<details class="tq-settled" data-state-key="retries">
+			<summary>
+				<span class="tq-settled-title">retry trail</span>
+				<span class="tq-settled-counts">{ formatInt(len(trail)) } distinct reasons · { formatInt(retryOccurrences(trail)) } occurrences — expand for all</span>
+			</summary>
+			@retryRows(trail)
+		</details>
+	} else if len(trail) > 0 {
+		@retryRows(trail)
 	}
+}
+
+// retryRows is the flat retry strip: the folded body above the threshold,
+// the whole summary at or below it.
+templ retryRows(trail []retryReason) {
+	<div class="tq-retries" aria-label="retry summary">
+		<span class="tq-retries-label">retry trail</span>
+		for _, r := range trail {
+			<span class="tq-retries-row">
+				<span class="tq-retries-count">×{ formatInt(r.Count) }</span>
+				<span class="tq-retries-reason" title={ r.Reason }>{ r.Reason }</span>
+			</span>
+		}
+	</div>
 }
 
 // payloadPreWithCopy is a monospace payload block with its copy button;
