@@ -181,15 +181,28 @@ if [ "$mode" = "--self-test" ]; then
 	echo "ok: --show-suppressed lists the hidden baselined rows"
 
 	# 5) Baseline rows unseen by either view are reported RESOLVED.
-	first="$(baseline_rows | head -1)"
+	# 5) Baseline rows unseen by either view are reported RESOLVED: the
+	#    fixture carries every pinned row EXCEPT the last (an empty report
+	#    when the baseline is a single row), so exactly the last row
+	#    resolves — the case must hold for ANY baseline size, including
+	#    the post-2026-11-23-tightening single-row baseline.
 	resfix="$tmpd/one-row.html"
 	{
 		printf '<html><body>'
-		printf '<div class="clone-group" id="group-fx1" data-category="%s">' "${first%% *}"
-		for p in ${first#* }; do
-			printf '<a href="vscode://file/%s:1">x</a>' "$p"
-		done
-		printf '</div></body></html>'
+		n=0
+		while read -r row; do
+			n=$((n + 1))
+			cat="${row%% *}"
+			paths="${row#* }"
+			printf '<div class="clone-group" id="group-res%d" data-category="%s">' "$n" "$cat"
+			i=0
+			for p in $paths; do
+				i=$((i + 1))
+				printf '<a href="vscode://file/%s:%d">x</a>' "$p" "$i"
+			done
+			printf '</div>'
+		done < <(baseline_rows | head -n -1)
+		printf '</body></html>'
 	} >"$resfix"
 	res_out="$(TQ_MIRROR_CANON_CMD="cat $empty" \
 		TQ_MIRROR_RAW_CMD="cat $resfix" \
