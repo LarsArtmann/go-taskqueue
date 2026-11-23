@@ -1,670 +1,478 @@
-# Legacy dead-SHA citations absorbed at gate birth (2026-09-20, task
-# 000001a0bcc86662ffff2bfdefc2ec7ee49f): these commit objects exist but are
-# unreachable from HEAD — residue of the sanctioned history rewrites
-# (2026-09-10 msg-filter heal, 2026-09-19 0-target footer heal).
-# Shrink pass (2026-09-20, task 000001a0bce3dd86f7ddbc604c21b4b66781):
-# 220/242 re-resolved to reachable twins and repointed; the residue below is
-# the FINAL positional-mapping verdict (2026-09-20, task
-# 000001a0bd2d1b8972f150b0e7d530c78931, done while refs/original +
-# reflog still held the old lineages): every remaining SHA was checked by
-# exact patch-id match over HEAD (content-identity, immune to subject
-# collisions) and by positional anchoring (reachable parent / refs/original
-# ancestry). Verdict classes:
-#   RESOLVED  — exact patch-id twin on HEAD identified; the citations in
-#               docs deliberately DESCRIBE the dead side (daemon-fold /
-#               fork forensics), so they stay; row kept only to silence the
-#               gate until the refs/original drop lands.
-#   LOST      — squashed-away daemon/rebase intermediate from an abandoned
-#               lineage: no patch-id twin, no tree twin (checked); content
-#               absorbed across multiple surviving commits, absorber not
-#               derivable. Citation loss ACCEPTED — drop all rows when the
-#               refs/original drop lands (existing TODO row).
+
 #
-# RESOLVED (fork-forensics prose; reachable twins):
-#   dd543ec -> d035911 (msg-filter heal; the AGENTS.md fork-note pair)
-#   e9ef358 -> ca514a8 (msg-filter heal; the AGENTS.md fork-note pair)
-#   5d93115 -> d035911 (same patch-id as dd543ec; daemon fold amended into it)
-#   1537fd2 -> 9aaa7fc (same patch-id; fold absorbed)
-#   c888be6 -> 9aaa7fc (same patch-id; fold absorbed)
-#   4a28269 -> e2e3f2e (same patch-id; fold absorbed)
-# LOST (squashed-away intermediates; reachable parent where one exists):
-#   0ac7088, 102daea (chained: e394da3 lineage, parents dangling)
-#   0b8d9d6 (parent 433624b dangling)
-#   1b4a6c8 (parent 9bd565d reachable; content absorbed beyond it)
-#   1d925e5 (parent bc99b2e dangling)
-#   1f02e92 (parent 0042ce7 reachable, in refs/original lineage)
-#   227e2d8 (parent 0f448d3 dangling)
-#   2f91e01 (parent fce5454 reachable)
-#   32415f8 (parent 9419075 reachable)
-#   3a394f0 -> 8759e6d (same patch-id; amend-forensics prose)
-#   4ad6960 (parent f5433bd reachable)
-#   4d7605c -> d7a0f2e (same patch-id; amend-forensics prose)
-#   507de74 (parent c9aa941 reachable)
-#   88d9b10 (parent 45b99a8 reachable)
-#   8ef1330 -> 4ba81d8 (same patch-id; amend-forensics prose)
-#   a1a3fe6 -> 0369e09 (same patch-id; amend-forensics prose)
-#   b58eb01, be10f18 (parents 3c9afe2 / b5d4803 dangling)
-#   ce1a940 (parent f5a2839 reachable)
-#   d26252d -> d6f5ad0 (same patch-id; amend-forensics prose)
-#   e742fb4 (parent 38a1a8a reachable)
-#   fddad84 (parent 1c8daa1 reachable)
-# Do not gc refs/original or the reflog before accepting the LOST verdicts
-# and dropping these rows; shrink is advisory-only per the gate.
-0ac7088
-0b8d9d6
-102daea
-1b4a6c8
-1d925e5
-1f02e92
-227e2d8
-2f91e01
-32415f8
-3a394f0
-4ad6960
-4d7605c
-507de74
-88d9b10
-8ef1330
-a1a3fe6
-b58eb01
-be10f18
-ce1a940
-d26252d
-e742fb4
-fddad84
-# Fork-note prose + wrong-twin folds — RESOLVED twins above (kept until the
-# refs/original drop lands):
-dd543ec
-e9ef358
-1537fd2
-c888be6
-4a28269
-5d93115
-# New residue of the same daemon-amend class (found by this task's final
-# gate run, 2026-09-20): fold amended into 4172f1e (exact patch-id match);
-# citations describe the dead side, kept per the RESOLVED class.
-78e2768
-# Score-cache window msg-filter heal (2026-09-21 06-02 report, task
+# 000001a0bcc86662ffff2bfdefc2ec7ee49f): these commit objects exist but are
+# 000001a0bd2d1b8972f150b0e7d530c78931, done while refs/original +
 # 000001a0c1fbe85b1c43d84a48539f16c43e): invisible-footer defect (footer
-# above attribution block, trailer parse empty), scripted filter-branch
-# over the unpushed range 30df914..HEAD; 68ffbe2→58c571b, f681a02→0a76bed
-# (metadata + net-diff verified identical, refs/original retained). The
-# 06-02 report's History-rewrite record DELIBERATELY cites the dead side
-# (old→new mapping) — RESOLVED-class rows.
-# Daemon-amend/rebuild forensics residue (healed 2026-09-26, task
 # 000001a0db839d41103a706b7164e9197520, found by the baseline-regen
-# window's gate run): every citing line DELIBERATELY describes the dead
-# side of a sanctioned amend/repair — forensics prose, not stale cites.
-#   e19259b, 7ba1ef5 — 09-22 01-37/02-01 windows' footer-less daemon folds
-#           named by their own amend narratives
-#   1c13d86 -> 98dd19c — 02-30 window's amend forensics (arrow on cite line 23)
-#   a31f6d0, ea9815b — 00-21 rebuild chain (both replaced by bfda11d, same
-#           subject, on the surviving lineage; the window verified
-#           net-diff equality during the soft-reset repair)
-#   fd3118d8 — 02-31 S4 window §8 ("c561ae25 code, fd3118d8 docs, both
-#           footerless, AMEND MANEUVER"), absorbed into 6a10c7f7
-#   eb91e66e — 01-58 S4 window's first footer-less work commit, re-committed
-#           with the footer last
-e19259b
-7ba1ef5
-1c13d86
-a31f6d0
-ea9815b
-eb91e66e
-fd3118d8
-# Review-fix residue (2026-09-26, task 000001a0dbccd985bf0aa3ec0803c57e05b7,
-# filed against the 05-07 close-out: it left its own dead-SHA cites
-# unbaselined and the gate red): the 05-19/05-47 windows landed the same
-# daemon-amend residue after the block above; every citing line
-# DELIBERATELY describes the dead side of a sanctioned amend/repair —
-# forensics prose, not stale cites. Twins verified before baselining:
-#   fd2176c5 — 05-07 window's footerless daemon fold (AGENTS.md +12),
-#           AMEND MANEUVER'd into 018a6e32 (same AGENTS.md hunk among its
-#           three files; rebuild, not patch-id — verified by diff)
-#   eb48b416 -> c460e758 — 05-19 row-110 window's footerless daemon fold
-#           (TODO_LIST edit), exact patch-id twin verified
-#   a51585e1 -> aab7ee1d — 05-47 row-111 window's footer-above-attribution
-#           work commit, amended in-window; exact patch-id twin verified
-fd2176c5
-eb48b416
-a51585e1
-# 2026-09-27 00-59 fix close-out (task 000001a0dfbfb035d7cd5ce9bf2230cfce29):
-#   c460e758 -> 1205f453 — 05-19 row-110 work commit stranded by the
-#           2026-09-26 22:38 rewrite (reviewer-referenced sha, unreachable
-#           at fix dispatch); exact patch-id twin verified (32abd751)
-#   d5e8558e -> f02904a3 — this window's footerless daemon sweep, amended
-#           in-window; exact patch-id twin verified (9c6def3c), tree
-#           byte-identical between the twins (empty diff)
-c460e758
-d5e8558e
-
-# 2026-10-01 mass triage (row: Mass-triage the DEAD-SHA citations stranded by
-# the 2026-09-26 ~22:38 lineage rewrite): every token below was checked by
-# exact patch-id match over HEAD (content identity). Verdict LOST: no
-# patch-id twin and no tree twin on the current lineage (rewritten/squashed
-# intermediates, content absorbed across commits, absorber not derivable).
-# Citation loss ACCEPTED per the standing verdict class; drop these rows
-# when refs/original is dropped.
-154f9d4d
-1a34631a
-1e1209ee
-20e146ce
-31597040
-3a967bf1
-3b6d5889
-500b2f2e
-52759e99
-6831539f
-6a79cdfb
-702ee8b4
-745d41ad
-7b13f4aa
-8c88ad60
-8ca790a3
-8d2987c0
-925f2988
-9da8dc25
-9e33568b
-a8660be2
-b5e1092d
-b929681f
-bebe7172
-bf1b0502
-d5712d8d
-dcaba8f2
-de10ad74
-dfb09adc
-f9b75dd5
-fa68edeb
-fdc861d5
-feee0c2a
-# late-straggler (2026-10-01): 7bc80672 surfaced post-repair; patch-id verdict LOST (same class as the batch above)
-7bc80672
-
-# late-straggler (2026-10-01 07:2x): aac17ad9 — a parallel window cited a
-# daemon chore commit that its own soft-reset heal orphaned (06-26 report
-# line 100); patch-id verdict LOST, citation deliberately describes the
-# dead side (sweep forensics), same class as the 2026-10-01 batch above.
-aac17ad9
-# 2026-10-05 (08-4x verification-tail window): rebased-away citations in
-# the paperclip m2 report + README index rows. Patch-id mappings recovered
-# for future healers: 058dbbe0->f5d773b9, 2da0bad6->92932f2f,
-# e0f65d93->d76c6437, e3fcd3c7->503d553e; 0b72db95 + 26723259 have no
-# reachable twin (marker/merged commits).
-058dbbe0
-2da0bad6
-e0f65d93
-0b72db95
-e3fcd3c7
-26723259
-
-# 2026-10-05 mass heal (O16 mechanical path, docs/planning/2026-10-05_15-00_OWNER-RULINGS-SHEET.md;
-# row: Heal the dead-SHA cites so check-dead-sha-refs.sh returns rc=0): tokens emitted by
-# `scripts/check-dead-sha-refs.sh --emit-baseline` at HEAD, NEW vs the blocks above (71 tokens).
-# Spot-verified class: rewrite-orphaned closeout/report commits + footer-less daemon `chore:`
-# sweeps orphaned by heal-daemon-sweep rewrites (2026-10-01..05 windows), cited by the
-# 10-01..10-05 status reports + TODO_LIST + README index — the same RESOLVED/LOST forensics
-# classes as the 2026-10-01 mass triage above (healers: run patch-id twin checks before
-# repointing; shrink by dropping rows whose cites leave the living docs).
-# 6c6325d7 appears in 8/12/40-hex forms — baseline matching is exact-token, all forms kept.
-058986fc
-0727a2e2
-0e4519f9
-14e594a4
-187aa8f2
-187b5877
-2bd4315a
-30d5f0ab
-3aeb96b9
-3b136c41
-3eaf44e9
-3f9f497d
-3faaf0b
-3ff0877e
-409fa071
-41cb177e
-4f43596e
-56bd235f
-5ac12ba7
-6006fcc3
-634b4914
-657a2148
-65db3553
-691a9da7
-69621553
-6c11dbea
-6c6325d7
-6c6325d78666
-6c6325d78666f2c9e401d9f20a9a022d069b4051
-6e142726
-72c7a643
-76ef8874
-78c0b5a0
-8305e044
-8f84352f
-93bcc6d6
-97c13831
-98ef988f
-a317efb
-b2e4696d
-b2fd9f99
-b3c8bc76
-b48fb5ef
-b5b91419
-ba115833
-c158ffe1
-c2323857
-c4e5a7d8
-c7cd5655
-c931413f
-cfef2cd0
-d13ffc29
-d258bef5
-d26ed9e5
-d8ecffa7
-dcf2ba20
-dd8a1812
-dda374c6
-df6915f4
-e3135b23
-e487c5ff
-e7953539
-eaf971c5
-eb4dd8c7
-edc228ff
-f055fec0
-f0643178
-f10e8464
-f8120c2c
-fd170b41
-ffe031ad
-
-# 2026-10-07 probe: cited by docs/status/tasks/2026-10-07_06-01_task-000001a113… as the
-# sibling agent's vendor-sync sweep; daemon commit with no amend successor
-# (dangles via the morning session's amend maneuvers).
-9d6b3ddd
-
-# 2026-10-07 release-probe heal mass: the pre-dawn window's amend maneuvers
-# (ea102014->437879a0, 871b1585->03113f96, f87c5c95->36f9d64b lineage) dangled the
-# window reports' snapshot citations; emitted via check-dead-sha-refs --emit-baseline,
-# curated per O16 (fork records impractical for anonymous daemon sweeps).
-06607444
-0bb76f54
-135c7c1d
-148f0255
-264b4113
-53420f83
-63c9748b
-77b46cb1
-98f51cbe
-9a63ca69
-c9a31765
-e7b5fefe
-f87e4c80
-ff10a323
-
-# October 2026 accretion (absorbed 2026-10-12, ci-local seal window): the
-# concurrent-agent closeouts of 10-08..10-12 cite pre-heal daemon-race SHAs
-# (the heal-daemon-sweep rewrites leave the old objects unreachable); the
-# five tokens of this window's own closeouts got fork-record arrows in their
-# reports instead — curation per O16: new citations stay gated, this
-# accretion is historical residue. Regenerated live tokens, fork-record
-# arrows excluded by the gate.
-00af8c68
-035d0a0c
-050413f8
-058a4b37
-07c153e7
-0858cf0d
-0a14b689
-0c1740f6
-14ee8cc5
-15de13d5
-18806631
-1d921835
-202fcea8
-217fcf0f
-221c90fd
-2a5c154b
-2cff68d3
-2ea3267b
-30996f81
-373d8933
-39faff0e
-3ed2949e
-4011ac86
-45073cb8
-4c8da24b
-4f81113b
-51d6fcd1
-52354e63
-52735052
-59190df4
-612148d9
-650c5fa5
-66f9aae2
-6727c525
-67dfcc7e
-681c4c50
-7029d42d
-706b5030
-7524651b
-7660cde8
-76b33011
-7b11b10b
-7c7a9063
-87a9b8eb
-88560cf9
-89169644
-8ca613b9
-8f5a7e69
-9080294
-90deabb2
-947b5d33
-9c4b5750
-9d848da4
-9ea63fd9
-a064d73a
-a12638c2
-a1fff63d
-a24472c5
-a24472c52b
-a3f6264
-a3f62643
-a41502bf
-a7bbed45
-a909d57f
-ae5c3b4b
-af72485b
-b1999bb9
-b49c8838
-b79b2b9e
-b7f7d88c
-be0f64d9
-bf37e2b7
-bf424139
-bf69c52b
-c1fcca41
-c46151a0
-ca5e80f7
-cc560155
-ce54fcee
-cec6e4cd
-d3781321
-d543c4c3
-d752f597
-d77ecc41
-d8d261c4
-db5744f4
-ddd3dfcb
-dfd3e6c
-e38f3a27
-e767e4a3
-eb49d2e2
-ec297ffd
-ecc90dd0
-f2916a50
-f2b3f20d
-f312b75f
-f4c737dc
-f622f43f
-f704d6d0
-fcd7282a
-fdbba7fe
-ffb29a06
-# 2026-10-30 fork wave (task: foreign-red quad heal): the 08-21 task report's
-# cites rode the sanctioned 10-27 rebase; 5281772d re-landed verbatim-subject
-# as f33df6dd (fork record below, verified by subject + content superset);
-# aeff1489 is a footerless daemon auto-commit (ambiguous subject, many twins)
-# — baselined, no reliable positional twin.
-5281772d→f33df6dd
-aeff1489
-# 2026-10-30 morning-orphan wave (task: v0.4.0 release train, g2 close):
-# dead-side forensics prose in that morning's task reports; patch-id
-# verdicts: e1273b28 LOST (no twin); 1d8520cc→74d34566 and
-# 554cb39b→6ff565a4 RESOLVED twins (content re-landed; citations
-# describe the dead side so bare rows silence per dd543ec convention);
-# 5281772d rides its verified fork record above (f33df6dd reachable),
-# same dead-side-prose rule.
-e1273b28
-1d8520cc
-554cb39b
-5281772d
-
-# 2026-10-30 mass-absorb wave (task: v0.4.0 release train, g2 close,
-# owner blanket GO 2026-10-30): 391 tokens via --emit-baseline after the
-# deferred class investigation — verdict: ONE mechanism, not event
-# clusters. Sampled tokens (10-12 through 10-30-morning, daemon sweeps
-# AND named commits) are on NO ref and were never pushed (origin/master
-# moved 10-12→10-30 only along the surviving line, last: 6aca655c);
-# every dead span is local-rewrite residue from the unpushed era —
-# heal maneuvers, daemon folds, unpushed-HEAD amend fallbacks (named
-# fork records: 5281772d→f33df6dd 10-27 rebase; 056efa51→bccc75ac;
-# 1d8520cc→74d34566; 554cb39b→6ff565a4). Reports deliberately describe
-# the dead side so rows silence per dd543ec convention. TODO_LIST.md
-# live-row re-resolution to reachable twins stays queued in T10.
 00552b0c
 009ec7ff
+00af8c68
+010eb231
 011d2116
 0177a0ad
 01bd2e8e
 023bf446
+035d0a0c
 03dd1970
+04eb7a73
+050413f8
+058986fc
+058a4b37
+058dbbe0
+# 06-02 report's History-rewrite record DELIBERATELY cites the dead side
+06607444
 06676eac
 0668f8e4
+0727a2e2
+07c153e7
 082add61
+0843a8d8
+0858cf0d
 087f5180
 08b5cd11
 08c8713c
+0932f54e
 0a06c0fb
+0a14b689
+0ac7088
+#   0ac7088, 102daea (chained: e394da3 lineage, parents dangling)
 0aca1703
+0b72db95
+0b8d9d6
+#   0b8d9d6 (parent 433624b dangling)
+0bb76f54
 0bf44d06
+0c1740f6
 0c76d861
 0d71a0af
 0de6c758
 0e411a57
+0e4519f9
 0e913ef6
+0eb92681
 0ee8e2a7
 0f3f5bd5
 0f5fb1dd
+0f6477e6
+# 10-01..10-05 status reports + TODO_LIST + README index — the same RESOLVED/LOST forensics
+102daea
 105c1cb6
 10e4e86d
 110d827e
 13230bbd
+135c7c1d
 1390b266
 13c57f2d
 13f063d7
 13f49cca
 14252455
 14582f27
+148f0255
 14d54f08
+14e594a4
+14ee8cc5
+1537fd2
+#   1537fd2 -> 9aaa7fc (same patch-id; fold absorbed)
 1547e8c5
+154f9d4d
 15bdaf02
+15de13d5
 1679c491
 17af902c
 17bbfb2b
+187aa8f2
+187b5877
 1880037c
+18806631
 18941a77
+18a59f9e
 18f93423
 19b9a4b2
+1a34631a
+1b220e88
+1b4a6c8
+#   1b4a6c8 (parent 9bd565d reachable; content absorbed beyond it)
 1bc86c88
+1c13d86
+#   1c13d86 -> 98dd19c — 02-30 window's amend forensics (arrow on cite line 23)
 1c2bb8bb
+1c460bc9
+1c6a427f
+1cdd400d
+1d8520cc
+# 1d8520cc→74d34566; 554cb39b→6ff565a4). Reports deliberately describe
+1d921835
+1d925e5
+#   1d925e5 (parent bc99b2e dangling)
 1dd03be0
+1e1209ee
+1ecd0516
+1f02e92
+#   1f02e92 (parent 0042ce7 reachable, in refs/original lineage)
 1fc442eb
+# (2026-09-10 msg-filter heal, 2026-09-19 0-target footer heal).
+#           2026-09-26 22:38 rewrite (reviewer-referenced sha, unreachable
+# 2026-09-27 00-59 fix close-out (task 000001a0dfbfb035d7cd5ce9bf2230cfce29):
+# 2026-10-01 mass triage (row: Mass-triage the DEAD-SHA citations stranded by
+# 2026-10-05 (08-4x verification-tail window): rebased-away citations in
+# 2026-10-05 mass heal (O16 mechanical path, docs/planning/2026-10-05_15-00_OWNER-RULINGS-SHEET.md;
+# 2026-10-07 probe: cited by docs/status/tasks/2026-10-07_06-01_task-000001a113… as the
+# 2026-10-07 release-probe heal mass: the pre-dawn window's amend maneuvers
+# 2026-10-30 fork wave (task: foreign-red quad heal): the 08-21 task report's
+# 2026-10-30 mass-absorb wave (task: v0.4.0 release train, g2 close,
+# 2026-10-30 morning-orphan wave (task: v0.4.0 release train, g2 close):
+# 2026-11-03 incident heal (row 1378, filter-branch dead-cite class): d7c25ae8 is a 2026-11-02 23:xx daemon auto-commit with no reachable post-rewrite counterpart (tree unmatched across all refs, content absorbed piecemeal by later reachable commits)
+# 2026-11-17 dead-SHA heal wave: no reachable counterpart exists (patch-id + tree matchers empty at HEAD 40f96302); cites kept for history — 0932f54e 67255578 84efe35d 8aa78376 d705be27 d7fb0736 fa05f88d
+# 2026-11-17 heal: b7302f56/0843a8d8/bed52bca are the heal-daemon-sweep oscillation WALK (ever-older blockers, 23-50 report line 130), a succession chain — not same-change fork pairs; baselined rather than falsified into arrow form
+# 2026-11-18: 6f9156d0/eaeb54a4/b8a2b16b are footer-less daemon-sweep commits orphaned by the pareto-window heal folds — heuristic-sweep subjects are ambiguous by design, so no provable reachable counterpart exists; baselined rather than falsified into arrow form
+202fcea8
+20e146ce
+20ef59ac
+217fcf0f
 21a6ebf4
+21c002bb
+# 220/242 re-resolved to reachable twins and repointed; the residue below is
+221c90fd
 221e432e
+22572bd9
+227e2d8
+#   227e2d8 (parent 0f448d3 dangling)
 251f9250
 2551dbbe
+264b4113
+26723259
 269f387c
 278fbc12
 27c21de2
+288e7fa9
 289628c3
+2a5c154b
 2ac713a9
 2b000426
 2b09bd46
 2b4615ee
+2bd4315a
 2caa702a
 2cc00033
+2cff68d3
+2da0bad6
 2de0c2dd
 2e1f80ff
 2e7facfe
 2e8ef5d7
+2ea3267b
 2f1b0274
+2f91e01
+#   2f91e01 (parent fce5454 reachable)
+30792b04
+30996f81
 30b9ac78
+30d5f0ab
 3125a000
 315636da
+31597040
 3191fbf0
+31ac8b1d
+31b4fbd4
+32415f8
+#   32415f8 (parent 9419075 reachable)
 324624a8
+3261bcb7
 32626d52
 335613ae
 33a95a92
 343de79f
 34b703ba
+354194b7
 355dbe6b
 35cd8b53
+373d8933
 37463ba8
 3814abe1
+38c3a67c
 390226e6
 39207689
 399f715e
+39faff0e
 3a0e12b4
+3a2a34cd
 3a2d3477
+3a394f0
+#   3a394f0 -> 8759e6d (same patch-id; amend-forensics prose)
 3a6b0573
 3a92b1af
+3a967bf1
+3aeb96b9
 3aee33c4
+3b136c41
+3b6d5889
 3b7a8847
 3b7de9b5
 3cc59e16
 3ce1609d
 3d17d769
 3d9f23b1
+3eaf44e9
+3ecfabb4
+3ed2949e
 3f8ed458
+3f9f497d
+3faaf0b
+3ff0877e
 401104dc
+4011ac86
 409167ba
+409fa071
 40a6c2c7
 416ff2a0
 41aedfa5
+41cb177e
 41cd3a19
 41dc5ecf
+4216ebaa
+42194237
+421c8998
+45073cb8
 45f26cf3
 47c440b0
 4810608c
+48a7db3d
 48e81fe1
+4918bd5b
 49864fbe
 49e4159e
+4a28269
+#   4a28269 -> e2e3f2e (same patch-id; fold absorbed)
 4a309b6f
 4a922c17
+4ad6960
+#   4ad6960 (parent f5433bd reachable)
+4c8da24b
 4cebb878
 4d07b291
+4d7605c
+#   4d7605c -> d7a0f2e (same patch-id; amend-forensics prose)
 4e0f8066
 4ee17193
 4ee2b10b
 4eecffd0
+4f43596e
+4f81113b
 4fa2e55a
 4fdc4dbf
+500b2f2e
 50131a15
+507de74
+#   507de74 (parent c9aa941 reachable)
+51148de8
+51759a50
 517fd666
+51d6fcd1
 51f1b0ea
 5217de78
 5228ac74
+52354e63
+52735052
+52759e99
+5281772d
+5281772d→f33df6dd
+# 5281772d rides its verified fork record above (f33df6dd reachable),
 52869238
 52bbedc4
+52bcf080
 5313f50d
+53420f83
 53468033
 550047ba
+554cb39b
+# 554cb39b→6ff565a4 RESOLVED twins (content re-landed; citations
 557b3801
 5589389b
 55a55662
 560b5739
 5675f261
 568b7b4d
+56ae5316
+56bd235f
+56ffa8be
 577f8088
+58215143
 58e78faf
+59190df4
+5a6b9b2c
 5a75baba
 5a8b945f
+5ac12ba7
 5acaa708
 5bf9c5eb
 5d06ee46
 5d46b448
+5d93115
+#   5d93115 -> d035911 (same patch-id as dd543ec; daemon fold amended into it)
+5da0d479
+5e8aaacd
 5e91faf8
 5f67636e
 5fd4f2b9
 5fff16c5
+6006fcc3
 6038bcb9
+612148d9
 61a6bcd5
 62070090
+62169f1b
 623b241b
+62c8034f
 62f111c1
+634b4914
 6376d90a
 637b0a16
+63c9748b
+650c5fa5
+657a2148
+65db3553
+6612d27f
+66931e9d
+66f9aae2
+67255578
+6727c525
 672c01be
+67a4327b
+67dfcc7e
+681c4c50
+6831539f
 68741966
+691a9da7
+69621553
 6993833b
+6a79cdfb
+6b8f3c42
+6c11dbea
+6c2701cf
+6c6325d7
+6c6325d78666
+6c6325d78666f2c9e401d9f20a9a022d069b4051
+# 6c6325d7 appears in 8/12/40-hex forms — baseline matching is exact-token, all forms kept.
 6ca3b0b1
+6caaebdc
 6cb72d5b
+6d2e5c1d
 6d51e6e4
 6dba9ad0
+6e142726
 6e823baf
 6e843bc5
+6e990fde
 6f8d8a50
+6f9156d0
+7029d42d
+702ee8b4
 70338631
+706b5030
 70f62dd9
 722010d8
+7279cfbc
 72853f1e
+72c7a643
 72c8a69b
 72da760e
 72e7a7a2
 744baa9d
+745d41ad
 748149ae
 74bc2a8d
+7524651b
+7660cde8
+76b33011
+76ef8874
 7742973b
 77857bc8
+7791b46e
+77b46cb1
 78302c78
 7856ef0
+78c0b5a0
+78e2768
 78e83506
 7933f8d9
 797f3938
+7a0be547
 7a0dde80
 7a132b84
+7b11b10b
+7b13f4aa
 7b3ada22
 7b65aaa6
+7ba1ef5
+7bc80672
 7bfe4041
 7c0283b8
+7c7a9063
 7caec61f
+7e0bb6f2
 7e2746ed
+7f26183b
 7f41d2e7
 7f6be4fe
 7f8a9aaf
 8005938e
 802656a7
+8051c0f0
+80b9568f
 81675a29
 819505cc
 82178e30
 823e69e3
 824b0bbf
+8305e044
 843ae94a
+84efe35d
 8521a7bf
 852a8d9d
 85dbd9a2
 8694ecc5
+86f2433c
+874f993e
+87a9b8eb
+88560cf9
 88bc4480
+88d9b10
+#   88d9b10 (parent 45b99a8 reachable)
 88e78e00
 88e93daf
+89169644
+8aa78376
 8b21505b
+8c88ad60
+8ca613b9
+8ca790a3
 8d005ab8
 8d241b58
+8d2987c0
 8d412471
 8d4b55cb
 8d6b7a67
+8e0f0906
 8e3b0378
 8e434df7
+8ef1330
+#   8ef1330 -> 4ba81d8 (same patch-id; amend-forensics prose)
+8f5a7e69
+8f84352f
 8f9710c4
+9080294
+90deabb2
 9177f28a
+925f2988
 929443e9
 93721c2c
 93898602
 93acad87
+93bcc6d6
 94175bb6
+947b5d33
+94ca6865
+9519eb06
 9539f606
 96087d21
 9632302b
@@ -673,189 +481,485 @@ e1273b28
 97b3274f
 97ba6b2e
 97c0df7b
+97c13831
 98dc4032
+98ef988f
+98f51cbe
 996fa025
+9974f4f2
+99995767
 9a5ae825
+9a63ca69
+9c4b5750
+9d30192f
+9d4859a3
+9d6b3ddd
+9d848da4
+9da8dc25
 9dad237c
 9dc1571e
+9df85a65
 9e18649a
+9e33568b
+9ea63fd9
 9ff212d6
 9ff63bd3
+a064d73a
 a0be62aa
 a0cd5fcb
 a11023e9
+a12638c2
+a1a3fe6
+#   a1a3fe6 -> 0369e09 (same patch-id; amend-forensics prose)
 a1abe2d2
+a1bb146c
 a1dea336
+a1fff63d
+a24472c5
+a24472c52b
 a2ecbf58
+a317efb
+a31f6d0
+#   a31f6d0, ea9815b — 00-21 rebuild chain (both replaced by bfda11d, same
 a396d92b
+a3f6264
+a3f62643
+a41502bf
 a471e1af
+a51585e1
+#   a51585e1 -> aab7ee1d — 05-47 row-111 window's footer-above-attribution
 a6056967
 a668b74a
 a732f257
 a73859de
 a786a876
+a7bbed45
 a7d19756
+a8660be2
 a8f58aba
+a909d57f
+a93f0ae5
 a97e9c2d
+a98087a6
 a98e36bd
 a9aba538
 a9bef802
+aa245fe6
 aa4e7ab4
 aab7ee1d
+aac17ad9
 aae9236a
 ab0d9334
 abe06de7
+# above attribution block, trailer parse empty), scripted filter-branch
+#               absorbed across multiple surviving commits, absorber not
 acbc9b5b
 acc519da
+# accretion is historical residue. Regenerated live tokens, fork-record
+add5007d
 adde9c52
+ae5c3b4b
 aeb96824
 aedd7e49
+aeff1489
+# aeff1489 is a footerless daemon auto-commit (ambiguous subject, many twins)
 af241176
+af72485b
+af7adc81
 afafe93e
+#           AMEND MANEUVER'd into 018a6e32 (same AGENTS.md hunk among its
+# ancestry). Verdict classes:
+# and dropping these rows; shrink is advisory-only per the gate.
+# AND named commits) are on NO ref and were never pushed (origin/master
+# arrows excluded by the gate.
+# as f33df6dd (fork record below, verified by subject + content superset);
+#           at fix dispatch); exact patch-id twin verified (32abd751)
 b0fb2234
 b1004a5e
 b1706caf
+b1999bb9
+b1c7b42e
+b2e4696d
+b2fd9f99
 b32214da
 b33d0937
 b37e836c
 b3ad16fc
+b3c8bc76
+b3dc12af
+b48fb5ef
+b49c8838
+b570ddce
+b58eb01
+#   b58eb01, be10f18 (parents 3c9afe2 / b5d4803 dangling)
+b5b91419
 b5d8cabf
+b5e1092d
+b611acdf
 b61db8d0
+b6332620
+b7302f56
+b795c5a3
+b79b2b9e
 b7c84026
+b7f7d88c
 b80ac104
 b84528f6
+b8a2b16b
 b8b40cda
+b929681f
 b942c668
+ba115833
+# — baselined, no reliable positional twin.
+be0f64d9
+be10f18
 be2530eb
+bebe7172
+bed52bca
 bf08db7c
+bf1b0502
+bf37e2b7
+bf424139
 bf498abc
+bf69c52b
+bf93485c
+#           byte-identical between the twins (empty diff)
+c01a27ee
 c0fe4d38
+c158ffe1
+c197ad5d
+c1fcca41
+c2323857
+c460e758
+#   c460e758 -> 1205f453 — 05-19 row-110 work commit stranded by the
+c46151a0
 c4893e65
+c4e5a7d8
 c4f03193
+c5970771
+c5c17bb9
+c7cd5655
 c80186c6
+c888be6
+#   c888be6 -> 9aaa7fc (same patch-id; fold absorbed)
 c9054f57
+c931413f
+c9a31765
 c9a5840b
+ca5e80f7
 ca63b282
+ca9e12d8
+cba027ea
 cbd413e8
 cc27f0bb
+cc2b0e37
+cc560155
 cc658bbf
 cc8e13b6
 cd0c482a
 cdbac379
 ce0967e1
+ce1a940
+#   ce1a940 (parent f5a2839 reachable)
+ce54fcee
 ce7324b4
+cec6e4cd
 cf99ecba
 cf9c4cfa
 cfe60879
+cfef2cd0
+# Citation loss ACCEPTED per the standing verdict class; drop these rows
+# citations describe the dead side, kept per the RESOLVED class.
+# cites rode the sanctioned 10-27 rebase; 5281772d re-landed verbatim-subject
+# classes as the 2026-10-01 mass triage above (healers: run patch-id twin checks before
+# clusters. Sampled tokens (10-12 through 10-30-morning, daemon sweeps
+# collisions) and by positional anchoring (reachable parent / refs/original
+# concurrent-agent closeouts of 10-08..10-12 cite pre-heal daemon-race SHAs
+# curated per O16 (fork records impractical for anonymous daemon sweeps).
 d00cd74e
 d015da9f
 d133062d
+d13ffc29
 d173763f
 d1a062a8
 d211095c
+d258bef5
+d26252d
+#   d26252d -> d6f5ad0 (same patch-id; amend-forensics prose)
+d26ed9e5
+d3781321
 d385faa1
+d3a49b1f
 d452e35d
+d46aef09
 d4a7949a
 d4bc9d86
 d53e6f49
+d543c4c3
+d5712d8d
 d58e09bc
 d59735d1
+d5d2df6c
 d5dd3708
+d5e8558e
+#   d5e8558e -> f02904a3 — this window's footerless daemon sweep, amended
 d6482ab5
 d653361a
 d69b541c
+d6fb8730
+d705be27
+d73ad758
+d73fd664
+d752f597
+d75f0620
+d77ecc41
 d79fdb54
+d7a12325
+d7c25ae8
+d7ea3437
+d7fb0736
+d852fc9c
 d8b0a464
 d8b0a4646
+d8d261c4
+d8ecffa7
+# Daemon-amend/rebuild forensics residue (healed 2026-09-26, task
+# daemon-amend residue after the block above; every citing line
+# daemon chore commit that its own soft-reset heal orphaned (06-26 report
+# (dangles via the morning session's amend maneuvers).
 db241bc0
+db5744f4
 dbcf677e
 dc0f8bbb
+dc0f91eb
+dc63921f
 dc6c9a8c
+dc70a9f8
+dcaba8f2
+dcf2ba20
 dd51d150
 dd51d15074cd8811019da5b6b629b2156d01cd1b
+dd543ec
+#   dd543ec -> d035911 (msg-filter heal; the AGENTS.md fork-note pair)
+dd8a1812
 dd9c20d6
+dda374c6
 ddadecc1
+ddd3dfcb
 ddd5c806
+de10ad74
 dea5794c
+# dead-side forensics prose in that morning's task reports; patch-id
+# dead side (sweep forensics), same class as the 2026-10-01 batch above.
 deccc465
+# deferred class investigation — verdict: ONE mechanism, not event
+# DELIBERATELY describes the dead side of a sanctioned amend/repair —
+#               derivable. Citation loss ACCEPTED — drop all rows when the
+# describe the dead side so bare rows silence per dd543ec convention);
+df6915f4
 df980ce9
+dfb09adc
+dfd3e6c
+#               docs deliberately DESCRIBE the dead side (daemon-fold /
+# Do not gc refs/original or the reflog before accepting the LOST verdicts
 e03731fc
 e0532f80
 e0a5e5a5
 e0a6c3db
+e0d2be85
+e0f65d93
+# e0f65d93->d76c6437, e3fcd3c7->503d553e; 0b72db95 + 26723259 have no
+e1273b28
 e12b85bc
+e19259b
+#   e19259b, 7ba1ef5 — 09-22 01-37/02-01 windows' footer-less daemon folds
 e27758c7
+e3135b23
 e315cfab
 e33b2081
+e38f3a27
+e3d5e6a0
+e3fcd3c7
 e43db212
+e487c5ff
 e496b1c8
 e4de2f1b
+e5a378d9
 e6ad7dad
 e6e5d9eb
+e742fb4
+#   e742fb4 (parent 38a1a8a reachable)
 e7587106
 e7650404
+e767e4a3
+e7953539
 e7b4a3ed
+e7b5fefe
+e7ba0eaa
 e7c7a5f1
 e8ba755c
 e9209bdc
+e938bb4f
 e953a0e8
+e9ef358
+#   e9ef358 -> ca514a8 (msg-filter heal; the AGENTS.md fork-note pair)
+# (ea102014->437879a0, 871b1585->03113f96, f87c5c95->36f9d64b lineage) dangled the
+ea9815b
 ead0bc85
+eae48f00
+eaeb54a4
 eaf3b1d6
 eaf65a67
+eaf971c5
 eb016efe
+eb413560
 eb43fb38
+eb48b416
+#   eb48b416 -> c460e758 — 05-19 row-110 window's footerless daemon fold
+eb49d2e2
+eb4dd8c7
+eb91e66e
+#   eb91e66e — 01-58 S4 window's first footer-less work commit, re-committed
+ec297ffd
+ec350779
+ecc90dd0
+ed51d4c0
+ed6511f4
+edc228ff
+ee24ed87
+ee98189c
 eeb93eb1
 eecd4737
 efad1658
+# every dead span is local-rewrite residue from the unpushed era —
+# exact patch-id match over HEAD (content-identity, immune to subject
+# exact patch-id match over HEAD (content identity). Verdict LOST: no
 f0103a7a
+f055fec0
+f0643178
 f09673d6
+f0ca9d29
+f10e8464
 f1971d8a
 f1cbb912
 f203f8aa
+f2916a50
+f2b3f20d
+f312b75f
 f3a470c0
 f44a50f6
+f4c737dc
 f521cc94
 f53aed55
 f560dbfd
 f562763a
 f5ac738c
 f6005692
+f622f43f
+f70468bc
+f704d6d0
 f7445ff2
 f792fbc0
+f8120c2c
 f860ff4f
+f87e4c80
+f8f13666
 f949b9fc
 f99e5478
+f9b75dd5
+fa05f88d
 fa5b3d11
+fa68edeb
 fa867e99
 faf6af83
+fb2d76eb
+fc2cbe61
 fc4d3afb
+fcd7282a
+fd170b41
+fd2176c5
+#   fd2176c5 — 05-07 window's footerless daemon fold (AGENTS.md +12),
+fd3118d8
+#   fd3118d8 — 02-31 S4 window §8 ("c561ae25 code, fd3118d8 docs, both
+fd7a6b3c
 fd7d6530
 fd95b61f
 fdaca3b4
 fdb258b9
+fdbba7fe
+fdc861d5
+fddad84
+#   fddad84 (parent 1c8daa1 reachable)
+feb2650c
+feee0c2a
+ff10a323
 ff573eff
-# 2026-11-03 incident heal (row 1378, filter-branch dead-cite class): d7c25ae8 is a 2026-11-02 23:xx daemon auto-commit with no reachable post-rewrite counterpart (tree unmatched across all refs, content absorbed piecemeal by later reachable commits)
-d7c25ae8
-
+ffb29a06
+ffe031ad
+# filed against the 05-07 close-out: it left its own dead-SHA cites
+# five tokens of this window's own closeouts got fork-record arrows in their
+#           footerless, AMEND MANEUVER"), absorbed into 6a10c7f7
+# forensics prose, not stale cites. Twins verified before baselining:
+# for future healers: 058dbbe0->f5d773b9, 2da0bad6->92932f2f,
+#               fork forensics), so they stay; row kept only to silence the
+# Fork-note prose + wrong-twin folds — RESOLVED twins above (kept until the
+# fork records: 5281772d→f33df6dd 10-27 rebase; 056efa51→bccc75ac;
+# gate run, 2026-09-20): fold amended into 4172f1e (exact patch-id match);
+#               gate until the refs/original drop lands.
+# heal maneuvers, daemon folds, unpushed-HEAD amend fallbacks (named
+# intermediates, content absorbed across commits, absorber not derivable).
+#           in-window; exact patch-id twin verified (9c6def3c), tree
+# late-straggler (2026-10-01 07:2x): aac17ad9 — a parallel window cited a
+# late-straggler (2026-10-01): 7bc80672 surfaced post-repair; patch-id verdict LOST (same class as the batch above)
 # legacy dangle named in docs/status/tasks/2026-11-03_02-06_task-…918bf0 (15-file auto-commit; documented fork bf93485c→a22aa57c)
-bf93485c
-
 # legacy dangle named in docs/status/tasks/2026-11-03_02-06_task-…918bf0 line 31 (footer-less daemon sweep, no successor; subject-match non-derivable)
-b3dc12af
-
-# 2026-11-17 dead-SHA heal wave: no reachable counterpart exists (patch-id + tree matchers empty at HEAD 40f96302); cites kept for history — 0932f54e 67255578 84efe35d 8aa78376 d705be27 d7fb0736 fa05f88d
-0932f54e
-67255578
-84efe35d
-8aa78376
-d705be27
-d7fb0736
-fa05f88d
-# 2026-11-17 heal: b7302f56/0843a8d8/bed52bca are the heal-daemon-sweep oscillation WALK (ever-older blockers, 23-50 report line 130), a succession chain — not same-change fork pairs; baselined rather than falsified into arrow form
-b7302f56
-0843a8d8
-bed52bca
-# 2026-11-18: 6f9156d0/eaeb54a4/b8a2b16b are footer-less daemon-sweep commits orphaned by the pareto-window heal folds — heuristic-sweep subjects are ambiguous by design, so no provable reachable counterpart exists; baselined rather than falsified into arrow form
-6f9156d0
-eaeb54a4
-b8a2b16b
+# Legacy dead-SHA citations absorbed at gate birth (2026-09-20, task
+# line 100); patch-id verdict LOST, citation deliberately describes the
+#               lineage: no patch-id twin, no tree twin (checked); content
+# live-row re-resolution to reachable twins stays queued in T10.
+#   LOST      — squashed-away daemon/rebase intermediate from an abandoned
+# LOST (squashed-away intermediates; reachable parent where one exists):
+# (metadata + net-diff verified identical, refs/original retained). The
+# moved 10-12→10-30 only along the surviving line, last: 6aca655c);
+#           named by their own amend narratives
+#           net-diff equality during the soft-reset repair)
+# New residue of the same daemon-amend class (found by this task's final
+# October 2026 accretion (absorbed 2026-10-12, ci-local seal window): the
+# (old→new mapping) — RESOLVED-class rows.
+# over the unpushed range 30df914..HEAD; 68ffbe2→58c571b, f681a02→0a76bed
+# owner blanket GO 2026-10-30): 391 tokens via --emit-baseline after the
+# patch-id twin and no tree twin on the current lineage (rewritten/squashed
+# reachable twin (marker/merged commits).
+# reflog still held the old lineages): every remaining SHA was checked by
+# refs/original drop lands):
+#               refs/original drop lands (existing TODO row).
+# repointing; shrink by dropping rows whose cites leave the living docs).
+# reports instead — curation per O16: new citations stay gated, this
+#   RESOLVED  — exact patch-id twin on HEAD identified; the citations in
+# RESOLVED (fork-forensics prose; reachable twins):
+# Review-fix residue (2026-09-26, task 000001a0dbccd985bf0aa3ec0803c57e05b7,
+# row: Heal the dead-SHA cites so check-dead-sha-refs.sh returns rc=0): tokens emitted by
+# same dead-side-prose rule.
+# Score-cache window msg-filter heal (2026-09-21 06-02 report, task
+# `scripts/check-dead-sha-refs.sh --emit-baseline` at HEAD, NEW vs the blocks above (71 tokens).
+# Shrink pass (2026-09-20, task 000001a0bce3dd86f7ddbc604c21b4b66781):
+# sibling agent's vendor-sync sweep; daemon commit with no amend successor
+# side of a sanctioned amend/repair — forensics prose, not stale cites.
+# Spot-verified class: rewrite-orphaned closeout/report commits + footer-less daemon `chore:`
+#           subject, on the surviving lineage; the window verified
+# sweeps orphaned by heal-daemon-sweep rewrites (2026-10-01..05 windows), cited by the
+# the 2026-09-26 ~22:38 lineage rewrite): every token below was checked by
+# the dead side so rows silence per dd543ec convention. TODO_LIST.md
+# the FINAL positional-mapping verdict (2026-09-20, task
+# (the heal-daemon-sweep rewrites leave the old objects unreachable); the
+# the paperclip m2 report + README index rows. Patch-id mappings recovered
+#           three files; rebuild, not patch-id — verified by diff)
+#           (TODO_LIST edit), exact patch-id twin verified
+# unbaselined and the gate red): the 05-19/05-47 windows landed the same
+# unreachable from HEAD — residue of the sanctioned history rewrites
+# verdicts: e1273b28 LOST (no twin); 1d8520cc→74d34566 and
+# when refs/original is dropped.
+# window reports' snapshot citations; emitted via check-dead-sha-refs --emit-baseline,
+# window's gate run): every citing line DELIBERATELY describes the dead
+#           with the footer last
+#           work commit, amended in-window; exact patch-id twin verified
