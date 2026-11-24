@@ -113,8 +113,8 @@ func TestResetClearsStrikes(t *testing.T) {
 	l.Add("k")
 	l.Add("k")
 	l.Reset("k")
-	if l.Has("k") {
-		t.Fatal("Reset must drop the entry, not zero it in place")
+	if !l.Has("k") {
+		t.Fatal("Reset keeps the entry (it zeroes count + lock), only idle prune drops it")
 	}
 	// A success resets the count: two more strikes must not lock.
 	l.Add("k")
@@ -182,19 +182,23 @@ func TestBoundEvictsLeastRecentlyActiveFirst(t *testing.T) {
 
 func TestBoundIdleSweepRunsBeforeLRA(t *testing.T) {
 	l, now := newTestLimiter(t, func(c *Config) {
-		c.MaxKeys = 2
+		c.MaxKeys = 3
 		c.IdleKeep = 10 * time.Minute
 	})
 
 	l.Add("stale") // will go idle
 	advance(t, now, 20*time.Minute)
-	l.Add("fresh1")
-	l.Add("fresh2")
-	l.Add("fresh3") // over cap → the idle pass must sweep "stale" first
+	l.Add("fresh1") // last-touch t=20m
+	l.Add("fresh2") // len 3 ≤ cap, no bound yet
+	advance(t, now, time.Minute)
+	// stale idled 21m ≥ keep; fresh1/2 idled 1m < keep. The cap pressure
+	// arrives with fresh3: len 4 > 3 → the idle pass sweeps stale, LRA
+	// never fires.
+	l.Add("fresh3")
 	if l.Has("stale") {
 		t.Fatal("idle sweep should have removed the stale key without LRA eviction")
 	}
-	if l.Len() > 2 {
+	if l.Len() > 3 {
 		t.Fatalf("Len=%d, want the cap enforced via the idle sweep", l.Len())
 	}
 	for _, k := range []string{"fresh1", "fresh2", "fresh3"} {
@@ -204,27 +208,59 @@ func TestBoundIdleSweepRunsBeforeLRA(t *testing.T) {
 	}
 }
 
-func TestBoundKeepsLockedEntriesUnderLRA(t *testing.T) {
+func TestBoundIdlePassSparesLockedButLRABoundWins(t *testing.T) {
 	l, now := newTestLimiter(t, func(c *Config) { c.MaxKeys = 2 })
 
-	// Two locked keys + one fresh: the idle pass keeps everything (locked
-	// entries are never idle-swept and the fresh one is inside keep), so
-	// LRA must evict the LEAST-recently-active — but a locked entry is only
-	// evicted when the whole map is locked. Here it isn't: the fresh key is
-	// the one that goes.
+	// Two keys locked mid-window + one fresh: the idle pass spares the
+	// locked entries (now < lockedUntil), but the LRA pass is lock-blind —
+	// the bound wins and the least-recently-active (a locked key) goes.
 	for i := 0; i < DefaultMaxHits; i++ {
 		l.Add("lockA")
 	}
 	for i := 0; i < DefaultMaxHits; i++ {
 		l.Add("lockB")
 	}
-	advance(t, now, time.Minute)
+	advance(t, now, DefaultLockout/2) // both still locked
 	l.Add("fresh")
-	if !l.Has("lockA") || !l.Has("lockB") {
-		t.Fatal("locked entries evicted while the map was not wholly locked")
-	}
-	if l.Len() > 2 {
+
+	if l.Len() != 2 {
 		t.Fatalf("Len=%d, want the cap enforced", l.Len())
+	}
+	if !l.Has("fresh") {
+		t.Fatal("the freshest key must survive LRA eviction")
+	}
+	kept, gone := 0, 0
+	for _, k := range []string{"lockA", "lockB"} {
+		if l.Has(k) {
+			kept++
+		} else {
+			gone++
+		}
+	}
+	if kept != 1 || gone != 1 {
+		t.Fatalf("want exactly one locked key evicted (kept=%d gone=%d)", kept, gone)
+	}
+}
+
+func TestBoundEvictsOldestLockedWhenWholeMapLocked(t *testing.T) {
+	l, now := newTestLimiter(t, func(c *Config) { c.MaxKeys = 2 })
+
+	// Whole map locked and over cap: the bound wins, oldest locked goes
+	// (the docstring's "under that pressure the bound wins" branch).
+	for _, k := range []string{"a", "b"} {
+		for i := 0; i < DefaultMaxHits; i++ {
+			l.Add(k)
+		}
+		advance(t, now, time.Second)
+	}
+	for i := 0; i < DefaultMaxHits; i++ {
+		l.Add("c") // all three locked, len 3 > cap 2
+	}
+	if l.Len() != 2 {
+		t.Fatalf("Len=%d, want the cap enforced over an all-locked map", l.Len())
+	}
+	if !l.Has("b") || !l.Has("c") || l.Has("a") {
+		t.Fatal("want the oldest locked key evicted, the rest kept")
 	}
 }
 
