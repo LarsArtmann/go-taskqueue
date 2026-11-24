@@ -428,3 +428,15 @@ seam; deeper integration ideas, in rough order of expected value:
   split-brain risk.
 - Eval: webui live-agent pane vs the journal tailer — one source of truth
   for agent output; avoid a second output pipeline calcifying.
+
+### Channels Phase 2 prep (2026-11-24 harvest from the window-3 report §f25/§f43; owner-gated on the serve-per-repo ruling)
+
+- Buffered channels push: `notifications/claude/channel` pushes must ride
+  AFTER `initialized` + a turn boundary (the 2026-11-23 erratum) — design
+  the outbox/flush point in `internal/mcpserver` before any Phase 2 build.
+- The `--channels` per-launch flag form vs the `.crushrc` managed block:
+  plan §6 F43 rules the flag form — decide at bootstrap time whether
+  `tq bootstrap` emits both or picks one per enrollment shape.
+- `server/discover` capability advertisement: only if tq ever declares
+  extensions — the empty answer is the honest contract today
+  (internal/mcpserver/server.go documents the probe shape).
