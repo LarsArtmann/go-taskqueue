@@ -1,6 +1,6 @@
 {
   "annotate_corpus": "unarchived",
-  "annotate_max": 144,
+  "annotate_max": 0,
   "skip_gates": [
     "audit-all"
   ],

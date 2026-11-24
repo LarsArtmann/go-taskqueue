@@ -83,7 +83,7 @@ Nothing at the code or tree level — HEAD is green across every gate this windo
 19. Secret-injection seam (minted per-run env, forbidden-key stripping, managed HOME allowlist) as the successor to output redaction.
 20. Responsible-user attribution for agent GitHub operations.
 21. Routines (cron/webhook recurring tasks) with `always_enqueue | skip_if_active | coalesce` + capped catch-up — ROADMAP.
-22. ~~~~`docs/research/paperclip-lessons.md`: capture the full comparison (wake model, budget 3-point enforcement, retry taxonomy, webui stance) durably.~~~~ — RESOLVED 2026-11-23: landed — docs/research/2026-10-05_paperclip-lessons.md (budget 3-point enforcement table :12, source-confirmed paths :16).
+22. ~~`docs/research/paperclip-lessons.md`: capture the full comparison (wake model, budget 3-point enforcement, retry taxonomy, webui stance) durably.~~ — RESOLVED 2026-11-23: landed — docs/research/2026-10-05_paperclip-lessons.md (budget 3-point enforcement table :12, source-confirmed paths :16).
 23. Webui stance audit: does every `tq serve` screen answer what-is-happening / does-it-need-me / what-do-I-do.
 24. Webui: one status vocabulary across badges/rows/charts; audit for drift.
 25. Webui: machine values (IDs, cost, tokens, timestamps) monospace + consistent helpers.

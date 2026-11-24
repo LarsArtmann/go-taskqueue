@@ -1030,6 +1030,48 @@ func bandBadgeType(band queue.Band) display.BadgeType {
 	}
 }
 
+// spendByProject splits today's enqueued facts per project for the meter's
+// tooltip: each enqueued fact's thin detail carries {project,type}. An
+// ungrouped task (empty project) lands under "-".
+func spendByProject(facts []journal.Fact) map[string]int {
+	byProject := make(map[string]int, len(facts))
+	for _, f := range facts {
+		var detail struct {
+			Project string `json:"project"`
+		}
+		if err := json.Unmarshal(f.Detail, &detail); err != nil || detail.Project == "" {
+			byProject["-"]++
+		} else {
+			byProject[detail.Project]++
+		}
+	}
+
+	return byProject
+}
+
+// budgetMeterTitle is the meter tooltip: the base meaning plus the
+// per-project spend split, sorted by project name (deterministic; empty
+// split degrades to the base line, design-pass §f46).
+func budgetMeterTitle(b BudgetView) string {
+	title := "agent tasks enqueued today vs the daily cap"
+	if len(b.ByProject) == 0 {
+		return title
+	}
+
+	names := make([]string, 0, len(b.ByProject))
+	for name := range b.ByProject {
+		names = append(names, name)
+	}
+
+	sort.Strings(names)
+
+	for _, name := range names {
+		title += fmt.Sprintf(" · %s %d", name, b.ByProject[name])
+	}
+
+	return title
+}
+
 // budgetMeterClass is the spend meter's track element: tone rides the same
 // operator thresholds as BudgetView.Tone (green under 75%, amber under the
 // cap, red at/over it).

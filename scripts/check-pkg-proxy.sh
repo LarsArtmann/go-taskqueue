@@ -62,6 +62,13 @@ for mod in "${mods[@]}"; do
 	fi
 	if command -v curl >/dev/null; then
 		code="$(curl -sfL -o /dev/null -w '%{http_code}' "https://pkg.go.dev/$mod" 2>/dev/null || echo 000)"
+		if [ "$code" = "000" ]; then
+			# KNOWN_FLAKY: the HTTP-000000 transient (2026-11-23 ×3 in-battery,
+			# always green on retry) — one named retry INSIDE the gate so the
+			# ci-local wrapper is no longer the only net.
+			sleep 2
+			code="$(curl -sfL -o /dev/null -w '%{http_code}' "https://pkg.go.dev/$mod" 2>/dev/null || echo 000)"
+		fi
 		case "$code" in
 		200) echo "pkg-proxy ok: $label (proxy + pkg.go.dev)" ;;
 		000)

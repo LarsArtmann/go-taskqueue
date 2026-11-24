@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"encoding/json/jsontext"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"github.com/larsartmann/go-sse/ssetest"
+	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
@@ -365,5 +367,33 @@ func TestFaviconVariesWithDLQ(t *testing.T) {
 	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
 	if !strings.Contains(rec.Body.String(), `href="/static/favicon-dead.svg"`) {
 		t.Error("non-empty DLQ must carry the dead favicon, page keeps the default")
+	}
+}
+
+// §f46: the budget meter tooltip splits the day's spend per project from
+// the enqueued facts' thin {project,type} detail; empty split degrades to
+// the base line.
+func TestBudgetMeterTitleProjectSplit(t *testing.T) {
+	facts := []journal.Fact{
+		{TaskID: "1", Detail: []byte(`{"project":"alpha","type":"sh"}`)},
+		{TaskID: "2", Detail: []byte(`{"project":"beta","type":"sh"}`)},
+		{TaskID: "3", Detail: []byte(`{"project":"alpha","type":"agent"}`)},
+		{TaskID: "4", Detail: []byte(`{}`)},
+		{TaskID: "5"},
+	}
+
+	byProject := spendByProject(facts)
+	want := map[string]int{"alpha": 2, "beta": 1, "-": 2}
+	if !maps.Equal(byProject, want) {
+		t.Fatalf("spendByProject = %v, want %v", byProject, want)
+	}
+
+	title := budgetMeterTitle(BudgetView{Cap: 10, Spent: 5, ByProject: byProject})
+	if want := "agent tasks enqueued today vs the daily cap · alpha 2 · beta 1 · - 2"; title != want {
+		t.Errorf("budgetMeterTitle = %q, want %q", title, want)
+	}
+
+	if title := budgetMeterTitle(BudgetView{Cap: 10, Spent: 0}); title != "agent tasks enqueued today vs the daily cap" {
+		t.Errorf("empty split title = %q, want base line", title)
 	}
 }

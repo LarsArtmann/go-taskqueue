@@ -195,9 +195,12 @@ func (f FilterState) QueryString() string {
 
 // BudgetView is the daily agent-spend projection: enqueued today vs the
 // operator-set cap. Nil in the snapshot when no cap is configured.
+// ByProject splits the spend per project (from each enqueued fact's thin
+// {project,type} detail) for the meter's tooltip.
 type BudgetView struct {
-	Cap   int
-	Spent int
+	Cap       int
+	Spent     int
+	ByProject map[string]int
 }
 
 // Tone picks the card's semantic color: green under 75%, amber under the
@@ -947,12 +950,16 @@ func (s *Server) loadSnapshot(ctx context.Context, filter FilterState) (Dashboar
 	}
 
 	if s.cfg.DailyBudget > 0 {
-		spent, err := s.store.CountFacts(ctx, journal.Enqueued, startOfDay(now))
+		enqueued, err := s.store.FactsSince(ctx, journal.Enqueued, startOfDay(now), 0)
 		if err != nil {
 			return data, err
 		}
 
-		data.Budget = &BudgetView{Cap: s.cfg.DailyBudget, Spent: int(spent)}
+		data.Budget = &BudgetView{
+			Cap:       s.cfg.DailyBudget,
+			Spent:     len(enqueued),
+			ByProject: spendByProject(enqueued),
+		}
 	}
 
 	dead := task.Dead

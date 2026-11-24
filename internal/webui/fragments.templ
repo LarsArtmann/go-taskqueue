@@ -68,7 +68,7 @@ templ StatusCards(data DashboardData) {
 				<span class="card-sessions-lamp" title="begun, never closed — tq session list">{ formatInt(data.SessionsOpen) } open</span>
 			}
 			if data.Budget != nil {
-				<span class="card-budget inline-flex items-center gap-2" title="agent tasks enqueued today vs the daily cap">
+				<span class="card-budget inline-flex items-center gap-2" title={ budgetMeterTitle(*data.Budget) }>
 					budget today { formatInt(data.Budget.Spent) }/{ formatInt(data.Budget.Cap) }
 					<span class={ budgetMeterClass(*data.Budget) } role="meter" aria-label="daily budget spent" aria-valuemin="0" aria-valuemax={ strconv.Itoa(data.Budget.Cap) } aria-valuenow={ strconv.Itoa(data.Budget.Spent) } aria-valuetext={ fmt.Sprintf("%d of %d", data.Budget.Spent, data.Budget.Cap) }><span class={ budgetMeterFillClass(*data.Budget) }></span></span>
 				</span>

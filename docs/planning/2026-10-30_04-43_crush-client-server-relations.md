@@ -144,7 +144,7 @@ mocked provider (recipe: `/tmp/tq-crush-recipe/launch.sh`, scratch stack
 - **`GET /v1/version`** → `{"version":"v0.99.0","commit":"unknown",
   "build_id":"gjdgxs","go_version":"go1.27.1","platform":"linux/amd64"}`.
 - **M1 delta (v0.99.0)**: ~~`GET /v1/workspaces` stays `[]` for the whole
-  duration of a non-interactive routed `crush run`~~ **CORRECTED 2026-11-01:
+  duration of a non-interactive routed `crush run`~~ **CORRECTION, RESOLVED 2026-11-01:
   the quiet-listing observation was a false negative — the probe recipe
   (`/tmp/tq-crush-recipe/launch.sh`) omits `CRUSH_CLIENT_SERVER=1`, so the
   observed run was a LOCAL in-process run (which also writes session rows

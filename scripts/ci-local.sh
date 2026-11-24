@@ -504,6 +504,13 @@ step "module-proxy + pkg.go.dev publishability audit (advisory; network-tolerant
 step "clean-room consumer compile (advisory in ci-local; HARD gate in release.sh)"
 ./scripts/check-cleanroom-install.sh
 
+# I/O surface gate — the ci.yml step's local twin (window-3 §f5/§f16): every
+# production I/O call site must be declared in docs/architecture/io-surface/
+# (manifest enforcement: "gate"). Was CI-only, so an IO-declaring change
+# landed red on master instead of at the local gate.
+step "io-surface claims check (the ci.yml step's local twin)"
+go run github.com/larsartmann/io-surface/cmd/io-surface@v0.5.1 check --root .
+
 step "out-of-tree consumer install (proxy @latest; HARD gate in CI consumer job)"
 ./scripts/smoke/consumer-install.sh
 
