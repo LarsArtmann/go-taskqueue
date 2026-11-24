@@ -2,7 +2,7 @@
 
 **Date**: 2026-11-24 04:31 CET. **Continuation of**: the window-3 report's §f list
 (docs/status/2026-11-23_22-25_…, owner directive "GET SHIT DONE! The WHOLE TODO
-LIST!"). **Head at composition**: 4fbbe6d4 (unpushed tip; pushed base afcd5f7c).
+LIST!"). **Head at composition**: 4fbbe6d4→a027c021 (unpushed tip; pre-rebuild cite, fork record from the 20261124T034030Z rebuild; pushed base afcd5f7c); pushed base afcd5f7c).
 **Stop state**: this report is the WAIT point per the owner's directive.
 
 ## a) FULLY DONE
@@ -135,7 +135,7 @@ LIST!"). **Head at composition**: 4fbbe6d4 (unpushed tip; pushed base afcd5f7c).
    a three-writer race on the same refs.
 2. **The amend-mine failure mode, live**: my final go.work.sum re-prune was
    swept by the daemon between `git add` and `git commit --amend` — the amend
-   re-branded the DAEMON's sweep with my message (4fbbe6d4). Content correct,
+   re-branded the DAEMON's sweep with my message (4fbbe6d4→a027c021 — pre-rebuild cite, fork record from the 20261124T034030Z rebuild). Content correct,
    attribution muddy; exactly the foreign session's §e1 "atomic amend-HEAD
    guard" row. I did not amend again (each re-amend risks another
    misbranding).
