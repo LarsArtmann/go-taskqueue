@@ -126,6 +126,16 @@ designed tq-vs-go-cqrs-lite divergence, cited and revisit-dated).
 | **Supervisor ladder**    | The keeper's restart policy: unexpected exits log `restart N` with growing backoff; a server death MID-RUN additionally requeues the severed task without attempt burn (class `crush-server`) so the restarted server picks it up on the next claim. Headless runs never respawn a dead server themselves (respawn is TUI-only, crush v0.102.0) — the keeper is the only restorer.                                                       |
 | **MCP tools surface**    | `tq mcp`: the queue's stdio MCP (Model Context Protocol) server — JSON-RPC 2.0 read tools (`task_list`, `task_show`, `queue_stats`, `dlq_list`) an agent session calls through the model instead of shelling out (`tq tasks | grep` quoting hazards). Read-only over an EXPLICIT `--db` (agent shells have `TQ_DB` stripped, and a stdio server starts with the workspace's cwd); per-repo enrollment into the managed `.crushrc` block rides `tq bootstrap --mcp` (crush `mcp add` grammar). The verdict channel stays the RESULT rail — MCP tools read, they never record outcomes.                                                       |
 
+## Webui design vocabulary
+
+Terms coined by the 2026-09 webui design passes (theme.css header, 2026-09-21
+design-pass §2/§3/§10) that the live surfaces still speak.
+
+| Term           | Meaning                                                                                                                                                                                                                                                              |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Bezel**      | The hull chrome that frames the page: topbar and nowband — engraved uppercase labels, border + gradient ground, deliberately a DIFFERENT register from the content. Content below the hull speaks lowercase; the bezel never does (explicit ruling, 2026-09-16 + 09-21 passes). Live sites: `internal/webui/theme.css:19,323`. |
+| **Queue chip** | The board card voice after the SaaS-card teardown: `rounded-md` hairline border + 2px status left rule (`statusAccentClass`), transparent ground, quiet hover, no shadow. Same vocabulary as the quiet filter chips (`filterChip`, fragments.templ:723) — one card surface, not two. |
+
 ## Trust vocabulary (OKF-derived)
 
 Five words the journal, the receipts and the reports all depend on. They are
