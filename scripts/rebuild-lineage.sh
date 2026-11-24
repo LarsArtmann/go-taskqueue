@@ -18,6 +18,13 @@
 #   - every --mine commit carries exactly one well-formed, trailer-parseable
 #     footer; every other commit's message is byte-identical to the original.
 #
+# Fork-record file: the rebuild rewrites EVERY span commit, but the printed
+# record carries only the tip pair — so the full per-commit old→new map is
+# persisted to <git-dir>/fork-records/<utc-ts>-rebuild-lineage.txt (one
+# full-sha line per rewritten commit) and its path is echoed as a
+# FORK-RECORD-FILE pointer. A doc cite of any pre-rebuild sha resolves by
+# grep, not by a hand-chase across window reports (window-3 §e3/§f6).
+#
 # Unlike heal-daemon-sweep.sh this is NOT msg-filter based: it rebuilds the
 # commit DAG, so it also fixes cases the msg-filter cannot (e.g. rebuilding
 # a span onto a corrected parent). Refuses a pushed commit or a tag inside
@@ -49,6 +56,19 @@ footer_well_formed() {
 	local msg=$1 id=$2 last
 	last=$(printf '%s\n' "$msg" | sed '/^[[:space:]]*$/d' | tail -n 1)
 	[ "$last" = "Task-Queue-ID: $id" ]
+}
+
+# fork_record_file <tool>: durable home of the machine-readable fork-record
+# map (<git-dir>/fork-records/<utc-ts>-<pid>-<tool>.txt, full-sha old→new
+# lines). Stdout FORK-RECORD lines scroll away; the file survives the
+# session, so a later doc cite of a pre-rewrite sha resolves by grep instead
+# of a hand-chase across window reports (window-3 §e3/§f6). One file per
+# run: the pid suffix keeps same-second runs from clobbering each other.
+fork_record_file() {
+	local tool=$1 dir file
+	dir=$(git rev-parse --git-path fork-records) || return 1
+	mkdir -p "$dir" || return 1
+	printf '%s\n' "$dir/$(date -u +%Y%m%dT%H%M%SZ)-$$-$tool.txt"
 }
 
 resolve_base() {
@@ -226,7 +246,15 @@ main() {
 	# Tree-identical, so a soft reset moves the branch and leaves index +
 	# worktree (which already match the rebuilt tree) untouched.
 	git reset --soft "$newtip" || die "branch move failed — backup kept at $BACKUP_REF"
+	local ffile oc nc
+	ffile=$(fork_record_file rebuild-lineage) || die "fork-record file could not be created"
+	{
+		while IFS= read -r oc && IFS= read -r nc <&3; do
+			printf '%s→%s\n' "$oc" "$nc"
+		done <<<"$span" 3<<<"$(git rev-list --reverse "$parent" --not "$base")"
+	} >"$ffile"
 	echo "FORK-RECORD: $oldtip→$newtip"
+	echo "FORK-RECORD-FILE: $ffile"
 	git update-ref -d "$BACKUP_REF"
 	echo "REBUILD OK — backup ref dropped"
 }
@@ -345,6 +373,21 @@ self_test() {
 	else
 		fail=$((fail + 1))
 		echo "SELF-TEST FAIL: fork record printed" >&2
+	fi
+
+	# Fork-record file pin (window-3 §e3/§f6): the rebuild rewrites every
+	# span commit but stdout only carries the tip pair — the file must
+	# carry the FULL per-commit old→new map, one full-sha line each.
+	local rffile want_map
+	rffile=$(grep -F 'FORK-RECORD-FILE: ' "$tmp/out1" | sed -n 's/^FORK-RECORD-FILE: //p' | sed -n 1p)
+	want_map=$(printf '%s→%s\n%s→%s\n%s→%s' "$old1" "$new1" "$old2" "$new2" "$old3" "$new3")
+	if [ -n "$rffile" ] && [ -f "$rffile" ] && [ "$(cat "$rffile")" = "$want_map" ]; then
+		ok=$((ok + 1))
+	else
+		fail=$((fail + 1))
+		echo "SELF-TEST FAIL: fork-record file must carry the full per-commit old→new map" >&2
+		cat "$tmp/out1" >&2
+		[ -z "$rffile" ] || cat "$rffile" >&2
 	fi
 
 	# Rails: pushed commit inside the span refuses.

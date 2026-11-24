@@ -23,7 +23,11 @@
 #     exits non-zero (recovery: read the printed fork records, or
 #     `git reset --soft refs/original/heal-daemon-sweep`).
 #   - prints old→new fork-record lines (sanctioned by check-dead-sha-refs)
-#     for pasting into the window's status report;
+#     for pasting into the window's status report, AND persists them to
+#     <git-dir>/fork-records/<utc-ts>-heal-daemon-sweep.txt (machine-
+#     readable old→new map, one line per printed record) with a
+#     FORK-RECORD-FILE: pointer on stdout — stdout scrolls away, the file
+#     is where later sessions resolve pre-rewrite cites (window-3 §e3/§f6);
 #   - post-heal citation check: sweeps the dead-sha gate's living-docs scope
 #     (docs/status, TODO_LIST.md, AGENTS.md) for lines still citing a
 #     REWRITTEN sha and prints each stale site with its paste-ready
@@ -143,6 +147,20 @@ token_arrow_escaped() {
 	if grep -qE "(^|[^0-9a-f])${tok}(→|<-)[0-9a-f]{7,40}" <<<"$text"; then return 0; fi
 	if grep -qE "[0-9a-f]{7,40}(→|<-)${tok}([^0-9a-f]|$)" <<<"$text"; then return 0; fi
 	return 1
+}
+
+# fork_record_file <tool>: durable home of the machine-readable fork-record
+# map (<git-dir>/fork-records/<utc-ts>-<pid>-<tool>.txt, full-sha old→new
+# lines). Stdout FORK-RECORD lines scroll away; the file survives the
+# session, so a later doc cite of a pre-rewrite sha resolves by grep instead
+# of a hand-chase across window reports (window-3 §e3/§f6). Outside the
+# dead-sha gate's living-docs scope by construction (.git/). One file per
+# run: the pid suffix keeps same-second runs from clobbering each other.
+fork_record_file() {
+	local tool=$1 dir file
+	dir=$(git rev-parse --git-path fork-records) || return 1
+	mkdir -p "$dir" || return 1
+	printf '%s\n' "$dir/$(date -u +%Y%m%dT%H%M%SZ)-$$-$tool.txt"
 }
 
 # resolve_base: default base ref, first existing of origin/master, @{upstream},
@@ -399,14 +417,22 @@ verify_heal() {
 # lists the NEW shas and the backup chain is disjoint from HEAD, so deriving
 # the "old" side post-hoc prints identity pairs (the 2026-10-09 04-14 and
 # 02-53 §f1 false-record class, rows 69/455). Preserved footer-carrying
-# commits keep their shas, so their old==new pairs are legitimate.
+# commits keep their shas, so their old==new pairs are legitimate. Every
+# printed pair is ALSO appended to the per-run fork-record file (the
+# durable old→new map; see fork_record_file) and the path is echoed as a
+# FORK-RECORD-FILE pointer — file content == stdout records minus the
+# prefix, so one grep -c '^FORK-RECORD: ' cross-checks both.
 print_fork_records() {
 	local base=$1 olds=$2
-	local news
+	local news file
 	news=$(git rev-list --reverse "$base..HEAD")
+	file=$(fork_record_file heal-daemon-sweep) || file=""
+	if [ -n "$file" ]; then : >"$file"; fi
 	while IFS= read -r old && IFS= read -r new <&3; do
 		echo "FORK-RECORD: $old→$new"
+		[ -z "$file" ] || printf '%s→%s\n' "$old" "$new" >>"$file"
 	done <<<"$olds" 3<<<"$news"
+	[ -z "$file" ] || echo "FORK-RECORD-FILE: $file"
 }
 
 # check_citations base olds: post-heal residue sweep. A rewritten sha
@@ -508,8 +534,17 @@ fold_below_mode() {
 		git reset -q --soft "$BACKUP_REF"
 		die "fold-below: verification FAILED (tree/footer) — restored via $BACKUP_REF"
 	fi
-	printf 'FORK-RECORD: %s→%s\n' "$sweep" "$(git rev-parse HEAD)"
-	printf 'FORK-RECORD: %s→%s\n' "$tip" "$(git rev-parse HEAD)"
+	local newtip newtip_sweep ffile
+	newtip=$(git rev-parse HEAD)
+	ffile=$(fork_record_file heal-daemon-sweep) || ffile=""
+	if [ -n "$ffile" ]; then
+		: >"$ffile"
+		printf '%s→%s\n' "$sweep" "$newtip" >>"$ffile"
+		printf '%s→%s\n' "$tip" "$newtip" >>"$ffile"
+	fi
+	printf 'FORK-RECORD: %s→%s\n' "$sweep" "$newtip"
+	printf 'FORK-RECORD: %s→%s\n' "$tip" "$newtip"
+	[ -z "$ffile" ] || echo "FORK-RECORD-FILE: $ffile"
 	git update-ref -d "$BACKUP_REF"
 	echo "FOLD-BELOW OK — sweep folded into the footered tip; backup ref dropped"
 	return 0
@@ -776,6 +811,21 @@ EOF
 		fail=$((fail + 1))
 		echo "SELF-TEST FAIL: fork records must carry the true pre-rewrite sha on the left" >&2
 		cat "$tmp/out1" >&2
+	fi
+
+	# Machine-readable fork-record file (window-3 §e3/§f6): the per-run map
+	# under <git-dir>/fork-records/ mirrors the printed records minus the
+	# prefix, full shas, and stdout carries its path.
+	local ffile
+	ffile=$(grep -F 'FORK-RECORD-FILE: ' "$tmp/out1" | sed -n 's/^FORK-RECORD-FILE: //p' | sed -n 1p)
+	if [ -n "$ffile" ] && [ -f "$ffile" ] &&
+		[ "$(cat "$ffile")" = "$(printf '%s→%s\n%s→%s' "$old1" "$new1" "$old2" "$new2")" ]; then
+		ok=$((ok + 1))
+	else
+		fail=$((fail + 1))
+		echo "SELF-TEST FAIL: fork-record file missing or does not mirror the printed records" >&2
+		cat "$tmp/out1" >&2
+		[ -z "$ffile" ] || cat "$ffile" >&2
 	fi
 
 	# Row 184: a dirty worktree no longer refuses up front — an
@@ -1273,18 +1323,25 @@ EOF
 		fold_tip=$(git -C "$fold_repo" rev-parse HEAD)
 		fold_tree=$(git -C "$fold_repo" rev-parse "$fold_tip^{tree}")
 		(cd "$fold_repo" && "$self" --fold-below "$fold_sweep" "$fold_id") >"$tmp/out_fold" 2>"$tmp/err_fold"
-		if [ "$?" = "0" ] &&
+		local fold_rc fold_new fold_ffile
+		fold_rc=$?
+		fold_new=$(git -C "$fold_repo" rev-parse HEAD)
+		fold_ffile=$(grep -F 'FORK-RECORD-FILE: ' "$tmp/out_fold" | sed -n 's/^FORK-RECORD-FILE: //p' | sed -n 1p)
+		if [ "$fold_rc" = "0" ] &&
 			[ "$(git -C "$fold_repo" rev-list --count origin/master..HEAD)" = "1" ] &&
 			[ "$(git -C "$fold_repo" rev-parse "HEAD^{tree}")" = "$fold_tree" ] &&
 			[ "$(git -C "$fold_repo" log -1 --format='%s' HEAD)" = "feat: my real work" ] &&
 			footer_well_formed "$(git -C "$fold_repo" log -1 --format='%B' HEAD)" "$fold_id" &&
 			grep -qF "FORK-RECORD: ${fold_sweep}→" "$tmp/out_fold" &&
-			grep -qF "FORK-RECORD: ${fold_tip}→" "$tmp/out_fold"; then
+			grep -qF "FORK-RECORD: ${fold_tip}→" "$tmp/out_fold" &&
+			[ -n "$fold_ffile" ] && [ -f "$fold_ffile" ] &&
+			[ "$(cat "$fold_ffile")" = "$(printf '%s→%s\n%s→%s' "$fold_sweep" "$fold_new" "$fold_tip" "$fold_new")" ]; then
 			ok=$((ok + 1))
 		else
 			fail=$((fail + 1))
 			echo "SELF-TEST FAIL: --fold-below must fold the daemon sweep into one footered commit ($fold_subject)" >&2
 			cat "$tmp/out_fold" "$tmp/err_fold" >&2
+			[ -z "$fold_ffile" ] || cat "$fold_ffile" >&2
 		fi
 	done
 
