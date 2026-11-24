@@ -131,7 +131,8 @@ func (s *Server) renderIndex(w http.ResponseWriter, r *http.Request, f FilterSta
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 
-	if err := Page(data).Render(r.Context(), w); err != nil {
+	ctx := ctxWithDLQDead(r.Context(), data.DeadTotal > 0)
+	if err := Page(data).Render(ctx, w); err != nil {
 		slog.Error("webui: render index", "err", err)
 	}
 }
@@ -269,14 +270,23 @@ func (s *Server) handleTaskDetail(w http.ResponseWriter, r *http.Request) {
 		s.agentResultFor,
 	)
 
+	dead := task.Dead
+	deadCount, err := s.store.CountTasks(r.Context(), queue.Filter{Status: &dead})
+	if err != nil {
+		http.Error(w, "count dead: "+err.Error(), http.StatusInternalServerError)
+
+		return
+	}
+
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 
+	ctx := ctxWithDLQDead(r.Context(), deadCount > 0)
 	if err := TaskDetailPage(data, taskDetailData{
 		Task:       t,
 		Facts:      facts,
 		ID:         id,
 		Provenance: s.priorityProvenanceFor(r.Context(), t, facts),
-	}).Render(r.Context(), w); err != nil {
+	}).Render(ctx, w); err != nil {
 		slog.Error("webui: render detail", "err", err)
 	}
 }
@@ -752,9 +762,18 @@ func questionIsOpen(facts []journal.Fact, ref string) bool {
 // renderTaskNotFound serves the styled 404 through the dashboard layout —
 // a bare http.Error left the operator on a white void with no way back.
 func (s *Server) renderTaskNotFound(w http.ResponseWriter, r *http.Request, id string) {
+	dead := task.Dead
+	deadCount, err := s.store.CountTasks(r.Context(), queue.Filter{Status: &dead})
+	if err != nil {
+		http.Error(w, "count dead: "+err.Error(), http.StatusInternalServerError)
+
+		return
+	}
+
 	w.WriteHeader(http.StatusNotFound)
 
-	if err := TaskNotFoundPage(id).Render(r.Context(), w); err != nil {
+	ctx := ctxWithDLQDead(r.Context(), deadCount > 0)
+	if err := TaskNotFoundPage(id).Render(ctx, w); err != nil {
 		slog.Error("webui: render 404", "err", err)
 	}
 }

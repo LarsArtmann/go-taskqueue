@@ -1,6 +1,7 @@
 package webui
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"slices"
@@ -692,17 +693,44 @@ func parkedRequeueEvidence(t task.Task, facts []journalFactView) queue.RequeueEv
 	return queue.RequeueEvidence{}
 }
 
+// dlqCtxKey carries the request's DLQ-dead state so the page shell can
+// pick the favicon variant without threading the dead count through every
+// component.
+type dlqCtxKey struct{}
+
+// ctxWithDLQDead stamps whether the dead-letter queue is non-empty.
+func ctxWithDLQDead(ctx context.Context, dead bool) context.Context {
+	return context.WithValue(ctx, dlqCtxKey{}, dead)
+}
+
+func ctxDLQDead(ctx context.Context) bool {
+	dead, _ := ctx.Value(dlqCtxKey{}).(bool)
+
+	return dead
+}
+
+// faviconHref picks the tab icon: the red lamp-dot variant announces a
+// non-empty dead-letter queue at a glance (design-pass §f49); the default
+// stays quiet.
+func faviconHref(ctx context.Context) string {
+	if ctxDLQDead(ctx) {
+		return "/static/favicon-dead.svg"
+	}
+
+	return "/static/favicon.svg"
+}
+
 // dashboardProps builds the shared page shell for both pages. HTMX is
 // suppressed entirely: the dashboard streams over vanilla EventSource.
 // The nonce comes from the security-headers middleware (ctxNonce) and is
 // stamped onto the theme bootstrap + toggle inline scripts so the strict
 // script-src CSP admits them.
-func dashboardProps(title, nonce string) layout.PageProps {
+func dashboardProps(ctx context.Context, title, nonce string) layout.PageProps {
 	props := layout.DefaultPageProps()
 	props.Title = title
 	props.Description = "Live, read-only projection of the tq task-queue journal."
 	props.CSSPath = "/static/app.css"
-	props.Favicon = "/static/favicon.svg"
+	props.Favicon = faviconHref(ctx)
 	props.HTMXVersion = ""
 	props.HTMXSrc = ""
 	props.HTMXResponseTargets = false

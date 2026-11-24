@@ -235,7 +235,7 @@ func Page(data DashboardData) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = layout.Base(dashboardProps(pageTitle(data), ctxNonce(ctx))).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = layout.Base(dashboardProps(ctx, pageTitle(data), ctxNonce(ctx))).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -283,7 +283,7 @@ func TaskDetailPage(data DashboardData, detail taskDetailData) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = layout.Base(dashboardProps(detailPageTitle(detail.ID), ctxNonce(ctx))).Render(templ.WithChildren(ctx, templ_7745c5c3_Var4), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = layout.Base(dashboardProps(ctx, detailPageTitle(detail.ID), ctxNonce(ctx))).Render(templ.WithChildren(ctx, templ_7745c5c3_Var4), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -345,7 +345,7 @@ func TaskNotFoundPage(id string) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = layout.Base(dashboardProps(detailPageTitle(id)+" — not found", ctxNonce(ctx))).Render(templ.WithChildren(ctx, templ_7745c5c3_Var6), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = layout.Base(dashboardProps(ctx, detailPageTitle(id)+" — not found", ctxNonce(ctx))).Render(templ.WithChildren(ctx, templ_7745c5c3_Var6), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

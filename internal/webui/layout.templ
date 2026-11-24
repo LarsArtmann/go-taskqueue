@@ -6,7 +6,7 @@ import "github.com/larsartmann/templ-components/layout"
 // the journal. Fragments are server-rendered into the #frag-* containers so
 // the page works without JS; SSE then replaces innerHTML.
 templ Page(data DashboardData) {
-	@layout.Base(dashboardProps(pageTitle(data), ctxNonce(ctx))) {
+	@layout.Base(dashboardProps(ctx, pageTitle(data), ctxNonce(ctx))) {
 		@pageHeader()
 		<div class="mx-auto w-full max-w-7xl flex-1 px-4 sm:px-6 lg:px-8">
 			<section id="sec-overview" class="pt-6">
@@ -108,7 +108,7 @@ templ Page(data DashboardData) {
 
 // TaskDetailPage is the per-task detail page.
 templ TaskDetailPage(data DashboardData, detail taskDetailData) {
-	@layout.Base(dashboardProps(detailPageTitle(detail.ID), ctxNonce(ctx))) {
+	@layout.Base(dashboardProps(ctx, detailPageTitle(detail.ID), ctxNonce(ctx))) {
 		@pageHeader()
 		@TaskDetail(data, detail.Task, detail.Facts, detail.Provenance)
 	}
@@ -117,7 +117,7 @@ templ TaskDetailPage(data DashboardData, detail taskDetailData) {
 // TaskNotFoundPage is the styled 404 for /task/{id}: an unknown id keeps
 // the dashboard chrome and a way back instead of a bare error page.
 templ TaskNotFoundPage(id string) {
-	@layout.Base(dashboardProps(detailPageTitle(id)+" — not found", ctxNonce(ctx))) {
+	@layout.Base(dashboardProps(ctx, detailPageTitle(id)+" — not found", ctxNonce(ctx))) {
 		@pageHeader()
 		<div class="mx-auto w-full max-w-2xl px-4 py-16 sm:px-6 lg:px-8">
 			<div class="tq-heading">
