@@ -196,7 +196,9 @@ LIST!"). **Head at composition**: 4fbbe6d4→a027c021 (unpushed tip; pre-rebuild
 4. Verify + tick the §f6 fork-record-file row when the foreign WIP lands
    (their heal-daemon-sweep.sh/rebuild-lineage.sh edits are in-flight).
 5. File the LSP-wiring lesson in crush-config (the writer identification is
-   the lesson; the fix is the config change).
+   the lesson; the fix is the config change). — DONE 2026-11-24: filed
+   (references/lessons.md, the -mod=mod re-leak lesson) — the config pin
+   itself stays open as the durable fix.
 6. Execute the foreign-minted commit-theft auto-heal row (twice-live class —
    I hit it again today, §d2).
 7. Execute the atomic amend-mine.sh wrapper row (same report, same class).
@@ -210,8 +212,8 @@ LIST!"). **Head at composition**: 4fbbe6d4→a027c021 (unpushed tip; pre-rebuild
     markers (release wave, commit-theft ruling, amend guard, Store-impl
     hermetic pin, proxy-surface-in-release) — mechanical rephrase batch.
 12. Re-run the full lockout suite inside a green battery (it passed
-    standalone; it has not been exercised in-sequence yet).
-13. Tick-claims receipt rail: the new negative pin exercised once in-battery.
+    standalone; it has not been exercised in-sequence yet). <!-- fresh:skip --> one-shot, rides the pending receipt run.
+13. Tick-claims receipt rail: the new negative pin exercised once in-battery. <!-- fresh:skip --> one-shot, rides the pending receipt run.
 14. Verify the foreign fork-record-file implementation's self-test when it
     lands (their WIP touches the heal tool's rails — the `--self-test` must
     still pin 45 checks).
