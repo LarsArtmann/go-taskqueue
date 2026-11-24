@@ -208,7 +208,7 @@ legs, then to the edge of a fully-unbypassed local battery.
     may conflict with the 1.27.4 floor raise.
 37. The `20-39` report's struck verdict mentions `root go mod vendor clean` — vendor/ is deleted
     now; historical prose, leave struck.
-38. Keep `internal/mcpserver` go.sum minimal (no lint-toolchain entries — gomod-sync gate
+38. Keep `internal/mcpserver` go.sum minimal (no lint-toolchain entries — gomod-sync gate — DONE 2026-11-24 verified: mcpserver go.sum carries zero lint entries.
     already pins this).
  — DONE 2026-11-24: --print-floor already exists (check-toolchain-pins.sh:40 + the self-test battery :251) — landed elsewhere.
  — harvested: TODO_LIST row (archive the green receipt once battery rc=0 lands).
