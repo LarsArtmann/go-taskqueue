@@ -389,7 +389,7 @@ func TestBudgetMeterTitleProjectSplit(t *testing.T) {
 	}
 
 	title := budgetMeterTitle(BudgetView{Cap: 10, Spent: 5, ByProject: byProject})
-	if want := "agent tasks enqueued today vs the daily cap · alpha 2 · beta 1 · - 2"; title != want {
+	if want := "agent tasks enqueued today vs the daily cap · - 2 · alpha 2 · beta 1"; title != want {
 		t.Errorf("budgetMeterTitle = %q, want %q", title, want)
 	}
 
