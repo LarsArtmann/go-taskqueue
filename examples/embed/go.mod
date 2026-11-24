@@ -1,6 +1,6 @@
 module github.com/larsartmann/go-taskqueue/examples/embed
 
-go 1.27.4
+go 1.27
 
 require (
 	github.com/jackc/pgx/v5 v5.12.0

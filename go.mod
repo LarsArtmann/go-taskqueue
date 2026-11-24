@@ -1,6 +1,6 @@
 module github.com/larsartmann/go-taskqueue
 
-go 1.27.4
+go 1.27
 
 require (
 	github.com/LarsArtmann/go-crush-data v0.6.0 // indirect

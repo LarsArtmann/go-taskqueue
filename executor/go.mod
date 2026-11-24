@@ -1,6 +1,6 @@
 module github.com/larsartmann/go-taskqueue/executor
 
-go 1.27.4
+go 1.27
 
 require (
 	github.com/larsartmann/go-taskqueue/internal/executor v0.4.3
