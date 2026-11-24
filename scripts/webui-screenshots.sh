@@ -91,17 +91,20 @@ if [ -z "$BROWSER" ]; then
 fi
 
 # A dead-server or error-page capture guard lives in check_png above.
+# A concurrent agent's dashboard can hold the default port; SHOTS_ADDR
+# moves the run without editing the script.
+SHOTS_ADDR="${SHOTS_ADDR:-127.0.0.1:8097}"
 "$REPO_ROOT/scripts/build-tq.sh" "$TMP/tq"
 TQ_DB="$TMP/shots.db" "$TMP/tq" enqueue --type sh --project demo --payload '"true"' >/dev/null
-"$TMP/tq" serve --db "$TMP/shots.db" --addr 127.0.0.1:8097 &
+"$TMP/tq" serve --db "$TMP/shots.db" --addr "$SHOTS_ADDR" &
 SERVE_PID=$!
 
 for _ in $(seq 1 30); do
-	curl -sf http://127.0.0.1:8097/ >/dev/null 2>&1 && break
+	curl -sf "http://$SHOTS_ADDR/" >/dev/null 2>&1 && break
 	sleep 0.2
 done 2>/dev/null || true
-if ! curl -sf http://127.0.0.1:8097/ >/dev/null 2>&1; then
-	echo "WARN: tq serve never came up on 127.0.0.1:8097 after the poll window — continuing; screenshots will fail with the underlying curl/browser error"
+if ! curl -sf "http://$SHOTS_ADDR/" >/dev/null 2>&1; then
+	echo "WARN: tq serve never came up on $SHOTS_ADDR after the poll window — continuing; screenshots will fail with the underlying curl/browser error"
 fi
 
 shoot() {
@@ -109,7 +112,7 @@ shoot() {
 	"$BROWSER" --headless --disable-gpu --no-sandbox \
 		--window-size=1440,2400 --screenshot="$OUT/$name.png" \
 		--force-prefers-color-scheme="$scheme" \
-		"http://127.0.0.1:8097/" >/dev/null 2>&1
+		"http://$SHOTS_ADDR/" >/dev/null 2>&1
 	echo "wrote $OUT/$name.png"
 	check_png "$name" "$OUT/$name.png"
 }
@@ -132,7 +135,7 @@ fi
 
 "$BROWSER" --headless --disable-gpu --no-sandbox \
 	--window-size=1440,1200 --screenshot="$OUT/task-detail.png" \
-	"http://127.0.0.1:8097/task/$DETAIL_ID" \
+	"http://$SHOTS_ADDR/task/$DETAIL_ID" \
 	>/dev/null 2>&1 || echo "wrote $OUT/task-detail.png (best effort)"
 check_png "task-detail" "$OUT/task-detail.png"
 
