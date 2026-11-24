@@ -179,7 +179,12 @@ templ taskSettledDetails(data DashboardData) {
 					{ settledDeadSuffix(data.Tasks) }
 				</span>
 			</summary>
-			<div class="mt-2">
+			<!-- content-visibility:auto (tc-content-auto): on large journals the
+			settled fold can hold hundreds of rows the operator never scrolls
+			to — skip their render until the fold scrolls into view (design-pass
+			§f45; the class ships in the templ-components sheet and was dead
+			until this call site). -->
+			<div class="mt-2 tc-content-auto">
 				<div class="tq-panel">
 					@display.Table(display.TableProps{
 						Caption:      "Settled tasks",
