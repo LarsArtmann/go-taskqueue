@@ -598,6 +598,11 @@ b5e1092d
 b611acdf
 b61db8d0
 b6332620
+# b6fcf5b2: foreign proxy-surface sweep whose content was deliberately
+#           reverted (6a93c041) so the fix re-landed under its own footer
+#           (bd5816ba) — no rewrite twin exists; cited as narrative at
+#           window-3 report line 202 (re-resolved 2026-11-24, fork-record-file batch)
+b6fcf5b2
 b7302f56
 b795c5a3
 b79b2b9e

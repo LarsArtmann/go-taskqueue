@@ -199,7 +199,7 @@ legs, then to the edge of a fully-unbypassed local battery.
     expensive — consider a docs/ file for reset history instead of the const comment.
 32. `heal-daemon-sweep.sh --self-test` after today's mass: confirm the tool still pins its rails
     (nothing in my session touched it, but the daemon did). — DONE 2026-11-23: SELF-TEST OK (45 checks), rc=0. <!-- fresh:skip --> one-shot verification, receipt inline.
- — DONE 2026-11-24 (this note is the naming): check-proxy-surface.sh rode 78d90f22 content-wise; the foreign session extended it (b6fcf5b2) and fixed the probe rc (8a43609d) — attribution recorded here.
+ — DONE 2026-11-24 (this note is the naming): check-proxy-surface.sh rode 78d90f22 content-wise; the foreign session extended it (sweep b6fcf5b2, content reverted 6a93c041 and re-landed footered bd5816ba) and fixed the probe rc (8a43609d) — attribution recorded here; all four shas HEAD-reachable (re-resolved 2026-11-24 by the fork-record-file batch, patch-id/tree walk).
     the ride (attribution hygiene).
  — DONE 2026-11-24: the afcd5f7c push succeeded first try — no rate limit hit.
 35. tag `cmd/tq` module? No — the v0.4.3 train owns module tags; mcpserver v0.4.2 was the only
