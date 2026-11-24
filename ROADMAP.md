@@ -437,6 +437,6 @@ seam; deeper integration ideas, in rough order of expected value:
 - The `--channels` per-launch flag form vs the `.crushrc` managed block:
   plan §6 F43 rules the flag form — decide at bootstrap time whether
   `tq bootstrap` emits both or picks one per enrollment shape.
-- `server/discover` capability advertisement: only if tq ever declares
+- server/discover capability advertisement (MCP method name, not a path): only if tq ever declares
   extensions — the empty answer is the honest contract today
   (internal/mcpserver/server.go documents the probe shape).
