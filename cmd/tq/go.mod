@@ -84,6 +84,7 @@ require (
 	github.com/larsartmann/go-taskqueue/internal/queue/postgresv4 v0.4.3 // indirect
 	github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4 v0.4.3 // indirect
 	github.com/larsartmann/go-taskqueue/internal/retryx v0.4.3 // indirect
+	github.com/larsartmann/httputil/server_timing v1.0.3 // indirect
 	github.com/larsartmann/templ-components v1.27.0 // indirect
 	github.com/larsartmann/templ-components/datastar v1.27.0 // indirect
 	github.com/larsartmann/templ-components/htmx v1.27.0 // indirect
