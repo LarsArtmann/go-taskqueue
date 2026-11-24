@@ -594,13 +594,11 @@ templ boardColumnGroups(data DashboardData, col BoardColumn, groups []BoardBandG
 				<div class="mt-3">
 					// §f42: a band sub-group carries its count only when it
 					// holds more than one card — the column header already
-					// counts the whole lane, and "hot ×1" is noise.
-					<div class="tq-label">
-						{ string(g.Band) }
-						if len(g.Tasks) > 1 {
-							<span class="text-gray-400 dark:text-gray-500"> ×{ formatInt(len(g.Tasks)) }</span>
-						}
-					</div>
+					// counts the whole lane, and "hot ×1" is noise. The
+					// text comes from bandLabelText so single-card labels
+					// stay exactly ">hot</div>" (templ renders source
+					// whitespace, so the split must live in Go).
+					<div class="tq-label">{ bandLabelText(g.Band, len(g.Tasks)) }</div>
 					<ul class="mt-1 space-y-2">
 						for _, t := range g.Tasks {
 							@boardCard(data, t)

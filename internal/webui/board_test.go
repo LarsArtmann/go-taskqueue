@@ -316,4 +316,14 @@ func TestBoardRendersBandLabelsWhenMixed(t *testing.T) {
 	if !strings.Contains(body, ">hot</div>") || !strings.Contains(body, ">backlog</div>") {
 		t.Errorf("mixed-band board missing band labels, body: %s", body)
 	}
+
+	// §f42: single-card band labels carry NO count suffix ("hot ×1" is
+	// noise — the column header already counts the lane); bandLabelText
+	// appends " ×N" only when the band holds more than one card.
+	if got := bandLabelText(queue.BandHot, 1); got != "hot" {
+		t.Errorf("bandLabelText(hot,1) = %q, want no suffix", got)
+	}
+	if got := bandLabelText(queue.BandHot, 3); got != "hot ×3" {
+		t.Errorf("bandLabelText(hot,3) = %q, want count suffix", got)
+	}
 }

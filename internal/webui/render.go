@@ -233,6 +233,18 @@ type BoardBandGroup struct {
 	Tasks []task.Task
 }
 
+// bandLabelText renders a board band sub-group's label (design-pass §f42):
+// the band name, plus " ×N" only when the band holds more than one card —
+// the column header already counts the whole lane, and "hot ×1" is noise.
+// Single-card labels stay byte-identical to the pre-§f42 output.
+func bandLabelText(band queue.Band, n int) string {
+	if n > 1 {
+		return string(band) + " ×" + formatInt(n)
+	}
+
+	return string(band)
+}
+
 // bandGroups partitions a column's cards into the ADR-0015 bands in claim
 // order (hot, machine, backlog), preserving each band's newest-first order.
 // Bands with no cards are omitted.
