@@ -105,6 +105,14 @@ line for commands — plus a retry trail summarizing why a task keeps coming
 back. A journal browser pages through the full fact
 history. Press `/` to search, `1`–`4` to jump between sections.
 
+![tq live dashboard](docs/screenshots/dashboard-light.png)
+
+(Screenshots in `docs/screenshots/` are rendered by
+`scripts/webui-screenshots.sh` — headless chromium over a scratch
+database — and pinned by their `SHA256SUMS` file; regenerate with
+`nix build nixpkgs#chromium -o /tmp/chromium-shot &&
+CHROME_BIN=/tmp/chromium-shot/bin/chromium scripts/webui-screenshots.sh`.)
+
 The dashboard is a pure projection of the journal: it cannot mutate the
 queue, and the worst failure is a stale page. Opt into operator actions —
 cancel (including cooperative stop of running tasks) and rescue, CSRF-guarded
