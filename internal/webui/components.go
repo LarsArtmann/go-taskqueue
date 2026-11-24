@@ -760,7 +760,13 @@ func factToneClass(tone display.ScrollbackTone) string {
 	}
 }
 
-// statusHref links a stat card to its filtered view.
+// statusHref links a stat card / nowband segment to its filtered view.
+// Ruled (design-pass §f41, 2026-11-24): the reset of sort and page is
+// INTENDED, not an omission. These links are hull-chrome navigation to a
+// status's canonical slice: the filtered slice's row count differs from
+// the unfiltered page the operator came from, so a carried page would
+// strand past the end, and a carried sort is how ANOTHER slice was being
+// read, not a ruling about this one. Same reset shape as viewToggleHref.
 func statusHref(st task.Status) string {
 	return filterHref(FilterState{Status: st})
 }

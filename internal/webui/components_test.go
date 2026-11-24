@@ -119,6 +119,20 @@ func TestStatusHref(t *testing.T) {
 			t.Errorf("statusHref(%s) = %q, want %q", tc.status, got, tc.want)
 		}
 	}
+
+	// Pin the §f41 ruling: a status deep-link resets sort and page BY
+	// DESIGN (hull-chrome navigation to the status's canonical slice — a
+	// carried page would strand past the filtered slice's end, a carried
+	// sort belongs to the slice the operator left). If a sort or page key
+	// ever appears here, that is a deliberate contract change, not a fix.
+	for _, st := range []task.Status{task.Pending, task.Running, task.Dead, task.Completed, task.Cancelled} {
+		got := statusHref(st)
+		for _, key := range []string{"sort=", "page="} {
+			if strings.Contains(got, key) {
+				t.Errorf("statusHref(%s) = %q carries %q — the §f41 reset ruling was pinned; changing it is a contract change", st, got, key)
+			}
+		}
+	}
 }
 
 func TestTaskRowClass(t *testing.T) {
