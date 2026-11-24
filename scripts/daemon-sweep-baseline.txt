@@ -2038,3 +2038,4 @@ ffef803a0a0b25684dd8961ca2a1373fb670ebad
 # while battery attempt 1 ran: go.sum regen churn (7205d635), examples/embed
 # window's work except 52e7b65c, which the daemon mixed with a concurrent
 # wiring (check-docs-gates.sh + ci-local leg + .docs-gates.json, the
+6b3f357a08b2ad690a9f42f0c94a367b9348ae61
