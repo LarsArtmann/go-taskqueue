@@ -2119,7 +2119,7 @@ not here.
 - [ ] `tq top` TUI vs webui label-vocabulary sync audit (labels diverged with the lowercase sweep) (design-pass §f43)
 - [ ] tc-content-auto is defined (app.css:6229) but applied nowhere in the templ surfaces: apply content-visibility to settled table rows for >500-task journals or delete the dead classes (design-pass §f45)
 - [ ] Meter extension: per-project spend split behind the budget meter tooltip (budget projection already derives per-repo facts) (design-pass §f46)
-- [ ] Touch-hover guard: wrap `.tq-seg:hover`-class sticky-state styles in `@media (hover: hover)` so iOS taps do not latch the tint (design-pass §f47)
+- [x] Touch-hover guard: wrap `.tq-seg:hover`-class sticky-state styles in `@media (hover: hover)` so iOS taps do not latch the tint (design-pass §f47) — DONE 2026-11-24: both `.tq-seg:hover` rules (tint + label brighten) wrapped in `@media (hover: hover)` in theme.css; focus-visible stays ungated (keyboards exist on touch devices); app.css regenerated (compiled `.tq-seg:hover` verified inside the media block); webui suite green (commit of this window)
 - [ ] Dead-state favicon variant: red lamp-dot favicon.svg link tag when DLQ>0 (server-set in components.go where Favicon="/static/favicon.svg") (design-pass §f49; favicon-dead=0 dedup)
 
 ## Reviewer-fix closeout appends (2026-11-22; source: docs/status/tasks/2026-11-22_15-11_task-000001a200f9195c5b7c81f4bdc000000000.md §b/§c/§f; dedup greps: term 'help-text.*worker'=0 + open-row 'worker.*(flag|parity)'=0 + term 'writestring'=0 hits — the only flagsWithoutField hit is DONE row 2012, neighbor row 907 owns help-text hardening generally, row 661 owns the daemon-race class fix)
