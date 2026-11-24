@@ -390,12 +390,19 @@ kbd {
   transition: background-color 0.15s ease;
 }
 
-.tq-seg:hover {
-  background: color-mix(in srgb, var(--color-gray-100) 7%, transparent);
-}
+/* Touch-hover guard (design-pass §f47): on touch-only devices a tap latches
+   :hover, so the tint and label brighten would stick after the finger lifts.
+   Both are hover-only affordances — gate them behind (hover: hover); the
+   focus-visible rules below stay ungated (keyboards exist on touch devices
+   too). */
+@media (hover: hover) {
+  .tq-seg:hover {
+    background: color-mix(in srgb, var(--color-gray-100) 7%, transparent);
+  }
 
-.tq-seg:hover .tq-seg-label {
-  color: var(--color-gray-200);
+  .tq-seg:hover .tq-seg-label {
+    color: var(--color-gray-200);
+  }
 }
 
 /* Keyboard focus mirrors the hover affordance (design-pass §f12): the same
