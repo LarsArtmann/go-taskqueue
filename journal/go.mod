@@ -2,7 +2,7 @@ module github.com/larsartmann/go-taskqueue/journal
 
 go 1.27.4
 
-require github.com/larsartmann/go-taskqueue/internal/journal v0.4.2
+require github.com/larsartmann/go-taskqueue/internal/journal v0.4.3
 
 require github.com/larsartmann/go-cqrs-lite/queue/v4 v4.0.3 // indirect
 

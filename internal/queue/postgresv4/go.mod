@@ -6,10 +6,10 @@ require (
 	github.com/jackc/pgx/v5 v5.12.0
 	github.com/larsartmann/go-cqrs-lite/queue/postgres/v4 v4.0.3
 	github.com/larsartmann/go-cqrs-lite/queue/v4 v4.0.3
-	github.com/larsartmann/go-taskqueue/internal/journal v0.4.2
-	github.com/larsartmann/go-taskqueue/internal/queue v0.4.2
-	github.com/larsartmann/go-taskqueue/internal/queue/companion v0.4.2
-	github.com/larsartmann/go-taskqueue/internal/task v0.4.2
+	github.com/larsartmann/go-taskqueue/internal/journal v0.4.3
+	github.com/larsartmann/go-taskqueue/internal/queue v0.4.3
+	github.com/larsartmann/go-taskqueue/internal/queue/companion v0.4.3
+	github.com/larsartmann/go-taskqueue/internal/task v0.4.3
 )
 
 require (
@@ -21,11 +21,10 @@ require (
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/puddle/v2 v2.2.3 // indirect
 	github.com/larsartmann/go-branded-id v0.7.1 // indirect
-	github.com/larsartmann/go-codec v0.3.3 // indirect
+	github.com/larsartmann/go-codec v0.3.4 // indirect
 	github.com/larsartmann/go-cqrs-lite/claiming/v4 v4.0.2 // indirect
 	github.com/larsartmann/go-cqrs-lite/dedup/v4 v4.3.0 // indirect
-	github.com/larsartmann/go-cqrs-lite/metaengine/sqliteengine/v4 v4.8.0 // indirect
-	github.com/larsartmann/go-cqrs-lite/metaengine/v4 v4.23.0 // indirect
+	github.com/larsartmann/go-cqrs-lite/metaengine/v4 v4.26.1 // indirect
 	github.com/larsartmann/go-cqrs-lite/record/v4 v4.6.2 // indirect
 	github.com/larsartmann/go-error-family v0.12.0 // indirect
 	github.com/larsartmann/go-sse v0.7.0 // indirect
@@ -34,7 +33,6 @@ require (
 	golang.org/x/crypto v0.58.0 // indirect
 	golang.org/x/sync v0.24.0 // indirect
 	golang.org/x/text v0.43.0 // indirect
-	modernc.org/libc v1.80.1 // indirect
 )
 
 replace github.com/larsartmann/go-taskqueue/internal/queue => ..
