@@ -160,7 +160,12 @@ fork_record_file() {
 	local tool=$1 dir file
 	dir=$(git rev-parse --git-path fork-records) || return 1
 	mkdir -p "$dir" || return 1
-	printf '%s\n' "$dir/$(date -u +%Y%m%dT%H%M%SZ)-$$-$tool.txt"
+	file="$dir/$(date -u +%Y%m%dT%H%M%SZ)-$$-$tool.txt"
+	case $file in
+	/*) ;;
+	*) file="$PWD/$file" ;;
+	esac
+	printf '%s\n' "$file"
 }
 
 # resolve_base: default base ref, first existing of origin/master, @{upstream},
@@ -816,10 +821,10 @@ EOF
 	# Machine-readable fork-record file (window-3 §e3/§f6): the per-run map
 	# under <git-dir>/fork-records/ mirrors the printed records minus the
 	# prefix, full shas, and stdout carries its path.
-	local ffile
+	local ffile want_map
 	ffile=$(grep -F 'FORK-RECORD-FILE: ' "$tmp/out1" | sed -n 's/^FORK-RECORD-FILE: //p' | sed -n 1p)
-	if [ -n "$ffile" ] && [ -f "$ffile" ] &&
-		[ "$(cat "$ffile")" = "$(printf '%s→%s\n%s→%s' "$old1" "$new1" "$old2" "$new2")" ]; then
+	want_map=$(sed -n 's/^FORK-RECORD: //p' "$tmp/out1")
+	if [ -n "$ffile" ] && [ -f "$ffile" ] && [ "$(cat "$ffile")" = "$want_map" ]; then
 		ok=$((ok + 1))
 	else
 		fail=$((fail + 1))

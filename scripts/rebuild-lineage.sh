@@ -68,7 +68,12 @@ fork_record_file() {
 	local tool=$1 dir file
 	dir=$(git rev-parse --git-path fork-records) || return 1
 	mkdir -p "$dir" || return 1
-	printf '%s\n' "$dir/$(date -u +%Y%m%dT%H%M%SZ)-$$-$tool.txt"
+	file="$dir/$(date -u +%Y%m%dT%H%M%SZ)-$$-$tool.txt"
+	case $file in
+	/*) ;;
+	*) file="$PWD/$file" ;;
+	esac
+	printf '%s\n' "$file"
 }
 
 resolve_base() {
