@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json/jsontext"
+	"strings"
 	"testing"
 	"time"
 
@@ -156,5 +157,21 @@ func TestAggregateTopBudgetParkedChip(t *testing.T) {
 
 	if got[1].Project != "beta" || got[1].BudgetParked != 0 {
 		t.Errorf("beta = %+v, want BudgetParked 0 (rate-limit park is not budget)", got[1])
+	}
+}
+
+// §f43 label-vocabulary sync audit: the TUI header abbreviates the webui's
+// domain statuses, and the one real divergence ("done" for completed) is
+// spelled compl — pin the header so a future relabel re-reads the
+// vocabulary instead of inventing a fourth word.
+func TestRenderTopHeaderVocabulary(t *testing.T) {
+	out := captureStdout(t, func() { renderTop(nil, time.Now()) })
+
+	want := "PROJECT                        pend    run  compl   dead  bpark     last    active"
+	if !strings.Contains(out, want) {
+		t.Errorf("renderTop header missing pinned vocabulary row %q, got:\n%s", want, out)
+	}
+	if strings.Contains(out, " done") {
+		t.Errorf("renderTop still says done — the domain word is completed (abbrev compl): %s", out)
 	}
 }
