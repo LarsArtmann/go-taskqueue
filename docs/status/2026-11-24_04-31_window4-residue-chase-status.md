@@ -2,7 +2,7 @@
 
 **Date**: 2026-11-24 04:31 CET. **Continuation of**: the window-3 report's §f list
 (docs/status/2026-11-23_22-25_…, owner directive "GET SHIT DONE! The WHOLE TODO
-LIST!"). **Head at composition**: 4fbbe6d4→a027c021 (unpushed tip; pre-rebuild cite, fork record from the 20261124T034030Z rebuild; pushed base afcd5f7c); pushed base afcd5f7c).
+LIST!"). **Head at composition**: 4fbbe6d4→a027c021 (unpushed tip; pre-rebuild cite, fork record from the 20261124T034030Z rebuild; pushed base afcd5f7c).
 **Stop state**: this report is the WAIT point per the owner's directive.
 
 ## a) FULLY DONE
