@@ -153,82 +153,82 @@ legs, then to the edge of a fully-unbypassed local battery.
 2. One full ci-local run with CI_CHECK ON → expect rc=0 → cite as the window's final receipt.
 3. Fold the battery outcome + last cures into the window-2 report and the index row (one docs
    delta).
-4. Re-check origin: the foreign session pushes constantly — fetch before anything.
-5. Mint the "CI-only gates into ci-local" row (io-surface + guard-wiring + fixture-attribution).
-6. Mint the "lineage rebuilds must emit machine-readable fork-record files" row.
-7. Tick row 829's supersession note honestly: the 20-35 §b2 ruling supersedes the quiet-host
+ — DONE 2026-11-24: fetched before every push all session; the FF discipline held (the only origin moves were the Dependabot branches, not master).
+ — DONE 2026-11-24: the io-surface row minted AND the leg landed beside check-cleanroom-install (de7442c8); guard-wiring + fixture-attribution verified already-live — no CI-only gates remain.
+ — DONE 2026-11-24: the fork-record-file row minted (TODO_LIST, window-3 §f mints); the tooling work stays open there.
+ — DONE 2026-11-24: row 829 SUPERSEDED-TICKED (the 20-35 §b2 ruling + the Dependabot-evidence correction, receipts in the row).
    local run, with the Dependabot-evidence correction noted.
 8. Verify the foreign proxy-surface gate's probe fixtures still compile after my pins: comments
    (run check-proxy-surface standalone). — DONE 2026-11-23: standalone rc=0 — 5 facades verified, 0 skipped, 0 failed (worker sentinel PROBE-OK). <!-- fresh:skip --> one-shot verification, receipt inline.
-9. The 2026-12 digest accrual: target verify-only duplicate layers (dispatch re-passes whose
+ — DONE 2026-11-24: the targeting note landed on the standing digest ritual row.
    canonical exists).
-10. The index-bloat row: consider a ratchet DOWN of the 400 threshold after the next real
+ <!-- fresh:skip --> rides the next archive sweep via the standing digest ritual row.
     archive sweep.
-11. Run `tq doctor` at HEAD for a fresh receipt (crush pin 0.102.0 still proven).
+ — DONE 2026-11-24: doctor at HEAD — crush-version ok 0.102.0 (proven pin); sole WARN the documented v0.4.2 orphaned-tag class (row 91, owner-gated).
 12. Re-run the two crush smokes after today's host churn (route + supervisor, 14/11 PASS
     baseline). — DONE 2026-11-23: route 14 PASS rc=0 + supervisor 11 PASS rc=0 (receipts /var/tmp/route-f12.log + /var/tmp/supervisor-f12.log) — baseline held exactly. <!-- fresh:skip --> one-shot verification, receipt inline.
-13. The ai-ratelimit smoke: consider TQ_SMOKE_KEEP-style diagnostics for worker-log races.
-14. go-mod floors: check whether cqrs-lite's own floor moved (our 1.27.4 raise may exceed the
+ — DONE 2026-11-24: TQ_SMOKE_KEEP=1 landed in ratelimit-e2e.sh (de7442c8) — scratch kept on exit for race diagnosis.
+ — DONE 2026-11-24: cqrs-lite's floor is `go 1.27`; ours 1.27.4 ≥ it — the dependency-ordered flip holds.
     sibling floor — confirm the dependency-ordered flip story still holds).
-15. pkg-proxy: add `--timeout`/retry inside check-pkg-proxy.sh itself (currently only the
+ — DONE 2026-11-24: one named retry on the HTTP-000000 class landed INSIDE check-pkg-proxy.sh (de7442c8); the ci-local wrapper stays as the outer net.
     ci-local wrapper retries).
 16. Io-surface: wire `check --root .` into ci-local beside check-cleanroom-install.
 17. Guard-wiring: same (it ran in CI's test job, not ci-local — wait, it DID fail in CI's test
     job; verify ci-local has the live leg, not just the self-test). — DONE 2026-11-23: the live leg exists — ci-local.sh:1013-1017 (self-test + live check-guard-wiring.sh); the CI-test-job red was the gate catching real orphan wiring, since cured.
 18. Fixture-attribution: same check. — DONE 2026-11-23: live leg exists — ci-local.sh:559-561 (self-test + live meta-gate).
-19. Tick-claims: consider pinning the `--receipt` double-slash shape in a negative fixture.
-20. docs-gates annotate ratchet: after the spacing cures, consider RATCHETING DOWN from 144 to
+ — DONE 2026-11-24: the negative pin landed in the self-test (de7442c8) — the fixture passes --receipt <dir>/ on purpose; the header must carry no doubled slash.
+ — DONE 2026-11-24: the 6 findings drained (verdict markers + the quad-tilde strike repair) and annotate_max ratcheted 144→0 — any new finding now trips.
     the current count per the doctrine (only if the doctrine's letter allows for new-class
     findings).
-21. check-agents-size: the budget reset history is now three-deep today — consider pruning the
+ — DONE 2026-11-24: the ~115-line reset log moved to docs/agents-size-resets.md; the const comment pruned to a pointer + the last reset; TestAgentsDocSizeGuard green via scripts/test-cmd-tq.sh.
     reset log to the last entry (size guard on the guard).
-22. The `digest 2026-11` row is getting long — next accrual should open `digest 2026-12`.
-23. Re-point any window-2 citations that the lineage rebuild re-parented (d6873805 chain).
-24. Check whether `tq mcp` needs a `server/discover` CAPABILITY advertisement (we answer empty;
+ — DONE 2026-11-24: the targeting note landed on the standing digest ritual row.
+ — DONE 2026-11-24: d6873805 verified HEAD-ancestor; every dangling cite from today's rebuild waves fork-recorded (dead-sha gate 0 new, twice).
+ — DONE 2026-11-24 no-action: the server declares no extensions — the empty probe IS the honest contract (server.go documents the shape).
     crush may probe differently against a declaring server).
-25. Channels Phase 2 prep: the erratum says the push should come AFTER `initialized` + a turn
+ — DONE 2026-11-24: the Channels Phase 2 prep section minted in ROADMAP.md (outbox/flush point, flag-form ruling pointer, discover-contract note).
     boundary — design the buffered push for tq mcp.
-26. `internal/mcpserver` has zero lint exclusions — keep it that way (watch the next regen).
-27. The 20-39 E/ref class: consider teaching check-doc-refs the symbol-cite shape (row already
+ — DONE 2026-11-24 verified: zero mcpserver exclusions in .golangci.yml.
+ — DONE 2026-11-24 verified: row 2182 names exactly the `pkg/path.Func` shape — the prefix-collision case is the row's own example.
     minted by a foreign session — verify it covers the `path.Symbol` prefix-collision case).
-28. Row 708/709/711 (lockout suite family) — still genuinely open, untouched this window.
-29. The `budget-meter` smoke now runs in ci-local — confirm its runtime cost (~seconds) is
+ — 2026-11-24: row 708 DONE (the lockout fake-clock suite landed, de7442c8 — 11 tests, -race green, row ticked); rows 709/711 stay with the active webui design pass.
+ — DONE 2026-11-24: measured 3.2s standalone — acceptable in the battery profile.
     acceptable in the battery profile.
-30. Verify COVERAGE.md names budget-meter's new ci-local wiring (smoke-coverage gate).
-31. The three AGENTS size resets today suggest the convention line itself is load-bearing but
+ — DONE 2026-11-24 verified: scripts/smoke/COVERAGE.md:64 already names budget-meter.sh.
+ — DONE 2026-11-24 (with §f21): docs/agents-size-resets.md carries the lineage.
     expensive — consider a docs/ file for reset history instead of the const comment.
 32. `heal-daemon-sweep.sh --self-test` after today's mass: confirm the tool still pins its rails
     (nothing in my session touched it, but the daemon did). — DONE 2026-11-23: SELF-TEST OK (45 checks), rc=0. <!-- fresh:skip --> one-shot verification, receipt inline.
-33. The foreign `check-proxy-surface.sh` rides my 78d90f22 — consider a follow-up commit naming
+ — DONE 2026-11-24 (this note is the naming): check-proxy-surface.sh rode 78d90f22 content-wise; the foreign session extended it (b6fcf5b2) and fixed the probe rc (8a43609d) — attribution recorded here.
     the ride (attribution hygiene).
-34. Check-push-timing: confirm the next push isn't rate-limited after today's volume.
+ — DONE 2026-11-24: the afcd5f7c push succeeded first try — no rate limit hit.
 35. tag `cmd/tq` module? No — the v0.4.3 train owns module tags; mcpserver v0.4.2 was the only
     cmd/tq-blocker (done).
-36. Watch the next Dependabot PR (go_modules minor-and-patch-e3dd1f59f6 branch appeared) — it
+ — DONE 2026-11-24: no open Dependabot PRs at check; the branches force-updated themselves — no conflict with the 1.27.4 floors.
     may conflict with the 1.27.4 floor raise.
 37. The `20-39` report's struck verdict mentions `root go mod vendor clean` — vendor/ is deleted
     now; historical prose, leave struck.
 38. Keep `internal/mcpserver` go.sum minimal (no lint-toolchain entries — gomod-sync gate
     already pins this).
-39. Consider `--print-floor` output in check-toolchain-pins for faster triage next time.
-40. The receipt-rotation warning at battery start (05-25 receipt rotated) — receipts live in
+ — DONE 2026-11-24: --print-floor already exists (check-toolchain-pins.sh:40 + the self-test battery :251) — landed elsewhere.
+ — harvested: TODO_LIST row (archive the green receipt once battery rc=0 lands).
     /var/tmp; consider the archive-evidence flow for the GREEN receipt once captured.
-41. task row 203 (ADR-0019 S2) — C's agent found the core landed but the row open on the webui
+ — DONE 2026-11-24: row 203 narrowed (exact-consumer re-pointing only; the tailer is a signal consumer per ADR-0003).
     tailer piece; worth a narrowing annotation.
 42. Row 694 (size-guard protocol) cited by agents twice — verify it's current. — DONE 2026-11-23: current in substance (owner budget call still BLOCKED; today's three resets 27_900→28_100→28_250 prove it alive); its 15,000/~15,500 B figures were stale — refreshed to the 28,250 lineage in this change.
 43. The `--channels` per-launch flag exists in crush; Phase 2's bootstrap could emit the flag
     form (plan §6 F43 already rules this — unchanged). <!-- fresh:skip --> no-action: plan §6 F43 rules the flag form; Phase 2 bootstrap owner-gated (§c1).
-44. Double-check `internal/mcpserver/v0.4.2` tag resolved on the proxy (pkg-proxy now covers
+ — DONE 2026-11-24 verified: `go list -m -versions` resolves internal/mcpserver v0.4.2 on the proxy.
     facades only; the module tag isn't in its roster).
-45. The `check-version-agreement.sh` script exists beside the flake's version-sync — confirm
+ — DONE 2026-11-24: check-version-agreement ok (flake 0.4.2 = ldflags = CHANGELOG).
     both agree at 1.27.4-era (the version attr is 0.4.2; unrelated to floors).
-46. Consider testing `tq bootstrap --mcp` against a REAL .crushrc fixture end-to-end (the golden
+ <!-- fresh:skip --> covered by the live TUI-parse receipt (window-2 §M5); hermetic CI cannot run the crush binary — the golden emission test stays the automated half.
     test covers emission, not crush's parse — the TUI probe DID parse it live, receipt exists).
-47. Sub-agent etiquette lesson (§f13) still unfiled in crush-config — needs a commit THERE.
+ — DONE 2026-11-24: the sub-agent etiquette lesson is already filed in crush-config (3036120, 2026-11-23); the lineage-rebuild fork-record lesson filed there this session.
 48. The `.tq-verify` wrapper flip (owner ruling) — untouched, still blocked on owner. <!-- fresh:skip --> harvested at TODO_LIST row 736 (BLOCKED owner — freshness-matcher false-negative class, row 99).
-49. features.md row 173 / ci.yml step naming — the foreign session renamed; my report §f
+ (already annotated DONE above).
     annotations already cite the new names; done, no action. — DONE 2026-11-23 (no-action verified). <!-- fresh:skip --> one-shot verification, no standing row.
-50. WAIT-state hygiene: this report is the WAIT point; the resuming session should start at
+ — DONE 2026-11-24 superseded: the owner's GET-SHIT-DONE directive resumed execution past the WAIT point; this §f list became that session's working list.
     f-list item 1 (the tick-claims fix commit).
 
 ## g) OWNER QUESTIONS (cannot self-resolve)
