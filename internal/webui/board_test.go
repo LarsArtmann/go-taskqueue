@@ -327,3 +327,22 @@ func TestBoardRendersBandLabelsWhenMixed(t *testing.T) {
 		t.Errorf("bandLabelText(hot,3) = %q, want count suffix", got)
 	}
 }
+
+// §f45: the settled fold's body carries tc-content-auto so a large journal's
+// hundreds of settled rows skip their render until the fold scrolls into
+// view (the class ships in the templ-components sheet; this call site is
+// its first user).
+func TestSettledFoldCarriesContentAuto(t *testing.T) {
+	srv, s := newTestServer(t)
+
+	enqueue(t, s, "sh", "alpha")
+	moveNextTask(t, s, task.Completed)
+
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+
+	body := tableFragment(rec.Body.String())
+	if !strings.Contains(body, `class="mt-2 tc-content-auto"`) {
+		t.Errorf("settled fold missing tc-content-auto, body: %s", body)
+	}
+}
