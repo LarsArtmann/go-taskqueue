@@ -676,6 +676,14 @@ EOF
 		printf '%s\n' "$out6"
 		exit 1
 	fi
+	# Window-3 §f19 negative pin: the fixture passes a TRAILING-SLASH dir
+	# ($recv/) on purpose — the header path must match find(1)'s output with
+	# no doubled slash (the 6b3f357a fix's exact regression shape).
+	if grep -qF '//' <<<"$(head -1 <<<"$out6")" || ! head -1 <<<"$out6" | grep -qF "receipt: $rfile"; then
+		echo "FAIL: --receipt header path must carry no doubled slash (trailing-slash dir arg regression)"
+		head -1 <<<"$out6"
+		exit 1
+	fi
 	echo "tick-claims self-test ok (summary format pin + negative counter battery + no-flip/blocked/wide-window/batch-anchors/commit-message rails + unpushed-sha ancestry rail + two-tick fusion rail + baseline ratchet rail + receipt rail)"
 	exit 0
 }

@@ -237,6 +237,12 @@ func cmdTop(args []string) error {
 	}
 }
 
+// Label-vocabulary sync (design-pass §f43): the webui's below-the-hull
+// sweep speaks the domain statuses lowercase (pending/running/completed/
+// dead, budget park) — the TUI header abbreviates the same words, so the
+// one real divergence ("done" for completed) is spelled `compl` here; the
+// rest are unambiguous compressions of the shared vocabulary, not
+// different words.
 func renderTop(views []projectView, now time.Time) {
 	fmt.Printf("tq top — %s\n", now.Format("15:04:05"))
 	fmt.Printf(
@@ -244,7 +250,7 @@ func renderTop(views []projectView, now time.Time) {
 		"PROJECT",
 		"pend",
 		"run",
-		"done",
+		"compl",
 		"dead",
 		"bpark",
 		"last",

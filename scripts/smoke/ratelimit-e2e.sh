@@ -25,7 +25,10 @@ if ! date -d '+0 seconds' '+%s' >/dev/null 2>&1; then
 fi
 
 TMP="$(mktemp -d)"
-trap 'rm -rf "$TMP"' EXIT
+# TQ_SMOKE_KEEP=1 keeps the scratch dir on exit — the worker-log race class
+# (2026-11-23: the 429 leg raced a concurrent session and the worker log
+# vanished with the cleanup before anyone could read it).
+trap 'if [ "${TQ_SMOKE_KEEP:-}" = "1" ]; then echo "TQ_SMOKE_KEEP: scratch kept at $TMP"; else rm -rf "$TMP"; fi' EXIT
 
 if [ -n "${TQ_BIN:-}" ]; then
 	echo "== using prebuilt tq: $TQ_BIN"
