@@ -346,3 +346,24 @@ func TestSettledFoldCarriesContentAuto(t *testing.T) {
 		t.Errorf("settled fold missing tc-content-auto, body: %s", body)
 	}
 }
+
+// §f49: a non-empty dead-letter queue flips the tab icon to the red
+// lamp-dot variant; an empty DLQ keeps the default.
+func TestFaviconVariesWithDLQ(t *testing.T) {
+	srv, s := newTestServer(t)
+
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+	if strings.Contains(rec.Body.String(), "favicon-dead.svg") {
+		t.Error("empty DLQ must keep the default favicon, page carries the dead variant")
+	}
+
+	enqueue(t, s, "sh", "alpha")
+	moveNextTask(t, s, task.Dead)
+
+	rec = httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+	if !strings.Contains(rec.Body.String(), `href="/static/favicon-dead.svg"`) {
+		t.Error("non-empty DLQ must carry the dead favicon, page keeps the default")
+	}
+}
