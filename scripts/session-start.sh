@@ -36,6 +36,7 @@ echo "=== prior reports for current task ID(s) ==="
 # With no arguments, prints the hint instead of guessing.
 windows_total=0
 done_hits=0
+overlap_hits=0
 if [ "$#" -gt 0 ]; then
 	for id in "$@"; do
 		echo "--- $id ---"
@@ -43,6 +44,12 @@ if [ "$#" -gt 0 ]; then
 		if [ -z "$local_reports" ]; then
 			echo "(no prior reports)"
 		else
+			# Partial-window overlap WARN (15-29 §e1): a per-task-ID hit in
+			# ANY prior report is a cross-window overlap even when no whole
+			# window set is identical — flag it before a second full
+			# derivation spends on shared work.
+			overlap_hits=$((overlap_hits + 1))
+			echo "WARN: partial window overlap — task $id already appears in the prior report(s) below (per-ID cross-window hit; the whole window set need not be identical)"
 			echo "prior windows:"
 			echo "$local_reports" | sed 's/^/  /'
 			# A DONE-row verdict is a stronger stop signal than a filename
@@ -148,8 +155,8 @@ fi
 
 # Tail-truncated invocations (`| tail -20`) still surface duplicates: the
 # counts ride the FINAL completion line (2026-09-22 03-05 §f).
-summary="windows=$windows_total done-row-hits=$done_hits"
-[ "$#" -eq 0 ] && summary="windows=0 (no IDs passed) done-row-hits=0"
+summary="windows=$windows_total done-row-hits=$done_hits overlap-warns=$overlap_hits"
+[ "$#" -eq 0 ] && summary="windows=0 (no IDs passed) done-row-hits=0 overlap-warns=0"
 echo
 echo "Session-start ritual complete (SUMMARY: $summary). Read the output before editing anything."
 # Mechanical unstaged-age nudge (08-43 report f1): an edit left unstaged

@@ -129,8 +129,9 @@ for want in \
 	"DONE-row state:" \
 	"footer already carried by:" \
 	"fixture: pin commit for $fixid" \
+	"WARN: partial window overlap" \
 	"tq not on PATH" \
-	"Session-start ritual complete (SUMMARY: windows=1 done-row-hits=1)"; do
+	"Session-start ritual complete (SUMMARY: windows=1 done-row-hits=1 overlap-warns=1)"; do
 	if ! grep -qF -- "$want" <<<"$out"; then
 		echo "FAIL: args-branch output missing: $want"
 		echo "$out"
@@ -149,7 +150,7 @@ fi
 for want in \
 	"(no prior reports)" \
 	"tq not on PATH" \
-	"Session-start ritual complete (SUMMARY: windows=1 done-row-hits=0)"; do
+	"Session-start ritual complete (SUMMARY: windows=1 done-row-hits=0 overlap-warns=0)"; do
 	if ! grep -qF -- "$want" <<<"$out"; then
 		echo "FAIL: unknown-id output missing: $want"
 		echo "$out"

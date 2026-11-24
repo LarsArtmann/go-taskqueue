@@ -75,13 +75,14 @@ grep -q "prior.md: \*\*Verdict: DONE" <<<"$out" || fail "verdict line not surfac
 grep -q "DONE-row state:" <<<"$out" || fail "DONE-row block missing: $out"
 grep -q "footer already carried by:" <<<"$out" || fail "footer block missing: $out"
 grep -q "stub queue record for $ID" <<<"$out" || fail "tq queue-record block missing: $out"
-grep -q "windows=1 done-row-hits=1" <<<"$out" || fail "summary must count the window and its DONE hit: $out"
+grep -q "windows=1 done-row-hits=1 overlap-warns=1" <<<"$out" || fail "summary must count the window, its DONE hit and the overlap WARN: $out"
+grep -q "WARN: partial window overlap" <<<"$out" || fail "a prior-report hit must WARN on partial window overlap: $out"
 pass "with-args branch: prior reports, verdicts, DONE rows, footer, queue record"
 
 # Unknown ID degrades without aborting (the set -e trap seen live, 07-12).
 out=$(run_in "$r" "$TARGET" 0000000000000000deadbeefcafe00000000)
 grep -q "(no prior reports)" <<<"$out" || fail "unknown ID must print the no-reports line: $out"
-grep -q "windows=1 done-row-hits=0" <<<"$out" || fail "unknown ID must still complete the summary: $out"
+grep -q "windows=1 done-row-hits=0 overlap-warns=0" <<<"$out" || fail "unknown ID must still complete the summary with zero overlap warns: $out"
 pass "unknown ID: ritual completes, no DONE-row credit"
 
 # Degraded-environment lines: no check-ci.sh, no hooks, no CONTRIBUTING in
