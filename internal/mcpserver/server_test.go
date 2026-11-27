@@ -2,7 +2,8 @@ package mcpserver
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"strings"
 	"testing"
 )
@@ -22,7 +23,7 @@ func conversation(t *testing.T, store Store, lines ...string) []string {
 
 	var responses []string
 
-	for _, line := range strings.Split(strings.TrimSpace(out.String()), "\n") {
+	for line := range strings.SplitSeq(strings.TrimSpace(out.String()), "\n") {
 		if line != "" {
 			responses = append(responses, line)
 		}
@@ -36,8 +37,8 @@ func decodeInto(t *testing.T, line string, target any) {
 	t.Helper()
 
 	var resp struct {
-		Result json.RawMessage `json:"result"`
-		Error  *rpcError       `json:"error"`
+		Result jsontext.Value `json:"result"`
+		Error  *rpcError      `json:"error"`
 	}
 	if err := json.Unmarshal([]byte(line), &resp); err != nil {
 		t.Fatalf("decode response %s: %v", line, err)
@@ -141,8 +142,8 @@ func TestMalformedLineIsParseError(t *testing.T) {
 	}
 
 	var resp struct {
-		ID    json.RawMessage `json:"id"`
-		Error *rpcError       `json:"error"`
+		ID    jsontext.Value `json:"id"`
+		Error *rpcError      `json:"error"`
 	}
 	if err := json.Unmarshal([]byte(responses[0]), &resp); err != nil {
 		t.Fatal(err)

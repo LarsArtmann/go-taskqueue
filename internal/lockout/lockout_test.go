@@ -35,7 +35,7 @@ func advance(t *testing.T, now *time.Time, d time.Duration) {
 func TestStrikeTriggerLocksAtMaxHits(t *testing.T) {
 	l, now := newTestLimiter(t, nil)
 
-	for i := 0; i < DefaultMaxHits-1; i++ {
+	for range DefaultMaxHits - 1 {
 		l.Add("k")
 	}
 	if _, locked := l.Locked("k"); locked {
@@ -59,7 +59,7 @@ func TestStrikeTriggerLocksAtMaxHits(t *testing.T) {
 func TestLockoutWindowExpiresAndRestartsStrikes(t *testing.T) {
 	l, now := newTestLimiter(t, nil)
 
-	for i := 0; i < DefaultMaxHits; i++ {
+	for range DefaultMaxHits {
 		l.Add("k")
 	}
 	if _, locked := l.Locked("k"); !locked {
@@ -73,7 +73,7 @@ func TestLockoutWindowExpiresAndRestartsStrikes(t *testing.T) {
 
 	// The lock reset the strike count: MaxHits-1 fresh strikes must not
 	// re-lock; the MaxHits-th does.
-	for i := 0; i < DefaultMaxHits-1; i++ {
+	for range DefaultMaxHits - 1 {
 		l.Add("k")
 	}
 	if _, locked := l.Locked("k"); locked {
@@ -145,7 +145,7 @@ func TestIdlePruneOnContact(t *testing.T) {
 func TestLockedEntrySurvivesIdleWindow(t *testing.T) {
 	l, now := newTestLimiter(t, func(c *Config) { c.IdleKeep = 10 * time.Minute })
 
-	for i := 0; i < DefaultMaxHits; i++ {
+	for range DefaultMaxHits {
 		l.Add("k")
 	}
 	advance(t, now, DefaultLockout+15*time.Minute) // locked window over AND idle past keep
@@ -214,10 +214,10 @@ func TestBoundIdlePassSparesLockedButLRABoundWins(t *testing.T) {
 	// Two keys locked mid-window + one fresh: the idle pass spares the
 	// locked entries (now < lockedUntil), but the LRA pass is lock-blind —
 	// the bound wins and the least-recently-active (a locked key) goes.
-	for i := 0; i < DefaultMaxHits; i++ {
+	for range DefaultMaxHits {
 		l.Add("lockA")
 	}
-	for i := 0; i < DefaultMaxHits; i++ {
+	for range DefaultMaxHits {
 		l.Add("lockB")
 	}
 	advance(t, now, DefaultLockout/2) // both still locked
@@ -248,12 +248,12 @@ func TestBoundEvictsOldestLockedWhenWholeMapLocked(t *testing.T) {
 	// Whole map locked and over cap: the bound wins, oldest locked goes
 	// (the docstring's "under that pressure the bound wins" branch).
 	for _, k := range []string{"a", "b"} {
-		for i := 0; i < DefaultMaxHits; i++ {
+		for range DefaultMaxHits {
 			l.Add(k)
 		}
 		advance(t, now, time.Second)
 	}
-	for i := 0; i < DefaultMaxHits; i++ {
+	for range DefaultMaxHits {
 		l.Add("c") // all three locked, len 3 > cap 2
 	}
 	if l.Len() != 2 {
@@ -283,12 +283,12 @@ func TestEvictionWarnsOnce(t *testing.T) {
 func TestConcurrentAddAndLocked(t *testing.T) {
 	l, _ := newTestLimiter(t, nil)
 	var wg sync.WaitGroup
-	for g := 0; g < 8; g++ {
+	for g := range 8 {
 		wg.Add(1)
 		go func(g int) {
 			defer wg.Done()
 			key := string(rune('a' + g))
-			for i := 0; i < 50; i++ {
+			for range 50 {
 				l.Add(key)
 				l.Locked(key)
 				if g%2 == 0 {

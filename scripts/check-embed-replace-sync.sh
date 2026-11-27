@@ -32,26 +32,26 @@ EMBED_DIR="${TQ_REPLACE_SYNC_EMBED_DIR:-examples/embed}"
 SMOKE="${TQ_REPLACE_SYNC_SMOKE:-scripts/smoke/consumer-store-impl.sh}"
 
 extract_requires() {
-	awk '/^require \(/,/^\)/' "$1" \
-		| grep -oE 'github\.com/larsartmann/go-taskqueue/[A-Za-z0-9._/-]+' \
-		| sort -u || true
+	awk '/^require \(/,/^\)/' "$1" |
+		grep -oE 'github\.com/larsartmann/go-taskqueue/[A-Za-z0-9._/-]+' |
+		sort -u || true
 }
 
 extract_replace_mods() {
-	sed -n '/^replace (/,/^)/p' "$1" \
-		| sed -e '1d' -e '$d' \
+	sed -n '/^replace (/,/^)/p' "$1" |
+		sed -e '1d' -e '$d' \
 			-e 's/=> .*$//' \
-			-e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' \
-		| grep -v '^$' \
-		| grep '^github\.com/larsartmann/go-taskqueue/' \
-		| sort -u || true
+			-e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' |
+		grep -v '^$' |
+		grep '^github\.com/larsartmann/go-taskqueue/' |
+		sort -u || true
 }
 
 extract_replace_lines() {
-	sed -n '/^replace (/,/^)/p' "$1" \
-		| sed -e '1d' -e '$d' \
-			-e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' \
-		| grep -v '^$' | grep '^[^#]' || true
+	sed -n '/^replace (/,/^)/p' "$1" |
+		sed -e '1d' -e '$d' \
+			-e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' |
+		grep -v '^$' | grep '^[^#]' || true
 }
 
 count_lines() {

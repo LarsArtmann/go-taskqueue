@@ -2,8 +2,8 @@ package executor
 
 import (
 	"context"
-	"encoding/json"
 	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"os"
 	"path/filepath"
 	"strings"

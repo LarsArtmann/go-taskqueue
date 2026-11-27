@@ -14,7 +14,7 @@
 package mcpserver
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
 	"fmt"
 )
 
@@ -25,32 +25,32 @@ const jsonrpcVersion = "2.0"
 // absent id means NOTIFICATION — processed (or ignored) with no response,
 // per the JSON-RPC 2.0 spec.
 type rpcRequest struct {
-	JSONRPC string          `json:"jsonrpc"`
-	ID      json.RawMessage `json:"id,omitempty"`
-	Method  string          `json:"method"`
-	Params  json.RawMessage `json:"params,omitempty"`
+	JSONRPC string         `json:"jsonrpc"`
+	ID      jsontext.Value `json:"id,omitempty"`
+	Method  string         `json:"method"`
+	Params  jsontext.Value `json:"params,omitempty"`
 }
 
 // rpcError is the JSON-RPC error envelope. Code is a JSON-RPC 2.0 code
 // (the -32700..-32603 standard set plus application errors); Message is
 // human-readable; Data is optional structured detail.
 type rpcError struct {
-	Code    int             `json:"code"`
-	Message string          `json:"message"`
-	Data    json.RawMessage `json:"data,omitempty"`
+	Code    int            `json:"code"`
+	Message string         `json:"message"`
+	Data    jsontext.Value `json:"data,omitempty"`
 }
 
 // rpcResponse is the outbound reply for a request (never a notification).
 type rpcResponse struct {
-	JSONRPC string          `json:"jsonrpc"`
-	ID      json.RawMessage `json:"id"`
-	Result  any             `json:"result,omitempty"`
-	Error   *rpcError       `json:"error,omitempty"`
+	JSONRPC string         `json:"jsonrpc"`
+	ID      jsontext.Value `json:"id"`
+	Result  any            `json:"result,omitempty"`
+	Error   *rpcError      `json:"error,omitempty"`
 }
 
 // isNotification reports whether the raw id encodes "no id" (absent,
 // null, or empty) — the requests that must never get a response.
-func isNotification(id json.RawMessage) bool {
+func isNotification(id jsontext.Value) bool {
 	trimmed := trimJSONSpace(id)
 
 	return len(trimmed) == 0 || string(trimmed) == "null"
@@ -82,14 +82,14 @@ const (
 )
 
 // newResult builds a success response for the given request id.
-func newResult(id json.RawMessage, result any) *rpcResponse {
+func newResult(id jsontext.Value, result any) *rpcResponse {
 	return &rpcResponse{JSONRPC: jsonrpcVersion, ID: id, Result: result}
 }
 
 // newError builds an error response for the given request id. A nil id
 // (an unparseable message) still gets id:null per the spec's parse-error
 // shape.
-func newError(id json.RawMessage, code int, format string, args ...any) *rpcResponse {
+func newError(id jsontext.Value, code int, format string, args ...any) *rpcResponse {
 	return &rpcResponse{
 		JSONRPC: jsonrpcVersion,
 		ID:      id,
