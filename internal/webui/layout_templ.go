@@ -153,7 +153,7 @@ func Page(data DashboardData) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			} else {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<div class=\"grid gap-8 pb-10 pt-8 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]\"><div class=\"min-w-0 space-y-8\"><section id=\"sec-tasks\" aria-labelledby=\"hd-tasks\" class=\"space-y-3\"><div class=\"flex items-center justify-between gap-4\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<div class=\"grid gap-8 pb-10 pt-8 xl:grid-cols-[minmax(0,3fr)_minmax(0,1fr)]\"><div class=\"min-w-0 space-y-8\"><section id=\"sec-tasks\" aria-labelledby=\"hd-tasks\" class=\"space-y-3\"><div class=\"flex items-center justify-between gap-4\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

@@ -400,8 +400,11 @@
   });
 
   /* "?" toggles the keyboard-shortcut overlay. Surfaces come from
-     theme.css (.tq-overlay / .tq-overlay-box) so both themes render it. */
+     theme.css (.tq-overlay / .tq-overlay-box) so both themes render it.
+     It behaves like a dialog: modal to AT, focus moves in, Escape or the
+     close button returns focus to whatever opened it. */
   var overlay = null;
+  var overlayOpener = null;
 
   function shortcutOverlay() {
     if (overlay) return overlay;
@@ -409,15 +412,17 @@
     overlay.id = "shortcut-overlay";
     overlay.className = "tq-overlay";
     overlay.setAttribute("role", "dialog");
+    overlay.setAttribute("aria-modal", "true");
     overlay.setAttribute("aria-label", "keyboard shortcuts");
-    overlay.addEventListener("click", function () {
-      overlay.style.display = "none";
+    overlay.addEventListener("click", function (e) {
+      if (e.target === overlay) hideOverlay();
     });
 
     /* Built via the CSSOM, not innerHTML: the strict CSP blocks inline
        style attributes, but el.style assignments are always allowed. */
     var box = document.createElement("div");
     box.className = "tq-overlay-box";
+    box.setAttribute("tabindex", "-1");
     var list = document.createElement("table");
     var tbody = document.createElement("tbody");
     [
@@ -437,9 +442,36 @@
     });
     list.appendChild(tbody);
     box.appendChild(list);
+    var close = document.createElement("button");
+    close.type = "button";
+    close.className = "tq-overlay-close";
+    close.textContent = "close";
+    close.addEventListener("click", hideOverlay);
+    box.appendChild(close);
     overlay.appendChild(box);
     document.body.appendChild(overlay);
     return overlay;
+  }
+
+  function showOverlay() {
+    var ov = shortcutOverlay();
+    overlayOpener = document.activeElement;
+    ov.style.display = "flex";
+    var box = ov.querySelector(".tq-overlay-box");
+    if (box) box.focus();
+  }
+
+  function hideOverlay() {
+    if (!overlay || overlay.style.display === "none") return;
+    overlay.style.display = "none";
+    if (overlayOpener && overlayOpener.focus) {
+      try {
+        overlayOpener.focus();
+      } catch (e) {
+        /* detached opener: leave focus where it is */
+      }
+    }
+    overlayOpener = null;
   }
 
   /* The only page params /api/events understands: the view filter the
@@ -583,7 +615,7 @@
     var div = document.createElement("div");
     div.className = "flex gap-2 py-0.5";
     var ts = document.createElement("span");
-    ts.className = "text-gray-400 dark:text-gray-500";
+    ts.className = "text-gray-500 dark:text-gray-400";
     ts.textContent = (f.time || "").replace("T", " ").slice(0, 19);
     var tag = document.createElement("span");
     tag.className = "text-gray-600 dark:text-gray-300";
@@ -591,7 +623,10 @@
     var id = document.createElement("a");
     id.className = "text-blue-600 hover:underline dark:text-blue-400";
     id.href = "/task/" + f.taskId;
-    id.textContent = (f.taskId || "").slice(-8);
+    /* Task ids are right-padded with zeros: slice the padding off before
+       showing the tail (same rule as the server's shortIDTail). */
+    var body = (f.taskId || "").replace(/0+$/, "") || f.taskId || "";
+    id.textContent = body.length > 8 ? "…" + body.slice(-8) : body;
     div.appendChild(ts);
     div.appendChild(tag);
     div.appendChild(id);
@@ -601,8 +636,10 @@
   function loadJournalFacts() {
     var rows = document.getElementById("journal-browser-rows");
     var more = document.getElementById("journal-browser-more");
+    var status = document.getElementById("journal-browser-status");
     if (!rows || browserBusy) return;
     browserBusy = true;
+    if (more) more.setAttribute("aria-busy", "true");
     var prepend = oldestLoaded > 0;
     var cursor = prepend ? Math.max(0, oldestLoaded - 100) : -100;
     fetch("/api/facts?after=" + cursor + "&limit=100")
@@ -616,10 +653,16 @@
           else rows.appendChild(factRow(f));
         });
         if (facts.length > 0) oldestLoaded = facts[0].seq;
-        if (more) more.hidden = facts.length === 0 || oldestLoaded <= 1;
+        if (more) {
+          more.hidden = facts.length === 0 || oldestLoaded <= 1;
+          more.setAttribute("aria-busy", "false");
+        }
+        if (status) status.textContent = facts.length > 0 ? "loaded " + facts.length + " more facts" : "no older facts";
         browserBusy = false;
       })
       .catch(function () {
+        if (more) more.setAttribute("aria-busy", "false");
+        if (status) status.textContent = "could not load older facts — retry";
         browserBusy = false;
       });
   }
@@ -642,13 +685,23 @@
   document.addEventListener("keydown", function (e) {
     var tag = (e.target.tagName || "").toLowerCase();
     if (tag === "input" || tag === "select" || tag === "textarea") return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
 
     var sections = ["sec-overview", "sec-tasks", "sec-dlq", "sec-feed"];
     var idx = "1234".indexOf(e.key);
 
     if (idx >= 0 && sections[idx]) {
       var el = document.getElementById(sections[idx]);
-      if (el) el.scrollIntoView({ behavior: "smooth" });
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth" });
+        /* Move focus too: scrolling alone navigates nothing for keyboard
+           and screen-reader users. The heading is the section's name. */
+        var heading = el.querySelector("h2");
+        if (heading) {
+          heading.setAttribute("tabindex", "-1");
+          heading.focus({ preventScroll: true });
+        }
+      }
 
       return;
     }
@@ -660,13 +713,11 @@
     }
 
     if (e.key === "?") {
-      var ov = shortcutOverlay();
-      ov.style.display = ov.style.display === "flex" ? "none" : "flex";
+      if (overlay && overlay.style.display === "flex") hideOverlay();
+      else showOverlay();
     }
 
-    if (e.key === "Escape" && overlay) {
-      overlay.style.display = "none";
-    }
+    if (e.key === "Escape") hideOverlay();
   });
 
   /* L2 live agent pane: an append-only EventSource consumer for
