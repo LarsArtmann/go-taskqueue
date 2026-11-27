@@ -223,6 +223,24 @@ h3,
   box-shadow: inset 2px 0 0 var(--color-red-500);
 }
 
+/* Error cells: the preview is a bounded column, not the table's width
+   driver — an unbounded 60-char message pushed every other column out of
+   the panel on 1440px screens. Click/keyboard expansion (app.js sets
+   data-expanded="1") lifts the clamp and lets the full text wrap. */
+[data-error] {
+  display: inline-block;
+  max-width: 38ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+
+[data-error][data-expanded="1"] {
+  max-width: 72ch;
+  white-space: normal;
+}
+
 /* ---------------------------------------------------------------------------
  * A11y: forced-colors + high-contrast (H2). Windows High Contrast strips
  * shadows/tints — restore visible focus and a structural border; users who

@@ -804,9 +804,7 @@ templ TaskDetail(data DashboardData, t task.Task, facts []journalFactView, prov 
 		</div>
 		@payloadSection(t, payloadViewFor(t))
 		@priorityProvenanceSection(prov, data.Now)
-		<div class="tq-heading">
-			<span class="tq-label">fact timeline</span>
-		</div>
+		@pageHeading("hd-timeline", "fact timeline", "")
 		<div id="frag-timeline">
 			@taskDetailTimeline(data, t, facts)
 		</div>
