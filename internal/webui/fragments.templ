@@ -365,8 +365,13 @@ templ QuestionsPane(data DashboardData) {
 						}
 					</div>
 					<!-- Agent prose, not a terminal line: proportional type and a
-					     measure cap are what make a 100-word question readable. -->
-					<p class="mt-2 max-w-prose whitespace-pre-wrap break-words text-sm leading-relaxed text-gray-800 dark:text-gray-200">{ q.Question }</p>
+					     measure cap are what make a 100-word question readable.
+					     Collapsed by default — the pane is a queue of decisions,
+					     not four walls of text above the task table. -->
+					<details class="mt-2">
+						<summary class="cursor-pointer select-none text-sm leading-relaxed text-gray-800 dark:text-gray-200">{ questionPreview(q.Question) }</summary>
+						<p class="mt-2 max-w-prose whitespace-pre-wrap break-words text-sm leading-relaxed text-gray-800 dark:text-gray-200">{ q.Question }</p>
+					</details>
 					if len(q.Options) > 0 {
 						<div class="mt-2 flex flex-wrap items-baseline gap-1.5">
 							<span class="tq-label">options</span>
@@ -723,7 +728,7 @@ templ FilterBar(data DashboardData) {
 			name="q"
 			placeholder="search type, payload, id, project…"
 			value={ data.Filter.Query }
-			class={ inputClass + " min-w-0 flex-1 basis-full sm:basis-64" }
+			class={ inputClass + " min-w-0 flex-1 basis-full sm:basis-56" }
 		/>
 		if data.Filter.View != viewBoard {
 			<label class="sr-only" for="filter-status">filter by status</label>
@@ -751,7 +756,7 @@ templ FilterBar(data DashboardData) {
 			placeholder="evidence: all"
 			value={ data.Filter.Evidence }
 			title="comma-separated terms with !-negation, e.g. gate-env,!gate-slow"
-			class={ inputClass + " min-h-7 min-w-0 flex-1 basis-full font-mono text-xs sm:basis-56" }
+			class={ inputClass + " min-h-7 min-w-0 flex-1 basis-full font-mono text-xs sm:basis-48" }
 		/>
 		<datalist id="evidence-terms">
 			for _, stage := range evidenceStageChoices() {

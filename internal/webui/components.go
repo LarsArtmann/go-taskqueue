@@ -931,6 +931,26 @@ func completeHistogramLabels(data DashboardData) []string {
 	return []string{"<1m", "1-5m", "5-15m", "15-60m", "60m+"}
 }
 
+// questionPreview is the collapsed one-line form of an owner question: the
+// first line, cut on a word boundary at ~140 chars. The pane keeps the full
+// text one click away — four 100-word questions rendered open pushed the
+// task table below the fold on every viewport (2026-11-27 UX pass).
+func questionPreview(text string) string {
+	line := strings.TrimSpace(strings.SplitN(text, "\n", 2)[0])
+	if len(line) <= questionPreviewLen {
+		return line
+	}
+
+	cut := line[:questionPreviewLen]
+	if i := strings.LastIndexByte(cut, ' '); i > questionPreviewLen/2 {
+		cut = cut[:i]
+	}
+
+	return cut + "…"
+}
+
+const questionPreviewLen = 140
+
 // completeHistogramSentence is the chart's accessible summary: the bucket
 // counts as text, so the histogram is not information available only to
 // sighted users (the library SVG is aria-hidden).
