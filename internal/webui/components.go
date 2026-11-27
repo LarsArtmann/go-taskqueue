@@ -747,21 +747,34 @@ func dashboardProps(ctx context.Context, title, nonce string) layout.PageProps {
 	// white. Dark keeps the abyss. Same shape as the library default minus
 	// bg-white (layout.Base literal, v1.17.0).
 	props.BodyClass = "bg-gray-50 text-gray-900 antialiased min-h-dvh flex flex-col scroll-smooth motion-reduce:scroll-auto selection:bg-blue-100 dark:selection:bg-blue-900 selection:text-blue-900 dark:selection:text-blue-100 dark:bg-gray-950 dark:text-gray-100"
-	props.HeadContent = layout.MetaRefresh(3600, "")
+	// The page supplies its own <main id="main-content">, so the topbar
+	// stays OUTSIDE the main landmark (a <header> nested in <main> is not
+	// exposed as the banner landmark, and the library's skip link would
+	// land on the topbar instead of the content). The page is live over
+	// SSE, so the old hourly meta-refresh — which threw away scroll
+	// position, open folds and half-typed input — is gone.
+	props.NoMainWrapper = true
 	props.Footer = pageFooter()
 	props.Nonce = nonce
 
 	return props
 }
 
-// shortID renders a display form of a task id: the random tail (ids are
-// time-prefixed, so the leading chars are shared by same-session tasks).
-// Full id stays on the title tooltip and the detail page.
+// shortID renders a display form of a task id: the id's random body after
+// the time prefix and before the zero padding. Ids are time-prefixed and
+// right-padded with zeros (000001a21cbc…ed4cff2100000000), so slicing the
+// raw tail yields "…00000000" for every task — the padding is dropped
+// first (2026-11-27 UX pass). Full id stays on the title tooltip and the
+// detail page.
 func shortID(id task.ID) string {
 	return shortIDTail(id.String())
 }
 
 func shortIDTail(s string) string {
+	if body := strings.TrimRight(s, "0"); body != "" && len(body) < len(s) {
+		s = body
+	}
+
 	if len(s) <= shortIDLen {
 		return s
 	}
@@ -937,6 +950,47 @@ func activeTasks(rows []task.Task) []task.Task {
 	active, _ := splitTasks(rows)
 
 	return active
+}
+
+// unionActive merges the always-visible active strip with the active rows
+// of the current page. The strip is bounded (activeStripLimit) and the page
+// carries its own slice, so a sort other than severity can surface an
+// active task the strip missed — union keeps both visible, first occurrence
+// wins (strip order first), ids unique.
+func unionActive(strip, page []task.Task) []task.Task {
+	if len(page) == 0 {
+		return strip
+	}
+
+	seen := make(map[task.ID]struct{}, len(strip))
+	merged := make([]task.Task, 0, len(strip)+len(page))
+
+	appendUnique := func(rows []task.Task) {
+		for _, t := range rows {
+			if _, ok := seen[t.ID]; ok {
+				continue
+			}
+
+			seen[t.ID] = struct{}{}
+			merged = append(merged, t)
+		}
+	}
+
+	appendUnique(strip)
+	appendUnique(page)
+
+	return merged
+}
+
+// activeOverflow is how many active tasks exist beyond the rendered strip —
+// the "+N more running/pending" hint that keeps a truncated strip honest.
+func activeOverflow(data DashboardData, shown int) int {
+	total := data.Counts[task.Running] + data.Counts[task.Pending]
+	if data.Filter.Status != "" {
+		total = data.Counts[data.Filter.Status]
+	}
+
+	return max(total-shown, 0)
 }
 
 func settledTasks(rows []task.Task) []task.Task {

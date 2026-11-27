@@ -299,8 +299,19 @@ type DashboardData struct {
 	// DeadTotal is the UNFILTERED dead-task population: when an evidence
 	// filter narrows Dead, the DLQ renders "N of DeadTotal match" instead
 	// of an empty-state that reads as "no dead tasks at all" (TODO row
-	// 1411). Unfiltered snapshots set it to len(Dead).
+	// 1411).
 	DeadTotal int
+	// DeadMatched is how many dead tasks survived the evidence filter
+	// (== DeadTotal without one). Dead itself is capped at
+	// deadTableLimit, so "showing N newest of DeadMatched" stays honest
+	// while the table stays a triage surface instead of the full ledger.
+	DeadMatched int
+	// Active is the bounded running+pending strip the "active now" card
+	// renders. It is loaded INDEPENDENTLY of the paged table (whose
+	// severity order puts dead first, pushing live work onto later
+	// pages). Nil on the board view, whose columns already carry the
+	// statuses.
+	Active []task.Task
 	// Board holds the per-status columns when the filter selects the board
 	// view; nil on the table view (which uses Tasks/Page/TotalPages).
 	Board []BoardColumn
@@ -958,6 +969,12 @@ func (s *Server) loadSnapshot(ctx context.Context, filter FilterState) (Dashboar
 
 		data.MatchTotal = matches
 		data.TotalPages = max(1, (matches+taskTableLimit-1)/taskTableLimit)
+
+		if active, err := s.loadActive(ctx, filter); err != nil {
+			return data, err
+		} else {
+			data.Active = active
+		}
 	}
 
 	if s.cfg.DailyBudget > 0 {
@@ -975,13 +992,16 @@ func (s *Server) loadSnapshot(ctx context.Context, filter FilterState) (Dashboar
 
 	dead := task.Dead
 
-	deadTasks, err := s.store.List(ctx, queue.Filter{Status: &dead})
+	// Newest-created first: the DLQ's job is triage, and the visible
+	// window is the newest deadTableLimit rows.
+	deadTasks, err := s.store.List(ctx, queue.Filter{Status: &dead, Sort: "age-desc"})
 	if err != nil {
 		return data, err
 	}
 
-	data.Dead = deadTasks
 	data.DeadTotal = len(deadTasks)
+	data.DeadMatched = len(deadTasks)
+	data.Dead = deadTasks
 
 	if filter.Evidence != "" {
 		filtered := make([]task.Task, 0, len(deadTasks))
@@ -997,6 +1017,15 @@ func (s *Server) loadSnapshot(ctx context.Context, filter FilterState) (Dashboar
 		}
 
 		data.Dead = filtered
+	}
+
+	data.DeadMatched = len(data.Dead)
+
+	// The DLQ is a triage surface: cap the rendered window, keep the
+	// counts honest, and let the paginated ?status=dead table carry the
+	// full ledger (an uncapped 537-row DLQ made the page 25k px tall).
+	if len(data.Dead) > deadTableLimit {
+		data.Dead = data.Dead[:deadTableLimit]
 	}
 
 	facts, err := s.store.LastFacts(ctx, factFeedLen)
@@ -1019,6 +1048,50 @@ func (s *Server) loadSnapshot(ctx context.Context, filter FilterState) (Dashboar
 	}
 
 	return data, nil
+}
+
+// loadActive builds the bounded "active now" strip: the running then
+// pending tasks under the filter's project/query/band scope, independent
+// of the paged table. The table's SeverityOrder ranks dead tasks first, so
+// live work can sit on a later page; this strip keeps it on screen on
+// every page (2026-11-27 UX pass). A settled-only status filter yields no
+// strip.
+func (s *Server) loadActive(ctx context.Context, filter FilterState) ([]task.Task, error) {
+	var statuses []task.Status
+
+	switch filter.Status {
+	case "":
+		statuses = []task.Status{task.Running, task.Pending}
+	case task.Running, task.Pending:
+		statuses = []task.Status{filter.Status}
+	default:
+		return nil, nil
+	}
+
+	queueFilter := filter.toQueueFilter(0)
+	queueFilter.SeverityOrder = true
+
+	active := make([]task.Task, 0, activeStripLimit)
+
+	for _, status := range statuses {
+		status := status
+
+		queueFilter.Status = &status
+		queueFilter.Limit = activeStripLimit - len(active)
+
+		if queueFilter.Limit <= 0 {
+			break
+		}
+
+		rows, err := s.store.List(ctx, queueFilter)
+		if err != nil {
+			return nil, err
+		}
+
+		active = append(active, rows...)
+	}
+
+	return active, nil
 }
 
 // loadBoard builds the board view's lifecycle columns under the filter's
