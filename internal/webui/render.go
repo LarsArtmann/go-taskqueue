@@ -29,6 +29,17 @@ const (
 	factFeedLen         = 50
 	factViewerPageSize  = 100 // /api/facts page cap for the journal browser
 	taskTableLimit      = 200
+	// deadTableLimit bounds the dashboard's dead-letter table: the DLQ is a
+	// triage surface, not the full ledger. Past this count the section
+	// renders a "showing N newest of M" line linking to the paginated
+	// ?status=dead table — an uncapped DLQ turned one 537-dead journal into
+	// a 25k-pixel page (2026-11-27 UX pass).
+	deadTableLimit = 25
+	// activeStripLimit bounds the always-visible "active now" card. The
+	// paged table is severity-ordered (dead first), so the running/pending
+	// rows an operator actually needs can land on page 5; this strip makes
+	// them visible on every page.
+	activeStripLimit    = 30
 	detailFactsLimit    = 500
 	tailBatchLimit      = 1000
 	hoursPerDay         = 24 * time.Hour
