@@ -15,6 +15,7 @@ func conversation(t *testing.T, store Store, lines ...string) []string {
 	t.Helper()
 
 	srv := New(store, "test")
+
 	var out strings.Builder
 
 	if err := srv.Serve(context.Background(), strings.NewReader(strings.Join(lines, "\n")+"\n"), &out); err != nil {
@@ -78,6 +79,7 @@ func TestServeConversation(t *testing.T) {
 
 	var init initializeResult
 	decodeInto(t, responses[0], &init)
+
 	if init.ProtocolVersion != "2025-11-25" {
 		t.Fatalf("initialize must echo the client revision, got %q", init.ProtocolVersion)
 	}
@@ -101,6 +103,7 @@ func TestServeConversation(t *testing.T) {
 
 	var call toolsCallResult
 	decodeInto(t, responses[2], &call)
+
 	if call.IsError {
 		t.Fatalf("task_list call errored: %+v", call)
 	}
@@ -123,6 +126,7 @@ func TestInitializeUnknownRevision(t *testing.T) {
 
 	var init initializeResult
 	decodeInto(t, responses[0], &init)
+
 	if init.ProtocolVersion != LatestProtocolVersion {
 		t.Fatalf("unknown revision answered with %q, want %q", init.ProtocolVersion, LatestProtocolVersion)
 	}
@@ -203,6 +207,7 @@ func TestServerDiscoverBeforeInitialize(t *testing.T) {
 
 	var init initializeResult
 	decodeInto(t, responses[1], &init)
+
 	if init.ProtocolVersion != "2025-06-18" {
 		t.Fatalf("initialize after discover must still negotiate: %+v", init)
 	}

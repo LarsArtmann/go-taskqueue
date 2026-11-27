@@ -271,6 +271,7 @@ func (s *Server) handleTaskDetail(w http.ResponseWriter, r *http.Request) {
 	)
 
 	dead := task.Dead
+
 	deadCount, err := s.store.CountTasks(r.Context(), queue.Filter{Status: &dead})
 	if err != nil {
 		http.Error(w, "count dead: "+err.Error(), http.StatusInternalServerError)
@@ -763,6 +764,7 @@ func questionIsOpen(facts []journal.Fact, ref string) bool {
 // a bare http.Error left the operator on a white void with no way back.
 func (s *Server) renderTaskNotFound(w http.ResponseWriter, r *http.Request, id string) {
 	dead := task.Dead
+
 	deadCount, err := s.store.CountTasks(r.Context(), queue.Filter{Status: &dead})
 	if err != nil {
 		http.Error(w, "count dead: "+err.Error(), http.StatusInternalServerError)

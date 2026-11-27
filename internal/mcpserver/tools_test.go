@@ -100,6 +100,7 @@ func (s *stubStore) StatusCounts(_ context.Context) (map[task.Status]int, error)
 
 func (s *stubStore) ProjectCounts(_ context.Context) (map[string]map[task.Status]int, error) {
 	counts := map[string]map[task.Status]int{}
+
 	for _, row := range s.tasks {
 		if row.project == "" {
 			continue

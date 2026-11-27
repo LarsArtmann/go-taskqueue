@@ -3,6 +3,7 @@ package mcpserver
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -176,6 +177,7 @@ func (s *Server) handleDLQList(ctx context.Context, args json.RawMessage) (strin
 	}
 
 	dead := task.Dead
+
 	filter := queue.Filter{Status: &dead, Sort: "age-desc", Limit: params.Limit}
 	if filter.Limit <= 0 {
 		filter.Limit = 25
@@ -230,7 +232,7 @@ func (s *Server) handleTaskShow(ctx context.Context, args json.RawMessage) (stri
 	}
 
 	if params.ID == "" {
-		return "", fmt.Errorf("id is required")
+		return "", errors.New("id is required")
 	}
 
 	if params.TrailLimit <= 0 {

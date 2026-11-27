@@ -1065,9 +1065,11 @@ func budgetMeterTitle(b BudgetView) string {
 
 	sort.Strings(names)
 
+	var titleSb1068 strings.Builder
 	for _, name := range names {
-		title += fmt.Sprintf(" · %s %d", name, b.ByProject[name])
+		titleSb1068.WriteString(fmt.Sprintf(" · %s %d", name, b.ByProject[name]))
 	}
+	title += titleSb1068.String()
 
 	return title
 }

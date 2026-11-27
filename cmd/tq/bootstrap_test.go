@@ -80,6 +80,7 @@ func TestEnsureCrushConfigMcpBlockGolden(t *testing.T) {
 	}
 
 	got := readRepo(t, repo, ".crushrc")
+
 	want := "mcp add tq --type stdio --command /usr/local/bin/tq --args mcp --args --db --args /tmp/tq-mcp-golden.db"
 	if !strings.Contains(got, want) {
 		t.Fatalf("missing mcp enrollment %q in:\n%s", want, got)

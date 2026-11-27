@@ -13,7 +13,9 @@ import (
 // shared constant source for both HTTP surfaces).
 func newTestLimiter(t *testing.T, mutate func(*Config)) (*Limiter, *time.Time) {
 	t.Helper()
+
 	now := time.Date(2026, 11, 24, 12, 0, 0, 0, time.UTC)
+
 	cfg := Config{
 		MaxHits:  DefaultMaxHits,
 		Lockout:  DefaultLockout,
@@ -24,11 +26,13 @@ func newTestLimiter(t *testing.T, mutate func(*Config)) (*Limiter, *time.Time) {
 	if mutate != nil {
 		mutate(&cfg)
 	}
+
 	return New(cfg), &now
 }
 
 func advance(t *testing.T, now *time.Time, d time.Duration) {
 	t.Helper()
+
 	*now = now.Add(d)
 }
 
@@ -38,21 +42,26 @@ func TestStrikeTriggerLocksAtMaxHits(t *testing.T) {
 	for range DefaultMaxHits - 1 {
 		l.Add("k")
 	}
+
 	if _, locked := l.Locked("k"); locked {
 		t.Fatalf("locked after %d strikes, want unlocked below MaxHits", DefaultMaxHits-1)
 	}
 
 	l.Add("k")
+
 	remain, locked := l.Locked("k")
 	if !locked {
 		t.Fatal("not locked at MaxHits strikes")
 	}
+
 	if remain <= 0 || remain > DefaultLockout {
 		t.Fatalf("remaining lockout %v, want (0,%v]", remain, DefaultLockout)
 	}
+
 	if l.Len() != 1 || !l.Has("k") {
 		t.Fatalf("Len=%d Has=%v, want the key tracked once", l.Len(), l.Has("k"))
 	}
+
 	_ = now
 }
 
@@ -62,11 +71,13 @@ func TestLockoutWindowExpiresAndRestartsStrikes(t *testing.T) {
 	for range DefaultMaxHits {
 		l.Add("k")
 	}
+
 	if _, locked := l.Locked("k"); !locked {
 		t.Fatal("want locked at MaxHits")
 	}
 
 	advance(t, now, DefaultLockout)
+
 	if _, locked := l.Locked("k"); locked {
 		t.Fatal("still locked after the window passed")
 	}
@@ -76,10 +87,13 @@ func TestLockoutWindowExpiresAndRestartsStrikes(t *testing.T) {
 	for range DefaultMaxHits - 1 {
 		l.Add("k")
 	}
+
 	if _, locked := l.Locked("k"); locked {
 		t.Fatal("re-locked before a full fresh strike set")
 	}
+
 	l.Add("k")
+
 	if _, locked := l.Locked("k"); !locked {
 		t.Fatal("want re-lock on a full fresh strike set")
 	}
@@ -87,6 +101,7 @@ func TestLockoutWindowExpiresAndRestartsStrikes(t *testing.T) {
 
 func TestOnLockFiresExactlyOncePerLockout(t *testing.T) {
 	var fired []string
+
 	l, _ := newTestLimiter(t, func(c *Config) {
 		c.MaxHits = 2
 		c.OnLock = func(key string, _ time.Duration) { fired = append(fired, key) }
@@ -94,14 +109,19 @@ func TestOnLockFiresExactlyOncePerLockout(t *testing.T) {
 
 	l.Add("k") // strike 1
 	l.Add("k") // strike 2 → lock
+
 	if len(fired) != 1 {
 		t.Fatalf("OnLock fired %d times after one lockout, want 1", len(fired))
 	}
+
 	l.Add("k") // strike 1 of the next cycle — must NOT re-fire
+
 	if len(fired) != 1 {
 		t.Fatalf("OnLock re-fired without a lockout (%d)", len(fired))
 	}
+
 	l.Add("k") // strike 2 → second lock
+
 	if len(fired) != 2 || fired[0] != "k" || fired[1] != "k" {
 		t.Fatalf("OnLock fired %v, want exactly one per lockout event", fired)
 	}
@@ -113,15 +133,18 @@ func TestResetClearsStrikes(t *testing.T) {
 	l.Add("k")
 	l.Add("k")
 	l.Reset("k")
+
 	if !l.Has("k") {
 		t.Fatal("Reset keeps the entry (it zeroes count + lock), only idle prune drops it")
 	}
 	// A success resets the count: two more strikes must not lock.
 	l.Add("k")
 	l.Add("k")
+
 	if _, locked := l.Locked("k"); locked {
 		t.Fatal("locked after Reset + 2 strikes, want the count restarted")
 	}
+
 	l.Reset("absent") // must be a no-op, not a panic
 }
 
@@ -130,13 +153,17 @@ func TestIdlePruneOnContact(t *testing.T) {
 
 	l.Add("k")
 	advance(t, now, 9*time.Minute)
+
 	if !l.Has("k") {
 		t.Fatal("entry dropped before IdleKeep elapsed")
 	}
+
 	advance(t, now, 2*time.Minute) // 11m idle
+
 	if _, _ = l.Locked("k"); l.Has("k") {
 		t.Fatal("per-contact prune must drop the idle unlocked entry")
 	}
+
 	if l.Len() != 0 {
 		t.Fatalf("Len=%d after prune, want 0", l.Len())
 	}
@@ -148,6 +175,7 @@ func TestLockedEntrySurvivesIdleWindow(t *testing.T) {
 	for range DefaultMaxHits {
 		l.Add("k")
 	}
+
 	advance(t, now, DefaultLockout+15*time.Minute) // locked window over AND idle past keep
 	// A locked-then-expired entry is NOT idle-pruned while its lockout
 	// still covers the contact… but after the lockout lapses the entry is
@@ -166,15 +194,19 @@ func TestBoundEvictsLeastRecentlyActiveFirst(t *testing.T) {
 		l.Add(k)
 		advance(t, now, time.Minute)
 	}
+
 	l.Add("d") // over cap → evicts "a" (oldest touch)
+
 	if l.Has("a") {
 		t.Fatal("LRA eviction kept the oldest key")
 	}
+
 	for _, k := range []string{"b", "c", "d"} {
 		if !l.Has(k) {
 			t.Fatalf("lost %v to eviction, want only 'a' evicted", k)
 		}
 	}
+
 	if l.Len() != 3 {
 		t.Fatalf("Len=%d after bound, want the cap enforced", l.Len())
 	}
@@ -195,12 +227,15 @@ func TestBoundIdleSweepRunsBeforeLRA(t *testing.T) {
 	// arrives with fresh3: len 4 > 3 → the idle pass sweeps stale, LRA
 	// never fires.
 	l.Add("fresh3")
+
 	if l.Has("stale") {
 		t.Fatal("idle sweep should have removed the stale key without LRA eviction")
 	}
+
 	if l.Len() > 3 {
 		t.Fatalf("Len=%d, want the cap enforced via the idle sweep", l.Len())
 	}
+
 	for _, k := range []string{"fresh1", "fresh2", "fresh3"} {
 		if !l.Has(k) {
 			t.Fatalf("fresh key %v evicted although the idle pass freed a slot", k)
@@ -217,19 +252,24 @@ func TestBoundIdlePassSparesLockedButLRABoundWins(t *testing.T) {
 	for range DefaultMaxHits {
 		l.Add("lockA")
 	}
+
 	for range DefaultMaxHits {
 		l.Add("lockB")
 	}
+
 	advance(t, now, DefaultLockout/2) // both still locked
 	l.Add("fresh")
 
 	if l.Len() != 2 {
 		t.Fatalf("Len=%d, want the cap enforced", l.Len())
 	}
+
 	if !l.Has("fresh") {
 		t.Fatal("the freshest key must survive LRA eviction")
 	}
+
 	kept, gone := 0, 0
+
 	for _, k := range []string{"lockA", "lockB"} {
 		if l.Has(k) {
 			kept++
@@ -237,6 +277,7 @@ func TestBoundIdlePassSparesLockedButLRABoundWins(t *testing.T) {
 			gone++
 		}
 	}
+
 	if kept != 1 || gone != 1 {
 		t.Fatalf("want exactly one locked key evicted (kept=%d gone=%d)", kept, gone)
 	}
@@ -251,14 +292,18 @@ func TestBoundEvictsOldestLockedWhenWholeMapLocked(t *testing.T) {
 		for range DefaultMaxHits {
 			l.Add(k)
 		}
+
 		advance(t, now, time.Second)
 	}
+
 	for range DefaultMaxHits {
 		l.Add("c") // all three locked, len 3 > cap 2
 	}
+
 	if l.Len() != 2 {
 		t.Fatalf("Len=%d, want the cap enforced over an all-locked map", l.Len())
 	}
+
 	if !l.Has("b") || !l.Has("c") || l.Has("a") {
 		t.Fatal("want the oldest locked key evicted, the rest kept")
 	}
@@ -266,7 +311,9 @@ func TestBoundEvictsOldestLockedWhenWholeMapLocked(t *testing.T) {
 
 func TestEvictionWarnsOnce(t *testing.T) {
 	var buf bytes.Buffer
+
 	prev := slog.Default()
+
 	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, nil)))
 	t.Cleanup(func() { slog.SetDefault(prev) })
 
@@ -275,6 +322,7 @@ func TestEvictionWarnsOnce(t *testing.T) {
 		l.Add(k)
 		advance(t, now, time.Minute)
 	}
+
 	if n := bytes.Count(buf.Bytes(), []byte("strikes map over cap")); n != 1 {
 		t.Fatalf("eviction warning logged %d times, want exactly once (sync.Once)", n)
 	}
@@ -282,22 +330,27 @@ func TestEvictionWarnsOnce(t *testing.T) {
 
 func TestConcurrentAddAndLocked(t *testing.T) {
 	l, _ := newTestLimiter(t, nil)
+
 	var wg sync.WaitGroup
 	for g := range 8 {
 		wg.Add(1)
 		go func(g int) {
 			defer wg.Done()
+
 			key := string(rune('a' + g))
 			for range 50 {
 				l.Add(key)
 				l.Locked(key)
+
 				if g%2 == 0 {
 					l.Reset(key)
 				}
 			}
 		}(g)
 	}
+
 	wg.Wait()
+
 	if l.Len() > DefaultMaxKeys {
 		t.Fatalf("Len=%d exceeded the cap under concurrency", l.Len())
 	}

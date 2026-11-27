@@ -171,6 +171,7 @@ func TestRenderTopHeaderVocabulary(t *testing.T) {
 	if !strings.Contains(out, want) {
 		t.Errorf("renderTop header missing pinned vocabulary row %q, got:\n%s", want, out)
 	}
+
 	if strings.Contains(out, " done") {
 		t.Errorf("renderTop still says done — the domain word is completed (abbrev compl): %s", out)
 	}

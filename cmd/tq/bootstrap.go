@@ -593,6 +593,7 @@ func (o bootstrapOptions) ensureCrushConfig(repo string) (bool, error) {
 	if o.model != "" {
 		block = append(block, "model large "+o.model+" --reasoning-effort "+o.reasoning)
 	}
+
 	if o.mcp {
 		line, err := o.mcpAddLine()
 		if err != nil {

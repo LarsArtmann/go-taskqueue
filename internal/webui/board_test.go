@@ -325,6 +325,7 @@ func TestBoardRendersBandLabelsWhenMixed(t *testing.T) {
 	if got := bandLabelText(queue.BandHot, 1); got != "hot" {
 		t.Errorf("bandLabelText(hot,1) = %q, want no suffix", got)
 	}
+
 	if got := bandLabelText(queue.BandHot, 3); got != "hot ×3" {
 		t.Errorf("bandLabelText(hot,3) = %q, want count suffix", got)
 	}
@@ -356,6 +357,7 @@ func TestFaviconVariesWithDLQ(t *testing.T) {
 
 	rec := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+
 	if strings.Contains(rec.Body.String(), "favicon-dead.svg") {
 		t.Error("empty DLQ must keep the default favicon, page carries the dead variant")
 	}
@@ -365,6 +367,7 @@ func TestFaviconVariesWithDLQ(t *testing.T) {
 
 	rec = httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+
 	if !strings.Contains(rec.Body.String(), `href="/static/favicon-dead.svg"`) {
 		t.Error("non-empty DLQ must carry the dead favicon, page keeps the default")
 	}
@@ -383,6 +386,7 @@ func TestBudgetMeterTitleProjectSplit(t *testing.T) {
 	}
 
 	byProject := spendByProject(facts)
+
 	want := map[string]int{"alpha": 2, "beta": 1, "-": 2}
 	if !maps.Equal(byProject, want) {
 		t.Fatalf("spendByProject = %v, want %v", byProject, want)
@@ -393,7 +397,9 @@ func TestBudgetMeterTitleProjectSplit(t *testing.T) {
 		t.Errorf("budgetMeterTitle = %q, want %q", title, want)
 	}
 
-	if title := budgetMeterTitle(BudgetView{Cap: 10, Spent: 0}); title != "agent tasks enqueued today vs the daily cap" {
+	if title := budgetMeterTitle(
+		BudgetView{Cap: 10, Spent: 0},
+	); title != "agent tasks enqueued today vs the daily cap" {
 		t.Errorf("empty split title = %q, want base line", title)
 	}
 }

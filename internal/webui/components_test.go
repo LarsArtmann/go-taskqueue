@@ -129,7 +129,12 @@ func TestStatusHref(t *testing.T) {
 		got := statusHref(st)
 		for _, key := range []string{"sort=", "page="} {
 			if strings.Contains(got, key) {
-				t.Errorf("statusHref(%s) = %q carries %q — the §f41 reset ruling was pinned; changing it is a contract change", st, got, key)
+				t.Errorf(
+					"statusHref(%s) = %q carries %q — the §f41 reset ruling was pinned; changing it is a contract change",
+					st,
+					got,
+					key,
+				)
 			}
 		}
 	}

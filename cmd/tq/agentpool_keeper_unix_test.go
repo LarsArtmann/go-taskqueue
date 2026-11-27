@@ -22,6 +22,7 @@ func TestRunCrushServerActorDisarmsIdleShutdown(t *testing.T) {
 	dir := t.TempDir()
 	envFile := filepath.Join(dir, "server-env")
 	stub := filepath.Join(dir, "crush-server-stub")
+
 	t.Setenv("TQ_TEST_SERVER_ENVFILE", envFile)
 
 	body := "#!/bin/sh\n" +
@@ -39,6 +40,7 @@ func TestRunCrushServerActorDisarmsIdleShutdown(t *testing.T) {
 	}()
 
 	deadline := time.Now().Add(5 * time.Second)
+
 	for {
 		if _, err := os.Stat(envFile); err == nil {
 			break
