@@ -237,6 +237,7 @@ templ taskRows(data DashboardData, rows []task.Task) {
 					class="font-mono text-xs font-medium text-blue-600 hover:underline dark:text-blue-400"
 					href={ templ.URL("/task/" + t.ID.String()) }
 					title={ t.ID.String() }
+					data-focus-key={ "task-" + t.ID.String() }
 				>{ shortID(t.ID) }</a>
 			</td>
 			if data.Filter.Project == "" {
@@ -412,10 +413,10 @@ templ DeadLetterTable(data DashboardData) {
 	if len(data.DLQBackoff) > 0 {
 		@dlqBackoffPanel(data)
 	}
-	if data.Filter.Evidence != "" && (len(data.Dead) == 0 || data.DeadTotal != len(data.Dead)) {
+	if data.Filter.Evidence != "" && (data.DeadMatched == 0 || data.DeadTotal != data.DeadMatched) {
 		<!-- Count context beats both lies: a narrowed-to-zero DLQ is not "empty" and a narrowed table hides how big the real DLQ is (TODO row 1411). -->
-		<p class="px-1 font-mono text-xs text-gray-500 dark:text-gray-400">
-			{ fmt.Sprintf("%d of %d dead tasks match evidence=%s", len(data.Dead), data.DeadTotal, data.Filter.Evidence) }
+		<p class="px-1 font-mono text-xs text-gray-600 dark:text-gray-400">
+			{ fmt.Sprintf("%d of %d dead tasks match evidence=%s", data.DeadMatched, data.DeadTotal, data.Filter.Evidence) }
 		</p>
 	}
 	if len(data.Dead) == 0 {
@@ -437,6 +438,14 @@ templ DeadLetterTable(data DashboardData) {
 				Body:        deadRows(data),
 			})
 		</div>
+		if len(data.Dead) < data.DeadMatched {
+			<!-- The table is a bounded triage window, not the ledger: say how
+			     many rows exist and where the rest lives. -->
+			<p class="px-1 pt-2 font-mono text-xs text-gray-600 dark:text-gray-400">
+				showing the { formatInt(len(data.Dead)) } newest of { formatInt(data.DeadMatched) } dead tasks —
+				<a class="underline underline-offset-4 hover:text-blue-600 dark:hover:text-blue-400" href={ templ.URL(statusHref(task.Dead)) }>open the full list in the task table</a>
+			</p>
+		}
 	}
 }
 
@@ -469,6 +478,7 @@ templ errorCell(t task.Task) {
 			title={ t.LastError }
 			data-error={ t.LastError }
 			data-short={ truncate(t.LastError, errorPreviewLen) }
+			data-focus-key={ "err-" + t.ID.String() }
 			tabindex="0"
 			role="button"
 			aria-expanded="false"
@@ -484,9 +494,10 @@ templ deadRows(data DashboardData) {
 					class="font-mono text-xs font-medium text-blue-600 hover:underline dark:text-blue-400"
 					href={ templ.URL("/task/" + t.ID.String()) }
 					title={ t.ID.String() }
+					data-focus-key={ "dead-" + t.ID.String() }
 				>{ shortID(t.ID) }</a>
 			</td>
-			<td class={ tdCellClass(true) }>{ t.Project }</td>
+			<td class={ tdCellClass(false) }>{ t.Project }</td>
 			<td class={ tdCellClass(false) }><span class="font-mono text-xs">{ t.Type }</span></td>
 			<td class={ tdCellClass(false) }><span class="font-mono text-xs">{ formatInt(t.Attempts) }/{ formatInt(t.MaxAttempts) }</span></td>
 			@errorCell(t)
@@ -516,6 +527,7 @@ templ FactFeed(data DashboardData) {
 				type="button"
 				class="tq-feed-chip"
 				data-feed-type=""
+				data-focus-key="feed-chip-all"
 				aria-pressed="false"
 			>all</button>
 			for _, ft := range factTypes(data.Facts) {
@@ -523,6 +535,7 @@ templ FactFeed(data DashboardData) {
 					type="button"
 					class="tq-feed-chip"
 					data-feed-type={ ft }
+					data-focus-key={ "feed-chip-" + ft }
 					aria-pressed="false"
 				>{ ft }</button>
 			}
@@ -531,15 +544,16 @@ templ FactFeed(data DashboardData) {
 			<div class="tc-log text-start border-y-0 py-3 font-mono text-[0.8125rem] leading-relaxed text-gray-600 dark:text-gray-400" aria-label="journal fact tail">
 				for _, fact := range data.Facts {
 					<div class={ templ.Classes("tc-log-line tc-log-line-still", templ.KV("tq-fact-cancelled", fact.Type == journal.Cancelled)) } data-fact-type={ string(fact.Type) } data-seq={ strconv.FormatInt(fact.Seq, 10) }>
-						<span class="me-3 text-gray-400 dark:text-gray-500">{ factTimestamp(data.Now, fact.Time) }</span>
+						<span class="me-3 text-gray-500 dark:text-gray-400">{ factTimestamp(data.Now, fact.Time) }</span>
 						<span class={ "me-2 inline-block min-w-12 font-medium " + factToneClass(factTone(fact.Type)) }>{ string(fact.Type) }</span>
 						<a
 							class="text-blue-600 hover:underline dark:text-blue-400"
 							href={ templ.URL("/task/" + fact.TaskID) }
 							title={ fact.TaskID }
+							data-focus-key={ "fact-" + strconv.FormatInt(fact.Seq, 10) }
 						>{ shortIDTail(fact.TaskID) }</a>
 						if fact.Error != "" {
-							<span class="text-gray-500 dark:text-gray-500">{ truncate(fact.Error, errorPreviewLen) }</span>
+							<span class="text-gray-600 dark:text-gray-400">{ truncate(fact.Error, errorPreviewLen) }</span>
 						}
 					</div>
 				}
@@ -674,6 +688,9 @@ templ boardCard(data DashboardData, t task.Task) {
 }
 
 // FilterBar renders the search/filter form (inner content of #frag-filters).
+// Order is search → status → band → evidence → apply: the submit stays at
+// the far end of the row (a mid-row "apply" reads as belonging to the wrong
+// control), and every control carries a real label for screen readers.
 templ FilterBar(data DashboardData) {
 	<form class="flex flex-wrap items-center gap-2" method="get" action="/">
 		if data.Filter.View == viewBoard {
@@ -700,28 +717,48 @@ templ FilterBar(data DashboardData) {
 		if data.Filter.Evidence != "" {
 			@filterChip("evidence", data.Filter.Evidence, filterURL(data.Filter, clearEvidence))
 		}
+		<label class="sr-only" for="search-box">search tasks</label>
 		<input
 			type="search"
 			id="search-box"
 			name="q"
 			placeholder="search type, payload, id, project…"
 			value={ data.Filter.Query }
-			class={ inputClass + " min-w-0 flex-1 basis-full sm:basis-0" }
+			class={ inputClass + " min-w-0 flex-1 basis-full sm:basis-64" }
 		/>
 		if data.Filter.View != viewBoard {
-			<select name="status" class={ inputClass + " min-h-7 font-mono text-xs" }>
+			<label class="sr-only" for="filter-status">filter by status</label>
+			<select id="filter-status" name="status" class={ inputClass + " min-h-7 font-mono text-xs" }>
 				<option value="">status: all</option>
 				for _, st := range task.AllStatuses() {
 					<option value={ string(st) } selected?={ data.Filter.Status == st }>{ string(st) }</option>
 				}
 			</select>
-			<select name="band" class={ inputClass + " min-h-7 font-mono text-xs" }>
+			<label class="sr-only" for="filter-band">filter by priority band</label>
+			<select id="filter-band" name="band" class={ inputClass + " min-h-7 font-mono text-xs" }>
 				<option value="">band: all</option>
 				<option value={ string(queue.BandBacklog) } selected?={ data.Filter.Band == string(queue.BandBacklog) }>backlog 0-99</option>
 				<option value={ string(queue.BandHot) } selected?={ data.Filter.Band == string(queue.BandHot) }>hot 100-149</option>
 				<option value={ string(queue.BandMachine) } selected?={ data.Filter.Band == string(queue.BandMachine) }>machine 150+</option>
 			</select>
 		}
+		<!-- The evidence filter is free TEXT over the set-spec grammar (comma terms, !-negation) with the closed stamped vocabulary as datalist suggestions: a single-term pick stays one click, `gate-env,!gate-slow` stays reachable (TODO row 1415). -->
+		<label class="sr-only" for="filter-evidence">filter the dead-letter queue by failure evidence</label>
+		<input
+			type="text"
+			id="filter-evidence"
+			name="evidence"
+			list="evidence-terms"
+			placeholder="evidence: all"
+			value={ data.Filter.Evidence }
+			title="comma-separated terms with !-negation, e.g. gate-env,!gate-slow"
+			class={ inputClass + " min-h-7 min-w-0 flex-1 basis-full font-mono text-xs sm:basis-56" }
+		/>
+		<datalist id="evidence-terms">
+			for _, stage := range evidenceStageChoices() {
+				<option value={ stage }></option>
+			}
+		</datalist>
 		<div class="ms-auto flex items-center gap-2">
 			@display.Button(display.ButtonProps{
 				Text:    "apply",
@@ -730,24 +767,9 @@ templ FilterBar(data DashboardData) {
 				Size:    display.ButtonSizeSM,
 			})
 			if data.Filter.Project != "" || data.Filter.Status != "" || data.Filter.Query != "" || data.Filter.Band != "" || data.Filter.Sort != "" || data.Filter.Evidence != "" {
-				<a class="font-mono text-xs text-gray-500 underline-offset-4 hover:text-blue-600 hover:underline dark:text-gray-400 dark:hover:text-blue-400" href="/">clear all</a>
+				<a class="font-mono text-xs text-gray-600 underline-offset-4 hover:text-blue-600 hover:underline dark:text-gray-400 dark:hover:text-blue-400" href="/">clear all</a>
 			}
 		</div>
-		<!-- The evidence filter is free TEXT over the set-spec grammar (comma terms, !-negation) with the closed stamped vocabulary as datalist suggestions: a single-term pick stays one click, `gate-env,!gate-slow` stays reachable (TODO row 1415). -->
-		<input
-			type="text"
-			name="evidence"
-			list="evidence-terms"
-			placeholder="evidence: all"
-			value={ data.Filter.Evidence }
-			title="comma-separated terms with !-negation, e.g. gate-env,!gate-slow"
-			class={ inputClass + " min-h-7 min-w-0 flex-1 basis-full font-mono text-xs sm:basis-0" }
-		/>
-		<datalist id="evidence-terms">
-			for _, stage := range evidenceStageChoices() {
-				<option value={ stage }></option>
-			}
-		</datalist>
 	</form>
 }
 
@@ -1163,24 +1185,32 @@ templ statusBadge(s string, typ display.BadgeType) {
 // completion histogram (time-to-complete: queue wait + run, honestly
 // labeled). Both are server-rendered SVG — no JavaScript, CSP-safe.
 templ MetricsRow(data DashboardData) {
-	<div class="grid gap-4 pb-2 pt-4 md:grid-cols-2" id="frag-metrics">
+	<div class="grid gap-4" id="frag-metrics">
 		@display.Card(display.CardProps{Title: "fact rate (last hour, per 5m)"}) {
-			<div class="px-2 pb-2">
-				@display.AreaChart(display.AreaChartProps{
-					Series:      []display.LineChartSeries{{Name: "facts", Values: data.FactBuckets, Color: "text-cyan-600 dark:text-cyan-400"}},
-					Height:      200,
-					MaxTicks:    5,
-					ShowGrid:    false,
-					FillOpacity: 0.25,
-					Width:       560,
-				})
-			</div>
+			if sumFloats(data.FactBuckets) == 0 {
+				<!-- A flat 0..1 axis with no series reads as a broken chart;
+				     say what the empty plot means instead. -->
+				<p class="px-2 py-10 text-sm text-gray-500 dark:text-gray-400">no facts in the last hour — the journal is idle.</p>
+			} else {
+				<div class="px-2 pb-2">
+					<p class="sr-only">{ fmt.Sprintf("%d facts in the last hour, bucketed per 5 minutes", int(sumFloats(data.FactBuckets))) }</p>
+					@display.AreaChart(display.AreaChartProps{
+						Series:      []display.LineChartSeries{{Name: "facts", Values: data.FactBuckets, Color: "text-cyan-600 dark:text-cyan-400"}},
+						Height:      200,
+						MaxTicks:    5,
+						ShowGrid:    false,
+						FillOpacity: 0.25,
+						Width:       560,
+					})
+				</div>
+			}
 		}
 		@display.Card(display.CardProps{Title: "time to complete (queue + run)"}) {
 			<div class="px-2 pb-2">
 				if len(data.CompleteMinutes) == 0 {
-					<p class="px-2 py-6 text-sm text-gray-500 dark:text-gray-400">no completed tasks yet</p>
+					<p class="px-2 py-10 text-sm text-gray-500 dark:text-gray-400">no completed tasks yet</p>
 				} else {
+					<p class="sr-only">{ completeHistogramSentence(data) }</p>
 					@display.AreaChart(display.AreaChartProps{
 						Series:      []display.LineChartSeries{{Name: "tasks", Values: completeHistogram(data), Color: "text-emerald-600 dark:text-emerald-400"}},
 						XAxisLabels: completeHistogramLabels(data),

@@ -7,8 +7,13 @@
 
   function setConn(state) {
     if (!conn) return;
+    /* Early return: reassigning the text node re-queues a polite-live
+       announcement on every server burst. The layout class (ms-auto) stays
+       put — only the state class is toggled. */
+    if (conn.textContent === state) return;
     conn.textContent = state;
-    conn.className = "conn conn-" + state;
+    conn.classList.remove("conn-live", "conn-reconnecting", "conn-stale");
+    conn.classList.add("conn-" + state);
   }
 
   function markFresh() {
@@ -51,6 +56,17 @@
     return c.getAttribute("data-state-key") || c.name || c.id || "";
   }
 
+  /* Focus key: the swap replaces the fragment's DOM, so focus must be
+     re-found by a stable identity. data-focus-key (rendered on task links,
+     fact links, error cells and feed chips) survives row reordering;
+     #id / [name] cover form controls; the tag name is the last resort. */
+  function focusKeyOf(el) {
+    if (!el) return "";
+    var fk = el.getAttribute && el.getAttribute("data-focus-key");
+    if (fk) return "fk:" + fk;
+    return controlKey(el) || el.tagName;
+  }
+
   function captureState(el) {
     var st = { details: {}, expanded: {}, scrolls: [], values: {}, focus: "" };
     el.querySelectorAll("details").forEach(function (d) {
@@ -71,7 +87,7 @@
       if (key) st.values[key] = c.value;
     });
     var ae = document.activeElement;
-    if (ae && el.contains(ae)) st.focus = controlKey(ae) || ae.tagName;
+    if (ae && el.contains(ae)) st.focus = focusKeyOf(ae);
     el.querySelectorAll(".journal-scroll").forEach(function (s) {
       st.scrolls.push({
         top: s.scrollTop,

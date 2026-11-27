@@ -931,6 +931,42 @@ func completeHistogramLabels(data DashboardData) []string {
 	return []string{"<1m", "1-5m", "5-15m", "15-60m", "60m+"}
 }
 
+// completeHistogramSentence is the chart's accessible summary: the bucket
+// counts as text, so the histogram is not information available only to
+// sighted users (the library SVG is aria-hidden).
+func completeHistogramSentence(data DashboardData) string {
+	counts := completeHistogram(data)
+	labels := completeHistogramLabels(data)
+
+	parts := make([]string, 0, len(counts))
+
+	for i, n := range counts {
+		if n == 0 {
+			continue
+		}
+
+		parts = append(parts, fmt.Sprintf("%d in %s", int(n), labels[i]))
+	}
+
+	if len(parts) == 0 {
+		return "no completed tasks yet"
+	}
+
+	return "recent completed tasks by time to complete: " + strings.Join(parts, ", ")
+}
+
+// sumFloats totals a chart series — the "has any activity at all" test
+// behind the fact-rate card's empty state.
+func sumFloats(values []float64) float64 {
+	total := 0.0
+
+	for _, v := range values {
+		total += v
+	}
+
+	return total
+}
+
 // splitTasks partitions the visible page into active (queued or running)
 // and settled (terminal) rows for the two-tier table. The page's own sort
 // order is preserved inside each tier.
