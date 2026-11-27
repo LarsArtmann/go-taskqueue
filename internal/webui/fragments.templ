@@ -93,7 +93,7 @@ templ StatusCards(data DashboardData) {
 			}
 			for i, p := range data.Projects {
 				if i == chipMaxVisible {
-					<span class="font-mono text-xs text-gray-400 dark:text-gray-500">+{ formatInt(len(data.Projects) - chipMaxVisible) } more projects</span>
+					<span class="font-mono text-xs text-gray-500 dark:text-gray-400">+{ formatInt(len(data.Projects) - chipMaxVisible) } more projects</span>
 				}
 				if i >= chipMaxVisible {
 					continue
@@ -593,11 +593,11 @@ templ Board(data DashboardData) {
 // "+N older" escape hatch stay OUTSIDE the scroll box, so the lane header
 // and the exit into the filtered table view never scroll away.
 templ boardColumn(data DashboardData, col BoardColumn) {
-	<li class="w-64 min-w-52 snap-start max-md:w-56 max-md:min-w-44" data-status={ string(col.Status) } aria-label={ string(col.Status) + " column" }>
+	<li class="w-64 snap-start max-md:w-56" data-status={ string(col.Status) } aria-label={ string(col.Status) + " column" }>
 		<div class={ "border-t-2 pt-2 " + statusAccentClass(col.Status) }>
 			<div class="flex items-baseline justify-between gap-2">
 				<span class="font-mono text-xs font-medium text-gray-700 dark:text-gray-300">{ string(col.Status) }</span>
-				<span class="font-mono text-xs text-gray-400 dark:text-gray-500">{ formatInt(col.Count) }</span>
+				<span class="font-mono text-xs text-gray-500 dark:text-gray-400">{ formatInt(col.Count) }</span>
 			</div>
 		</div>
 		@boardColumnGroups(data, col, bandGroups(col.Tasks))
@@ -662,13 +662,13 @@ templ boardCard(data DashboardData, t task.Task) {
 				href={ templ.URL("/task/" + t.ID.String()) }
 				title={ t.ID.String() }
 			>{ shortID(t.ID) }</a>
-			<span class="font-mono text-xs text-gray-400 dark:text-gray-500" data-age={ fmt.Sprintf("%d", t.CreatedAt.UnixMilli()) } title={ t.CreatedAt.Format(timeFormat) }>{ timeAgo(data.Now, t.CreatedAt) }</span>
+			<span class="font-mono text-xs text-gray-500 dark:text-gray-400" data-age={ fmt.Sprintf("%d", t.CreatedAt.UnixMilli()) } title={ t.CreatedAt.Format(timeFormat) }>{ timeAgo(data.Now, t.CreatedAt) }</span>
 		</div>
 		<div class="mt-1 flex items-baseline gap-2 text-xs">
 			if data.Filter.Project == "" {
 				<a class="truncate font-medium text-gray-700 hover:underline dark:text-gray-300" href={ templ.URL("/project/" + t.Project) }>{ t.Project }</a>
 			}
-			<span class="shrink-0 font-mono text-gray-400 dark:text-gray-500">{ t.Type }</span>
+			<span class="shrink-0 font-mono text-gray-500 dark:text-gray-400">{ t.Type }</span>
 		</div>
 		if r := readiness(data.Now, t); r != "" {
 			<div class="mt-1 font-mono text-xs text-gray-500 dark:text-gray-400">{ r }</div>
@@ -777,7 +777,7 @@ templ FilterBar(data DashboardData) {
 // not a pill — rounded corners, hairline border, lowercase kind.
 templ filterChip(kind, value, clearHref string) {
 	<span class="inline-flex items-center gap-1.5 rounded border border-gray-300 bg-gray-50 px-2 py-0.5 font-mono text-xs text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
-		<span class="text-gray-400 dark:text-gray-500">{ kind }</span>
+		<span class="text-gray-500 dark:text-gray-400">{ kind }</span>
 		{ value }
 		<a class="text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400" aria-label={ "clear " + kind + " filter" } href={ templ.URL(clearHref) }>×</a>
 	</span>

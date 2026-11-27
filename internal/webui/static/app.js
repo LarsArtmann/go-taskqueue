@@ -136,9 +136,15 @@
     }
     if (st.focus) {
       try {
-        var target = el.querySelector(
-          '[data-state-key="' + st.focus + '"], [name="' + st.focus + '"], #' + st.focus,
-        );
+        var target = null;
+        if (st.focus.indexOf("fk:") === 0) {
+          var fk = st.focus.slice(3);
+          target = el.querySelector('[data-focus-key="' + fk.replace(/["\\]/g, "\\$&") + '"]');
+        } else {
+          target = el.querySelector(
+            '[data-state-key="' + st.focus + '"], [name="' + st.focus + '"], #' + st.focus,
+          );
+        }
         if (target) target.focus();
       } catch (e) {
         /* malformed key: skip focus restore */
