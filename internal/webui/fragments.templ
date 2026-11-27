@@ -3,7 +3,6 @@ package webui
 import (
 	"fmt"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/larsartmann/go-taskqueue/internal/dlqbackoff"
@@ -147,7 +146,7 @@ templ TaskTable(data DashboardData) {
 // severity order ranks dead first) UNION the page's own active rows, so no
 // active task is ever hidden by pagination.
 templ taskActiveCard(data DashboardData) {
-	rows := unionActive(data.Active, activeTasks(data.Tasks))
+	{{ rows := unionActive(data.Active, activeTasks(data.Tasks)) }}
 	if len(rows) > 0 {
 		<h3 class="tq-kicker">active now</h3>
 		<div class="tq-panel">
@@ -1001,7 +1000,7 @@ templ prioritizeResultCard(res executor.PrioritizeResult) {
 // AI verdict, and the reprioritization history distilled from the fact
 // trail — the same story `tq show` tells, on the operator's page.
 templ priorityProvenanceSection(v priorityProvenanceView, now time.Time) {
-	@pageHeading("priority provenance", "")
+	@pageHeading("hd-provenance", "priority provenance", "")
 	@display.Card(display.CardProps{Padding: display.CardPaddingLG}) {
 		@display.DefinitionList(display.DefinitionListProps{Items: provenanceItems(v, now)})
 	}
@@ -1096,7 +1095,7 @@ templ payloadPreWithCopy(preClass, text string) {
 // the prompt plus the raw payload fold away — readable by default, exact on
 // demand, never lossy.
 templ payloadSection(t task.Task, pv payloadView) {
-	@pageHeading("payload · "+string(pv.Kind), "")
+	@pageHeading("hd-payload", "payload · "+string(pv.Kind), "")
 	<div class="tq-payload">
 		if pv.Lede != "" {
 			if pv.LedeMono {

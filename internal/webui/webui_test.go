@@ -1962,7 +1962,10 @@ func TestA11yChrome(t *testing.T) {
 	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
 
 	body := rec.Body.String()
-	for _, want := range []string{"skip to content", `aria-live="polite"`, `role="status"`, "#sec-overview"} {
+	// The page owns its <main> (NoMainWrapper): the library skip link must
+	// target it, and the topbar must sit outside it to be the banner
+	// landmark. The wordmark is the page's h1.
+	for _, want := range []string{"Skip to main content", `href="#main-content"`, `id="main-content"`, `aria-live="polite"`, `role="status"`, "<h1"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("page missing a11y affordance %q", want)
 		}

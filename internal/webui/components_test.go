@@ -76,12 +76,45 @@ func TestShortIDTail(t *testing.T) {
 		{"short", "short"},                          // under the cut: unchanged
 		{"12345678", "12345678"},                    // exactly the cut: unchanged
 		{"0001020304050607aabbccddee", "…bbccddee"}, // over the cut: ellipsis + last 8
+		// Real task ids are right-padded with zeros; slicing the raw tail
+		// rendered "…00000000" for every task (2026-11-27 UX pass).
+		{"000001a21cbc6e57e4b4ed4cff2100000000", "…ed4cff21"},
+		{"000001a21238adac2f56d9ee845a00000000", "…d9ee845a"},
+		{"000000000000000000000000000000000000", "…00000000"}, // all padding: fall back to the raw tail
 	}
 
 	for _, tc := range cases {
 		if got := shortIDTail(tc.in); got != tc.want {
 			t.Errorf("shortIDTail(%q) = %q, want %q", tc.in, got, tc.want)
 		}
+	}
+}
+
+func TestUnionActive(t *testing.T) {
+	t.Parallel()
+
+	mk := func(id, status string) task.Task {
+		return task.Task{ID: task.ID(id), Status: task.Status(status)}
+	}
+
+	strip := []task.Task{mk("a", "running"), mk("b", "pending")}
+	page := []task.Task{mk("b", "pending"), mk("c", "pending")}
+
+	got := unionActive(strip, page)
+	want := []task.ID{"a", "b", "c"}
+
+	if len(got) != len(want) {
+		t.Fatalf("unionActive len = %d, want %d (%v)", len(got), len(want), got)
+	}
+
+	for i, id := range want {
+		if got[i].ID != id {
+			t.Errorf("unionActive[%d] = %s, want %s", i, got[i].ID, id)
+		}
+	}
+
+	if got := unionActive(nil, nil); len(got) != 0 {
+		t.Errorf("unionActive(nil, nil) = %v, want empty", got)
 	}
 }
 
