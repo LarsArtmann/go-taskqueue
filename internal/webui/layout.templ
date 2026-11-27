@@ -8,17 +8,20 @@ import "github.com/larsartmann/templ-components/layout"
 templ Page(data DashboardData) {
 	@layout.Base(dashboardProps(ctx, pageTitle(data), ctxNonce(ctx))) {
 		@pageHeader()
-		<div class="mx-auto w-full max-w-7xl flex-1 px-4 sm:px-6 lg:px-8">
-			<section id="sec-overview" class="pt-6">
+		<!-- The page owns its <main> (dashboardProps sets NoMainWrapper):
+		     the topbar must stay OUTSIDE it to be the banner landmark, and
+		     the library's skip link must land on the content. -->
+		<main id="main-content" tabindex="-1" class="mx-auto w-full max-w-7xl flex-1 px-4 sm:px-6 lg:px-8">
+			<section id="sec-overview" aria-labelledby="hd-overview" class="pt-6">
+				<h2 id="hd-overview" class="sr-only">queue overview</h2>
 				<div id="frag-stats">
 					@StatusCards(data)
 				</div>
 			</section>
-			@MetricsRow(data)
 			<!-- L3 questions pane: empty (and invisible) until a `tq ask`
 			     park exists; the SSE swap targets #frag-questions so an
 			     answered question disappears live. -->
-			<section id="sec-questions" class="pb-2 pt-6">
+			<section id="sec-questions" aria-labelledby="hd-questions" class="pb-2 pt-6">
 				<div id="frag-questions">
 					@QuestionsPane(data)
 				</div>
@@ -26,9 +29,9 @@ templ Page(data DashboardData) {
 			if data.Filter.View == viewBoard {
 				<!-- Board view: the lanes are the instrument — the task section
 				spans the full content width and the feed/DLQ flow below. -->
-				<section id="sec-tasks" class="space-y-3 pb-8 pt-8">
+				<section id="sec-tasks" aria-labelledby="hd-tasks" class="space-y-3 pb-8 pt-8">
 					<div class="flex items-center justify-between gap-4">
-						@pageHeading("tasks", "")
+						@pageHeading("hd-tasks", "tasks", "")
 						@viewToggle(data.Filter)
 					</div>
 					<div id="frag-filters">
@@ -38,27 +41,29 @@ templ Page(data DashboardData) {
 						@Board(data)
 					</div>
 				</section>
-				<section id="sec-dlq" class="space-y-3 pb-8">
-					@pageHeading("dead-letter queue", "text-red-600 dark:text-red-400")
+				<section id="sec-dlq" aria-labelledby="hd-dlq" class="space-y-3 pb-8">
+					@pageHeading("hd-dlq", "dead-letter queue", "accent-danger")
 					<div id="frag-dlq">
 						@DeadLetterTable(data)
 					</div>
 				</section>
-				<aside class="min-w-0 pb-10">
-					<section id="sec-feed" class="space-y-3">
-						@pageHeading("fact feed", "")
-						<div id="frag-feed">
-							@FactFeed(data)
-						</div>
-						@journalBrowser()
-					</section>
-				</aside>
+				<section id="sec-metrics" aria-labelledby="hd-metrics" class="space-y-3 pb-8">
+					@pageHeading("hd-metrics", "activity", "")
+					@MetricsRow(data)
+				</section>
+				<section id="sec-feed" aria-labelledby="hd-feed" class="min-w-0 space-y-3 pb-10">
+					@pageHeading("hd-feed", "fact feed", "")
+					<div id="frag-feed">
+						@FactFeed(data)
+					</div>
+					@journalBrowser()
+				</section>
 			} else {
 				<div class="grid gap-8 pb-10 pt-8 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
 					<div class="min-w-0 space-y-8">
-						<section id="sec-tasks" class="space-y-3">
+						<section id="sec-tasks" aria-labelledby="hd-tasks" class="space-y-3">
 							<div class="flex items-center justify-between gap-4">
-								@pageHeading("tasks", "")
+								@pageHeading("hd-tasks", "tasks", "")
 								@viewToggle(data.Filter)
 							</div>
 							<div id="frag-filters">
@@ -72,16 +77,23 @@ templ Page(data DashboardData) {
 								}
 							</div>
 						</section>
-						<section id="sec-dlq" class="space-y-3">
-							@pageHeading("dead-letter queue", "text-red-600 dark:text-red-400")
+						<section id="sec-dlq" aria-labelledby="hd-dlq" class="space-y-3">
+							@pageHeading("hd-dlq", "dead-letter queue", "accent-danger")
 							<div id="frag-dlq">
 								@DeadLetterTable(data)
 							</div>
 						</section>
+						<!-- Trend charts sit BELOW the work surfaces: the first
+						     screen belongs to the live queue, not to a flat
+						     sparkline (2026-11-27 UX pass). -->
+						<section id="sec-metrics" aria-labelledby="hd-metrics" class="space-y-3">
+							@pageHeading("hd-metrics", "activity", "")
+							@MetricsRow(data)
+						</section>
 					</div>
 					<aside class="min-w-0">
-						<section id="sec-feed" class="space-y-3 xl:sticky xl:top-20">
-							@pageHeading("fact feed", "")
+						<section id="sec-feed" aria-labelledby="hd-feed" class="space-y-3 xl:sticky xl:top-20">
+							@pageHeading("hd-feed", "fact feed", "")
 							<div id="frag-feed">
 								@FactFeed(data)
 							</div>
@@ -90,7 +102,7 @@ templ Page(data DashboardData) {
 					</aside>
 				</div>
 			}
-		</div>
+		</main>
 		<!-- L2 live agent pane: hidden until app.js receives the first routed-run
 		     event on /agents/live (the feed needs the serve crush-server flag
 		     and routed runs); pure observability, never part of the task
@@ -110,7 +122,9 @@ templ Page(data DashboardData) {
 templ TaskDetailPage(data DashboardData, detail taskDetailData) {
 	@layout.Base(dashboardProps(ctx, detailPageTitle(detail.ID), ctxNonce(ctx))) {
 		@pageHeader()
-		@TaskDetail(data, detail.Task, detail.Facts, detail.Provenance)
+		<main id="main-content" tabindex="-1" class="flex-1">
+			@TaskDetail(data, detail.Task, detail.Facts, detail.Provenance)
+		</main>
 	}
 }
 
@@ -119,19 +133,21 @@ templ TaskDetailPage(data DashboardData, detail taskDetailData) {
 templ TaskNotFoundPage(id string) {
 	@layout.Base(dashboardProps(ctx, detailPageTitle(id)+" — not found", ctxNonce(ctx))) {
 		@pageHeader()
-		<div class="mx-auto w-full max-w-2xl px-4 py-16 sm:px-6 lg:px-8">
-			<div class="tq-heading">
-				<span class="tq-label">task not found</span>
+		<main id="main-content" tabindex="-1" class="flex-1">
+			<div class="mx-auto w-full max-w-2xl px-4 py-16 sm:px-6 lg:px-8">
+				<div class="tq-heading">
+					<h2 class="tq-label m-0">task not found</h2>
+				</div>
+				<p class="mt-4 break-all font-mono text-sm text-gray-600 dark:text-gray-300">{ id }</p>
+				<p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+					No task with this id exists in this journal — it was never enqueued here, or the dashboard is pointed at a different database.
+				</p>
+				<a
+					class="tq-label mt-6 inline-block underline underline-offset-4 hover:text-blue-600 dark:hover:text-blue-400"
+					href="/"
+				>← back to dashboard</a>
 			</div>
-			<p class="mt-4 break-all font-mono text-sm text-gray-600 dark:text-gray-300">{ id }</p>
-			<p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-				No task with this id exists in this journal — it was never enqueued here, or the dashboard is pointed at a different database.
-			</p>
-			<a
-				class="tq-label mt-6 inline-block underline underline-offset-4 hover:text-blue-600 dark:hover:text-blue-400"
-				href="/"
-			>← back to dashboard</a>
-		</div>
+		</main>
 	}
 }
 
@@ -139,28 +155,34 @@ templ TaskNotFoundPage(id string) {
 // identity anchor — the light theme frames its content between this bar and
 // the nowband), wordmark, connection lamp, theme toggle. The lamp's class
 // (conn-live/conn-reconnecting/conn-stale) is driven by app.js over SSE
-// heartbeats.
+// heartbeats. The wordmark IS the page's <h1>: the only heading the library
+// wrapper does not supply. The skip link belongs to layout.Base (it targets
+// #main-content, which the page renders itself).
 templ pageHeader() {
 	<header class="tq-topbar sticky top-0 z-40">
-		<a href="#sec-overview" class="sr-only focus:not-sr-only focus:absolute focus:start-4 focus:top-2 focus:z-50 focus:rounded-lg focus:bg-blue-600 focus:px-3 focus:py-1.5 focus:text-sm focus:text-white">skip to content</a>
 		<div class="mx-auto flex h-14 w-full max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8">
-			<a class="flex items-baseline gap-2 font-mono text-lg font-semibold text-gray-100" href="/">
-				tq<span class="text-blue-400">·</span>
-				<span class="hidden font-sans text-xs font-normal lowercase tracking-[0.14em] text-gray-400 sm:inline">taskqueue</span>
-			</a>
+			<h1 class="m-0 flex items-baseline gap-2 font-mono text-lg font-semibold text-gray-100">
+				<a class="flex items-baseline gap-2" href="/">
+					tq<span class="text-blue-400">·</span>
+					<span class="hidden font-sans text-xs font-normal lowercase tracking-[0.14em] text-gray-400 sm:inline">taskqueue</span>
+				</a>
+			</h1>
 			<span id="conn" class="conn conn-live ms-auto" role="status" aria-live="polite">live</span>
 			@layout.ThemeToggle("Toggle color theme", ctxNonce(ctx))
 		</div>
 	</header>
 }
 
-// pageHeading is a ledger-style section overline with a hairline rule. The
+// pageHeading is a ledger-style section heading with a hairline rule. The
 // label is the quiet terminal convention (lowercase mono, tight tracking) —
 // the loud all-caps eyebrow treatment reads templated (2026-09-16 design
-// pass); accent (e.g. the DLQ's red) still rides the span.
-templ pageHeading(text, accent string) {
+// pass). It renders a real <h2> so the document outline (and screen-reader
+// navigation) sees the sections the eye sees; id ties the owning <section>
+// to its name via aria-labelledby. Accent rides a tq-* class because the
+// unlayered theme rules outrank Tailwind color utilities.
+templ pageHeading(id, text, accent string) {
 	<div class="tq-heading">
-		<span class={ "tq-label", accent }>{ text }</span>
+		<h2 id={ id } class={ "tq-label m-0", accent }>{ text }</h2>
 	</div>
 }
 

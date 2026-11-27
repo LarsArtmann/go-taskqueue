@@ -142,20 +142,28 @@ templ TaskTable(data DashboardData) {
 
 // taskActiveCard is the top half of the two-tier table: everything queued or
 // running, always visible — the operator's answer to "what is happening
-// right now?" never sits behind a collapse.
+// right now?" never sits behind a collapse. Its rows come from the bounded
+// active strip (loaded independently of the page, because the paged table's
+// severity order ranks dead first) UNION the page's own active rows, so no
+// active task is ever hidden by pagination.
 templ taskActiveCard(data DashboardData) {
-	if len(activeTasks(data.Tasks)) > 0 {
-		<div class="tq-kicker">active now</div>
+	rows := unionActive(data.Active, activeTasks(data.Tasks))
+	if len(rows) > 0 {
+		<h3 class="tq-kicker">active now</h3>
 		<div class="tq-panel">
 			@display.Table(display.TableProps{
 				Caption:      "Active tasks",
 				TypedHeaders: taskHeaders(data),
 				Flush:        true,
 				Hover:        true,
-				StickyHeader: true,
 				CellPadding:  display.TableCellPaddingCompact,
-				Body:         taskRows(data, activeTasks(data.Tasks)),
+				Body:         taskRows(data, rows),
 			})
+			if extra := activeOverflow(data, len(rows)); extra > 0 {
+				<p class="px-1 pt-2 font-mono text-xs text-gray-600 dark:text-gray-400">
+					{ formatInt(extra) } more running or pending outside this strip — filter by status above to see them all
+				</p>
+			}
 			<p class="px-1 pt-2 text-[11px] leading-relaxed text-gray-500 dark:text-gray-400">
 				claim order = stored priority + aging (+1 per
 				{ formatInt(queue.PriorityAgingDaysPerPoint) } days waiting, capped at +
@@ -191,7 +199,6 @@ templ taskSettledDetails(data DashboardData) {
 						TypedHeaders: taskHeaders(data),
 						Flush:        true,
 						Hover:        true,
-						StickyHeader: true,
 						CellPadding:  display.TableCellPaddingCompact,
 						Body:         taskRows(data, settledTasks(data.Tasks)),
 					})
@@ -332,36 +339,51 @@ templ rescueAction(id task.ID) {
 // with the questions themselves.
 templ QuestionsPane(data DashboardData) {
 	if len(data.Questions) > 0 {
-		<div class="tq-heading">
-			<span class="tq-label text-amber-600 dark:text-amber-400">open questions</span>
-		</div>
+		@pageHeading("hd-questions", "open questions", "accent-warn")
+		if !data.AllowWrites {
+			<p class="mt-1 px-1 font-mono text-xs text-gray-600 dark:text-gray-400">
+				answer from the CLI (`tq answers`) or PapDashboard — the dashboard accepts answers only with --allow-writes
+			</p>
+		}
 		<ul class="mt-3 space-y-3">
 			for _, q := range data.Questions {
 				<li class="rounded-lg border border-amber-300/60 bg-amber-50/50 p-4 dark:border-amber-500/30 dark:bg-amber-950/20">
 					<div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-						<a class="font-mono text-xs underline underline-offset-4 hover:text-amber-700 dark:hover:text-amber-300" href={ templ.URL("/task/" + q.TaskID.String()) }>{ q.TaskID.String() }</a>
+						<a
+							class="font-mono text-xs underline underline-offset-4 hover:text-amber-700 dark:hover:text-amber-300"
+							href={ templ.URL("/task/" + q.TaskID.String()) }
+							title={ q.TaskID.String() }
+						>{ shortID(q.TaskID) }</a>
 						<span class="tq-label">{ q.Type }</span>
 						<span
-							class="font-mono text-xs text-gray-500 dark:text-gray-400"
+							class="font-mono text-xs text-gray-600 dark:text-gray-400"
 							data-age={ fmt.Sprintf("%d", q.AskedAt.UnixMilli()) }
 							title={ q.AskedAt.Format(timeFormat) }
 						>{ timeAgo(data.Now, q.AskedAt) }</span>
 						if !q.ExpiresAt.IsZero() {
-							<span class="font-mono text-xs text-gray-400 dark:text-gray-500">expires { q.ExpiresAt.Format(timeFormat) }</span>
+							<span class="font-mono text-xs text-gray-600 dark:text-gray-400">expires { q.ExpiresAt.Format(timeFormat) }</span>
 						}
 					</div>
-					<p class="mt-2 break-words font-mono text-sm">{ q.Question }</p>
+					<!-- Agent prose, not a terminal line: proportional type and a
+					     measure cap are what make a 100-word question readable. -->
+					<p class="mt-2 max-w-prose whitespace-pre-wrap break-words text-sm leading-relaxed text-gray-800 dark:text-gray-200">{ q.Question }</p>
 					if len(q.Options) > 0 {
-						<p class="mt-1 font-mono text-xs text-gray-500 dark:text-gray-400">options: { strings.Join(q.Options, " · ") }</p>
+						<div class="mt-2 flex flex-wrap items-baseline gap-1.5">
+							<span class="tq-label">options</span>
+							for _, opt := range q.Options {
+								<span class="rounded border border-amber-300/70 bg-white/70 px-1.5 py-0.5 font-mono text-[11px] text-amber-900 dark:border-amber-500/40 dark:bg-amber-950/40 dark:text-amber-200">{ opt }</span>
+							}
+						</div>
 					}
 					if data.AllowWrites {
 						<form class="mt-3 flex flex-wrap items-center gap-2" method="post" action={ templ.URL("/task/" + q.TaskID.String() + "/answer") }>
 							<input type="hidden" name="csrf" value={ ctxCSRF(ctx) }/>
 							<input type="hidden" name="ref" value={ q.Ref }/>
 							<input
-								class="tq-answer-input w-64 rounded-md border border-gray-300 bg-white px-2 py-1 font-mono text-sm dark:border-gray-700 dark:bg-gray-900"
+								class="tq-answer-input w-full rounded-md border border-gray-300 bg-white px-2 py-1 font-mono text-sm dark:border-gray-700 dark:bg-gray-900 sm:w-64"
 								type="text"
 								name="answer"
+								aria-label={ "answer to the open question on task " + shortID(q.TaskID) }
 								placeholder="your answer"
 								required
 							/>
@@ -373,12 +395,10 @@ templ QuestionsPane(data DashboardData) {
 								</datalist>
 							}
 							<button
-								class="rounded-md bg-amber-600 px-3 py-1 font-mono text-xs text-white hover:bg-amber-700 dark:bg-amber-500 dark:hover:bg-amber-400 dark:text-gray-950"
+								class="rounded-md bg-amber-700 px-3 py-1 font-mono text-xs text-white hover:bg-amber-800 dark:bg-amber-500 dark:hover:bg-amber-400 dark:text-gray-950"
 								type="submit"
 							>answer</button>
 						</form>
-					} else {
-						<p class="mt-3 font-mono text-xs text-gray-500 dark:text-gray-400">answer from the CLI (`tq` answers or PapDashboard) — the dashboard accepts answers only with --allow-writes</p>
 					}
 				</li>
 			}
