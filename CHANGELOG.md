@@ -105,6 +105,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Changed
 
+- **Dashboard ergonomics overhaul** (`tq serve`): the dead-letter table is
+  now a bounded triage window (25 newest-created rows plus an honest
+  "showing the 25 newest of N dead tasks — open the full list in the task
+  table" line) instead of rendering the entire dead population — one
+  537-dead journal produced a 26,927-pixel page (now ~4,068). The "active
+  now" card loads running/pending tasks independently of the paged table
+  (whose severity order ranks dead first), long owner questions collapse
+  behind a preview with options as chips, the trend charts moved below the
+  queue, and the page gained a real heading/landmark structure (`<h1>`
+  wordmark, `<h2>` sections, topbar outside `<main>`, the library skip link
+  targeting the page's own `<main id="main-content">`). Task ids display
+  their random body instead of the zero padding (`…ed4cff21`, not
+  `…00000000`), the filter bar carries real labels and puts "apply" last,
+  and the connection lamp no longer jumps left after the first live tick.
+  (BEHAVIOR CHANGE for dashboard readers: the DLQ shows 25 rows by default
+  and the full list lives behind its link; long questions start collapsed.)
+  Details and receipts:
+  `docs/status/2026-11-28_02-26_webui-ux-review-fix-status.md`.
 - **Board lanes cap and scroll internally** (`tq serve` board view): a
   lane with more cards than fit now scrolls within a capped column
   (`max-h-96`, ~10 compact cards, `overscroll-contain`) with the lane
