@@ -6,8 +6,8 @@ require (
 	github.com/LarsArtmann/go-crush-data v0.6.0 // indirect
 	github.com/Oudwins/tailwind-merge-go v0.2.3 // indirect
 	github.com/ThreeDotsLabs/watermill v1.5.3 // indirect
-	github.com/a-h/parse v0.0.0-20250122154542-74294addb73e // indirect
-	github.com/andybalholm/brotli v1.2.8 // indirect
+	github.com/a-h/parse v0.0.42 // indirect
+	github.com/andybalholm/brotli v1.3.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
@@ -64,8 +64,8 @@ require (
 	github.com/larsartmann/go-taskqueue/internal/queue/postgresv4 v0.4.3 // indirect
 	github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4 v0.4.3 // indirect
 	github.com/larsartmann/go-taskqueue/internal/retryx v0.4.3 // indirect
-	github.com/larsartmann/templ-components/datastar v1.27.0 // indirect
-	github.com/larsartmann/templ-components/htmx v1.27.0 // indirect
+	github.com/larsartmann/templ-components/datastar v1.27.2 // indirect
+	github.com/larsartmann/templ-components/htmx v1.27.2 // indirect
 	github.com/lithammer/shortuuid/v3 v3.0.7 // indirect
 	github.com/mattn/go-colorable v0.1.16 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
@@ -91,9 +91,9 @@ require (
 	go.opentelemetry.io/otel/sdk/metric v1.47.0 // indirect
 	go.opentelemetry.io/otel/trace v1.47.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.6 // indirect
-	golang.org/x/mod v0.42.0 // indirect
+	golang.org/x/mod v0.43.0 // indirect
 	golang.org/x/net v0.62.0 // indirect
-	golang.org/x/sys v0.49.0 // indirect
+	golang.org/x/sys v0.50.0 // indirect
 	golang.org/x/text v0.43.0 // indirect
 	golang.org/x/tools v0.52.0 // indirect
 	modernc.org/libc v1.80.1 // indirect
@@ -103,15 +103,15 @@ require (
 )
 
 require (
-	github.com/a-h/templ v0.3.1100
+	github.com/a-h/templ v0.3.1118
 	github.com/chromedp/chromedp v0.24.0
 	github.com/dustin/go-humanize v1.1.0
 	github.com/larsartmann/go-cqrs-lite/event/v4 v4.15.3
 	github.com/larsartmann/go-datastar v0.7.0
-	github.com/larsartmann/go-datastar/static v0.7.0
+	github.com/larsartmann/go-datastar/static v0.8.0
 	github.com/larsartmann/go-error-family v0.12.0
 	github.com/larsartmann/go-health v0.10.0
-	github.com/larsartmann/go-health-dashboard v0.13.2
+	github.com/larsartmann/go-health-dashboard v0.13.3
 	github.com/larsartmann/go-sse v0.7.0
 	github.com/larsartmann/go-sse/ssetest v0.5.0
 	github.com/larsartmann/go-taskqueue/internal/composition v0.4.3
@@ -127,10 +127,10 @@ require (
 	github.com/larsartmann/go-taskqueue/internal/testastguard v0.4.3
 	github.com/larsartmann/go-taskqueue/internal/worker v0.4.3
 	github.com/larsartmann/httputil/server_timing v1.0.3
-	github.com/larsartmann/templ-components v1.27.0
-	github.com/larsartmann/templ-components/icons v1.27.0
-	github.com/larsartmann/templ-components/utils v1.27.0
-	golang.org/x/sync v0.24.0
+	github.com/larsartmann/templ-components v1.27.2
+	github.com/larsartmann/templ-components/icons v1.27.2
+	github.com/larsartmann/templ-components/utils v1.27.2
+	golang.org/x/sync v0.25.0
 )
 
 retract v0.3.1 // broken module graph: the v0.3.1 sweep left three-segment internal requires (queue/sqlite, journal/cqrs, companion, v4 drivers) at v0.3.0, so the proxy graph cannot close
