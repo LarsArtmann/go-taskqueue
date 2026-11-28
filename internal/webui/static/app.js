@@ -657,7 +657,9 @@
           more.hidden = facts.length === 0 || oldestLoaded <= 1;
           more.setAttribute("aria-busy", "false");
         }
-        if (status) status.textContent = facts.length > 0 ? "loaded " + facts.length + " more facts" : "no older facts";
+        if (status)
+          status.textContent =
+            facts.length > 0 ? "loaded " + facts.length + " more facts" : "no older facts";
         browserBusy = false;
       })
       .catch(function () {
