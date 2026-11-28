@@ -65,7 +65,7 @@ func chromeBinary(t *testing.T) string {
 	return ""
 }
 
-func browserCtx(t *testing.T, bin string, w, h int) (context.Context, context.CancelFunc) {
+func browserCtx(t *testing.T, bin string, w, h int) (context.Context, context.CancelFunc, chromedp.Action[chromedp.Void]) {
 	t.Helper()
 
 	opts := append(chromedp.DefaultExecAllocatorOptions[:],
@@ -73,7 +73,6 @@ func browserCtx(t *testing.T, bin string, w, h int) (context.Context, context.Ca
 		chromedp.Flag("no-sandbox", true),
 		chromedp.Flag("disable-gpu", true),
 		chromedp.Flag("disable-dev-shm-usage", true),
-		chromedp.Flag("window-size", strconv.Itoa(w)+","+strconv.Itoa(h)),
 		chromedp.UserDataDir(t.TempDir()),
 	)
 
@@ -81,15 +80,15 @@ func browserCtx(t *testing.T, bin string, w, h int) (context.Context, context.Ca
 	allocCtx, cancelAlloc := chromedp.NewExecAllocator(parent, opts...)
 	ctx, cancelTab := chromedp.NewContext(allocCtx)
 
+	// Chromium clamps OS windows to a 500px minimum width, so the viewport
+	// is emulated via CDP instead of --window-size: a 390px OS window is
+	// a 500px page, and the "no overflow at 390" claim would measure the
+	// wrong width.
 	return ctx, func() {
 		cancelTab()
 		cancelAlloc()
 		cancel()
-	}
-}
-
-func itoa(w, h int) string {
-	return strconv.Itoa(w) + "," + strconv.Itoa(h)
+	}, chromedp.EmulateViewport(int64(w), int64(h))
 }
 
 // pageMetrics is the layout budget probe result.
@@ -129,11 +128,11 @@ func TestRenderBudgetLayout(t *testing.T) {
 
 	for _, b := range layoutBudgets {
 		t.Run(strconv.Itoa(b.width)+"x"+strconv.Itoa(b.height), func(t *testing.T) {
-			ctx, cancel := browserCtx(t, bin, b.width, b.height)
+			ctx, cancel, viewport := browserCtx(t, bin, b.width, b.height)
 			defer cancel()
 
 			for _, path := range []string{"/", "/?view=board", "/task/" + deadID} {
-				if _, err := chromedp.Run(ctx, chromedp.Navigate(ts.URL+path)); err != nil {
+				if _, err := chromedp.Run(ctx, chromedp.Steps(chromedp.Navigate(ts.URL+path), viewport)); err != nil {
 					t.Fatalf("navigate %s: %v", path, err)
 				}
 
@@ -178,10 +177,10 @@ func TestRenderBudgetLayout(t *testing.T) {
 	}
 
 	// Row counts are width-independent; assert them once at 1440.
-	ctx, cancel := browserCtx(t, bin, 1440, 1200)
+	ctx, cancel, viewport := browserCtx(t, bin, 1440, 1200)
 	defer cancel()
 
-	if _, err := chromedp.Run(ctx, chromedp.Navigate(ts.URL+"/")); err != nil {
+	if _, err := chromedp.Run(ctx, chromedp.Steps(chromedp.Navigate(ts.URL+"/"), viewport)); err != nil {
 		t.Fatalf("navigate: %v", err)
 	}
 
