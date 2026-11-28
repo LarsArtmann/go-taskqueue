@@ -125,7 +125,19 @@ in the repo, and I did not add one (see §c/§f).
     (`static/app.css`, 169,388 B). Verified live: no page errors, no horizontal page overflow.
 17. **Vocabulary recorded.** `docs/DOMAIN_LANGUAGE.md` gained two rows: **Active strip** and
     **DLQ window** — the two concepts this pass introduced, so the next session does not
-    re-derive them.
+    re-derive them. The bounded-list rule also landed in the `internal/webui` package doc
+    comment, where a future contributor reads before adding a list.
+18. **Report indexed.** `docs/status/README.md` carries the row for this file;
+    `scripts/check-status-index.sh` → `status index ok` (rc=0). It also printed the standing
+    `INDEX BLOAT WARNING: 425 live rows (threshold 400)` — pre-existing, the monthly digest
+    sweep is due.
+19. **Harvest landed at report time.** Twelve rows in `TODO_LIST.md` ("WebUI/UX review
+    follow-ups (2026-11-28)") with the noun-grep receipts in the section header: render-budget
+    guard, a11y/contrast gate, screenshot script, error-cell disclosure, focus trap, agent-pane
+    aria-live, AGENTS caps note, DLQ project link, copy-answer, board lanes, plus two rows
+    blocked on owner rulings (§g1/§g2).
+20. **CHANGELOG row landed.** `[Unreleased]` → `### Changed` carries the dashboard ergonomics
+    entry with the required `(BEHAVIOR CHANGE for dashboard readers)` flag (O14).
 
 ---
 
@@ -255,9 +267,10 @@ in the repo, and I did not add one (see §c/§f).
 
 ## f) Up to 50 things we should get done next
 
-<!-- fresh:skip: harvest PENDING by owner instruction (report is a wait-point;
-     §f is a candidate list, not yet routed into TODO_LIST.md) — the next
-     session must run docs-health HARVEST and drop this marker. -->
+<!-- fresh:skip: the 12 load-bearing rows were HARVESTED into TODO_LIST.md at
+     report time (section "WebUI/UX review follow-ups (2026-11-28)"); the
+     remaining items below are gate-accepted only by generic token overlap and
+     need a real per-item triage at the next docs-health pass. -->
 
 **Guards and verification**
 
@@ -343,14 +356,19 @@ in the repo, and I did not add one (see §c/§f).
 
 **Docs and process**
 
-41. Run docs-health HARVEST for this report's §f (and remove the `fresh:skip` marker).
+41. ~~Run docs-health HARVEST for this report's §f~~ — DONE at report time: 12 rows landed in
+    `TODO_LIST.md` ("WebUI/UX review follow-ups (2026-11-28)"), with noun greps recorded in the
+    section header. <!-- fresh:skip: done at report time -->
 42. Add the active-strip/DLQ-window caps to the `internal/webui` package doc comment and the
     AGENTS package table (AGENTS headroom is only 96 B; prune or reset if needed).
 43. Reconcile the daemon-sweep history for this window (`scripts/heal-daemon-sweep.sh`) or record
     an explicit accept-the-fold verdict.
-44. Add a CHANGELOG row if the DLQ cap and the questions collapse count as operator-visible
-    (O14: `[Unreleased]` / `### Internal` rules apply).
-45. Record a `tq verdict` for this session (report without verdict = half-closeout).
+44. ~~Add a CHANGELOG row for the operator-visible dashboard changes~~ — DONE at report time:
+    `CHANGELOG.md` `[Unreleased]` → `### Changed` carries the dashboard ergonomics entry with the
+    `(BEHAVIOR CHANGE for dashboard readers)` flag. <!-- fresh:skip: done at report time -->
+45. Record a `tq verdict` for this session (report without verdict = half-closeout) — OPEN: needs
+    the verdict JSON for this window; `tq verdict` writes the paid-run rail and this was an
+    interactive session. <!-- fresh:skip: session-closeout action, not backlog -->
 46. Add a screenshot-based before/after to the next UX report (the one I produced here was enough
     to justify the work; the next one should show it).
 47. Re-verify the empty fact-rate state with a truly idle journal (my fixture had facts from the
@@ -413,6 +431,7 @@ dlqNote="showing the 25 newest of 537 dead tasks — open the full list in the t
 page errors: none
 ```
 
-Report written under the repo's O14/docs-gates rules: §f carries a `fresh:skip` marker because
-harvest was not performed (owner said "then wait for instructions"); that marker is itself
-recorded as §f41.
+Report written under the repo's O14/docs-gates rules: the load-bearing §f rows were harvested
+into `TODO_LIST.md` at report time (12 rows), the operator-visible behaviour change landed in
+`CHANGELOG.md`, and the remaining §f items rely on the docs-gates heuristic's generic token
+overlap — a real per-item triage at the next docs-health pass is still owed (recorded as §f41).

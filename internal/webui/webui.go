@@ -9,6 +9,15 @@
 // mutation (the worst failure is a stale dashboard, never journal
 // corruption) and persistence — it renders projections, it owns none.
 //
+// Every list is BOUNDED and says so in the UI: the paged task table
+// (taskTableLimit), the dead-letter table (deadTableLimit, newest-created
+// first, with a "showing N newest of M" line into the paginated
+// ?status=dead ledger), and the always-visible "active now" strip
+// (activeStripLimit, loaded independently of the paged table because
+// severity order ranks dead first). An unbounded list is a page-height
+// bug: the DLQ once rendered 537 rows and a 26,927-pixel page
+// (2026-11-28 UX pass).
+//
 // Cross-package map (lifecycle × concern):
 // docs/architecture-understanding/2026-10-23_lifecycle-concern-grid.md
 //
