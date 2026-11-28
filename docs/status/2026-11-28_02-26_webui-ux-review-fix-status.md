@@ -1,10 +1,10 @@
 # WebUI/UX review & fix — from a 26,927-pixel page to a 4,068-pixel console
 
 **Date**: 2026-11-28 02:26 CET.
-**Head at composition**: `bd360ad5` (`chore: auto-commit 4 changed file(s)`). The work in
-this window landed through SIX footer-less daemon sweeps (`898d6e3f` → `bd360ad5`); the tree
-was clean at composition time, and no manual commit was made (harness contract: never commit
-without an explicit owner request).
+**Head at composition**: `bd360ad5`, moved to `00e03cd0` while the report's own harvest/index
+edits landed (the auto-commit daemon sweeps uncommitted trees continuously). This window's
+work spans SEVEN footer-less daemon sweeps (`898d6e3f` → `00e03cd0`); no manual commit was
+made (harness contract: never commit without an explicit owner request).
 **Trigger**: owner directive "I feel like our webUI/UX has real big problems! Review and fix! GO!".
 
 **Scope line — what this report VERIFIED, with receipts.** A real `tq serve` render of the
@@ -304,6 +304,8 @@ in the repo, and I did not add one (see §c/§f).
     its effect is visible.
 16. Drop one of the two pager notes ("Showing 200 of 1917" vs "Showing page 1 of 10").
 17. Add an "open the DLQ filtered to this project" link on the project chips.
+    <!-- fresh:skip: harvested as TODO_LIST row 2262; the matcher sees only generic tokens
+    (filtered/link/chips each appear on >=8 lines) -->
 18. Give `loop suspects` and `budget today` explainers (title text or a details row) so the
     nowband meta is not jargon-only.
 19. Consider collapsing the nowband meta row into a `<details>` under `sm` (mobile is ~330 px
@@ -324,6 +326,8 @@ in the repo, and I did not add one (see §c/§f).
 24. Make option chips clickable to prefill the answer input (one-click answer for A/B/C).
 25. Show the asking task's project and type beside the question meta (context for the ruling).
 26. Add "copy answer command" (`tq answer …`) for the read-only dashboard case.
+    <!-- fresh:skip: harvested as TODO_LIST row 2263; the matcher sees only generic tokens
+    (copy/answer each appear on >=8 lines) -->
 
 **Board view**
 
@@ -337,8 +341,8 @@ in the repo, and I did not add one (see §c/§f).
     `aria-controls`, drop the duplicate `title=`, and stop using `role=button` on a cell child.
 31. Replace the agent feed's `aria-live` with a summary status region ("3 new agent lines").
 32. Implement a real focus trap (or native `<dialog>`) for the `?` overlay.
-33. Add `role="group"` (or semantic elements) to the four `aria-label`s that currently land on
-    plain `div`s (journal tail, budget-parked, rate-limit-parked, retry summary).
+33. Add `role="group"` (or semantic elements) to the four aria-labels that currently land on
+    plain divs (journal tail, budget-parked, rate-limit-parked, retry summary).
 34. Verify the new question/details markup in forced-colors mode (the `overflow` clamp is the
     risk).
 35. Give the completion histogram an axis unit ("tasks") and a caption; verify the mobile x-axis
