@@ -21,11 +21,12 @@ import (
 	"github.com/chromedp/chromedp"
 )
 
-// layoutBudgets pins the measured document height ceiling per viewport
-// (measured 2026-11-28 on the seeded fixture journal, chromium 158
-// headless): dashboard and board under the seeded journal must never
-// regress toward the 26,927-px incident page. Headroom is deliberate —
-// this is a regression wall, not a pixel-perfect snapshot.
+// layoutBudgets pins the document height ceiling per viewport. Measured
+// 2026-11-28 on the seeded fixture journal (537 dead / 220 pending,
+// chromium 158 headless): dashboard 4283/4204/3645 and board
+// 3197/3158/3335 px at 390/768/1440 — the ceiling is 2× the measured
+// height, a regression wall against the 26,927-px incident page, not a
+// pixel-perfect snapshot.
 type layoutBudget struct {
 	width, height int
 	maxDashboard  float64
@@ -33,9 +34,9 @@ type layoutBudget struct {
 }
 
 var layoutBudgets = []layoutBudget{
-	{width: 390, height: 844, maxDashboard: 20000, maxBoard: 20000},
-	{width: 768, height: 1024, maxDashboard: 14000, maxBoard: 14000},
-	{width: 1440, height: 1200, maxDashboard: 8000, maxBoard: 8000},
+	{width: 390, height: 844, maxDashboard: 8600, maxBoard: 6400},
+	{width: 768, height: 1024, maxDashboard: 8500, maxBoard: 6400},
+	{width: 1440, height: 1200, maxDashboard: 7300, maxBoard: 6700},
 }
 
 // chromeBinary resolves the browser for the browser-gated gates: explicit
