@@ -10,7 +10,7 @@ require (
 	github.com/larsartmann/go-taskqueue/internal/queue v0.4.3
 	github.com/larsartmann/go-taskqueue/internal/queue/companion v0.4.3
 	github.com/larsartmann/go-taskqueue/internal/task v0.4.3
-	modernc.org/sqlite v1.61.1
+	modernc.org/sqlite v1.63.0
 )
 
 require (
