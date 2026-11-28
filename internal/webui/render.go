@@ -24,11 +24,11 @@ import (
 )
 
 const (
-	timeFormat          = "2006-01-02 15:04:05 MST"
-	errorPreviewLen     = 60
-	factFeedLen         = 50
-	factViewerPageSize  = 100 // /api/facts page cap for the journal browser
-	taskTableLimit      = 200
+	timeFormat         = "2006-01-02 15:04:05 MST"
+	errorPreviewLen    = 60
+	factFeedLen        = 50
+	factViewerPageSize = 100 // /api/facts page cap for the journal browser
+	taskTableLimit     = 200
 	// deadTableLimit bounds the dashboard's dead-letter table: the DLQ is a
 	// triage surface, not the full ledger. Past this count the section
 	// renders a "showing N newest of M" line linking to the paginated

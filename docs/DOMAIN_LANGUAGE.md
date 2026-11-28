@@ -135,6 +135,8 @@ design-pass §2/§3/§10) that the live surfaces still speak.
 | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Bezel**      | The hull chrome that frames the page: topbar and nowband — engraved uppercase labels, border + gradient ground, deliberately a DIFFERENT register from the content. Content below the hull speaks lowercase; the bezel never does (explicit ruling, 2026-09-16 + 09-21 passes). Live sites: `internal/webui/theme.css:19,323`. |
 | **Queue chip** | The board card voice after the SaaS-card teardown: `rounded-md` hairline border + 2px status left rule (`statusAccentClass`), transparent ground, quiet hover, no shadow. Same vocabulary as the quiet filter chips (`filterChip`, fragments.templ:723) — one card surface, not two. |
+| **Active strip** | The always-visible "active now" card above the task table: running then pending tasks, loaded INDEPENDENTLY of the paged table (whose severity order ranks dead first), bounded by `activeStripLimit`, unioned with the page's own active rows. The paged table is the ledger; the strip is the operator's working set. |
+| **DLQ window** | The bounded dead-letter table (`deadTableLimit`, newest-created first) with an honest "showing N newest of M" line into the paginated `?status=dead` ledger. The DLQ is a triage surface, not the full dead population — an uncapped window made one 537-dead journal a 25k-pixel page. |
 
 ## Trust vocabulary (OKF-derived)
 
